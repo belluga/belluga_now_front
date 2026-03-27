@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -94,6 +95,79 @@ void main() {
     final data = adapter.lastRequest?.data;
     expect(data, isA<Map<String, dynamic>>());
     expect((data as Map<String, dynamic>)['type'], 'landmark');
+  });
+
+  test('createStaticProfileTypeWithPoiVisual sends poi_visual image payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.createStaticProfileTypeWithPoiVisual(
+      type: 'beach',
+      label: 'Beach',
+      allowedTaxonomies: const ['region'],
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: true,
+        hasBio: true,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasContent: true,
+      ),
+      poiVisual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.cover,
+      ),
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['poi_visual'], <String, dynamic>{
+      'mode': 'image',
+      'image_source': 'cover',
+    });
+  });
+
+  test('updateStaticProfileTypeWithPoiVisual sends nullable poi_visual payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticProfileTypeWithPoiVisual(
+      type: 'beach',
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: false,
+        hasBio: true,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasContent: true,
+      ),
+      poiVisual: null,
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('poi_visual'), isTrue);
+    expect(payload['poi_visual'], isNull);
+  });
+
+  test('fetchStaticProfileTypeMapPoiProjectionImpact returns projection count',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    final count = await repository.fetchStaticProfileTypeMapPoiProjectionImpact(
+      type: 'beach',
+    );
+
+    expect(count, 42);
+    expect(
+      adapter.lastRequest?.path,
+      contains(
+        '/admin/api/v1/static_profile_types/beach/map_poi_projection_impact',
+      ),
+    );
   });
 
   test('fetchStaticAssets switches request host after tenant selection changes',
@@ -279,6 +353,48 @@ void main() {
     final payload = data as Map<String, dynamic>;
     expect(payload['remove_avatar'], isTrue);
     expect(payload['remove_cover'], isTrue);
+  });
+
+  test('fetchStaticProfileTypesPage parses poi_visual contract', () async {
+    final adapter = _CaptureAdapter(
+      staticProfileTypesByPage: {
+        1: [
+          {
+            'id': 'type-1',
+            'type': 'beach',
+            'label': 'Beach',
+            'allowed_taxonomies': <String>[],
+            'poi_visual': {
+              'mode': 'image',
+              'image_source': 'avatar',
+            },
+            'capabilities': {
+              'is_poi_enabled': true,
+              'has_bio': true,
+              'has_taxonomies': true,
+              'has_avatar': true,
+              'has_cover': true,
+              'has_content': true,
+            },
+          },
+        ],
+      },
+      staticProfileTypesLastPage: 1,
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    final page = await repository.fetchStaticProfileTypesPage(
+      page: 1,
+      pageSize: 20,
+    );
+
+    expect(page.items, hasLength(1));
+    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.image);
+    expect(
+      page.items.first.poiVisual?.imageSource,
+      TenantAdminPoiVisualImageSource.avatar,
+    );
   });
 
   test('load/reset/next follow paged stream contract for static assets',
@@ -470,12 +586,32 @@ class _CaptureAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     requests.add(options);
-    if (options.method == 'PATCH' &&
+    if (options.path.endsWith('/map_poi_projection_impact')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'profile_type': 'beach',
+            'projection_count': 42,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    if ((options.method == 'POST' || options.method == 'PATCH') &&
         options.path.contains('/v1/static_profile_types')) {
       final payload = jsonEncode({
         'data': {
           'type': 'poi/type',
           'label': 'POI Type',
+          'poi_visual': {
+            'mode': 'icon',
+            'icon': 'place',
+            'color': '#00AAFF',
+            'icon_color': '#FFFFFF',
+          },
           'allowed_taxonomies': <String>[],
           'capabilities': {
             'is_poi_enabled': true,

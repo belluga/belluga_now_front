@@ -20,6 +20,8 @@ class _FakeAccountProfilesRepository
 
   List<TenantAdminProfileTypeDefinition> _types;
   int deleteCalls = 0;
+  int projectionImpactCount = 0;
+  String? lastProjectionImpactType;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -185,6 +187,14 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(String accountProfileId) async {}
+
+  @override
+  Future<int> fetchProfileTypeMapPoiProjectionImpact({
+    required String type,
+  }) async {
+    lastProjectionImpactType = type;
+    return projectionImpactCount;
+  }
 }
 
 class _FakeTaxonomiesRepository
@@ -541,6 +551,18 @@ void main() {
     expect(detail, isNotNull);
     expect(detail!.type, 'artist-pro');
     expect(detail.label, 'Artist Pro');
+  });
+
+  test('previewDisableProjectionCount delegates to repository', () async {
+    final repository = _FakeAccountProfilesRepository([]);
+    repository.projectionImpactCount = 67;
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
+
+    final count = await controller.previewDisableProjectionCount('venue');
+
+    expect(count, 67);
+    expect(repository.lastProjectionImpactType, 'venue');
   });
 }
 

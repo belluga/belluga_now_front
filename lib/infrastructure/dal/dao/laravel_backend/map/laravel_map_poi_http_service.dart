@@ -57,17 +57,19 @@ class LaravelMapPoiHttpService {
     );
 
     final raw = response.data;
-    if (raw is! Map<String, dynamic>) {
+    final payload = _normalizeMap(raw);
+    if (payload == null) {
       throw Exception('Unexpected /v1/map/pois response envelope');
     }
 
-    final stacks = raw['stacks'];
+    final stacks = payload['stacks'];
     if (stacks is! List) {
       throw Exception('Unexpected /v1/map/pois stacks payload');
     }
 
     final shouldExpandItems = (stackKey ?? '').trim().isNotEmpty;
     return stacks
+        .map(_normalizeMap)
         .whereType<Map<String, dynamic>>()
         .map(
           (stack) => CityPoiDTO.fromStackedApiJson(
@@ -102,16 +104,17 @@ class LaravelMapPoiHttpService {
       );
 
       final raw = response.data;
-      if (raw is! Map<String, dynamic>) {
+      final payload = _normalizeMap(raw);
+      if (payload == null) {
         throw Exception('Unexpected /v1/map/pois/lookup response envelope');
       }
 
-      final poiPayload = raw['poi'];
-      if (poiPayload is Map<String, dynamic>) {
+      final poiPayload = _normalizeMap(payload['poi']);
+      if (poiPayload != null) {
         return CityPoiDTO.fromJson(poiPayload);
       }
 
-      return CityPoiDTO.fromJson(raw);
+      return CityPoiDTO.fromJson(payload);
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         return null;
@@ -131,10 +134,11 @@ class LaravelMapPoiHttpService {
     );
 
     final raw = response.data;
-    if (raw is! Map<String, dynamic>) {
+    final payload = _normalizeMap(raw);
+    if (payload == null) {
       throw Exception('Unexpected /v1/map/filters response envelope');
     }
-    return MapFiltersDTO.fromJson(raw);
+    return MapFiltersDTO.fromJson(payload);
   }
 
   Map<String, dynamic> _buildQueryParams(
@@ -240,6 +244,16 @@ class LaravelMapPoiHttpService {
     return TenantPublicAuthHeaders.build(
       includeJsonAccept: true,
       bootstrapIfEmpty: true,
+    );
+  }
+
+  Map<String, dynamic>? _normalizeMap(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return raw.map(
+      (key, value) => MapEntry(key.toString(), value),
     );
   }
 }

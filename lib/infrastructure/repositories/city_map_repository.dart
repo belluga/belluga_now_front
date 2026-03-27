@@ -36,9 +36,8 @@ class CityMapRepository extends CityMapRepositoryContract {
     if (dtos.isEmpty) {
       return const <CityPoiModel>[];
     }
-    final stackItems = dtos.first.items
-        .map((item) => item.toDomain())
-        .toList(growable: false);
+    final stackItems =
+        dtos.first.items.map((item) => item.toDomain()).toList(growable: false);
     if (stackItems.isEmpty) {
       return dtos.map((dto) => dto.toDomain()).toList(growable: false);
     }
@@ -130,6 +129,8 @@ class CityMapRepository extends CityMapRepositoryContract {
           label: category.label.trim().isEmpty ? key : category.label.trim(),
           imageUri: category.imageUri,
           count: category.count,
+          overrideMarker: category.overrideMarker,
+          markerOverride: category.markerOverride?.toDomain(),
           tags: tags,
           serverQuery: PoiFilterServerQuery(
             source:

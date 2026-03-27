@@ -1,20 +1,15 @@
 include: package:flutter_lints/flutter.yaml
 
+plugins:
+  belluga_analysis_plugin:
+    path: tool/belluga_analysis_plugin
+
 analyzer:
-  plugins:
-    - custom_lint
   exclude:
     - lib/application/configurations/belluga_nattive_icons.dart
     - "**/*.mocks.dart"
-    - tool/belluga_custom_lint/test_fixtures/**
+    - tool/belluga_analysis_plugin/**
     - "**/test_fixtures/**"
-
-custom_lint:
-  debug: true
-  verbose: true
-  rules:
-    - domain_primitive_field_forbidden
-    - dto_mapper_pass_through_forbidden
 
 linter:
   rules:

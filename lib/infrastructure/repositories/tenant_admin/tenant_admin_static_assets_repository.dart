@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -324,6 +325,36 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
+  Future<TenantAdminStaticProfileTypeDefinition>
+      createStaticProfileTypeWithPoiVisual({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    try {
+      final payload = _requestEncoder.encodeStaticProfileTypePayload(
+        type: type,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: true,
+      );
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/static_profile_types',
+        data: payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create static profile type');
+    }
+  }
+
+  @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
     String? newType,
@@ -348,6 +379,54 @@ class TenantAdminStaticAssetsRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update static profile type');
+    }
+  }
+
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition>
+      updateStaticProfileTypeWithPoiVisual({
+    required String type,
+    String? newType,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    try {
+      final encodedType = Uri.encodeComponent(type);
+      final payload = _requestEncoder.encodeStaticProfileTypePayload(
+        type: newType,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: true,
+      );
+      final response = await _dio.patch(
+        '$_apiBaseUrl/v1/static_profile_types/$encodedType',
+        data: payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update static profile type');
+    }
+  }
+
+  @override
+  Future<int> fetchStaticProfileTypeMapPoiProjectionImpact({
+    required String type,
+  }) async {
+    try {
+      final encodedType = Uri.encodeComponent(type);
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/static_profile_types/$encodedType/map_poi_projection_impact',
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeProjectionImpactCount(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load static profile type projection impact');
     }
   }
 

@@ -25,7 +25,11 @@ import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_ad
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_technical_integrations_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_visual_identity_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_rule_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_visual_sheet.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_icon_catalog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -333,6 +337,460 @@ void main() {
     expect(filters, hasLength(1));
     expect(filters.first.key, 'filter_1');
     expect(filters.first.label, 'Filtro 1');
+  });
+
+  testWidgets(
+      'map filter row exposes explicit Visual action and removes legacy image actions',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+    );
+    await tester.pumpAndSettle();
+
+    final rowFinder = find.byKey(
+      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+    );
+    expect(rowFinder, findsOneWidget);
+
+    expect(
+      find.descendant(
+        of: rowFinder,
+        matching: find.widgetWithText(OutlinedButton, 'Regra'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: rowFinder,
+        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: rowFinder, matching: find.text('Imagem')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: rowFinder, matching: find.text('Limpar imagem')),
+      findsNothing,
+    );
+
+    final popupFinder = find.descendant(
+      of: rowFinder,
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    expect(popupFinder, findsOneWidget);
+    await tester.tap(popupFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar regra'), findsOneWidget);
+    expect(find.text('Editar visual'), findsOneWidget);
+    expect(find.text('Imagem'), findsNothing);
+    expect(find.text('Limpar imagem'), findsNothing);
+  });
+
+  testWidgets(
+    'map filter row preview prefers marker override icon+color over legacy image',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialMapUiSettings: TenantAdminMapUiSettings(
+          rawMapUiValue: TenantAdminDynamicMapValue(const {
+            'radius': 15000,
+            'default_origin': {
+              'lat': -20.6736,
+              'lng': -40.4976,
+              'label': 'Centro',
+            },
+          }),
+          defaultOrigin: TenantAdminMapDefaultOrigin(
+            lat: -20.6736,
+            lng: -40.4976,
+            label: 'Centro',
+          ),
+          filters: [
+            TenantAdminMapFilterCatalogItem(
+              key: 'events',
+              label: 'Eventos',
+              imageUri: 'https://tenant.test/legacy-events.png',
+              overrideMarker: true,
+              markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+                icon: 'music',
+                color: '#C6141F',
+                iconColor: '#FFFFFF',
+              ),
+            ),
+          ],
+        ),
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      );
+
+      final rowFinder = find.byKey(
+        TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+      );
+      expect(rowFinder, findsOneWidget);
+
+      final iconFinder = find.descendant(
+        of: rowFinder,
+        matching: find.byIcon(Icons.music_note),
+      );
+      expect(iconFinder, findsOneWidget);
+      final iconWidget = tester.widget<Icon>(iconFinder.first);
+      expect(iconWidget.color, Colors.white);
+
+      final previewFinder = find.byKey(
+        TenantAdminSettingsKeys.localPreferencesMapFilterVisualPreview(0),
+      );
+      expect(previewFinder, findsOneWidget);
+      final previewContainer = tester.widget<Container>(previewFinder.first);
+      final previewColor = previewContainer.color;
+      expect(previewColor, isNotNull);
+      expect((previewColor!.r * 255).round(), 0xC6);
+      expect((previewColor.g * 255).round(), 0x14);
+      expect((previewColor.b * 255).round(), 0x1F);
+      expect(previewColor.a, closeTo(0.22, 0.005));
+    },
+  );
+
+  testWidgets('map filter rule sheet is query-only (without visual fields)',
+      (tester) async {
+    final filter = TenantAdminMapFilterCatalogItem(
+      key: 'events',
+      label: 'Eventos',
+      query:
+          TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
+    );
+    final catalog = TenantAdminMapFilterRuleCatalog(
+      typesBySource: {
+        TenantAdminMapFilterSource.event: [
+          TenantAdminMapFilterTypeOption(
+            slug: 'show',
+            label: 'Show',
+          ),
+        ],
+      },
+      taxonomyTermsBySource: {
+        TenantAdminMapFilterSource.event: [
+          TenantAdminMapFilterTaxonomyTermOption(
+            token: 'rock',
+            label: 'Rock',
+            taxonomySlug: 'genre',
+            taxonomyLabel: 'Gênero',
+          ),
+        ],
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TenantAdminMapFilterRuleSheet(
+            filter: filter,
+            catalog: catalog,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Regra do filtro'), findsOneWidget);
+    expect(find.text('Origem'), findsOneWidget);
+    expect(find.text('Tipos'), findsOneWidget);
+    expect(find.text('Taxonomias'), findsOneWidget);
+    expect(find.text('Sobrescrever marcador'), findsNothing);
+    expect(find.text('Modo do marcador'), findsNothing);
+    expect(find.text('Visual do filtro'), findsNothing);
+  });
+
+  testWidgets('Visual sheet owns canonical marker icon-image flow',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+    );
+    await tester.pumpAndSettle();
+
+    final rowFinder = find.byKey(
+      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+    );
+    expect(rowFinder, findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: rowFinder,
+        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Visual do filtro'), findsOneWidget);
+    expect(find.text('Sobrescrever marcador'), findsOneWidget);
+    expect(find.byType(TenantAdminMapMarkerIconPickerField), findsNothing);
+
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
+    expect(find.text('Cor do marcador'), findsOneWidget);
+    expect(find.text('Cor do ícone'), findsOneWidget);
+
+    await tester.tap(find.text('Ícone').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Imagem').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TenantAdminMapMarkerIconPickerField), findsNothing);
+    expect(
+      find.widgetWithText(TextFormField, 'Imagem do marcador (URL)'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Imagem do marcador (URL)'),
+      'https://guarappari.test/storage/filter-image.png',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+    );
+    await tester.pumpAndSettle();
+
+    final updated = settingsRepository.updatedMapUiSettings;
+    expect(updated, isNotNull);
+    expect(updated!.filters, hasLength(1));
+    final filter = updated.filters.first;
+    expect(filter.overrideMarker, isTrue);
+    expect(filter.markerOverride, isNotNull);
+    expect(filter.markerOverride!.mode,
+        TenantAdminMapFilterMarkerOverrideMode.image);
+    expect(
+      filter.markerOverride!.imageUri,
+      'https://guarappari.test/storage/filter-image.png',
+    );
+  });
+
+  testWidgets('Visual sheet validates icon inputs before allowing apply',
+      (tester) async {
+    String latestSnackMessage() {
+      final snackBars = tester.widgetList<SnackBar>(find.byType(SnackBar));
+      expect(snackBars, isNotEmpty);
+      final latest = snackBars.last.content;
+      if (latest is Text) {
+        return latest.data ?? '';
+      }
+      return latest.toStringShort();
+    }
+
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+    );
+    await tester.pumpAndSettle();
+
+    final rowFinder = find.byKey(
+      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+    );
+    expect(rowFinder, findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: rowFinder,
+        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final visualSheetFinder = find
+        .ancestor(
+          of: find.text('Visual do filtro'),
+          matching: find.byType(SafeArea),
+        )
+        .last;
+    final applyButtonFinder = find.descendant(
+      of: visualSheetFinder,
+      matching: find.widgetWithText(FilledButton, 'Aplicar'),
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: visualSheetFinder,
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(applyButtonFinder);
+    await tester.pumpAndSettle();
+    expect(
+      latestSnackMessage(),
+      contains('Visual inválido: em modo ícone'),
+    );
+  });
+
+  testWidgets('Visual sheet validates image url when override mode is image',
+      (tester) async {
+    final filter = TenantAdminMapFilterCatalogItem(
+      key: 'events',
+      label: 'Eventos',
+      imageUri: 'https://tenant.test/filter.png',
+      overrideMarker: true,
+      markerOverride: TenantAdminMapFilterMarkerOverride.image(
+        imageUri: 'https://tenant.test/filter.png',
+      ),
+      query:
+          TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
+    );
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminMapFilterVisualSheet(filter: filter),
+      ),
+    );
+
+    expect(find.text('Visual do filtro'), findsOneWidget);
+    expect(find.text('Sobrescrever marcador'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Imagem do marcador (URL)'),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Imagem do marcador (URL)'),
+      'invalid-url',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+    await tester.pumpAndSettle();
+
+    final snackBars = tester.widgetList<SnackBar>(find.byType(SnackBar));
+    expect(snackBars, isNotEmpty);
+    final latest = snackBars.last.content;
+    final message =
+        latest is Text ? (latest.data ?? '') : latest.toStringShort();
+    expect(message, contains('URL válida (http/https)'));
+  });
+
+  testWidgets(
+      'map marker icon picker writes storage key when user selects icon',
+      (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: TenantAdminMapMarkerIconPickerField(
+            controller: controller,
+            labelText: 'Ícone',
+          ),
+        ),
+      ),
+    );
+
+    expect(controller.text, isEmpty);
+    expect(find.text('Selecionar ícone'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Selecionar ícone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Museu').first);
+    await tester.pumpAndSettle();
+
+    expect(controller.text, MapMarkerIconToken.museum.storageKey);
+    expect(find.text('Museu'), findsOneWidget);
   });
 
   testWidgets('saves firebase settings via remote repository', (tester) async {
@@ -1032,6 +1490,7 @@ class _FakeTenantAdminSettingsRepository
   _FakeTenantAdminSettingsRepository({
     this.throwOnBrandingFetch = false,
     String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
+    TenantAdminMapUiSettings? initialMapUiSettings,
   }) : _brandingSettings = TenantAdminBrandingSettings(
           tenantName: 'Tenant Test',
           brightnessDefault: TenantAdminBrandingBrightness.light,
@@ -1042,7 +1501,11 @@ class _FakeTenantAdminSettingsRepository
           lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
           darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
           pwaIconUrl: initialPwaIconUrl,
-        );
+        ) {
+    if (initialMapUiSettings != null) {
+      _mapUiSettings = initialMapUiSettings;
+    }
+  }
 
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;

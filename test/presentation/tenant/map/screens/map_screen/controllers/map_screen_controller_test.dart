@@ -693,6 +693,67 @@ void main() {
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
     });
 
+    test(
+      'taxonomy filter activation clears active catalog filter context',
+      () async {
+        controller.toggleCatalogCategoryFilter(
+          PoiFilterCategory(
+            key: 'beach',
+            label: 'Praias',
+            tags: const {},
+            serverQuery: PoiFilterServerQuery(
+              source: 'static_asset',
+              types: {'beach_spot'},
+            ),
+          ),
+        );
+        await _flushMicrotasks();
+
+        expect(controller.activeCatalogFilterKeyStreamValue.value, 'beach');
+
+        controller.toggleTaxonomyFilter(
+          PoiFilterTaxonomyTerm(
+            type: 'cuisine',
+            value: 'italian',
+            label: 'Italiana',
+            count: 4,
+          ),
+        );
+        await _flushMicrotasks();
+
+        expect(controller.activeCatalogFilterKeyStreamValue.value, isNull);
+        expect(controller.activeCategoryKeysStreamValue.value, isEmpty);
+        expect(
+          controller.activeTaxonomyTokensStreamValue.value,
+          equals({'cuisine:italian'}),
+        );
+        expect(mapRepository.lastQuery?.source, isNull);
+        expect(mapRepository.lastQuery?.types, isNull);
+        expect(mapRepository.lastQuery?.taxonomy, equals({'cuisine:italian'}));
+      },
+    );
+
+    test('toggling same taxonomy token again clears filters', () async {
+      final term = PoiFilterTaxonomyTerm(
+        type: 'cuisine',
+        value: 'italian',
+        label: 'Italiana',
+        count: 4,
+      );
+
+      controller.toggleTaxonomyFilter(term);
+      await _flushMicrotasks();
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+
+      controller.toggleTaxonomyFilter(term);
+      await _flushMicrotasks();
+
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.none);
+      expect(controller.activeTaxonomyTokensStreamValue.value, isEmpty);
+      expect(controller.activeCategoryKeysStreamValue.value, isEmpty);
+      expect(controller.activeCatalogFilterKeyStreamValue.value, isNull);
+    });
+
     test('locks filter interactions while a filter reload is in flight',
         () async {
       final firstRequest = Completer<List<CityPoiModel>>();
@@ -753,6 +814,42 @@ void main() {
 
       expect(mapRepository.fetchPointsCallCount, 2);
     });
+
+    test(
+      'applies marker override key only after catalog reload completes',
+      () async {
+        final firstRequest = Completer<List<CityPoiModel>>();
+        mapRepository.queuedFetchCompleters.add(firstRequest);
+        final category = PoiFilterCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const {},
+          overrideMarker: true,
+          markerOverride: const PoiFilterMarkerOverride.icon(
+            icon: 'beach',
+            colorHex: '#FF3300',
+          ),
+          serverQuery: PoiFilterServerQuery(
+            source: 'static_asset',
+            types: {'beach_spot'},
+          ),
+        );
+
+        expect(controller.appliedCatalogFilterKeyStreamValue.value, isNull);
+
+        controller.toggleCatalogCategoryFilter(category);
+        await _flushMicrotasks();
+
+        expect(controller.activeCatalogFilterKeyStreamValue.value, 'beach');
+        expect(controller.appliedCatalogFilterKeyStreamValue.value, isNull);
+
+        firstRequest.complete(<CityPoiModel>[]);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(controller.appliedCatalogFilterKeyStreamValue.value, 'beach');
+      },
+    );
 
     test('keeps the latest loadPois result after overlapping requests',
         () async {

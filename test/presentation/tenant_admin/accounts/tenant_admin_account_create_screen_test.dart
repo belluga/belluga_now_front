@@ -39,6 +39,9 @@ class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
   Object? createAccountError;
+  TenantAdminMediaUpload? lastOnboardingAvatarUpload;
+  TenantAdminMediaUpload? lastOnboardingCoverUpload;
+  int createOnboardingCallCount = 0;
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
@@ -103,6 +106,9 @@ class _FakeAccountsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    createOnboardingCallCount += 1;
+    lastOnboardingAvatarUpload = avatarUpload;
+    lastOnboardingCoverUpload = coverUpload;
     final error = createAccountError;
     if (error != null) {
       throw error;
@@ -702,6 +708,82 @@ void main() {
       find.byKey(const ValueKey('tenant_admin_account_create_cover_remove')),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+      'keeps avatar and cover files when web URLs are cleared pre-submit',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = [
+      TenantAdminProfileTypeDefinition(
+        type: 'media',
+        label: 'Media',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: true,
+          hasCover: true,
+          hasEvents: false,
+        ),
+      ),
+    ];
+    final avatarFile = _createTempImageFile('avatar-submit.png');
+    final coverFile = _createTempImageFile('cover-submit.png');
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
+    controller.profileTypesStreamValue.addValue(
+      List<TenantAdminProfileTypeDefinition>.from(
+        profilesRepository._profileTypes,
+      ),
+    );
+    controller.resetCreateState();
+    controller.updateCreateSelectedProfileType('media');
+    expect(controller.createStateStreamValue.value.selectedProfileType, 'media');
+    controller.nameController.text = 'Conta com imagem';
+    controller.updateCreateAvatarFile(avatarFile);
+    controller.updateCreateCoverFile(coverFile);
+    expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
+    expect(controller.createStateStreamValue.value.coverFile, isNotNull);
+
+    // Mimics screen submit flow that clears web URLs before creating.
+    controller.updateCreateAvatarWebUrl(null);
+    controller.updateCreateCoverWebUrl(null);
+    expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
+    expect(controller.createStateStreamValue.value.coverFile, isNotNull);
+  });
+
+  test('createAccountFromForm forwards avatar and cover uploads', () async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
+    final avatarFile = _createTempImageFile('avatar-onboarding.png');
+    final coverFile = _createTempImageFile('cover-onboarding.png');
+
+    controller.profileTypesStreamValue.addValue(
+      List<TenantAdminProfileTypeDefinition>.from(
+        profilesRepository._profileTypes,
+      ),
+    );
+    controller.updateCreateSelectedProfileType('venue');
+    controller.nameController.text = 'Conta com upload';
+    controller.updateCreateAvatarFile(avatarFile);
+    controller.updateCreateCoverFile(coverFile);
+    await controller.createAccountFromForm(location: null);
+
+    expect(accountsRepository.createOnboardingCallCount, 1);
+    expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
+    expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
+    expect(accountsRepository.lastOnboardingAvatarUpload?.bytes.isNotEmpty, isTrue);
+    expect(accountsRepository.lastOnboardingCoverUpload?.bytes.isNotEmpty, isTrue);
   });
 
   testWidgets('disables avatar pick and shows progress when busy',

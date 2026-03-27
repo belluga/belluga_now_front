@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_type_poi_visual_requests.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -66,10 +68,24 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   );
   final StreamValue<bool> isSlugAutoEnabledStreamValue =
       StreamValue<bool>(defaultValue: true);
+  final StreamValue<TenantAdminPoiVisualMode> poiVisualModeStreamValue =
+      StreamValue<TenantAdminPoiVisualMode>(
+    defaultValue: TenantAdminPoiVisualMode.icon,
+  );
+  final StreamValue<TenantAdminPoiVisualImageSource>
+      poiVisualImageSourceStreamValue =
+      StreamValue<TenantAdminPoiVisualImageSource>(
+    defaultValue: TenantAdminPoiVisualImageSource.avatar,
+  );
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController typeController = TextEditingController();
   final TextEditingController labelController = TextEditingController();
+  final TextEditingController poiVisualIconController = TextEditingController();
+  final TextEditingController poiVisualColorController =
+      TextEditingController();
+  final TextEditingController poiVisualIconColorController =
+      TextEditingController();
   final ScrollController typesListScrollController = ScrollController();
 
   bool _isDisposed = false;
@@ -107,6 +123,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   void initForm(TenantAdminStaticProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
+    final poiVisual = definition?.poiVisual;
     capabilitiesStreamValue.addValue(
       TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: capabilities.isPoiEnabled,
@@ -122,6 +139,23 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     selectedTaxonomiesStreamValue.addValue(
       (definition?.allowedTaxonomies ?? const []).toSet(),
     );
+    if (poiVisual == null || poiVisual.mode == TenantAdminPoiVisualMode.icon) {
+      poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
+      poiVisualIconController.text = poiVisual?.icon ?? 'place';
+      poiVisualColorController.text = poiVisual?.color ?? '#2563EB';
+      poiVisualIconColorController.text = poiVisual?.iconColor ?? '#FFFFFF';
+      poiVisualImageSourceStreamValue.addValue(
+        TenantAdminPoiVisualImageSource.avatar,
+      );
+    } else {
+      poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.image);
+      poiVisualIconController.text = 'place';
+      poiVisualColorController.text = '#2563EB';
+      poiVisualIconColorController.text = '#FFFFFF';
+      poiVisualImageSourceStreamValue.addValue(
+        poiVisual.imageSource ?? TenantAdminPoiVisualImageSource.avatar,
+      );
+    }
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -130,6 +164,13 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     typeController.clear();
     labelController.clear();
     selectedTaxonomiesStreamValue.addValue(const {});
+    poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
+    poiVisualImageSourceStreamValue.addValue(
+      TenantAdminPoiVisualImageSource.avatar,
+    );
+    poiVisualIconController.text = 'place';
+    poiVisualColorController.text = '#2563EB';
+    poiVisualIconColorController.text = '#FFFFFF';
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -137,6 +178,35 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   void setSlugAutoEnabled(bool enabled) {
     isSlugAutoEnabledStreamValue.addValue(enabled);
+  }
+
+  TenantAdminPoiVisualMode get currentPoiVisualMode =>
+      poiVisualModeStreamValue.value;
+
+  TenantAdminPoiVisualImageSource get currentPoiVisualImageSource =>
+      poiVisualImageSourceStreamValue.value;
+
+  void updatePoiVisualMode(TenantAdminPoiVisualMode mode) {
+    poiVisualModeStreamValue.addValue(mode);
+  }
+
+  void updatePoiVisualImageSource(TenantAdminPoiVisualImageSource source) {
+    poiVisualImageSourceStreamValue.addValue(source);
+  }
+
+  TenantAdminPoiVisual? buildCurrentPoiVisual() {
+    if (currentPoiVisualMode == TenantAdminPoiVisualMode.icon) {
+      final candidate = TenantAdminPoiVisual.icon(
+        icon: poiVisualIconController.text,
+        color: poiVisualColorController.text,
+        iconColor: poiVisualIconColorController.text,
+      );
+      return candidate.isValid ? candidate : null;
+    }
+
+    return TenantAdminPoiVisual.image(
+      imageSource: currentPoiVisualImageSource,
+    );
   }
 
   void updateCapabilities({
@@ -229,12 +299,21 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
-    final created = await _repository.createStaticProfileType(
+    final created = await tenantAdminCreateTypeWithOptionalPoiVisual<
+        TenantAdminStaticProfileTypeDefinition,
+        TenantAdminStaticProfileTypeCapabilities,
+        TenantAdminPoiVisual>(
+      includePoiVisual: includePoiVisual,
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      poiVisual: poiVisual,
+      createWithoutPoiVisual: _repository.createStaticProfileType,
+      createWithPoiVisual: _repository.createStaticProfileTypeWithPoiVisual,
     );
     await loadTypes();
     return created;
@@ -246,13 +325,22 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
-    final updated = await _repository.updateStaticProfileType(
+    final updated = await tenantAdminUpdateTypeWithOptionalPoiVisual<
+        TenantAdminStaticProfileTypeDefinition,
+        TenantAdminStaticProfileTypeCapabilities,
+        TenantAdminPoiVisual>(
+      includePoiVisual: includePoiVisual,
       type: type,
       newType: newType,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      poiVisual: poiVisual,
+      updateWithoutPoiVisual: _repository.updateStaticProfileType,
+      updateWithPoiVisual: _repository.updateStaticProfileTypeWithPoiVisual,
     );
     await loadTypes();
     return updated;
@@ -263,11 +351,17 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     await loadTypes();
   }
 
+  Future<int> previewDisableProjectionCount(String type) {
+    return _repository.fetchStaticProfileTypeMapPoiProjectionImpact(type: type);
+  }
+
   Future<void> submitCreateType({
     required String type,
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
     try {
       await createType(
@@ -275,6 +369,8 @@ class TenantAdminStaticProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: includePoiVisual,
       );
       if (_isDisposed) return;
       actionErrorMessageStreamValue.addValue(null);
@@ -291,6 +387,8 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
     try {
       final updated = await updateType(
@@ -299,6 +397,8 @@ class TenantAdminStaticProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: includePoiVisual,
       );
       if (_isDisposed) return;
       final currentDetail = detailTypeStreamValue.value;
@@ -405,6 +505,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     _tenantScopeSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
+    poiVisualIconController.dispose();
+    poiVisualColorController.dispose();
+    poiVisualIconColorController.dispose();
     typesListScrollController.dispose();
     taxonomiesStreamValue.dispose();
     selectedTaxonomiesStreamValue.dispose();
@@ -414,6 +517,8 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     detailSavingStreamValue.dispose();
     capabilitiesStreamValue.dispose();
     isSlugAutoEnabledStreamValue.dispose();
+    poiVisualModeStreamValue.dispose();
+    poiVisualImageSourceStreamValue.dispose();
   }
 
   @override

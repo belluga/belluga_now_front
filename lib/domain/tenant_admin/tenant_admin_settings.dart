@@ -6,6 +6,7 @@ export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_u
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_firebase_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_default_origin.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_catalog_item.dart';
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_query.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_rule_catalog.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';

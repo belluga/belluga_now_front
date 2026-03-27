@@ -617,13 +617,13 @@ class TenantAdminSettingsController implements Disposable {
 
   void updateMapFilterItemRule(
     int index,
-    TenantAdminMapFilterQuery query,
+    TenantAdminMapFilterCatalogItem nextItem,
   ) {
-    final item = _mapFilterAt(index);
-    if (item == null) {
+    final currentItem = _mapFilterAt(index);
+    if (currentItem == null) {
       return;
     }
-    final source = query.source;
+    final source = nextItem.query.source;
     if (source == null) {
       remoteErrorStreamValue.addValue(
         'Selecione a origem do filtro (Conta, Asset ou Evento).',
@@ -632,21 +632,68 @@ class TenantAdminSettingsController implements Disposable {
     }
     final sanitized = TenantAdminMapFilterQuery(
       source: source,
-      types: query.types
+      types: nextItem.query.types
           .map((entry) => entry.trim().toLowerCase())
           .where((entry) => entry.isNotEmpty)
           .toSet()
           .toList(growable: false),
-      taxonomy: query.taxonomy
+      taxonomy: nextItem.query.taxonomy
           .map((entry) => entry.trim().toLowerCase())
           .where((entry) => entry.isNotEmpty)
           .toSet()
           .toList(growable: false),
     );
+
     final current = List<TenantAdminMapFilterCatalogItem>.from(
       _mapUiSettings.filters,
     );
-    current[index] = item.copyWith(query: sanitized);
+    current[index] = currentItem.copyWith(
+      query: sanitized,
+    );
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void updateMapFilterItemVisual(
+    int index,
+    TenantAdminMapFilterCatalogItem nextItem,
+  ) {
+    final currentItem = _mapFilterAt(index);
+    if (currentItem == null) {
+      return;
+    }
+
+    final imageUri = _sanitizeMapFilterImageUri(nextItem.imageUri);
+    if (nextItem.imageUri?.trim().isNotEmpty == true && imageUri == null) {
+      remoteErrorStreamValue.addValue(
+        'URL de imagem inválida. Use formato http/https.',
+      );
+      return;
+    }
+
+    final overrideMarker = nextItem.overrideMarker;
+    final markerOverride = _sanitizeMapFilterMarkerOverride(
+      overrideMarker: overrideMarker,
+      markerOverride: nextItem.markerOverride,
+      imageUri: imageUri,
+    );
+    if (overrideMarker && markerOverride == null) {
+      remoteErrorStreamValue.addValue(
+        'Override do marcador inválido. Em modo ícone, informe ícone e cor (#RRGGBB). Em modo imagem, defina uma imagem válida.',
+      );
+      return;
+    }
+
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = currentItem.copyWith(
+      imageUri: imageUri,
+      clearImageUri: imageUri == null,
+      overrideMarker: overrideMarker,
+      markerOverride: markerOverride,
+      clearMarkerOverride: !overrideMarker,
+    );
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
   }
@@ -656,11 +703,23 @@ class TenantAdminSettingsController implements Disposable {
     if (item == null) {
       return;
     }
+    final shouldDisableImageOverride = item.overrideMarker &&
+        item.markerOverride?.mode ==
+            TenantAdminMapFilterMarkerOverrideMode.image;
     final current = List<TenantAdminMapFilterCatalogItem>.from(
       _mapUiSettings.filters,
     );
-    current[index] = item.copyWith(clearImageUri: true);
+    current[index] = item.copyWith(
+      clearImageUri: true,
+      overrideMarker: shouldDisableImageOverride ? false : item.overrideMarker,
+      clearMarkerOverride: shouldDisableImageOverride,
+    );
     _replaceMapFilters(current);
+    if (shouldDisableImageOverride) {
+      _reportSuccess(
+        'Imagem removida. Override de marcador em modo imagem foi desativado.',
+      );
+    }
   }
 
   Future<void> uploadMapFilterItemImage({
@@ -701,6 +760,11 @@ class TenantAdminSettingsController implements Disposable {
       current[index] = item.copyWith(
         key: key,
         imageUri: imageUri,
+        markerOverride: item.overrideMarker &&
+                item.markerOverride?.mode ==
+                    TenantAdminMapFilterMarkerOverrideMode.image
+            ? TenantAdminMapFilterMarkerOverride.image(imageUri: imageUri)
+            : item.markerOverride,
       );
       _replaceMapFilters(current);
       _reportSuccess('Imagem do filtro atualizada.');
@@ -1460,6 +1524,59 @@ class TenantAdminSettingsController implements Disposable {
       normalized = normalized.replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
     }
     return normalized;
+  }
+
+  String? _sanitizeMapFilterImageUri(String? rawImageUri) {
+    final normalized = rawImageUri?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(normalized);
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.trim().isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  TenantAdminMapFilterMarkerOverride? _sanitizeMapFilterMarkerOverride({
+    required bool overrideMarker,
+    required TenantAdminMapFilterMarkerOverride? markerOverride,
+    required String? imageUri,
+  }) {
+    if (!overrideMarker) {
+      return null;
+    }
+
+    if (markerOverride == null) {
+      return null;
+    }
+
+    if (markerOverride.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+      final icon = markerOverride.icon?.trim() ?? '';
+      final color = markerOverride.color?.trim().toUpperCase() ?? '';
+      final iconColor = markerOverride.iconColor?.trim().toUpperCase() ?? '';
+      if (icon.isEmpty ||
+          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(color) ||
+          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColor)) {
+        return null;
+      }
+
+      return TenantAdminMapFilterMarkerOverride.icon(
+        icon: icon,
+        color: color,
+        iconColor: iconColor,
+      );
+    }
+
+    if (imageUri == null || imageUri.isEmpty) {
+      return null;
+    }
+
+    return TenantAdminMapFilterMarkerOverride.image(
+      imageUri: imageUri,
+    );
   }
 
   void _resetMapUiDraft() {

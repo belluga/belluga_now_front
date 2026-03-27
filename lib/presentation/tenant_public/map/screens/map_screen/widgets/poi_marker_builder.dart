@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_marker.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ class PoiMarkerBuilder {
     required bool isSelected,
     required VoidCallback onTap,
     required double size,
+    CityPoiVisual? overrideVisual,
   }) {
     final point = LatLng(
       poi.coordinate.latitude,
@@ -22,6 +24,7 @@ class PoiMarkerBuilder {
       child: PoiMarker(
         poi: poi,
         isSelected: isSelected,
+        overrideVisual: overrideVisual,
       ),
     );
 

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
@@ -15,12 +16,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
     required this.onEditMapFilterKey,
     required this.onEditMapFilterLabel,
     required this.onEditMapFilterRule,
-    required this.onEditMapFilterImage,
+    required this.onEditMapFilterVisual,
     required this.onRemoveMapFilter,
     required this.onMoveMapFilterUp,
     required this.onMoveMapFilterDown,
-    required this.onClearMapFilterImage,
-    required this.isMapFilterImageBusy,
   });
 
   final TenantAdminSettingsController controller;
@@ -29,12 +28,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
   final Future<void> Function(int index) onEditMapFilterKey;
   final Future<void> Function(int index) onEditMapFilterLabel;
   final Future<void> Function(int index) onEditMapFilterRule;
-  final Future<void> Function(int index) onEditMapFilterImage;
+  final Future<void> Function(int index) onEditMapFilterVisual;
   final void Function(int index) onRemoveMapFilter;
   final void Function(int index) onMoveMapFilterUp;
   final void Function(int index) onMoveMapFilterDown;
-  final void Function(int index) onClearMapFilterImage;
-  final bool Function(String filterKey) isMapFilterImageBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -304,8 +301,14 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
     required bool hasNext,
   }) {
     final theme = Theme.of(context);
-    final imageBusy = isMapFilterImageBusy(item.key);
-    final hasImage = item.imageUri != null && item.imageUri!.trim().isNotEmpty;
+    final visual = _resolveRowVisual(item);
+    final visualBackgroundColor = switch (visual.kind) {
+      _MapFilterRowVisualKind.icon =>
+        (MapMarkerVisualResolver.tryParseHexColor(visual.color) ??
+                theme.colorScheme.surfaceContainerHighest)
+            .withValues(alpha: 0.22),
+      _ => theme.colorScheme.surfaceContainerHighest,
+    };
 
     return Container(
       key: TenantAdminSettingsKeys.localPreferencesMapFilterRow(index),
@@ -325,25 +328,34 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
+                  key: TenantAdminSettingsKeys
+                      .localPreferencesMapFilterVisualPreview(index),
                   width: 56,
                   height: 56,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: hasImage
-                      ? BellugaNetworkImage(
-                          item.imageUri!,
-                          key: ValueKey(item.imageUri),
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorWidget: Icon(
-                            Icons.broken_image_outlined,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        )
-                      : Icon(
-                          Icons.filter_alt_outlined,
+                  color: visualBackgroundColor,
+                  child: switch (visual.kind) {
+                    _MapFilterRowVisualKind.image => BellugaNetworkImage(
+                        visual.imageUri!,
+                        key: ValueKey(visual.imageUri),
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorWidget: Icon(
+                          Icons.broken_image_outlined,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
+                      ),
+                    _MapFilterRowVisualKind.icon => Icon(
+                        MapMarkerVisualResolver.resolveIcon(visual.icon),
+                        color: MapMarkerVisualResolver.tryParseHexColor(
+                                visual.iconColor) ??
+                            theme.colorScheme.onSurfaceVariant,
+                      ),
+                    _MapFilterRowVisualKind.fallback => Icon(
+                        Icons.filter_alt_outlined,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -364,7 +376,7 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _ruleSummary(item.query),
+                      _ruleSummary(item),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -387,12 +399,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                     child: Text('Editar regra'),
                   ),
                   PopupMenuItem(
-                    value: 'edit_image',
-                    child: Text('Editar imagem'),
-                  ),
-                  PopupMenuItem(
-                    value: 'clear_image',
-                    child: Text('Limpar imagem'),
+                    value: 'edit_visual',
+                    child: Text('Editar visual'),
                   ),
                   PopupMenuItem(
                     value: 'remove',
@@ -410,11 +418,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                     case 'edit_rule':
                       onEditMapFilterRule(index);
                       return;
-                    case 'edit_image':
-                      onEditMapFilterImage(index);
-                      return;
-                    case 'clear_image':
-                      onClearMapFilterImage(index);
+                    case 'edit_visual':
+                      onEditMapFilterVisual(index);
                       return;
                     case 'remove':
                       onRemoveMapFilter(index);
@@ -445,22 +450,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                 label: const Text('Regra'),
               ),
               OutlinedButton.icon(
-                onPressed: imageBusy ? null : () => onEditMapFilterImage(index),
-                icon: imageBusy
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.image_outlined),
-                label: Text(imageBusy ? 'Enviando...' : 'Imagem'),
+                onPressed: () => onEditMapFilterVisual(index),
+                icon: const Icon(Icons.palette_outlined),
+                label: const Text('Visual'),
               ),
-              if (hasImage)
-                OutlinedButton.icon(
-                  onPressed: () => onClearMapFilterImage(index),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Limpar imagem'),
-                ),
               OutlinedButton.icon(
                 onPressed: hasPrevious ? () => onMoveMapFilterUp(index) : null,
                 icon: const Icon(Icons.arrow_upward),
@@ -483,10 +476,74 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
     );
   }
 
-  String _ruleSummary(TenantAdminMapFilterQuery query) {
+  String _ruleSummary(TenantAdminMapFilterCatalogItem item) {
+    final query = item.query;
     final source = query.source?.label ?? 'Origem não definida';
     final typesCount = query.types.length;
     final taxonomyCount = query.taxonomy.length;
-    return '$source · tipos: $typesCount · taxonomias: $taxonomyCount';
+    final markerOverride = item.overrideMarker && item.markerOverride != null
+        ? item.markerOverride!.mode.label
+        : 'desativado';
+    return '$source · tipos: $typesCount · taxonomias: $taxonomyCount · marcador: $markerOverride';
   }
+
+  _MapFilterRowVisual _resolveRowVisual(TenantAdminMapFilterCatalogItem item) {
+    final markerOverride = item.markerOverride;
+    if (item.overrideMarker && markerOverride?.isValid == true) {
+      if (markerOverride!.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+        return _MapFilterRowVisual.icon(
+          icon: markerOverride.icon ?? '',
+          color: markerOverride.color,
+          iconColor: markerOverride.iconColor,
+        );
+      }
+      final overrideImageUri = markerOverride.imageUri?.trim();
+      if (overrideImageUri != null && overrideImageUri.isNotEmpty) {
+        return _MapFilterRowVisual.image(imageUri: overrideImageUri);
+      }
+      return const _MapFilterRowVisual.fallback();
+    }
+
+    final imageUri = item.imageUri?.trim();
+    if (imageUri != null && imageUri.isNotEmpty) {
+      return _MapFilterRowVisual.image(imageUri: imageUri);
+    }
+
+    return const _MapFilterRowVisual.fallback();
+  }
+}
+
+enum _MapFilterRowVisualKind {
+  icon,
+  image,
+  fallback,
+}
+
+class _MapFilterRowVisual {
+  const _MapFilterRowVisual.icon({
+    required this.icon,
+    required this.color,
+    required this.iconColor,
+  })  : kind = _MapFilterRowVisualKind.icon,
+        imageUri = null;
+
+  const _MapFilterRowVisual.image({
+    required this.imageUri,
+  })  : kind = _MapFilterRowVisualKind.image,
+        icon = null,
+        color = null,
+        iconColor = null;
+
+  const _MapFilterRowVisual.fallback()
+      : kind = _MapFilterRowVisualKind.fallback,
+        icon = null,
+        color = null,
+        iconColor = null,
+        imageUri = null;
+
+  final _MapFilterRowVisualKind kind;
+  final String? icon;
+  final String? color;
+  final String? iconColor;
+  final String? imageUri;
 }

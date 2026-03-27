@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -218,6 +219,21 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   });
+  Future<TenantAdminStaticProfileTypeDefinition>
+      createStaticProfileTypeWithPoiVisual({
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    return createStaticProfileType(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
 
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required TenantAdminStaticAssetsRepoString type,
@@ -226,6 +242,30 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   });
+  Future<TenantAdminStaticProfileTypeDefinition>
+      updateStaticProfileTypeWithPoiVisual({
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    return updateStaticProfileType(
+      type: type,
+      newType: newType,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  Future<TenantAdminStaticAssetsRepoInt>
+      fetchStaticProfileTypeMapPoiProjectionImpact({
+    required TenantAdminStaticAssetsRepoString type,
+  }) async {
+    return 0;
+  }
 
   Future<void> deleteStaticProfileType(TenantAdminStaticAssetsRepoString type);
 
@@ -492,6 +532,50 @@ mixin TenantAdminStaticAssetsPaginationMixin
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
     staticProfileTypesErrorStreamValue.addValue(null);
+  }
+
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition>
+      createStaticProfileTypeWithPoiVisual({
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) {
+    return createStaticProfileType(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition>
+      updateStaticProfileTypeWithPoiVisual({
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) {
+    return updateStaticProfileType(
+      type: type,
+      newType: newType,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  @override
+  Future<TenantAdminStaticAssetsRepoInt>
+      fetchStaticProfileTypeMapPoiProjectionImpact({
+    required TenantAdminStaticAssetsRepoString type,
+  }) async {
+    return 0;
   }
 
   @override

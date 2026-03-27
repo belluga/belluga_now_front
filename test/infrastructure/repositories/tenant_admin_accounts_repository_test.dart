@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
 import 'package:dio/dio.dart';
@@ -385,6 +387,40 @@ void main() {
     expect(result.accountProfile.accountId, result.account.id);
     expect(result.accountProfile.profileType, 'venue');
     expect(adapter.requests.last.path, contains('/v1/account_onboardings'));
+  });
+
+  test(
+      'createAccountOnboarding uses multipart with avatar+cover uploads when provided',
+      () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createAccountOnboarding(
+      name: 'Conta onboarding',
+      ownershipState: TenantAdminOwnershipState.unmanaged,
+      profileType: 'venue',
+      avatarUpload: TenantAdminMediaUpload(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'avatar.jpg',
+      ),
+      coverUpload: TenantAdminMediaUpload(
+        bytes: Uint8List.fromList([4, 5, 6]),
+        fileName: 'cover.jpg',
+      ),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.path, contains('/v1/account_onboardings'));
+    expect(request.contentType, contains('multipart/form-data'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+    expect(formData.files.any((entry) => entry.key == 'cover'), isTrue);
   });
 }
 
