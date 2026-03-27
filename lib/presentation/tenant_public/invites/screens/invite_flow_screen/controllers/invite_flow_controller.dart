@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -189,14 +190,15 @@ class InviteFlowScreenController with Disposable {
   }
 
   void _prioritizeInvite(String inviteId) {
+    final inviteIdValue = InviteIdValue()..parse(inviteId);
     final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
     final index =
-        invites.indexWhere((invite) => invite.containsInviteId(inviteId));
+        invites.indexWhere((invite) => invite.containsInviteId(inviteIdValue));
     if (index < 0) {
       return;
     }
 
-    final invite = invites.removeAt(index).prioritizeInviter(inviteId);
+    final invite = invites.removeAt(index).prioritizeInviter(inviteIdValue);
     invites.insert(0, invite);
     pendingInvitesStreamValue.addValue(invites);
     _syncDisplayInvitesWithPending();
@@ -284,7 +286,7 @@ class InviteFlowScreenController with Disposable {
     if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
         materializedInviteId.isNotEmpty &&
         (current.id == materializedInviteId ||
-            current.containsInviteId(materializedInviteId))) {
+            current.containsInviteId(InviteIdValue()..parse(materializedInviteId)))) {
       resolvedInviteId = materializedInviteId;
     }
 
@@ -299,8 +301,9 @@ class InviteFlowScreenController with Disposable {
     if (decision == InviteDecision.accepted) {
       final result = await _repository.acceptInvite(resolvedInviteId);
       _syncDisplayInvitesWithPending();
+      final resolvedInviteIdValue = InviteIdValue()..parse(resolvedInviteId);
       return InviteDecisionResult(
-        invite: current.prioritizeInviter(resolvedInviteId),
+        invite: current.prioritizeInviter(resolvedInviteIdValue),
         queued: false,
         nextStep: result.nextStep,
       );

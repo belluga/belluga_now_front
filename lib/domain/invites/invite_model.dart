@@ -16,8 +16,6 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
-typedef InviteModelEdgeId = String;
-
 class InviteModel {
   InviteModel({
     required this.idValue,
@@ -99,17 +97,17 @@ class InviteModel {
       ? primaryInviter!.inviteId
       : null;
 
-  bool containsInviteId(InviteModelEdgeId inviteId) {
-    return inviters.any((inviter) => inviter.inviteId == inviteId);
+  bool containsInviteId(InviteIdValue inviteIdValue) {
+    return inviters.any((inviter) => inviter.inviteId == inviteIdValue.value);
   }
 
-  InviteModel prioritizeInviter(InviteModelEdgeId inviteId) {
+  InviteModel prioritizeInviter(InviteIdValue inviteIdValue) {
     if (inviters.isEmpty) {
       return this;
     }
 
     final index =
-        inviters.indexWhere((inviter) => inviter.inviteId == inviteId);
+        inviters.indexWhere((inviter) => inviter.inviteId == inviteIdValue.value);
     if (index <= 0) {
       return this;
     }

@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -159,8 +160,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   void _removeInvite(String inviteId) {
+    final inviteIdValue = InviteIdValue()..parse(inviteId);
     _invites.removeWhere(
-      (invite) => invite.id == inviteId || invite.containsInviteId(inviteId),
+      (invite) =>
+          invite.id == inviteId || invite.containsInviteId(inviteIdValue),
     );
   }
 

@@ -30,6 +30,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
@@ -1166,9 +1167,9 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
     return TenantAdminPushSettings(
-      maxTtlDays: ttlDays,
-      maxPerMinute: maxPerMinute,
-      maxPerHour: maxPerHour,
+      maxTtlDaysValue: _positiveIntValue(ttlDays),
+      maxPerMinuteValue: _positiveIntValue(maxPerMinute),
+      maxPerHourValue: _positiveIntValue(maxPerHour),
     );
   }
 
@@ -1764,6 +1765,12 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
     return parsed;
+  }
+
+  TenantAdminPositiveIntValue _positiveIntValue(int raw) {
+    final value = TenantAdminPositiveIntValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   int? _parseInt(dynamic raw) {

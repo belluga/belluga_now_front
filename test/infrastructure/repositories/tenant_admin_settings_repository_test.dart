@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
@@ -61,9 +62,9 @@ void main() {
 
     final updated = await repository.updatePushSettings(
       settings: TenantAdminPushSettings(
-        maxTtlDays: 14,
-        maxPerMinute: 20,
-        maxPerHour: 120,
+        maxTtlDaysValue: _positiveIntValue(14),
+        maxPerMinuteValue: _positiveIntValue(20),
+        maxPerHourValue: _positiveIntValue(120),
       ),
     );
 
@@ -926,6 +927,12 @@ void main() {
       throwsA(isA<Exception>()),
     );
   });
+}
+
+TenantAdminPositiveIntValue _positiveIntValue(int raw) {
+  final value = TenantAdminPositiveIntValue();
+  value.parse(raw.toString());
+  return value;
 }
 
 LatitudeValue _latitudeValue(double raw) {

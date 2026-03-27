@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pendin
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_materialization_status_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
@@ -95,8 +96,9 @@ class InvitesRepository extends InvitesRepositoryContract
       attendancePolicyValue: _buildAttendancePolicyValue(
         _resolveAttendancePolicy(response['attendance_policy']),
       ),
-      nextStep:
-          InviteNextStepApiMapper.parse(response['next_step']?.toString()),
+      nextStep: InviteNextStepApiMapper.parse(
+        InviteNextStepRawValue()..parse(response['next_step']?.toString()),
+      ),
       supersededInviteIdValues: _buildInviteIdValues(
         _parseStringList(response['superseded_invite_ids']),
       ),

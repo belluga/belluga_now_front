@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
@@ -61,9 +62,20 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     final appDomains = Map<String, dynamic>.from(appDomainsRaw);
+    TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
+    final androidAppIdentifier = _normalizeOptionalText(appDomains['android']);
+    if (androidAppIdentifier != null && androidAppIdentifier.isNotEmpty) {
+      androidAppIdentifierValue = TenantAdminAndroidAppIdentifierValue()
+        ..parse(androidAppIdentifier);
+    }
+    TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
+    final iosBundleId = _normalizeOptionalText(appDomains['ios']);
+    if (iosBundleId != null && iosBundleId.isNotEmpty) {
+      iosBundleIdValue = TenantAdminIosBundleIdentifierValue()..parse(iosBundleId);
+    }
     return TenantAdminAppDomainIdentifiers(
-      androidAppIdentifier: _normalizeOptionalText(appDomains['android']),
-      iosBundleId: _normalizeOptionalText(appDomains['ios']),
+      androidAppIdentifierValue: androidAppIdentifierValue,
+      iosBundleIdValue: iosBundleIdValue,
     );
   }
 
@@ -391,7 +403,10 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return TenantAdminMapFilterQuery(
-      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
+      source: TenantAdminMapFilterSource.fromRaw(
+        TenantAdminLowercaseTokenValue(isRequired: false)
+          ..parse(json['source']?.toString()),
+      ),
       typeValues:
           TenantAdminLowercaseStringListValue(asStringList(json['types'])),
       taxonomyValues:
@@ -496,9 +511,9 @@ class TenantAdminSettingsResponseDecoder {
     final maxPerMinute = _parseInt(throttles['max_per_minute']) ?? 60;
     final maxPerHour = _parseInt(throttles['max_per_hour']) ?? 600;
     return TenantAdminPushSettings(
-      maxTtlDays: ttlDays,
-      maxPerMinute: maxPerMinute,
-      maxPerHour: maxPerHour,
+      maxTtlDaysValue: _positiveIntValue(ttlDays),
+      maxPerMinuteValue: _positiveIntValue(maxPerMinute),
+      maxPerHourValue: _positiveIntValue(maxPerHour),
     );
   }
 
@@ -535,6 +550,12 @@ class TenantAdminSettingsResponseDecoder {
   TenantAdminRequiredTextValue _requiredTextValue(String raw) {
     final value = TenantAdminRequiredTextValue();
     value.parse(raw);
+    return value;
+  }
+
+  TenantAdminPositiveIntValue _positiveIntValue(int raw) {
+    final value = TenantAdminPositiveIntValue();
+    value.parse(raw.toString());
     return value;
   }
 

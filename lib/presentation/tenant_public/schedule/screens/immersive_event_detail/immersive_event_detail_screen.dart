@@ -238,7 +238,9 @@ class _ImmersiveEventDetailScreenState
         }
 
         router.push(
-          InviteShareRoute(invite: invite.prioritizeInviter(inviteId)),
+          InviteShareRoute(
+            invite: invite.prioritizeInviter(InviteIdValue()..parse(inviteId)),
+          ),
         );
       });
     });

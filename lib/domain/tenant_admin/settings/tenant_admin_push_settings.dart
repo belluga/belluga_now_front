@@ -1,31 +1,21 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 
-typedef TenantAdminPushSettingsPrimString = String;
-typedef TenantAdminPushSettingsPrimInt = int;
-typedef TenantAdminPushSettingsPrimBool = bool;
-typedef TenantAdminPushSettingsPrimDouble = double;
-typedef TenantAdminPushSettingsPrimDateTime = DateTime;
-typedef TenantAdminPushSettingsPrimDynamic = dynamic;
-
 class TenantAdminPushSettings {
   TenantAdminPushSettings({
-    required TenantAdminPushSettingsPrimInt maxTtlDays,
-    required TenantAdminPushSettingsPrimInt maxPerMinute,
-    required TenantAdminPushSettingsPrimInt maxPerHour,
-  })  : maxTtlDaysValue = _buildPositiveIntValue(maxTtlDays),
-        maxPerMinuteValue = _buildPositiveIntValue(maxPerMinute),
-        maxPerHourValue = _buildPositiveIntValue(maxPerHour);
+    required this.maxTtlDaysValue,
+    required this.maxPerMinuteValue,
+    required this.maxPerHourValue,
+  });
 
   final TenantAdminPositiveIntValue maxTtlDaysValue;
   final TenantAdminPositiveIntValue maxPerMinuteValue;
   final TenantAdminPositiveIntValue maxPerHourValue;
 
-  TenantAdminPushSettingsPrimInt get maxTtlDays => maxTtlDaysValue.value;
-  TenantAdminPushSettingsPrimInt get maxPerMinute => maxPerMinuteValue.value;
-  TenantAdminPushSettingsPrimInt get maxPerHour => maxPerHourValue.value;
+  int get maxTtlDays => maxTtlDaysValue.value;
+  int get maxPerMinute => maxPerMinuteValue.value;
+  int get maxPerHour => maxPerHourValue.value;
 
-  Map<TenantAdminPushSettingsPrimString, TenantAdminPushSettingsPrimDynamic>
-      toJson() {
+  Map<String, dynamic> toJson() {
     return {
       'max_ttl_days': maxTtlDays,
       'throttles': {
@@ -33,11 +23,5 @@ class TenantAdminPushSettings {
         'max_per_hour': maxPerHour,
       },
     };
-  }
-
-  static TenantAdminPositiveIntValue _buildPositiveIntValue(
-      TenantAdminPushSettingsPrimInt raw) {
-    final value = TenantAdminPositiveIntValue()..parse(raw.toString());
-    return value;
   }
 }
