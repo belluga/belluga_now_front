@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 
 Future<bool> tenantAdminConfirmDisablePoiProjection({
   required BuildContext context,
@@ -26,26 +27,11 @@ Future<bool> tenantAdminConfirmDisablePoiProjection({
     return false;
   }
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showTenantAdminConfirmationDialog(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Confirmação'),
-        content: Text(
-          'Alerta: vamos deletar $projectionCount projeções de $typeLabel.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Confirmar'),
-          ),
-        ],
-      );
-    },
+    title: 'Confirmação',
+    message: 'Alerta: vamos deletar $projectionCount projeções de $typeLabel.',
+    isDestructive: true,
   );
 
   return confirmed == true;
