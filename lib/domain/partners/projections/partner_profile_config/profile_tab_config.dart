@@ -1,13 +1,13 @@
 part of '../partner_profile_config.dart';
 
-typedef ProfileTabTitle = String;
-
 class ProfileTabConfig {
   ProfileTabConfig({
-    required this.title,
+    required this.titleValue,
     required this.modules,
   });
 
-  final ProfileTabTitle title;
+  final PartnerProjectionRequiredTextValue titleValue;
   final List<ProfileModuleConfig> modules;
+
+  String get title => titleValue.value;
 }
