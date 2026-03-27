@@ -4,7 +4,10 @@ import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_family_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_id_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
@@ -115,6 +118,14 @@ class FavoritePreviewDTO {
   Favorite toDomain() {
     final safeTitle = title.trim().isNotEmpty ? title : id;
     final titleValue = TitleValue()..parse(safeTitle);
+    final idValue = FavoriteIdValue()..parse(id);
+    final isPrimaryValue = FavoritePrimaryFlagValue()
+      ..parse(isPrimary.toString());
+
+    SlugValue? slugValue;
+    if (slug != null && slug!.trim().isNotEmpty) {
+      slugValue = SlugValue()..parse(slug);
+    }
 
     ThumbUriValue? imageUriValue;
     if (imageUrl != null) {
@@ -146,7 +157,8 @@ class FavoritePreviewDTO {
         ..parse(badgeIconCodePoint!.toString());
       FavoriteBadgeFontFamilyValue? fontFamilyValue;
       if (badgeFontFamily != null && badgeFontFamily!.isNotEmpty) {
-        fontFamilyValue = FavoriteBadgeFontFamilyValue()..parse(badgeFontFamily);
+        fontFamilyValue = FavoriteBadgeFontFamilyValue()
+          ..parse(badgeFontFamily);
       }
       FavoriteBadgeFontPackageValue? fontPackageValue;
       if (badgeFontPackage != null && badgeFontPackage!.isNotEmpty) {
@@ -161,13 +173,13 @@ class FavoritePreviewDTO {
     }
 
     return Favorite(
-      id: id,
-      slug: slug,
+      idValue: idValue,
+      slugValue: slugValue,
       titleValue: titleValue,
       imageUriValue: imageUriValue,
       assetPathValue: assetPathValue,
       badge: badge,
-      isPrimary: isPrimary,
+      isPrimaryValue: isPrimaryValue,
     );
   }
 }

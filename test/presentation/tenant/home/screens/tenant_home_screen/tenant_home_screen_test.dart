@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/app_data/value_object/environment_name_value.
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:flutter/material.dart';
@@ -124,7 +125,7 @@ void main() {
             titleValue: TitleValue()..parse('Pinned'),
             assetPathValue: AssetPathValue()
               ..parse('assets/images/placeholder_avatar.png'),
-            isPrimary: true,
+            isPrimaryValue: FavoritePrimaryFlagValue()..parse('true'),
           ),
         );
     mockito

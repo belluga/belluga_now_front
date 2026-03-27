@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/favorite_repository_contract.dar
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:flutter/material.dart';
@@ -116,7 +117,7 @@ FavoriteResume _favoriteResume({
 }) {
   return FavoriteResume(
     titleValue: TitleValue()..parse(title),
-    slug: slug,
+    slugValue: slug != null ? (SlugValue()..parse(slug)) : null,
     assetPathValue: AssetPathValue()
       ..parse('assets/images/placeholder_avatar.png'),
   );
