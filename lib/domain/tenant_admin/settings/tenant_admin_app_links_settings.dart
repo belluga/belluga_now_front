@@ -5,16 +5,8 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_t
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 
-typedef TenantAdminAppLinksSettingsPrimString = String;
-typedef TenantAdminAppLinksSettingsPrimInt = int;
-typedef TenantAdminAppLinksSettingsPrimBool = bool;
-typedef TenantAdminAppLinksSettingsPrimDouble = double;
-typedef TenantAdminAppLinksSettingsPrimDateTime = DateTime;
-typedef TenantAdminAppLinksSettingsPrimDynamic = dynamic;
-
 class TenantAdminAppLinksSettings {
-  static const List<TenantAdminAppLinksSettingsPrimString> canonicalIosPaths =
-      <TenantAdminAppLinksSettingsPrimString>[
+  static const List<String> canonicalIosPaths = <String>[
     '/invite*',
     '/convites*',
     '/agenda*',
@@ -46,7 +38,7 @@ class TenantAdminAppLinksSettings {
         androidAppIdentifierValue = null,
         androidSha256CertFingerprintsValue =
             TenantAdminSha256FingerprintListValue(
-          const <TenantAdminAppLinksSettingsPrimString>[],
+          const <String>[],
         ),
         iosTeamIdValue = null,
         iosBundleIdValue = null,
@@ -60,126 +52,121 @@ class TenantAdminAppLinksSettings {
   final TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
   final TenantAdminTrimmedStringListValue iosPathsValue;
 
-  Map<TenantAdminAppLinksSettingsPrimString,
-          TenantAdminAppLinksSettingsPrimDynamic>
-      get rawAppLinks => rawAppLinksValue.value;
-  TenantAdminAppLinksSettingsPrimString? get androidAppIdentifier =>
+  Map<String, dynamic> get rawAppLinks => rawAppLinksValue.value;
+  String? get androidAppIdentifier =>
       androidAppIdentifierValue?.value;
-  TenantAdminAppLinksSettingsPrimString? get androidPackageName =>
-      androidAppIdentifier;
-  List<TenantAdminAppLinksSettingsPrimString>
-      get androidSha256CertFingerprints =>
+  String? get androidPackageName => androidAppIdentifier;
+  List<String> get androidSha256CertFingerprints =>
           androidSha256CertFingerprintsValue.value;
-  TenantAdminAppLinksSettingsPrimString? get iosTeamId => iosTeamIdValue?.value;
-  TenantAdminAppLinksSettingsPrimString? get iosBundleId =>
+  String? get iosTeamId => iosTeamIdValue?.value;
+  String? get iosBundleId =>
       iosBundleIdValue?.value;
-  List<TenantAdminAppLinksSettingsPrimString> get iosPaths =>
-      iosPathsValue.value;
+  List<String> get iosPaths => iosPathsValue.value;
 
   TenantAdminAppLinksSettings applyValues({
-    required TenantAdminAppLinksSettingsPrimString? androidAppIdentifier,
-    required List<TenantAdminAppLinksSettingsPrimString>
+    required TenantAdminAndroidAppIdentifierValue? androidAppIdentifier,
+    required TenantAdminSha256FingerprintListValue
         androidSha256CertFingerprints,
-    required TenantAdminAppLinksSettingsPrimString? iosTeamId,
-    required TenantAdminAppLinksSettingsPrimString? iosBundleId,
-    required List<TenantAdminAppLinksSettingsPrimString> iosPaths,
+    required TenantAdminIosTeamIdValue? iosTeamId,
+    required TenantAdminIosBundleIdentifierValue? iosBundleId,
+    required TenantAdminTrimmedStringListValue iosPaths,
   }) {
-    final nextRaw = Map<TenantAdminAppLinksSettingsPrimString,
-        TenantAdminAppLinksSettingsPrimDynamic>.from(rawAppLinks);
+    final nextRaw = Map<String, dynamic>.from(rawAppLinks);
 
     final android = nextRaw['android'] is Map
-        ? Map<TenantAdminAppLinksSettingsPrimString,
-                TenantAdminAppLinksSettingsPrimDynamic>.from(
-            nextRaw['android'] as Map)
-        : <TenantAdminAppLinksSettingsPrimString,
-            TenantAdminAppLinksSettingsPrimDynamic>{};
+        ? Map<String, dynamic>.from(nextRaw['android'] as Map)
+        : <String, dynamic>{};
     android['sha256_cert_fingerprints'] = TenantAdminSha256FingerprintListValue(
-      androidSha256CertFingerprints,
+      androidSha256CertFingerprints.value,
     ).value;
     nextRaw['android'] = android;
 
     final ios = nextRaw['ios'] is Map
-        ? Map<TenantAdminAppLinksSettingsPrimString,
-            TenantAdminAppLinksSettingsPrimDynamic>.from(nextRaw['ios'] as Map)
-        : <TenantAdminAppLinksSettingsPrimString,
-            TenantAdminAppLinksSettingsPrimDynamic>{};
-    ios['team_id'] = iosTeamId?.trim();
-    ios['paths'] = _sanitizeIosPaths(iosPaths);
+        ? Map<String, dynamic>.from(nextRaw['ios'] as Map)
+        : <String, dynamic>{};
+    ios['team_id'] = iosTeamId?.value;
+    ios['paths'] = _sanitizeIosPaths(iosPaths.value);
     nextRaw['ios'] = ios;
+
+    TenantAdminAndroidAppIdentifierValue? parsedAndroidAppIdentifier;
+    if (androidAppIdentifier != null) {
+      final next = TenantAdminAndroidAppIdentifierValue();
+      next.parse(androidAppIdentifier.value);
+      parsedAndroidAppIdentifier = next;
+    }
+
+    TenantAdminIosTeamIdValue? parsedIosTeamId;
+    if (iosTeamId != null) {
+      final next = TenantAdminIosTeamIdValue();
+      next.parse(iosTeamId.value);
+      parsedIosTeamId = next;
+    }
+
+    TenantAdminIosBundleIdentifierValue? parsedIosBundleId;
+    if (iosBundleId != null) {
+      final next = TenantAdminIosBundleIdentifierValue();
+      next.parse(iosBundleId.value);
+      parsedIosBundleId = next;
+    }
 
     return TenantAdminAppLinksSettings(
       rawAppLinksValue: TenantAdminDynamicMapValue(
-        Map<TenantAdminAppLinksSettingsPrimString,
-            TenantAdminAppLinksSettingsPrimDynamic>.unmodifiable(nextRaw),
+        Map<String, dynamic>.unmodifiable(nextRaw),
       ),
-      androidAppIdentifierValue:
-          _buildAndroidIdentifierValue(androidAppIdentifier),
+      androidAppIdentifierValue: parsedAndroidAppIdentifier,
       androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
-        androidSha256CertFingerprints,
+        androidSha256CertFingerprints.value,
       ),
-      iosTeamIdValue: _buildIosTeamIdValue(iosTeamId),
-      iosBundleIdValue: _buildIosBundleIdentifierValue(iosBundleId),
+      iosTeamIdValue: parsedIosTeamId,
+      iosBundleIdValue: parsedIosBundleId,
       iosPathsValue: TenantAdminTrimmedStringListValue(
-        _sanitizeIosPaths(iosPaths),
+        _sanitizeIosPaths(iosPaths.value),
       ),
     );
   }
 
   TenantAdminAppLinksSettings withAppDomainIdentifiers({
-    required TenantAdminAppLinksSettingsPrimString? androidAppIdentifier,
-    required TenantAdminAppLinksSettingsPrimString? iosBundleId,
+    required TenantAdminAndroidAppIdentifierValue? androidAppIdentifier,
+    required TenantAdminIosBundleIdentifierValue? iosBundleId,
   }) {
+    TenantAdminAndroidAppIdentifierValue? parsedAndroidAppIdentifier;
+    if (androidAppIdentifier != null) {
+      final next = TenantAdminAndroidAppIdentifierValue();
+      next.parse(androidAppIdentifier.value);
+      parsedAndroidAppIdentifier = next;
+    }
+
+    TenantAdminIosBundleIdentifierValue? parsedIosBundleId;
+    if (iosBundleId != null) {
+      final next = TenantAdminIosBundleIdentifierValue();
+      next.parse(iosBundleId.value);
+      parsedIosBundleId = next;
+    }
+
+    TenantAdminIosTeamIdValue? parsedIosTeamId;
+    if (iosTeamIdValue != null) {
+      final next = TenantAdminIosTeamIdValue();
+      next.parse(iosTeamIdValue!.value);
+      parsedIosTeamId = next;
+    }
+
     return TenantAdminAppLinksSettings(
       rawAppLinksValue: TenantAdminDynamicMapValue(rawAppLinks),
-      androidAppIdentifierValue:
-          _buildAndroidIdentifierValue(androidAppIdentifier),
+      androidAppIdentifierValue: parsedAndroidAppIdentifier,
       androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
         androidSha256CertFingerprints,
       ),
-      iosTeamIdValue: _buildIosTeamIdValue(iosTeamId),
-      iosBundleIdValue: _buildIosBundleIdentifierValue(iosBundleId),
+      iosTeamIdValue: parsedIosTeamId,
+      iosBundleIdValue: parsedIosBundleId,
       iosPathsValue: TenantAdminTrimmedStringListValue(
         _sanitizeIosPaths(iosPaths),
       ),
     );
   }
 
-  static TenantAdminAndroidAppIdentifierValue? _buildAndroidIdentifierValue(
-    TenantAdminAppLinksSettingsPrimString? raw,
-  ) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminAndroidAppIdentifierValue()..parse(normalized);
-    return value;
-  }
-
-  static TenantAdminIosBundleIdentifierValue? _buildIosBundleIdentifierValue(
-    TenantAdminAppLinksSettingsPrimString? raw,
-  ) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminIosBundleIdentifierValue()..parse(normalized);
-    return value;
-  }
-
-  static TenantAdminIosTeamIdValue? _buildIosTeamIdValue(
-      TenantAdminAppLinksSettingsPrimString? raw) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminIosTeamIdValue()..parse(normalized);
-    return value;
-  }
-
-  static List<TenantAdminAppLinksSettingsPrimString> _sanitizeIosPaths(
-      List<TenantAdminAppLinksSettingsPrimString> raw) {
+  static List<String> _sanitizeIosPaths(List<String> raw) {
     final selected = TenantAdminTrimmedStringListValue(raw).value.toSet();
-    final sanitized = <TenantAdminAppLinksSettingsPrimString>[];
+    final sanitized = <String>[];
     for (final canonical in canonicalIosPaths) {
       if (selected.contains(canonical)) {
         sanitized.add(canonical);
@@ -187,8 +174,7 @@ class TenantAdminAppLinksSettings {
     }
 
     if (sanitized.isEmpty) {
-      return List<TenantAdminAppLinksSettingsPrimString>.from(canonicalIosPaths,
-          growable: false);
+      return List<String>.from(canonicalIosPaths, growable: false);
     }
 
     return sanitized;

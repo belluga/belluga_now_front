@@ -6,6 +6,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
@@ -18,6 +20,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynam
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
@@ -61,6 +64,24 @@ TenantAdminOptionalUrlValue _optionalUrl(String raw) {
 
 TenantAdminLowercaseTokenValue _token(String raw) {
   final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
+
+LatitudeValue _lat(double raw) {
+  final value = LatitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+LongitudeValue _lng(double raw) {
+  final value = LongitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminOptionalTextValue _optionalText(String raw) {
+  final value = TenantAdminOptionalTextValue();
   value.parse(raw);
   return value;
 }
@@ -458,9 +479,9 @@ void main() {
             },
           }),
           defaultOrigin: TenantAdminMapDefaultOrigin(
-            lat: -20.6736,
-            lng: -40.4976,
-            label: 'Centro',
+            lat: _lat(-20.6736),
+            lng: _lng(-40.4976),
+            label: _optionalText('Centro'),
           ),
           filters: [
             TenantAdminMapFilterCatalogItem(
@@ -1522,15 +1543,15 @@ class _FakeTenantAdminSettingsRepository
     String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
     TenantAdminMapUiSettings? initialMapUiSettings,
   }) : _brandingSettings = TenantAdminBrandingSettings(
-          tenantName: 'Tenant Test',
+          tenantName: _requiredText('Tenant Test'),
           brightnessDefault: TenantAdminBrandingBrightness.light,
-          primarySeedColor: '#009688',
-          secondarySeedColor: '#673AB7',
-          lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
-          darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
-          lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
-          darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
-          pwaIconUrl: initialPwaIconUrl,
+          primarySeedColor: _hexColor('#009688'),
+          secondarySeedColor: _hexColor('#673AB7'),
+          lightLogoUrl: _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+          darkLogoUrl: _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+          lightIconUrl: _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+          darkIconUrl: _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+          pwaIconUrl: initialPwaIconUrl == null ? null : _optionalUrl(initialPwaIconUrl),
         ) {
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
@@ -1556,9 +1577,9 @@ class _FakeTenantAdminSettingsRepository
       },
     }),
     defaultOrigin: TenantAdminMapDefaultOrigin(
-      lat: -20.6736,
-      lng: -40.4976,
-      label: 'Centro',
+      lat: _lat(-20.6736),
+      lng: _lng(-40.4976),
+      label: _optionalText('Centro'),
     ),
     filters: [],
   );
@@ -1617,11 +1638,11 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
     return TenantAdminFirebaseSettings(
-      apiKey: 'apikey',
-      appId: 'appid',
-      projectId: 'project-test',
-      messagingSenderId: 'sender',
-      storageBucket: 'bucket',
+      apiKey: _requiredText('apikey'),
+      appId: _requiredText('appid'),
+      projectId: _requiredText('project-test'),
+      messagingSenderId: _requiredText('sender'),
+      storageBucket: _requiredText('bucket'),
     );
   }
 
@@ -1701,15 +1722,15 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     lastBrandingInput = input;
     _brandingSettings = TenantAdminBrandingSettings(
-      tenantName: input.tenantName,
+      tenantName: _requiredText(input.tenantName),
       brightnessDefault: input.brightnessDefault,
-      primarySeedColor: input.primarySeedColor,
-      secondarySeedColor: input.secondarySeedColor,
-      lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
-      darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
-      lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
-      darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
-      pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
+      primarySeedColor: _hexColor(input.primarySeedColor),
+      secondarySeedColor: _hexColor(input.secondarySeedColor),
+      lightLogoUrl: _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+      darkLogoUrl: _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+      lightIconUrl: _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+      darkIconUrl: _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;

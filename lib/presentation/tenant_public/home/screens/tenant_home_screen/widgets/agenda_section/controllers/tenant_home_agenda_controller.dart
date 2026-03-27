@@ -1,12 +1,17 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_search_query_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -466,16 +471,34 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _scheduleRepository.writeHomeAgendaCache(
       HomeAgendaCacheSnapshot(
         events: List<EventModel>.unmodifiable(events),
-        hasMore: _hasMore,
-        page: _currentPage,
-        showPastOnly: showHistoryStreamValue.value,
-        searchQuery: searchController.text.trim(),
-        confirmedOnly:
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        capturedAt: DateTime.now(),
-        originLat: _effectiveOriginLat,
-        originLng: _effectiveOriginLng,
-        maxDistanceMeters: radiusMetersStreamValue.value,
+        hasMoreValue: HomeAgendaBooleanValue(defaultValue: _hasMore)
+          ..parse(_hasMore.toString()),
+        pageValue: HomeAgendaPageValue(defaultValue: _currentPage)
+          ..parse(_currentPage.toString()),
+        showPastOnlyValue:
+            HomeAgendaBooleanValue(defaultValue: showHistoryStreamValue.value)
+              ..parse(showHistoryStreamValue.value.toString()),
+        searchQueryValue: HomeAgendaSearchQueryValue(
+          defaultValue: searchController.text.trim(),
+        )..parse(searchController.text.trim()),
+        confirmedOnlyValue: HomeAgendaBooleanValue(
+          defaultValue:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+        )..parse(
+            (inviteFilterStreamValue.value == InviteFilter.confirmedOnly)
+                .toString(),
+          ),
+        capturedAtValue: HomeAgendaCapturedAtValue(defaultValue: DateTime.now())
+          ..parse(DateTime.now().toIso8601String()),
+        originLatValue: _effectiveOriginLat == null
+            ? null
+            : (LatitudeValue()..parse(_effectiveOriginLat.toString())),
+        originLngValue: _effectiveOriginLng == null
+            ? null
+            : (LongitudeValue()..parse(_effectiveOriginLng.toString())),
+        maxDistanceMetersValue: DistanceInMetersValue(
+          defaultValue: radiusMetersStreamValue.value,
+        )..parse(radiusMetersStreamValue.value.toString()),
       ),
     );
   }

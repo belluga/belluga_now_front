@@ -2,15 +2,21 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -198,9 +204,9 @@ void main() {
         ],
       }),
       defaultOrigin: TenantAdminMapDefaultOrigin(
-        lat: -20.611111,
-        lng: -40.422222,
-        label: 'Praia do Morro',
+        lat: _latitudeValue(-20.611111),
+        lng: _longitudeValue(-40.422222),
+        label: _optionalTextValue('Praia do Morro'),
       ),
       filters: [
         TenantAdminMapFilterCatalogItem(
@@ -528,9 +534,9 @@ void main() {
     final updated = await repository.updateMapUiSettings(
       settings: fetched.applyDefaultOrigin(
         TenantAdminMapDefaultOrigin(
-          lat: -20.611111,
-          lng: -40.422222,
-          label: 'Praia do Morro',
+          lat: _latitudeValue(-20.611111),
+          lng: _longitudeValue(-40.422222),
+          label: _optionalTextValue('Praia do Morro'),
         ),
       ),
     );
@@ -565,10 +571,10 @@ void main() {
 
     final snapshot = await repository.upsertTelemetryIntegration(
       integration: TenantAdminTelemetryIntegration(
-        type: 'mixpanel',
-        trackAll: false,
-        events: ['app_opened'],
-        token: 'token-a',
+        type: _tokenValue('mixpanel'),
+        trackAll: _booleanValue(false),
+        events: TenantAdminTrimmedStringListValue(['app_opened']),
+        token: _optionalTextValue('token-a'),
       ),
     );
 
@@ -606,10 +612,10 @@ void main() {
 
     final updated = await repository.updateBranding(
       input: TenantAdminBrandingUpdateInput(
-        tenantName: 'Guarappari',
+        tenantName: _requiredTextValue('Guarappari'),
         brightnessDefault: TenantAdminBrandingBrightness.dark,
-        primarySeedColor: '#112233',
-        secondarySeedColor: '#445566',
+        primarySeedColor: _hexColorValue('#112233'),
+        secondarySeedColor: _hexColorValue('#445566'),
         lightLogoUpload: TenantAdminMediaUpload(
           bytes: Uint8List.fromList([1, 2, 3]),
           fileName: 'light_logo.png',
@@ -670,10 +676,10 @@ void main() {
     await expectLater(
       repository.updateBranding(
         input: TenantAdminBrandingUpdateInput(
-          tenantName: 'Guarappari',
+          tenantName: _requiredTextValue('Guarappari'),
           brightnessDefault: TenantAdminBrandingBrightness.dark,
-          primarySeedColor: '#112233',
-          secondarySeedColor: '#445566',
+          primarySeedColor: _hexColorValue('#112233'),
+          secondarySeedColor: _hexColorValue('#445566'),
           lightLogoUpload: TenantAdminMediaUpload(
             bytes: Uint8List.fromList([1, 2, 3]),
             fileName: 'light_logo.png',
@@ -920,6 +926,48 @@ void main() {
       throwsA(isA<Exception>()),
     );
   });
+}
+
+LatitudeValue _latitudeValue(double raw) {
+  final value = LatitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+LongitudeValue _longitudeValue(double raw) {
+  final value = LongitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminOptionalTextValue _optionalTextValue(String raw) {
+  final value = TenantAdminOptionalTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminBooleanValue _booleanValue(bool raw) {
+  final value = TenantAdminBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminLowercaseTokenValue _tokenValue(String raw) {
+  final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminRequiredTextValue _requiredTextValue(String raw) {
+  final value = TenantAdminRequiredTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminHexColorValue _hexColorValue(String raw) {
+  final value = TenantAdminHexColorValue();
+  value.parse(raw);
+  return value;
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {

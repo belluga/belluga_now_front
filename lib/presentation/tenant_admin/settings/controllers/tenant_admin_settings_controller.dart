@@ -4,6 +4,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
@@ -18,11 +20,19 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_branding_asset_slot.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -499,9 +509,9 @@ class TenantAdminSettingsController implements Disposable {
       final label = mapDefaultOriginLabelController.text.trim();
       final nextSettings = _mapUiSettings.applyDefaultOrigin(
         TenantAdminMapDefaultOrigin(
-          lat: latitude,
-          lng: longitude,
-          label: label.isEmpty ? null : label,
+          lat: _latitudeValue(latitude),
+          lng: _longitudeValue(longitude),
+          label: label.isEmpty ? null : _optionalTextValue(label),
         ),
       );
       final updated = await _settingsRepository.updateMapUiSettings(
@@ -1021,15 +1031,15 @@ class TenantAdminSettingsController implements Disposable {
     try {
       final snapshot = await _settingsRepository.upsertTelemetryIntegration(
         integration: TenantAdminTelemetryIntegration(
-          type: type,
-          trackAll: trackAll,
-          events: events,
+          type: _tokenValue(type),
+          trackAll: _booleanValue(trackAll),
+          events: TenantAdminTrimmedStringListValue(events),
           token: telemetryTokenController.text.trim().isEmpty
               ? null
-              : telemetryTokenController.text.trim(),
+              : _optionalTextValue(telemetryTokenController.text.trim()),
           url: telemetryUrlController.text.trim().isEmpty
               ? null
-              : telemetryUrlController.text.trim(),
+              : _optionalUrlValue(telemetryUrlController.text.trim()),
         ),
       );
       telemetrySnapshotStreamValue.addValue(snapshot);
@@ -1140,11 +1150,11 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
     return TenantAdminFirebaseSettings(
-      apiKey: apiKey,
-      appId: appId,
-      projectId: projectId,
-      messagingSenderId: senderId,
-      storageBucket: storageBucket,
+      apiKey: _requiredTextValue(apiKey),
+      appId: _requiredTextValue(appId),
+      projectId: _requiredTextValue(projectId),
+      messagingSenderId: _requiredTextValue(senderId),
+      storageBucket: _requiredTextValue(storageBucket),
     );
   }
 
@@ -1226,11 +1236,14 @@ class TenantAdminSettingsController implements Disposable {
 
     try {
       return appLinksSettingsStreamValue.value.applyValues(
-        androidAppIdentifier: androidPackageName,
-        androidSha256CertFingerprints: fingerprints,
-        iosTeamId: iosTeamId,
-        iosBundleId: iosBundleId,
-        iosPaths: iosPaths,
+        androidAppIdentifier: androidPackageName == null
+            ? null
+            : _androidAppIdentifierValue(androidPackageName),
+        androidSha256CertFingerprints:
+            TenantAdminSha256FingerprintListValue(fingerprints),
+        iosTeamId: iosTeamId == null ? null : _iosTeamIdValue(iosTeamId),
+        iosBundleId: iosBundleId == null ? null : _iosBundleIdValue(iosBundleId),
+        iosPaths: TenantAdminTrimmedStringListValue(iosPaths),
       );
     } catch (_) {
       remoteErrorStreamValue.addValue(
@@ -1270,10 +1283,10 @@ class TenantAdminSettingsController implements Disposable {
     }
 
     return TenantAdminBrandingUpdateInput(
-      tenantName: tenantName,
+      tenantName: _requiredTextValue(tenantName),
       brightnessDefault: brandingBrightnessStreamValue.value,
-      primarySeedColor: primary,
-      secondarySeedColor: secondary,
+      primarySeedColor: _hexColorValue(primary),
+      secondarySeedColor: _hexColorValue(secondary),
       lightLogoUpload: lightLogoUpload,
       darkLogoUpload: darkLogoUpload,
       lightIconUpload: lightIconUpload,
@@ -1640,9 +1653,63 @@ class TenantAdminSettingsController implements Disposable {
     return value;
   }
 
+  TenantAdminBooleanValue _booleanValue(bool raw) {
+    final value = TenantAdminBooleanValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
   TenantAdminRequiredTextValue _requiredTextValue(String raw) {
     final value = TenantAdminRequiredTextValue();
     value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalTextValue _optionalTextValue(String raw) {
+    final value = TenantAdminOptionalTextValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalUrlValue _optionalUrlValue(String raw) {
+    final value = TenantAdminOptionalUrlValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminHexColorValue _hexColorValue(String raw) {
+    final value = TenantAdminHexColorValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminAndroidAppIdentifierValue _androidAppIdentifierValue(String raw) {
+    final value = TenantAdminAndroidAppIdentifierValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminIosTeamIdValue _iosTeamIdValue(String raw) {
+    final value = TenantAdminIosTeamIdValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminIosBundleIdentifierValue _iosBundleIdValue(String raw) {
+    final value = TenantAdminIosBundleIdentifierValue();
+    value.parse(raw);
+    return value;
+  }
+
+  LatitudeValue _latitudeValue(double raw) {
+    final value = LatitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  LongitudeValue _longitudeValue(double raw) {
+    final value = LongitudeValue();
+    value.parse(raw.toString());
     return value;
   }
 

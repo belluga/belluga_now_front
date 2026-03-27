@@ -1,5 +1,8 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -7,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_b
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
@@ -154,16 +158,27 @@ class TenantAdminSettingsResponseDecoder {
     );
 
     return TenantAdminBrandingSettings(
-      tenantName: tenantName,
+      tenantName: _requiredTextValue(tenantName),
       brightnessDefault: brightnessDefault,
-      primarySeedColor: primarySeedColor,
-      secondarySeedColor: secondarySeedColor,
-      lightLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
-      darkLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
-      lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
-      darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
-      faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
-      pwaIconUrl: _resolvePwaIconUrl(payload, tenantOrigin: tenantOrigin),
+      primarySeedColor: _hexColorValue(primarySeedColor),
+      secondarySeedColor: _hexColorValue(secondarySeedColor),
+      lightLogoUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'logo-light.png')),
+      darkLogoUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'logo-dark.png')),
+      lightIconUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'icon-light.png')),
+      darkIconUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'icon-dark.png')),
+      faviconUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'favicon.ico')),
+      pwaIconUrl: (() {
+        final pwaIcon = _resolvePwaIconUrl(payload, tenantOrigin: tenantOrigin);
+        if (pwaIcon == null || pwaIcon.isEmpty) {
+          return null;
+        }
+        return _optionalUrlValue(pwaIcon);
+      })(),
     );
   }
 
@@ -281,9 +296,11 @@ class TenantAdminSettingsResponseDecoder {
       if (lat != null && lng != null) {
         final rawLabel = originMap['label']?.toString().trim();
         defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+          lat: _latitudeValue(lat),
+          lng: _longitudeValue(lng),
+          label: rawLabel == null || rawLabel.isEmpty
+              ? null
+              : _optionalTextValue(rawLabel),
         );
       }
     } else {
@@ -292,9 +309,11 @@ class TenantAdminSettingsResponseDecoder {
       if (lat != null && lng != null) {
         final rawLabel = mapUi['default_origin.label']?.toString().trim();
         defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+          lat: _latitudeValue(lat),
+          lng: _longitudeValue(lng),
+          label: rawLabel == null || rawLabel.isEmpty
+              ? null
+              : _optionalTextValue(rawLabel),
         );
       }
     }
@@ -460,11 +479,11 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
     return TenantAdminFirebaseSettings(
-      apiKey: apiKey,
-      appId: appId,
-      projectId: projectId,
-      messagingSenderId: sender,
-      storageBucket: storageBucket,
+      apiKey: _requiredTextValue(apiKey),
+      appId: _requiredTextValue(appId),
+      projectId: _requiredTextValue(projectId),
+      messagingSenderId: _requiredTextValue(sender),
+      storageBucket: _requiredTextValue(storageBucket),
     );
   }
 
@@ -503,13 +522,62 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return TenantAdminTelemetryIntegration(
-      type: type,
-      trackAll: trackAll,
-      events: events,
-      token: token == null || token.isEmpty ? null : token,
-      url: url == null || url.isEmpty ? null : url,
-      extra: extra.isEmpty ? null : extra,
+      type: _tokenValue(type),
+      trackAll: _booleanValue(trackAll),
+      events: TenantAdminTrimmedStringListValue(events),
+      token: token == null || token.isEmpty ? null : _optionalTextValue(token),
+      url: url == null || url.isEmpty ? null : _optionalUrlValue(url),
+      extra:
+          extra.isEmpty ? null : TenantAdminDynamicMapValue(Map<String, dynamic>.from(extra)),
     );
+  }
+
+  TenantAdminRequiredTextValue _requiredTextValue(String raw) {
+    final value = TenantAdminRequiredTextValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminHexColorValue _hexColorValue(String raw) {
+    final value = TenantAdminHexColorValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalUrlValue _optionalUrlValue(String raw) {
+    final value = TenantAdminOptionalUrlValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalTextValue _optionalTextValue(String raw) {
+    final value = TenantAdminOptionalTextValue();
+    value.parse(raw);
+    return value;
+  }
+
+  LatitudeValue _latitudeValue(double raw) {
+    final value = LatitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  LongitudeValue _longitudeValue(double raw) {
+    final value = LongitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  TenantAdminLowercaseTokenValue _tokenValue(String raw) {
+    final value = TenantAdminLowercaseTokenValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminBooleanValue _booleanValue(bool raw) {
+    final value = TenantAdminBooleanValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   List<Map<String, dynamic>> _extractDataList(Object? raw) {
