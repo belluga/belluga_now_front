@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-fixture_dir="$repo_root/tool/belluga_custom_lint/test_fixtures/lint_matrix"
+fixture_dir="$repo_root/tool/belluga_analysis_plugin/test_fixtures/lint_matrix"
 analysis_options_file="$fixture_dir/analysis_options.yaml"
 plugin_path="$repo_root/tool/belluga_analysis_plugin"
 
@@ -96,6 +96,17 @@ class RoutePage {
 DART
 temp_files+=("$route_case")
 
+mapfile -t fixture_dart_files < <(
+  find "$fixture_dir/lib" "$fixture_dir/integration_test" -type f -name '*.dart' |
+    sed "s|^$fixture_dir/||" |
+    sort
+)
+
+if [[ "${#fixture_dart_files[@]}" -eq 0 ]]; then
+  echo "[validate_rule_matrix] no Dart files found under fixture"
+  exit 1
+fi
+
 (
   while true; do
     echo "[validate_rule_matrix] $(date +%H:%M:%S) running analyze..."
@@ -107,7 +118,7 @@ heartbeat_pid=$!
 set +e
 (
   cd "$fixture_dir"
-  timeout "$timeout_seconds" fvm dart analyze lib integration_test
+  timeout "$timeout_seconds" fvm dart analyze --format machine "${fixture_dart_files[@]}"
 ) > "$output_file" 2>&1
 analyze_status=$?
 set -e
@@ -121,10 +132,16 @@ if [[ "$analyze_status" -eq 124 ]]; then
   exit 1
 fi
 
-if [[ "$analyze_status" -ne 0 && "$analyze_status" -ne 2 ]]; then
+if [[ "$analyze_status" -ne 0 && "$analyze_status" -ne 2 && "$analyze_status" -ne 3 ]]; then
   echo "[validate_rule_matrix] unexpected analyzer exit code: $analyze_status"
   sed -n '1,200p' "$output_file"
   exit "$analyze_status"
+fi
+
+if rg -q "plugin.*crash|Failed to start plugin|Unhandled exception.*plugin" "$output_file"; then
+  echo "[validate_rule_matrix] analyzer plugin runtime error detected"
+  sed -n '1,200p' "$output_file"
+  exit 1
 fi
 
 rg --no-filename "expect_lint:\\s*([a-z0-9_,\\s]+)" -or '$1' \
@@ -134,8 +151,9 @@ rg --no-filename "expect_lint:\\s*([a-z0-9_,\\s]+)" -or '$1' \
   sed '/^$/d' |
   sort -u > "$expected_codes_file"
 
-(rg --no-filename -o "\\- ([a-z0-9_]+)$" "$output_file" -r '$1' || true) |
+(awk -F'|' '/^(INFO|WARNING|ERROR)\|/ {print tolower($3)}' "$output_file" || true) |
   tr -d ' ' |
+  sed '/^$/d' |
   sort -u > "$found_codes_file"
 
 missing_codes="$(comm -23 "$expected_codes_file" "$found_codes_file" || true)"

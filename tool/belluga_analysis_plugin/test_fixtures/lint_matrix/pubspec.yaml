@@ -9,6 +9,5 @@ dependencies:
   get_it: ^9.0.5
 
 dev_dependencies:
-  custom_lint: ^0.8.1
-  belluga_custom_lint:
+  belluga_analysis_plugin:
     path: ../..

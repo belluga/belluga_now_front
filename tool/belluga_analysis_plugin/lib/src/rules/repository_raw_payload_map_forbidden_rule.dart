@@ -18,7 +18,7 @@ class RepositoryRawPayloadMapForbiddenRule extends DartLintRule {
                 'Treatments: 1) move envelope parsing to DAO/DTO decoder, '
                 '2) move request payload assembly to DAO request encoder/builder, '
                 '3) keep repository methods DTO/domain-typed only. '
-                'Reference: tool/belluga_custom_lint/docs/rules.md#repository_raw_payload_map_forbidden',
+                'Reference: tool/belluga_analysis_plugin/docs/rules.md#repository_raw_payload_map_forbidden',
           ),
         );
 

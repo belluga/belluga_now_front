@@ -1,0 +1,7 @@
+plugins:
+  belluga_analysis_plugin:
+    path: ../..
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"

@@ -81,7 +81,15 @@ class RouteRequiredNonUrlArgsForbiddenRule extends DartLintRule {
 
   bool _isRequiredRouteArg(FormalParameter parameter) {
     if (parameter is DefaultFormalParameter) {
-      return parameter.requiredKeyword != null;
+      if (parameter.requiredKeyword != null || parameter.isRequiredNamed) {
+        return true;
+      }
+
+      return _isRequiredRouteArg(parameter.parameter);
+    }
+
+    if (parameter.toSource().trimLeft().startsWith('required ')) {
+      return true;
     }
 
     return parameter.isRequiredPositional;
