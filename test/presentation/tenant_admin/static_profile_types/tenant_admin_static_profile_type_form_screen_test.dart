@@ -175,14 +175,14 @@ class _FakeStaticAssetsRepository
     implements TenantAdminStaticAssetsRepositoryContract {
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
-    required String profileType,
-    required String displayName,
+    required TenantAdminStaticAssetsRepoString profileType,
+    required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -191,27 +191,32 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) async {
     return TenantAdminStaticProfileTypeDefinition(
-      type: type,
-      label: label,
-      allowedTaxonomies: allowedTaxonomies,
+      type: type.value,
+      label: label.value,
+      allowedTaxonomies: allowedTaxonomies
+              ?.map((entry) => entry.value)
+              .toList(growable: false) ??
+          const [],
       capabilities: capabilities,
     );
   }
 
   @override
-  Future<void> deleteStaticAsset(String assetId) async {}
+  Future<void> deleteStaticAsset(TenantAdminStaticAssetsRepoString assetId) async {}
 
   @override
-  Future<void> deleteStaticProfileType(String type) async {}
+  Future<void> deleteStaticProfileType(TenantAdminStaticAssetsRepoString type) async {}
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -222,8 +227,8 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     return TenantAdminPagedResult<TenantAdminStaticAsset>(
       items: const <TenantAdminStaticAsset>[],
@@ -240,8 +245,8 @@ class _FakeStaticAssetsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
       items: const <TenantAdminStaticProfileTypeDefinition>[],
@@ -250,27 +255,31 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<void> forceDeleteStaticAsset(String assetId) async {}
+  Future<void> forceDeleteStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {}
 
   @override
-  Future<TenantAdminStaticAsset> restoreStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> restoreStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminStaticAsset> updateStaticAsset({
-    required String assetId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminStaticAssetsRepoString assetId,
+    TenantAdminStaticAssetsRepoString? profileType,
+    TenantAdminStaticAssetsRepoString? displayName,
+    TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
+    TenantAdminStaticAssetsRepoBool? removeAvatar,
+    TenantAdminStaticAssetsRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -279,16 +288,19 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
     return TenantAdminStaticProfileTypeDefinition(
-      type: newType ?? type,
-      label: label ?? type,
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      type: newType?.value ?? type.value,
+      label: label?.value ?? type.value,
+      allowedTaxonomies: allowedTaxonomies
+              ?.map((entry) => entry.value)
+              .toList(growable: false) ??
+          const [],
       capabilities: capabilities ??
           TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: false,

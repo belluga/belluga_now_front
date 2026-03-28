@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
@@ -17,6 +18,16 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'support/tenant_admin_paged_stream_contract.dart';
+
+TenantAdminStaticAssetsRepoString _staticText(String value) =>
+    TenantAdminStaticAssetsRepoString.fromRaw(value);
+TenantAdminStaticAssetsRepoInt _staticInt(int value) =>
+    TenantAdminStaticAssetsRepoInt.fromRaw(value, defaultValue: value);
+List<TenantAdminStaticAssetsRepoString> _staticTextList(
+  Iterable<String> values,
+) {
+  return values.map(_staticText).toList(growable: false);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,8 +52,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticProfileType(
-      type: 'poi/type',
-      label: 'POI Type',
+      type: _staticText('poi/type'),
+      label: _staticText('POI Type'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: true,
         hasBio: true,
@@ -67,7 +78,7 @@ void main() {
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
-    await repository.deleteStaticProfileType('poi/type');
+    await repository.deleteStaticProfileType(_staticText('poi/type'));
 
     expect(adapter.lastRequest?.method, 'DELETE');
     expect(
@@ -83,8 +94,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticProfileType(
-      type: 'poi',
-      newType: 'landmark',
+      type: _staticText('poi'),
+      newType: _staticText('landmark'),
     );
 
     expect(adapter.lastRequest?.method, 'PATCH');
@@ -104,9 +115,9 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.createStaticProfileTypeWithPoiVisual(
-      type: 'beach',
-      label: 'Beach',
-      allowedTaxonomies: const ['region'],
+      type: _staticText('beach'),
+      label: _staticText('Beach'),
+      allowedTaxonomies: _staticTextList(const ['region']),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: true,
         hasBio: true,
@@ -134,7 +145,7 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticProfileTypeWithPoiVisual(
-      type: 'beach',
+      type: _staticText('beach'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: false,
         hasBio: true,
@@ -158,10 +169,10 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     final count = await repository.fetchStaticProfileTypeMapPoiProjectionImpact(
-      type: 'beach',
+      type: _staticText('beach'),
     );
 
-    expect(count, 42);
+    expect(count.value, 42);
     expect(
       adapter.lastRequest?.path,
       contains(
@@ -224,7 +235,10 @@ void main() {
       tenantScope: tenantScope,
     );
 
-    final page = await repository.fetchStaticAssetsPage(page: 1, pageSize: 20);
+    final page = await repository.fetchStaticAssetsPage(
+      page: _staticInt(1),
+      pageSize: _staticInt(20),
+    );
 
     expect(page.items, hasLength(2));
     expect(
@@ -264,7 +278,7 @@ void main() {
       tenantScope: tenantScope,
     );
 
-    final asset = await repository.fetchStaticAsset('asset-1');
+    final asset = await repository.fetchStaticAsset(_staticText('asset-1'));
 
     expect(
       asset.avatarUrl,
@@ -282,8 +296,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.createStaticAsset(
-      profileType: 'poi',
-      displayName: 'Asset Name',
+      profileType: _staticText('poi'),
+      displayName: _staticText('Asset Name'),
       avatarUpload: TenantAdminMediaUpload(
         bytes: Uint8List.fromList([1, 2, 3]),
         fileName: 'avatar.jpg',
@@ -310,8 +324,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticAsset(
-      assetId: 'asset-1',
-      displayName: 'Updated Name',
+      assetId: _staticText('asset-1'),
+      displayName: _staticText('Updated Name'),
       avatarUpload: TenantAdminMediaUpload(
         bytes: Uint8List.fromList([7, 8, 9]),
         fileName: 'avatar.jpg',
@@ -342,9 +356,9 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticAsset(
-      assetId: 'asset-1',
-      removeAvatar: true,
-      removeCover: true,
+      assetId: _staticText('asset-1'),
+      removeAvatar: TenantAdminStaticAssetsRepoBool.fromRaw(true),
+      removeCover: TenantAdminStaticAssetsRepoBool.fromRaw(true),
     );
 
     expect(adapter.lastRequest?.method, 'PATCH');
@@ -385,8 +399,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     final page = await repository.fetchStaticProfileTypesPage(
-      page: 1,
-      pageSize: 20,
+      page: _staticInt(1),
+      pageSize: _staticInt(20),
     );
 
     expect(page.items, hasLength(1));
@@ -434,12 +448,13 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'static assets',
-      loadFirstPage: () => repository.loadStaticAssets(pageSize: 2),
-      loadNextPage: () => repository.loadNextStaticAssetsPage(pageSize: 2),
+      loadFirstPage: () => repository.loadStaticAssets(pageSize: _staticInt(2)),
+      loadNextPage: () =>
+          repository.loadNextStaticAssetsPage(pageSize: _staticInt(2)),
       resetState: repository.resetStaticAssetsState,
       readItems: () => repository.staticAssetsStreamValue.value,
-      readHasMore: () => repository.hasMoreStaticAssetsStreamValue.value,
-      readError: () => repository.staticAssetsErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreStaticAssetsStreamValue.value.value,
+      readError: () => repository.staticAssetsErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
@@ -503,13 +518,15 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'static profile types',
-      loadFirstPage: () => repository.loadStaticProfileTypes(pageSize: 2),
+      loadFirstPage: () =>
+          repository.loadStaticProfileTypes(pageSize: _staticInt(2)),
       loadNextPage: () =>
-          repository.loadNextStaticProfileTypesPage(pageSize: 2),
+          repository.loadNextStaticProfileTypesPage(pageSize: _staticInt(2)),
       resetState: repository.resetStaticProfileTypesState,
       readItems: () => repository.staticProfileTypesStreamValue.value,
-      readHasMore: () => repository.hasMoreStaticProfileTypesStreamValue.value,
-      readError: () => repository.staticProfileTypesErrorStreamValue.value,
+      readHasMore: () =>
+          repository.hasMoreStaticProfileTypesStreamValue.value.value,
+      readError: () => repository.staticProfileTypesErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );

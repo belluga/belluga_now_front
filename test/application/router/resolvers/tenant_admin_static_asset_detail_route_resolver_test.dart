@@ -13,8 +13,10 @@ class _FakeStaticAssetsRepository extends Fake
   String? lastRequestedAssetId;
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
-    lastRequestedAssetId = assetId;
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
+    lastRequestedAssetId = assetId.value;
     if (expectedAsset == null) {
       throw StateError('No expected asset configured');
     }

@@ -27,6 +27,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
                 : null) {
     _bindTenantScope();
+    _bindRepositoryStreams();
   }
 
   final TenantAdminStaticAssetsRepositoryContract _repository;
@@ -34,12 +35,11 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>
       get typesStreamValue => _repository.staticProfileTypesStreamValue;
-  StreamValue<bool> get hasMoreTypesStreamValue =>
-      _repository.hasMoreStaticProfileTypesStreamValue;
-  StreamValue<bool> get isTypesPageLoadingStreamValue =>
-      _repository.isStaticProfileTypesPageLoadingStreamValue;
-  StreamValue<String?> get errorStreamValue =>
-      _repository.staticProfileTypesErrorStreamValue;
+  final StreamValue<bool> hasMoreTypesStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> isTypesPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Set<String>> selectedTaxonomiesStreamValue =
@@ -93,7 +93,42 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   bool _isDisposed = false;
   bool _typesListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminStaticAssetsRepoBool>?
+      _hasMoreTypesSubscription;
+  StreamSubscription<TenantAdminStaticAssetsRepoBool>?
+      _isTypesPageLoadingSubscription;
+  StreamSubscription<TenantAdminStaticAssetsRepoString?>?
+      _typesErrorSubscription;
   String? _lastTenantDomain;
+
+  void _bindRepositoryStreams() {
+    hasMoreTypesStreamValue
+        .addValue(_repository.hasMoreStaticProfileTypesStreamValue.value.value);
+    isTypesPageLoadingStreamValue.addValue(
+      _repository.isStaticProfileTypesPageLoadingStreamValue.value.value,
+    );
+    errorStreamValue
+        .addValue(_repository.staticProfileTypesErrorStreamValue.value?.value);
+
+    _hasMoreTypesSubscription =
+        _repository.hasMoreStaticProfileTypesStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      hasMoreTypesStreamValue.addValue(value.value);
+    });
+
+    _isTypesPageLoadingSubscription = _repository
+        .isStaticProfileTypesPageLoadingStreamValue.stream
+        .listen((value) {
+      if (_isDisposed) return;
+      isTypesPageLoadingStreamValue.addValue(value.value);
+    });
+
+    _typesErrorSubscription =
+        _repository.staticProfileTypesErrorStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(value?.value);
+    });
+  }
 
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
@@ -254,6 +289,13 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   Future<void> loadTypes() async {
     await _repository.loadStaticProfileTypes();
+    hasMoreTypesStreamValue
+        .addValue(_repository.hasMoreStaticProfileTypesStreamValue.value.value);
+    isTypesPageLoadingStreamValue.addValue(
+      _repository.isStaticProfileTypesPageLoadingStreamValue.value.value,
+    );
+    errorStreamValue
+        .addValue(_repository.staticProfileTypesErrorStreamValue.value?.value);
   }
 
   Future<void> loadNextTypesPage() async {
@@ -261,6 +303,13 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       return;
     }
     await _repository.loadNextStaticProfileTypesPage();
+    hasMoreTypesStreamValue
+        .addValue(_repository.hasMoreStaticProfileTypesStreamValue.value.value);
+    isTypesPageLoadingStreamValue.addValue(
+      _repository.isStaticProfileTypesPageLoadingStreamValue.value.value,
+    );
+    errorStreamValue
+        .addValue(_repository.staticProfileTypesErrorStreamValue.value?.value);
   }
 
   void bindTypesListScrollPagination() {
@@ -324,8 +373,38 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
       poiVisual: poiVisual,
-      createWithoutPoiVisual: _repository.createStaticProfileType,
-      createWithPoiVisual: _repository.createStaticProfileTypeWithPoiVisual,
+      createWithoutPoiVisual: ({
+        required String type,
+        required String label,
+        required List<String> allowedTaxonomies,
+        required TenantAdminStaticProfileTypeCapabilities capabilities,
+      }) {
+        return _repository.createStaticProfileType(
+          type: TenantAdminStaticAssetsRepoString.fromRaw(type),
+          label: TenantAdminStaticAssetsRepoString.fromRaw(label),
+          allowedTaxonomies: allowedTaxonomies
+              .map(TenantAdminStaticAssetsRepoString.fromRaw)
+              .toList(growable: false),
+          capabilities: capabilities,
+        );
+      },
+      createWithPoiVisual: ({
+        required String type,
+        required String label,
+        required List<String> allowedTaxonomies,
+        required TenantAdminStaticProfileTypeCapabilities capabilities,
+        TenantAdminPoiVisual? poiVisual,
+      }) {
+        return _repository.createStaticProfileTypeWithPoiVisual(
+          type: TenantAdminStaticAssetsRepoString.fromRaw(type),
+          label: TenantAdminStaticAssetsRepoString.fromRaw(label),
+          allowedTaxonomies: allowedTaxonomies
+              .map(TenantAdminStaticAssetsRepoString.fromRaw)
+              .toList(growable: false),
+          capabilities: capabilities,
+          poiVisual: poiVisual,
+        );
+      },
     );
     await loadTypes();
     return created;
@@ -351,20 +430,68 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
       poiVisual: poiVisual,
-      updateWithoutPoiVisual: _repository.updateStaticProfileType,
-      updateWithPoiVisual: _repository.updateStaticProfileTypeWithPoiVisual,
+      updateWithoutPoiVisual: ({
+        required String type,
+        String? newType,
+        String? label,
+        List<String>? allowedTaxonomies,
+        TenantAdminStaticProfileTypeCapabilities? capabilities,
+      }) {
+        return _repository.updateStaticProfileType(
+          type: TenantAdminStaticAssetsRepoString.fromRaw(type),
+          newType: newType == null
+              ? null
+              : TenantAdminStaticAssetsRepoString.fromRaw(newType),
+          label: label == null
+              ? null
+              : TenantAdminStaticAssetsRepoString.fromRaw(label),
+          allowedTaxonomies: allowedTaxonomies
+              ?.map(TenantAdminStaticAssetsRepoString.fromRaw)
+              .toList(growable: false),
+          capabilities: capabilities,
+        );
+      },
+      updateWithPoiVisual: ({
+        required String type,
+        String? newType,
+        String? label,
+        List<String>? allowedTaxonomies,
+        TenantAdminStaticProfileTypeCapabilities? capabilities,
+        TenantAdminPoiVisual? poiVisual,
+      }) {
+        return _repository.updateStaticProfileTypeWithPoiVisual(
+          type: TenantAdminStaticAssetsRepoString.fromRaw(type),
+          newType: newType == null
+              ? null
+              : TenantAdminStaticAssetsRepoString.fromRaw(newType),
+          label: label == null
+              ? null
+              : TenantAdminStaticAssetsRepoString.fromRaw(label),
+          allowedTaxonomies: allowedTaxonomies
+              ?.map(TenantAdminStaticAssetsRepoString.fromRaw)
+              .toList(growable: false),
+          capabilities: capabilities,
+          poiVisual: poiVisual,
+        );
+      },
     );
     await loadTypes();
     return updated;
   }
 
   Future<void> deleteType(String type) async {
-    await _repository.deleteStaticProfileType(type);
+    await _repository.deleteStaticProfileType(
+      TenantAdminStaticAssetsRepoString.fromRaw(type),
+    );
     await loadTypes();
   }
 
   Future<int> previewDisableProjectionCount(String type) {
-    return _repository.fetchStaticProfileTypeMapPoiProjectionImpact(type: type);
+    return _repository
+        .fetchStaticProfileTypeMapPoiProjectionImpact(
+          type: TenantAdminStaticAssetsRepoString.fromRaw(type),
+        )
+        .then((value) => value.value);
   }
 
   Future<void> submitCreateType({
@@ -515,12 +642,18 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     _isDisposed = true;
     unbindTypesListScrollPagination();
     _tenantScopeSubscription?.cancel();
+    _hasMoreTypesSubscription?.cancel();
+    _isTypesPageLoadingSubscription?.cancel();
+    _typesErrorSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
     poiVisualIconController.dispose();
     poiVisualColorController.dispose();
     poiVisualIconColorController.dispose();
     typesListScrollController.dispose();
+    hasMoreTypesStreamValue.dispose();
+    isTypesPageLoadingStreamValue.dispose();
+    errorStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     selectedTaxonomiesStreamValue.dispose();
     successMessageStreamValue.dispose();

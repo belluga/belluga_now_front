@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -168,8 +169,10 @@ void main() {
         originalMapUiSettings = await settingsRepository.fetchMapUiSettings();
 
         await staticAssetsRepository.createStaticProfileType(
-          type: assetType,
-          label: 'IT Asset Type $uniqueSeed',
+          type: TenantAdminStaticAssetsRepoString.fromRaw(assetType),
+          label: TenantAdminStaticAssetsRepoString.fromRaw(
+            'IT Asset Type $uniqueSeed',
+          ),
           capabilities: TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: true,
             hasBio: false,
@@ -182,8 +185,10 @@ void main() {
         createdStaticProfileType = true;
 
         final createdAsset = await staticAssetsRepository.createStaticAsset(
-          profileType: assetType,
-          displayName: assetDisplayName,
+          profileType: TenantAdminStaticAssetsRepoString.fromRaw(assetType),
+          displayName: TenantAdminStaticAssetsRepoString.fromRaw(
+            assetDisplayName,
+          ),
           location: TenantAdminLocation(
             latitude: -20.611121,
             longitude: -40.498617,
@@ -474,19 +479,22 @@ void main() {
 
         if (createdStaticAssetId != null) {
           try {
-            await staticAssetsRepository
-                .deleteStaticAsset(createdStaticAssetId);
+            await staticAssetsRepository.deleteStaticAsset(
+              TenantAdminStaticAssetsRepoString.fromRaw(createdStaticAssetId),
+            );
           } catch (_) {}
           try {
             await staticAssetsRepository.forceDeleteStaticAsset(
-              createdStaticAssetId,
+              TenantAdminStaticAssetsRepoString.fromRaw(createdStaticAssetId),
             );
           } catch (_) {}
         }
 
         if (createdStaticProfileType) {
           try {
-            await staticAssetsRepository.deleteStaticProfileType(assetType);
+            await staticAssetsRepository.deleteStaticProfileType(
+              TenantAdminStaticAssetsRepoString.fromRaw(assetType),
+            );
           } catch (_) {}
         }
 

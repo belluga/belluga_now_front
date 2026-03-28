@@ -27,6 +27,8 @@ class TenantAdminStaticProfileTypeDetailRouteResolver
       );
     }
 
-    return _staticAssetsRepository.fetchStaticProfileType(profileType.trim());
+    return _staticAssetsRepository.fetchStaticProfileType(
+      TenantAdminStaticAssetsRepoString.fromRaw(profileType.trim()),
+    );
   }
 }
