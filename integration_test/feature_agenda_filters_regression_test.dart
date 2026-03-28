@@ -318,15 +318,15 @@ class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    if (snapshot.showPastOnly != showPastOnly.value) return null;
+    if (snapshot.searchQuery != searchQuery.value) return null;
+    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
     return snapshot;
   }
 
@@ -346,42 +346,42 @@ class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   Future<List<EventModel>> getAllEvents() async => _events;
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async {
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
     for (final event in _events) {
-      if (event.slug == slug) return event;
+      if (event.slug == slug.value) return event;
     }
     return null;
   }
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       [];
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final now = DateTime.now();
 
     final filtered = _events.where((event) {
       final start = event.dateTimeStart.value!;
       final isPast = start.isBefore(now);
-      return showPastOnly == isPast;
+      return showPastOnly.value == isPast;
     }).toList();
 
     return PagedEventsResult(events: filtered, hasMore: false);
@@ -392,24 +392,26 @@ class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
       throw UnimplementedError();
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
+  Future<List<VenueEventResume>> getEventResumesByDate(
+          ScheduleRepoDateTime date) async =>
+      const <VenueEventResume>[];
 
   @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
+  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
+      const <VenueEventResume>[];
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<EventDeltaModel>.empty();
   }

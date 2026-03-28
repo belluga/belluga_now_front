@@ -244,87 +244,17 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
 
 class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
-  }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
-    return snapshot;
-  }
-
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
-  }
-
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
-  }
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async {
-    return PagedEventsResult(events: [], hasMore: false);
-  }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
-
-  @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     // Keep the stream open in tests; a closed stream triggers reconnect loops.
     return Stream<EventDeltaModel>.multi((_) {});

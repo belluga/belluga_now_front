@@ -42,21 +42,21 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) {
       return null;
     }
-    if (snapshot.showPastOnly != showPastOnly) {
+    if (snapshot.showPastOnly != showPastOnly.value) {
       return null;
     }
-    if (snapshot.searchQuery != searchQuery) {
+    if (snapshot.searchQuery != searchQuery.value) {
       return null;
     }
-    if (snapshot.confirmedOnly != confirmedOnly) {
+    if (snapshot.confirmedOnly != confirmedOnly.value) {
       return null;
     }
     return snapshot;
@@ -127,12 +127,14 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final dateValue = date.value;
+    final normalizedDate =
+        DateTime(dateValue.year, dateValue.month, dateValue.day);
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
     final includePast = normalizedDate.isBefore(todayDate) ||
@@ -141,9 +143,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     final upcoming = await _fetchEventsForDate(
       normalizedDate,
       showPastOnly: false,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
     );
 
     if (!includePast) {
@@ -153,9 +155,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     final past = await _fetchEventsForDate(
       normalizedDate,
       showPastOnly: true,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
     );
 
     final merged = <String, EventModel>{};
@@ -166,20 +168,21 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async {
-    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slug);
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+    final slugValue = slug.value;
+    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slugValue);
     if (dto != null) {
       return dto.toDomain();
     }
-    final normalizedSlug = _normalizeSlug(slug);
+    final normalizedSlug = _normalizeSlug(slugValue);
     final events = await getAllEvents();
     for (final event in events) {
       final idValue = event.id.value;
-      if (idValue == slug) {
+      if (idValue == slugValue) {
         return event;
       }
 
-      if (event.slug == slug) {
+      if (event.slug == slugValue) {
         return event;
       }
 
@@ -205,30 +208,36 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final EventPageDTO pageDto = await _backend.fetchEventsPage(
-      page: page,
-      pageSize: pageSize,
-      showPastOnly: showPastOnly,
-      searchQuery: searchQuery,
-      categories: categories,
-      tags: tags,
-      taxonomy: taxonomy,
-      confirmedOnly: confirmedOnly,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
+      page: page.value,
+      pageSize: pageSize.value,
+      showPastOnly: showPastOnly.value,
+      searchQuery: searchQuery?.value,
+      categories: categories?.map((entry) => entry.value).toList(
+            growable: false,
+          ),
+      tags: tags?.map((entry) => entry.value).toList(
+            growable: false,
+          ),
+      taxonomy: taxonomy?.map((entry) => entry.toBackendMap()).toList(
+            growable: false,
+          ),
+      confirmedOnly: confirmedOnly?.value ?? false,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
     );
 
     final events =
@@ -241,7 +250,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+  Future<List<VenueEventResume>> getEventResumesByDate(
+      ScheduleRepoDateTime date) async {
     final events = await getEventsByDate(date);
     final fallbackImage = _resolveDefaultEventImage();
     return events
@@ -311,29 +321,35 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return _backend
         .watchEventsStream(
-          searchQuery: searchQuery,
-          categories: categories,
-          tags: tags,
-          taxonomy: taxonomy,
-          confirmedOnly: confirmedOnly,
-          originLat: originLat,
-          originLng: originLng,
-          maxDistanceMeters: maxDistanceMeters,
-          lastEventId: lastEventId,
-          showPastOnly: showPastOnly,
+          searchQuery: searchQuery?.value,
+          categories: categories?.map((entry) => entry.value).toList(
+                growable: false,
+              ),
+          tags: tags?.map((entry) => entry.value).toList(
+                growable: false,
+              ),
+          taxonomy: taxonomy?.map((entry) => entry.toBackendMap()).toList(
+                growable: false,
+              ),
+          confirmedOnly: confirmedOnly?.value ?? false,
+          originLat: originLat?.value,
+          originLng: originLng?.value,
+          maxDistanceMeters: maxDistanceMeters?.value,
+          lastEventId: lastEventId?.value,
+          showPastOnly: showPastOnly?.value ?? false,
         )
         .map((deltaDto) => deltaDto.toDomain());
   }
@@ -341,16 +357,16 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   @override
   Stream<void> watchEventsSignal({
     required void Function(EventDeltaModel delta) onDelta,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return watchEventsStream(
       searchQuery: searchQuery,

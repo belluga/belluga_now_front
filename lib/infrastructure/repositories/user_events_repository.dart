@@ -87,10 +87,22 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
     while (hasMore && currentPage <= _maxMyEventsPages) {
       final page = await _scheduleRepository.getEventsPage(
-        page: currentPage,
-        pageSize: _myEventsPageSize,
-        showPastOnly: false,
-        confirmedOnly: true,
+        page: ScheduleRepoInt.fromRaw(
+          currentPage,
+          defaultValue: 1,
+        ),
+        pageSize: ScheduleRepoInt.fromRaw(
+          _myEventsPageSize,
+          defaultValue: _myEventsPageSize,
+        ),
+        showPastOnly: ScheduleRepoBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+        confirmedOnly: ScheduleRepoBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
       );
 
       events.addAll(

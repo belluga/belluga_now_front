@@ -98,6 +98,34 @@ class EventSearchScreenController
     stream.addValue(value);
   }
 
+  ScheduleRepoBool _toScheduleBool(bool value) {
+    return ScheduleRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoString _toScheduleText(String value) {
+    return ScheduleRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble _toScheduleDouble(double value) {
+    return ScheduleRepoDouble.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble? _toNullableScheduleDouble(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return _toScheduleDouble(value);
+  }
+
   void _initializeStateHolders() {
     searchController = TextEditingController();
     focusNode = FocusNode();
@@ -207,23 +235,25 @@ class EventSearchScreenController
     try {
       if (page <= 1) {
         await _scheduleRepository.loadEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       } else {
         await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       }
       final result = _scheduleRepository.pagedEventsStreamValue.value;
@@ -233,7 +263,7 @@ class EventSearchScreenController
         return;
       }
 
-      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
       if (loadedPage <= 0) {
         return;
       }
@@ -606,14 +636,17 @@ class EventSearchScreenController
           _lastEventStreamId = delta.lastEventId;
         }
       },
-      searchQuery: searchController.text,
-      confirmedOnly:
-          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-      originLat: _effectiveOriginLat,
-      originLng: _effectiveOriginLng,
-      maxDistanceMeters: radiusMetersStreamValue.value,
-      lastEventId: _lastEventStreamId,
-      showPastOnly: showHistoryStreamValue.value,
+      searchQuery: _toScheduleText(searchController.text),
+      confirmedOnly: _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      ),
+      originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+      originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
+      lastEventId: _lastEventStreamId == null
+          ? null
+          : _toScheduleText(_lastEventStreamId!),
+      showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
     )
         .listen(
       (_) {

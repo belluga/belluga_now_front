@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -216,9 +217,9 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
@@ -247,9 +248,9 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
@@ -280,9 +281,9 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
@@ -300,13 +301,13 @@ void main() {
     );
 
     final firstLoadFuture = repository.loadEventsPage(
-      showPastOnly: false,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     await backend.waitUntilFirstRequestStarts();
 
     await repository.loadEventsPage(
-      showPastOnly: false,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(
@@ -318,7 +319,7 @@ void main() {
     backend.releaseFirstRequest();
     await firstLoadFuture;
 
-    expect(repository.currentPagedEventsPage, 1);
+    expect(repository.currentPagedEventsPage.value, 1);
   });
 }
 

@@ -517,15 +517,15 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    if (snapshot.showPastOnly != showPastOnly.value) return null;
+    if (snapshot.searchQuery != searchQuery.value) return null;
+    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
     return snapshot;
   }
 
@@ -545,8 +545,8 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   Future<List<EventModel>> getAllEvents() async => [_event];
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async {
-    if (slug == _event.slugValue.value) {
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+    if (slug.value == _event.slugValue.value) {
       return _event;
     }
     return null;
@@ -554,26 +554,26 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       [_event];
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     return PagedEventsResult(events: [_event], hasMore: false);
   }
@@ -590,7 +590,8 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   }
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+  Future<List<VenueEventResume>> getEventResumesByDate(
+      ScheduleRepoDateTime date) async {
     return [
       VenueEventResume.fromScheduleEvent(
         _event,
@@ -611,16 +612,16 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<EventDeltaModel>.empty();
   }

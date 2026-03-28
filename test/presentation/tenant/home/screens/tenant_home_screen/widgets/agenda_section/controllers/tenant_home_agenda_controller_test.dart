@@ -953,34 +953,47 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
       StreamValue<PagedEventsResult?>(defaultValue: null);
   @override
-  final StreamValue<bool> hasMorePagedEventsStreamValue =
-      StreamValue<bool>(defaultValue: true);
+  final StreamValue<ScheduleRepoBool> hasMorePagedEventsStreamValue =
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    ),
+  );
   @override
-  final StreamValue<bool> isPagedEventsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<ScheduleRepoBool> isPagedEventsPageLoadingStreamValue =
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
   @override
-  final StreamValue<String?> pagedEventsErrorStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<ScheduleRepoString?> pagedEventsErrorStreamValue =
+      StreamValue<ScheduleRepoString?>(defaultValue: null);
 
   int getEventsPageCallCount = 0;
-  int _currentPagedEventsPage = 0;
+  ScheduleRepoInt _currentPagedEventsPage = ScheduleRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
   double? lastOriginLat;
   double? lastOriginLng;
 
   @override
-  int get currentPagedEventsPage => _currentPagedEventsPage;
+  ScheduleRepoInt get currentPagedEventsPage => _currentPagedEventsPage;
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    if (snapshot.showPastOnly != showPastOnly.value) return null;
+    if (snapshot.searchQuery != searchQuery.value) return null;
+    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
     return snapshot;
   }
 
@@ -1000,23 +1013,23 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<List<EventModel>> getAllEvents() async => const [];
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       const [];
 
   @override
   Future<void> refreshEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final events = await getEventsByDate(
       date,
@@ -1029,37 +1042,37 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     getEventsPageCallCount += 1;
-    lastOriginLat = originLat;
-    lastOriginLng = originLng;
+    lastOriginLat = originLat?.value;
+    lastOriginLng = originLng?.value;
     return PagedEventsResult(events: [], hasMore: false);
   }
 
   @override
   Future<void> refreshEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final pageResult = await getEventsPage(
       page: page,
@@ -1079,21 +1092,21 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   @override
   Future<void> loadEventsPage({
-    int pageSize = 25,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoInt? pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    _currentPagedEventsPage = 1;
+    _currentPagedEventsPage = ScheduleRepoInt.fromRaw(1, defaultValue: 1);
     await refreshEventsPage(
-      page: 1,
-      pageSize: pageSize,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: pageSize ?? ScheduleRepoInt.fromRaw(25, defaultValue: 25),
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       categories: categories,
@@ -1105,30 +1118,38 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters,
     );
     final result = pagedEventsStreamValue.value;
-    hasMorePagedEventsStreamValue.addValue(result?.hasMore ?? false);
+    hasMorePagedEventsStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        result?.hasMore ?? false,
+        defaultValue: result?.hasMore ?? false,
+      ),
+    );
   }
 
   @override
   Future<void> loadNextEventsPage({
-    int pageSize = 25,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoInt? pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (!hasMorePagedEventsStreamValue.value) {
+    if (!hasMorePagedEventsStreamValue.value.value) {
       return;
     }
-    final nextPage = _currentPagedEventsPage + 1;
+    final nextPage = ScheduleRepoInt.fromRaw(
+      _currentPagedEventsPage.value + 1,
+      defaultValue: 1,
+    );
     _currentPagedEventsPage = nextPage;
     await refreshEventsPage(
       page: nextPage,
-      pageSize: pageSize,
+      pageSize: pageSize ?? ScheduleRepoInt.fromRaw(25, defaultValue: 25),
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       categories: categories,
@@ -1140,15 +1161,30 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters,
     );
     final result = pagedEventsStreamValue.value;
-    hasMorePagedEventsStreamValue.addValue(result?.hasMore ?? false);
+    hasMorePagedEventsStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        result?.hasMore ?? false,
+        defaultValue: result?.hasMore ?? false,
+      ),
+    );
   }
 
   @override
   void resetPagedEventsState() {
-    _currentPagedEventsPage = 0;
+    _currentPagedEventsPage = ScheduleRepoInt.fromRaw(0, defaultValue: 0);
     pagedEventsStreamValue.addValue(null);
-    hasMorePagedEventsStreamValue.addValue(true);
-    isPagedEventsPageLoadingStreamValue.addValue(false);
+    hasMorePagedEventsStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+    isPagedEventsPageLoadingStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
     pagedEventsErrorStreamValue.addValue(null);
   }
 
@@ -1158,24 +1194,26 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
+  Future<List<VenueEventResume>> getEventResumesByDate(
+          ScheduleRepoDateTime date) async =>
+      const <VenueEventResume>[];
 
   @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
+  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
+      const <VenueEventResume>[];
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<EventDeltaModel>.empty();
   }
@@ -1183,16 +1221,16 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   Stream<void> watchEventsSignal({
     required void Function(EventDeltaModel delta) onDelta,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return watchEventsStream(
       searchQuery: searchQuery,
@@ -1214,17 +1252,17 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 class _FailingScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     throw Exception('forced first-page failure');
   }
@@ -1235,21 +1273,21 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     getEventsPageCallCount += 1;
-    lastOriginLat = originLat;
-    lastOriginLng = originLng;
+    lastOriginLat = originLat?.value;
+    lastOriginLng = originLng?.value;
 
     if (!_failed) {
       _failed = true;
@@ -1263,17 +1301,17 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
 class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     getEventsPageCallCount += 1;
     throw Exception('forced persistent first-page failure');

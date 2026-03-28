@@ -126,6 +126,34 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     stream.addValue(value);
   }
 
+  ScheduleRepoBool _toScheduleBool(bool value) {
+    return ScheduleRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoString _toScheduleText(String value) {
+    return ScheduleRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble _toScheduleDouble(double value) {
+    return ScheduleRepoDouble.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble? _toNullableScheduleDouble(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return _toScheduleDouble(value);
+  }
+
   Future<void> init({bool startWithHistory = false}) async {
     final inFlight = _initInFlight;
     if (inFlight != null) {
@@ -281,23 +309,25 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       if (page <= 1) {
         await _scheduleRepository.loadEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       } else {
         await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       }
 
@@ -305,17 +335,21 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       if (result == null) {
         final firstPageError =
             _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
-          throw Exception(firstPageError);
+        if (page == 1 &&
+            firstPageError != null &&
+            firstPageError.value.isNotEmpty) {
+          throw Exception(firstPageError.value);
         }
         return;
       }
-      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
       if (loadedPage <= 0) {
         final firstPageError =
             _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
-          throw Exception(firstPageError);
+        if (page == 1 &&
+            firstPageError != null &&
+            firstPageError.value.isNotEmpty) {
+          throw Exception(firstPageError.value);
         }
         return;
       }
@@ -433,10 +467,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   List<EventModel> _currentCanonicalEvents() {
     final cache = _scheduleRepository.readHomeAgendaCache(
-      showPastOnly: showHistoryStreamValue.value,
-      searchQuery: searchController.text.trim(),
-      confirmedOnly:
-          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+      searchQuery: _toScheduleText(searchController.text.trim()),
+      confirmedOnly: _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      ),
     );
     if (cache == null) {
       return const <EventModel>[];
@@ -450,9 +485,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     final confirmedOnly =
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly;
     final cache = _scheduleRepository.readHomeAgendaCache(
-      showPastOnly: showPastOnly,
-      searchQuery: searchQuery,
-      confirmedOnly: confirmedOnly,
+      showPastOnly: _toScheduleBool(showPastOnly),
+      searchQuery: _toScheduleText(searchQuery),
+      confirmedOnly: _toScheduleBool(confirmedOnly),
     );
     if (cache == null) {
       return false;
