@@ -3,6 +3,7 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
@@ -84,7 +85,9 @@ void main() {
     await repository.init();
 
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       contains('profile-fav-1'),
     );
   });
@@ -114,17 +117,25 @@ void main() {
       telemetryRepository: telemetry,
     );
 
-    await repository.toggleFavorite(validId);
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
     expect(favoritesBackend.favoritedIds, contains(validId));
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       contains(validId),
     );
 
-    await repository.toggleFavorite(validId);
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
     expect(favoritesBackend.unfavoritedIds, contains(validId));
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       isNot(contains(validId)),
     );
 

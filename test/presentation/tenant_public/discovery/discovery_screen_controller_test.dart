@@ -224,7 +224,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     final all =
         pages.values.expand((entry) => entry.profiles).toList(growable: false);
     allAccountProfilesStreamValue.addValue(all);
-    favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+    favoriteAccountProfileIdsStreamValue
+        .addValue(<AccountProfilesRepositoryContractPrimString>{});
     for (final profile in all) {
       _bySlug[profile.slug] = profile;
     }
@@ -239,34 +240,38 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
+    final pageValue = page.value;
+    final pageSizeValue = pageSize.value;
+    final normalizedQueryInput = query?.value;
+    final normalizedTypeInput = typeFilter?.value;
     pageRequests.add(
       _PageRequest(
-        page: page,
-        pageSize: pageSize,
-        query: query?.trim(),
-        typeFilter: typeFilter?.trim(),
+        page: pageValue,
+        pageSize: pageSizeValue,
+        query: normalizedQueryInput?.trim(),
+        typeFilter: normalizedTypeInput?.trim(),
       ),
     );
-    var result = pages[page] ??
+    var result = pages[pageValue] ??
         PagedAccountProfilesResult(
           profiles: <AccountProfileModel>[],
           hasMore: false,
         );
 
     var profiles = result.profiles;
-    final normalizedType = typeFilter?.trim();
+    final normalizedType = normalizedTypeInput?.trim();
     if (normalizedType != null && normalizedType.isNotEmpty) {
       profiles = profiles
           .where((profile) => profile.type == normalizedType)
           .toList(growable: false);
     }
 
-    final normalizedQuery = query?.trim().toLowerCase();
+    final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
     if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
       profiles = profiles.where((profile) {
         return profile.name.toLowerCase().contains(normalizedQuery) ||
@@ -287,12 +292,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     final all = await fetchAllAccountProfiles();
-    final normalizedType = typeFilter?.trim();
-    final normalizedQuery = query?.trim().toLowerCase();
+    final normalizedType = typeFilter?.value.trim();
+    final normalizedQuery = query?.value.trim().toLowerCase();
 
     return all.where((profile) {
       final typeMatches = normalizedType == null ||
@@ -310,35 +315,53 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
-    return _bySlug[slug];
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    return _bySlug[slug.value];
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {
-    toggleCalls.add(accountProfileId);
-    final current =
-        Set<String>.from(favoriteAccountProfileIdsStreamValue.value);
-    if (current.contains(accountProfileId)) {
-      current.remove(accountProfileId);
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    final accountProfileIdValue = accountProfileId.value;
+    toggleCalls.add(accountProfileIdValue);
+    final current = favoriteAccountProfileIdsStreamValue.value
+        .map((entry) => entry.value)
+        .toSet();
+    if (current.contains(accountProfileIdValue)) {
+      current.remove(accountProfileIdValue);
     } else {
-      current.add(accountProfileId);
+      current.add(accountProfileIdValue);
     }
-    favoriteAccountProfileIdsStreamValue.addValue(current);
+    favoriteAccountProfileIdsStreamValue.addValue(
+      current.map(_idValue).toSet(),
+    );
   }
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return favoriteAccountProfileIdsStreamValue.value
-        .contains(accountProfileId);
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    final contains = favoriteAccountProfileIdsStreamValue.value
+        .map((entry) => entry.value)
+        .contains(accountProfileId.value);
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(contains);
   }
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() {
-    final ids = favoriteAccountProfileIdsStreamValue.value;
+    final ids = favoriteAccountProfileIdsStreamValue.value
+        .map((entry) => entry.value)
+        .toSet();
     return allAccountProfilesStreamValue.value
         .where((profile) => ids.contains(profile.id))
         .toList(growable: false);
+  }
+
+  AccountProfilesRepositoryContractPrimString _idValue(String value) {
+    return AccountProfilesRepositoryContractPrimString.fromRaw(value);
   }
 }
 
@@ -347,7 +370,8 @@ class _FailingAccountProfilesRepository
   @override
   Future<void> init() async {
     allAccountProfilesStreamValue.addValue(const <AccountProfileModel>[]);
-    favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+    favoriteAccountProfileIdsStreamValue
+        .addValue(<AccountProfilesRepositoryContractPrimString>{});
   }
 
   @override
@@ -357,33 +381,39 @@ class _FailingAccountProfilesRepository
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     throw Exception('forced discovery page failure');
   }
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     return const <AccountProfileModel>[];
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
     return null;
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {}
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {}
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return false;
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(false);
   }
 
   @override
@@ -413,13 +443,13 @@ class _InitFailingAccountProfilesRepository
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     fetchPageCalls += 1;
-    if (page != 1) {
+    if (page.value != 1) {
       return PagedAccountProfilesResult(
         profiles: <AccountProfileModel>[],
         hasMore: false,
@@ -430,23 +460,29 @@ class _InitFailingAccountProfilesRepository
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     return firstPage.profiles;
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
     return null;
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {}
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {}
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return false;
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(false);
   }
 
   @override

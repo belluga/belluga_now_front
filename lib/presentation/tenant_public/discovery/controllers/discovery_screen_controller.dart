@@ -33,7 +33,8 @@ class DiscoveryScreenController implements Disposable {
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
-  StreamSubscription<Set<String>>? _favoriteIdsSubscription;
+  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
+      _favoriteIdsSubscription;
   Timer? _searchDebounce;
   int _reloadRequestToken = 0;
   bool _isFetchingPage = false;
@@ -86,7 +87,9 @@ class DiscoveryScreenController implements Disposable {
         .favoriteAccountProfileIdsStreamValue.stream
         .listen(
       (ids) {
-        favoriteIdsStreamValue.addValue(Set<String>.from(ids));
+        favoriteIdsStreamValue.addValue(
+          ids.map((entry) => entry.value).toSet(),
+        );
       },
     );
     await _loadFavoriteIds();
@@ -162,13 +165,25 @@ class DiscoveryScreenController implements Disposable {
       final shouldLoadFirstPage = isInitial || _currentPage <= 0;
       if (shouldLoadFirstPage) {
         await _accountProfilesRepository.loadAccountProfilesPage(
-          query: query.isEmpty ? null : query,
-          typeFilter: selectedType,
+          query: query.isEmpty
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+          typeFilter: selectedType == null
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  selectedType,
+                ),
         );
       } else {
         await _accountProfilesRepository.loadNextAccountProfilesPage(
-          query: query.isEmpty ? null : query,
-          typeFilter: selectedType,
+          query: query.isEmpty
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+          typeFilter: selectedType == null
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  selectedType,
+                ),
         );
       }
 
@@ -180,7 +195,7 @@ class DiscoveryScreenController implements Disposable {
 
       final loadedPage =
           _accountProfilesRepository.currentPagedAccountProfilesPage;
-      if (loadedPage <= 0) {
+      if (loadedPage.value <= 0) {
         return;
       }
 
@@ -198,7 +213,7 @@ class DiscoveryScreenController implements Disposable {
         ];
       }
 
-      _currentPage = loadedPage;
+      _currentPage = loadedPage.value;
       _hasMore = pageResult.hasMore;
       hasMoreStreamValue.addValue(_hasMore);
 
@@ -248,7 +263,11 @@ class DiscoveryScreenController implements Disposable {
     }
     favoriteIdsStreamValue.addValue(current);
 
-    unawaited(_accountProfilesRepository.toggleFavorite(accountProfileId));
+    unawaited(
+      _accountProfilesRepository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
+      ),
+    );
     return FavoriteToggleOutcome.toggled;
   }
 
@@ -260,7 +279,8 @@ class DiscoveryScreenController implements Disposable {
 
   Future<void> _loadFavoriteIds() async {
     final ids = Set<String>.from(
-      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value,
+      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value),
     );
     favoriteIdsStreamValue.addValue(ids);
   }

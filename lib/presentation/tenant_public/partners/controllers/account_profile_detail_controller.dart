@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'dart:async';
 
 enum AccountProfileFavoriteToggleOutcome {
   toggled,
@@ -26,17 +27,35 @@ class AccountProfileDetailController implements Disposable {
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
-                : null);
+                : null) {
+    _favoriteIdsSubscription = _accountProfilesRepository
+        .favoriteAccountProfileIdsStreamValue.stream
+        .listen(
+      (ids) {
+        favoriteIdsStreamValue.addValue(
+          ids.map((entry) => entry.value).toSet(),
+        );
+      },
+    );
+    favoriteIdsStreamValue.addValue(
+      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
+    );
+  }
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final PartnerProfileConfigBuilder _profileConfigBuilder;
   final AuthRepositoryContract? _authRepository;
+  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
+      _favoriteIdsSubscription;
 
   StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
       _accountProfilesRepository.selectedAccountProfileStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
-  StreamValue<Set<String>> get favoriteIdsStream =>
-      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue;
+  final favoriteIdsStreamValue =
+      StreamValue<Set<String>>(defaultValue: const {});
+  StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
   final profileConfigStreamValue =
       StreamValue<PartnerProfileConfig?>(defaultValue: null);
   final moduleDataStreamValue =
@@ -45,7 +64,9 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadAccountProfile(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
-      await _accountProfilesRepository.loadAccountProfileBySlug(slug);
+      await _accountProfilesRepository.loadAccountProfileBySlug(
+        AccountProfilesRepositoryContractPrimString.fromRaw(slug),
+      );
       final accountProfile =
           _accountProfilesRepository.selectedAccountProfileStreamValue.value;
       if (accountProfile == null) {
@@ -61,8 +82,8 @@ class AccountProfileDetailController implements Disposable {
 
   void loadResolvedAccountProfile(AccountProfileModel accountProfile) {
     accountProfileStreamValue.addValue(accountProfile);
-    final capabilities =
-        _resolveRegistry()?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
+    final capabilities = _resolveRegistry()
+        ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
       _profileConfigBuilder.build(
         accountProfile,
@@ -76,12 +97,18 @@ class AccountProfileDetailController implements Disposable {
     if (!_isAuthorized) {
       return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
     }
-    _accountProfilesRepository.toggleFavorite(accountProfileId);
+    _accountProfilesRepository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
+    );
     return AccountProfileFavoriteToggleOutcome.toggled;
   }
 
   bool isFavorite(String accountProfileId) {
-    return _accountProfilesRepository.isFavorite(accountProfileId);
+    return _accountProfilesRepository
+        .isFavorite(
+          AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
+        )
+        .value;
   }
 
   bool isFavoritable(AccountProfileModel accountProfile) {
@@ -112,6 +139,8 @@ class AccountProfileDetailController implements Disposable {
 
   @override
   void onDispose() {
+    _favoriteIdsSubscription?.cancel();
+    favoriteIdsStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();

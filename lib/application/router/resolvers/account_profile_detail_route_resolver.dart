@@ -26,7 +26,9 @@ class AccountProfileDetailRouteResolver
     }
 
     final accountProfile =
-        await _accountProfilesRepository.getAccountProfileBySlug(slug.trim());
+        await _accountProfilesRepository.getAccountProfileBySlug(
+      AccountProfilesRepositoryContractPrimString.fromRaw(slug),
+    );
     if (accountProfile == null) {
       throw Exception('Account profile not found for slug: $slug');
     }
