@@ -21,10 +21,11 @@ class DiscoveryFilterChips extends StatelessWidget {
       _FilterChipData(label: 'Todos', type: null),
       ...orderedTypes.map(_chipForType),
     ];
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: items
             .map(
@@ -33,6 +34,18 @@ class DiscoveryFilterChips extends StatelessWidget {
                 child: ChoiceChip(
                   label: Text(item.label),
                   selected: selectedType == item.type,
+                  selectedColor: colorScheme.primary,
+                  backgroundColor: colorScheme.primaryContainer,
+                  side: BorderSide.none,
+                  labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: selectedType == item.type
+                            ? colorScheme.onPrimary
+                            : colorScheme.onPrimaryContainer,
+                      ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                   onSelected: (_) => onSelectType(item.type),
                 ),
               ),

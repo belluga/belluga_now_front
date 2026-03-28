@@ -116,6 +116,10 @@ abstract class AccountProfilesRepositoryContract {
   Future<AccountProfileModel?> getAccountProfileBySlug(
       AccountProfilesRepositoryContractPrimString slug);
 
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt pageSize = 10,
+  });
+
   Future<void> loadAccountProfileBySlug(
       AccountProfilesRepositoryContractPrimString slug) async {
     final profile = await getAccountProfileBySlug(slug);

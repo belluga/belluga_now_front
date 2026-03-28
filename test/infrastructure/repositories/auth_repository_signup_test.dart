@@ -274,6 +274,12 @@ class _UnsupportedAccountProfilesBackend
       throw UnimplementedError();
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() =>
       throw UnimplementedError();
 
@@ -283,6 +289,7 @@ class _UnsupportedAccountProfilesBackend
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
 
@@ -290,6 +297,7 @@ class _UnsupportedAccountProfilesBackend
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
 }

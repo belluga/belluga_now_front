@@ -51,6 +51,40 @@ void main() {
     expect(profiles.first.type, 'artist');
   });
 
+  test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist Two',
+          slug: 'artist-two',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+      typeFilter: null,
+    );
+
+    expect(backend.lastAllowedTypes, isNull);
+    expect(page.profiles, hasLength(2));
+  });
+
   test('init loads favorite ids from backend favorites source', () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
@@ -157,12 +191,45 @@ void main() {
     );
     expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
   });
+
+  test('fetchNearbyAccountProfiles keeps only favoritable registry types',
+      () async {
+    final artistId = _generateMongoId();
+    final curatorId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: artistId,
+          name: 'Nearby Artist',
+          slug: 'nearby-artist',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: curatorId,
+          name: 'Nearby Curator',
+          slug: 'nearby-curator',
+          type: 'curator',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final nearby = await repository.fetchNearbyAccountProfiles(pageSize: 10);
+
+    expect(nearby, hasLength(1));
+    expect(nearby.first.type, 'artist');
+  });
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   _StubAccountProfilesBackend({required this.accountProfiles});
 
   final List<AccountProfileModel> accountProfiles;
+  List<String>? lastAllowedTypes;
 
   @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() async =>
@@ -174,7 +241,9 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
+    lastAllowedTypes = allowedTypes;
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
       return const PagedAccountProfilesResult(
@@ -194,9 +263,17 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
       accountProfiles.firstWhere((profile) => profile.slug == slug);
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    return accountProfiles.take(pageSize).toList(growable: false);
+  }
+
+  @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async =>
       accountProfiles;
 }

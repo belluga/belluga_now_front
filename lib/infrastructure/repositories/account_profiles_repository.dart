@@ -80,11 +80,29 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     String? query,
     String? typeFilter,
   }) async {
+    final favoritableTypes = _favoritableEnabledTypes();
+    if (favoritableTypes.isEmpty) {
+      return const PagedAccountProfilesResult(
+        profiles: <AccountProfileModel>[],
+        hasMore: false,
+      );
+    }
+
+    final normalizedTypeFilter = typeFilter?.trim();
+    if (normalizedTypeFilter != null &&
+        normalizedTypeFilter.isNotEmpty &&
+        !favoritableTypes.contains(normalizedTypeFilter)) {
+      return const PagedAccountProfilesResult(
+        profiles: <AccountProfileModel>[],
+        hasMore: false,
+      );
+    }
+
     final result = await _backend.fetchAccountProfilesPage(
       page: page,
       pageSize: pageSize,
       query: query,
-      typeFilter: typeFilter,
+      typeFilter: normalizedTypeFilter,
     );
     final filtered = _filterByRegistry(result.profiles);
     return PagedAccountProfilesResult(
@@ -115,6 +133,16 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     }
 
     return results;
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    final profiles = await _backend.fetchNearbyAccountProfiles(
+      pageSize: pageSize,
+    );
+    return _filterByRegistry(profiles);
   }
 
   @override
@@ -192,14 +220,34 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
           'Profile type registry missing; hiding account profile lists.');
       return const [];
     }
-    return profiles.where(_isAccountProfileTypeEnabled).toList(growable: false);
+    return profiles
+        .where(_isAccountProfileTypeEnabled)
+        .where(_isAccountProfileTypeFavoritable)
+        .toList(growable: false);
   }
 
   bool _isAccountProfileTypeEnabled(AccountProfileModel profile) {
     final registry = _resolveRegistry();
-    return registry
-            ?.isEnabledFor(ProfileTypeKeyValue(profile.profileType)) ??
+    return registry?.isEnabledFor(ProfileTypeKeyValue(profile.profileType)) ??
         false;
+  }
+
+  bool _isAccountProfileTypeFavoritable(AccountProfileModel profile) {
+    final registry = _resolveRegistry();
+    return registry
+            ?.isFavoritableFor(ProfileTypeKeyValue(profile.profileType)) ??
+        false;
+  }
+
+  List<String> _favoritableEnabledTypes() {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return const <String>[];
+    }
+    return registry
+        .enabledAccountProfileTypes()
+        .where((type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)))
+        .toList(growable: false);
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

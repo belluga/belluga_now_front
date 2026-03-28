@@ -25,9 +25,9 @@ class DiscoveryPartnerGrid extends StatelessWidget {
     return SliverGrid(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.75,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        childAspectRatio: 0.6,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 18,
       ),
       delegate: SliverChildBuilderDelegate(
         (context, index) {

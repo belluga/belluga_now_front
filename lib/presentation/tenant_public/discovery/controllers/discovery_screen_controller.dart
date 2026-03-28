@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -34,14 +35,18 @@ class DiscoveryScreenController implements Disposable {
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
   StreamSubscription<Set<String>>? _favoriteIdsSubscription;
+  StreamSubscription<Object?>? _userLocationSubscription;
+  StreamSubscription<Object?>? _lastKnownLocationSubscription;
   Timer? _searchDebounce;
+  bool _initialized = false;
   int _reloadRequestToken = 0;
   bool _isFetchingPage = false;
+  bool _isFetchingNearby = false;
   bool _hasMore = true;
   bool _scrollListenerAttached = false;
   int _currentPage = 0;
+  String? _lastOriginSignature;
 
-  // Cached dataset
   List<AccountProfileModel> _allAccountProfiles = const [];
 
   final ScrollController scrollController = ScrollController();
@@ -54,13 +59,13 @@ class DiscoveryScreenController implements Disposable {
   StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  final isRefreshingStreamValue = StreamValue<bool>(defaultValue: false);
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
   final hasLoadedStreamValue = StreamValue<bool>(defaultValue: false);
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
-  // Highlighted sections
   StreamValue<List<AccountProfileModel>> get liveNowStreamValue =>
       _accountProfilesRepository.discoveryLiveAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
@@ -71,16 +76,26 @@ class DiscoveryScreenController implements Disposable {
       StreamValue<List<CuratorContent>>(defaultValue: const []);
 
   Future<void> init() async {
-    searchController.addListener(() {
-      setSearchQuery(searchController.text);
-    });
+    if (_initialized) {
+      await _loadFavoriteIds();
+      if (!hasLoadedStreamValue.value && !_isFetchingPage) {
+        await _reloadPartners(showFullScreenLoader: false);
+      }
+      unawaited(_reloadNearbySection());
+      return;
+    }
+    _initialized = true;
+
+    searchController.addListener(_handleSearchControllerChanged);
     _attachScrollListener();
+    _attachLocationListeners();
 
     try {
       await _accountProfilesRepository.init();
     } catch (error) {
       debugPrint(
-          'DiscoveryScreenController.init repository init failed: $error');
+        'DiscoveryScreenController.init repository init failed: $error',
+      );
     }
     _favoriteIdsSubscription ??= _accountProfilesRepository
         .favoriteAccountProfileIdsStreamValue.stream
@@ -90,7 +105,11 @@ class DiscoveryScreenController implements Disposable {
       },
     );
     await _loadFavoriteIds();
-    await _reloadPartners();
+    await _reloadPartners(showFullScreenLoader: false);
+  }
+
+  void _handleSearchControllerChanged() {
+    setSearchQuery(searchController.text);
   }
 
   void _attachScrollListener() {
@@ -100,7 +119,11 @@ class DiscoveryScreenController implements Disposable {
       if (_isFetchingPage ||
           !_hasMore ||
           isLoadingStreamValue.value ||
+          isRefreshingStreamValue.value ||
           !hasMoreStreamValue.value) {
+        return;
+      }
+      if (!scrollController.hasClients) {
         return;
       }
       const threshold = 280.0;
@@ -111,30 +134,71 @@ class DiscoveryScreenController implements Disposable {
     });
   }
 
-  Future<void> _reloadPartners() async {
+  void _attachLocationListeners() {
+    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+      return;
+    }
+    final repository = GetIt.I.get<UserLocationRepositoryContract>();
+    _lastOriginSignature = _originSignatureFrom(repository);
+
+    _userLocationSubscription ??=
+        repository.userLocationStreamValue.stream.listen((_) {
+      _onLocationUpdated(repository);
+    });
+    _lastKnownLocationSubscription ??=
+        repository.lastKnownLocationStreamValue.stream.listen((_) {
+      _onLocationUpdated(repository);
+    });
+  }
+
+  void _onLocationUpdated(UserLocationRepositoryContract repository) {
+    final signature = _originSignatureFrom(repository);
+    if (signature == null || signature == _lastOriginSignature) {
+      return;
+    }
+    _lastOriginSignature = signature;
+    unawaited(_reloadNearbySection());
+  }
+
+  Future<void> _reloadPartners({bool showFullScreenLoader = false}) async {
     final requestToken = ++_reloadRequestToken;
-    isLoadingStreamValue.addValue(true);
-    hasLoadedStreamValue.addValue(false);
-    _allAccountProfiles = const [];
+    final useFullScreenLoader = showFullScreenLoader ||
+        (!hasLoadedStreamValue.value && _allAccountProfiles.isEmpty);
+
     _currentPage = 0;
     _hasMore = true;
     hasMoreStreamValue.addValue(true);
+
+    if (useFullScreenLoader) {
+      _clearVisibleData();
+      isLoadingStreamValue.addValue(true);
+      hasLoadedStreamValue.addValue(false);
+    } else {
+      isRefreshingStreamValue.addValue(true);
+    }
+
+    try {
+      await _fetchNextPage(isInitial: true, requestToken: requestToken);
+    } catch (error) {
+      debugPrint('DiscoveryScreenController._reloadPartners failed: $error');
+    } finally {
+      if (requestToken == _reloadRequestToken) {
+        hasLoadedStreamValue.addValue(true);
+        isLoadingStreamValue.addValue(false);
+        isRefreshingStreamValue.addValue(false);
+        unawaited(_reloadNearbySection());
+      }
+    }
+  }
+
+  void _clearVisibleData() {
+    _allAccountProfiles = const [];
     filteredPartnersStreamValue.addValue(const []);
     liveNowStreamValue.addValue(const []);
     nearbyStreamValue.addValue(const []);
     curatorStreamValue.addValue(const []);
     curatorContentStreamValue.addValue(const []);
     _updateAvailableTypes();
-    try {
-      await _fetchNextPage(isInitial: true, requestToken: requestToken);
-    } catch (error) {
-      debugPrint('DiscoveryScreenController._reloadPartners failed: $error');
-    } finally {
-      hasLoadedStreamValue.addValue(true);
-      if (requestToken == _reloadRequestToken) {
-        isLoadingStreamValue.addValue(false);
-      }
-    }
   }
 
   Future<void> loadNextPage() async {
@@ -214,25 +278,47 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void setSearchQuery(String query) {
+    if (searchQueryStreamValue.value == query) {
+      return;
+    }
     searchQueryStreamValue.addValue(query);
+    _scheduleReload(immediate: false);
+  }
+
+  void setTypeFilter(String? type) {
+    if (selectedTypeFilterStreamValue.value == type) {
+      return;
+    }
+    selectedTypeFilterStreamValue.addValue(type);
+    _scheduleReload(immediate: true);
+  }
+
+  void _scheduleReload({required bool immediate}) {
     _searchDebounce?.cancel();
+    if (immediate) {
+      unawaited(_reloadPartners());
+      return;
+    }
     _searchDebounce = Timer(_searchDebounceDuration, () {
       unawaited(_reloadPartners());
     });
   }
 
-  void setTypeFilter(String? type) {
-    selectedTypeFilterStreamValue.addValue(type);
-    _searchDebounce?.cancel();
-    unawaited(_reloadPartners());
-  }
-
   void toggleSearch() {
     final next = !isSearchingStreamValue.value;
     isSearchingStreamValue.addValue(next);
+    if (next) {
+      if (selectedTypeFilterStreamValue.value != null) {
+        setTypeFilter(null);
+      }
+      return;
+    }
     if (!next) {
-      searchController.clear();
-      setSearchQuery('');
+      if (searchController.text.isNotEmpty) {
+        searchController.clear();
+      } else {
+        setSearchQuery('');
+      }
     }
   }
 
@@ -266,7 +352,6 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void _buildSections() {
-    // Tocando agora: artistas com status ativo ou próximo, ordenados por distância quando existir
     final live = _allAccountProfiles.where(_isLiveNow).toList()
       ..sort((a, b) {
         final aDist = a.distanceMeters ?? double.infinity;
@@ -275,35 +360,21 @@ class DiscoveryScreenController implements Disposable {
       });
     liveNowStreamValue.addValue(live.take(10).toList());
 
-    // Perto de você: venues/experiências ordenando por distância quando disponível
-    final nearby = _allAccountProfiles
-        .where((p) => p.type == 'venue' || p.type == 'experience_provider')
-        .toList()
-      ..sort((a, b) {
-        final aDist = a.distanceMeters ?? double.infinity;
-        final bDist = b.distanceMeters ?? double.infinity;
-        return aDist.compareTo(bDist);
-      });
-    nearbyStreamValue.addValue(nearby.take(10).toList());
-
-    // Curadores
     final curators = _allAccountProfiles
         .where((p) => p.type == 'curator')
         .toList()
       ..sort((a, b) => (b.acceptedInvites).compareTo(a.acceptedInvites));
     curatorStreamValue.addValue(curators.take(10).toList());
 
-    // Conteúdo de curadores derivado dos account profiles carregados.
     final curatorContent = curators.take(5).map((c) {
       final thumb = c.coverUrl ?? c.avatarUrl ?? '';
-      final typeLabel = 'Artigo';
       final title = c.tags.isNotEmpty
           ? 'Novo ${c.tags.first} por ${c.name}'
           : 'Conteúdo de ${c.name}';
       return CuratorContent(
         id: c.id,
         title: title,
-        typeLabel: typeLabel,
+        typeLabel: 'Artigo',
         imageUrl: thumb,
         curatorName: c.name,
       );
@@ -311,10 +382,37 @@ class DiscoveryScreenController implements Disposable {
     curatorContentStreamValue.addValue(curatorContent);
   }
 
+  String? _originSignatureFrom(UserLocationRepositoryContract repository) {
+    final coordinate = repository.userLocationStreamValue.value ??
+        repository.lastKnownLocationStreamValue.value;
+    if (coordinate == null) {
+      return null;
+    }
+    return '${coordinate.latitude.toStringAsFixed(6)}:'
+        '${coordinate.longitude.toStringAsFixed(6)}';
+  }
+
+  Future<void> _reloadNearbySection() async {
+    if (_isFetchingNearby) {
+      return;
+    }
+
+    _isFetchingNearby = true;
+    try {
+      final nearby =
+          await _accountProfilesRepository.fetchNearbyAccountProfiles(
+        pageSize: 10,
+      );
+      nearbyStreamValue.addValue(nearby);
+    } catch (error) {
+      debugPrint(
+          'DiscoveryScreenController._reloadNearbySection failed: $error');
+    } finally {
+      _isFetchingNearby = false;
+    }
+  }
+
   void _applyFilters() {
-    // Discovery query/type filtering is backend-driven for paginated datasets.
-    // Applying local text/type filters here can silently drop valid backend
-    // matches (for example slug or taxonomy-only matches).
     filteredPartnersStreamValue
         .addValue(List<AccountProfileModel>.from(_allAccountProfiles));
   }
@@ -351,10 +449,14 @@ class DiscoveryScreenController implements Disposable {
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
+    return appData?.profileTypeRegistry;
+  }
+
+  AppData? get appData {
     if (!GetIt.I.isRegistered<AppData>()) {
       return null;
     }
-    return GetIt.I.get<AppData>().profileTypeRegistry;
+    return GetIt.I.get<AppData>();
   }
 
   String _fallbackLabelForType(String type) {
@@ -363,19 +465,25 @@ class DiscoveryScreenController implements Disposable {
         return 'Artista';
       case 'venue':
         return 'Local';
+      case 'restaurant':
+        return 'Restaurante';
       case 'experience_provider':
         return 'Experiência';
       case 'influencer':
         return 'Influenciador';
       case 'curator':
         return 'Curador';
+      case 'personal':
+        return 'Pessoal';
     }
     return type;
   }
 
-  bool _isLiveNow(AccountProfileModel p) {
-    if (p.type != 'artist' || p.engagementData == null) return false;
-    final engagement = p.engagementData;
+  bool _isLiveNow(AccountProfileModel profile) {
+    if (profile.type != 'artist' || profile.engagementData == null) {
+      return false;
+    }
+    final engagement = profile.engagementData;
     if (engagement is ArtistEngagementData) {
       return engagement.status.toLowerCase().contains('agora');
     }
@@ -387,10 +495,14 @@ class DiscoveryScreenController implements Disposable {
   @override
   void onDispose() {
     _searchDebounce?.cancel();
+    searchController.removeListener(_handleSearchControllerChanged);
+    _userLocationSubscription?.cancel();
+    _lastKnownLocationSubscription?.cancel();
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
     availableTypesStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
+    isRefreshingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
     hasMoreStreamValue.dispose();
     hasLoadedStreamValue.dispose();

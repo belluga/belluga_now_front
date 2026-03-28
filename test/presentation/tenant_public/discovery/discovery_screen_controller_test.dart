@@ -103,6 +103,42 @@ void main() {
     controller.onDispose();
   });
 
+  test('discovery nearby section loads from independent repository request',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [
+            _profile(id: _mongoId('d1'), type: 'artist', name: 'Grid Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+      nearbyProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _mongoId('d2'),
+          name: 'Nearby Venue',
+          slug: 'nearby-venue',
+          type: 'artist',
+          distanceMeters: 320,
+        ),
+      ],
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(repository.nearbyFetchCalls, 1);
+    expect(controller.nearbyStreamValue.value, hasLength(1));
+    expect(controller.nearbyStreamValue.value.first.name, 'Nearby Venue');
+    expect(controller.nearbyStreamValue.value.first.distanceMeters, 320);
+    controller.onDispose();
+  });
+
   test(
       'discovery search keeps backend matches even when local name/tags do not match',
       () async {
@@ -135,6 +171,38 @@ void main() {
     expect(controller.filteredPartnersStreamValue.value.first.slug,
         'slug-exato-remoto');
     expect(repository.pageRequests.last.query, 'slug-exato-remoto');
+    controller.onDispose();
+  });
+
+  test('discovery selecting "Todos" resets to unfiltered list', () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [
+            _profile(id: _mongoId('t1'), type: 'artist', name: 'Artist One'),
+            _profile(id: _mongoId('t2'), type: 'venue', name: 'Venue One'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    expect(controller.filteredPartnersStreamValue.value, hasLength(2));
+
+    controller.setTypeFilter('artist');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
+
+    controller.setTypeFilter(null);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(controller.filteredPartnersStreamValue.value, hasLength(2));
+    expect(repository.pageRequests.last.typeFilter, isNull);
     controller.onDispose();
   });
 
@@ -211,13 +279,16 @@ void main() {
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     required this.pages,
+    this.nearbyProfiles = const <AccountProfileModel>[],
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
+  final List<AccountProfileModel> nearbyProfiles;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
       <String, AccountProfileModel>{};
+  int nearbyFetchCalls = 0;
 
   @override
   Future<void> init() async {
@@ -315,6 +386,17 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    nearbyFetchCalls += 1;
+    final source = nearbyProfiles.isEmpty
+        ? await fetchAllAccountProfiles()
+        : nearbyProfiles;
+    return source.take(pageSize).toList(growable: false);
+  }
+
+  @override
   Future<void> toggleFavorite(String accountProfileId) async {
     toggleCalls.add(accountProfileId);
     final current =
@@ -379,6 +461,13 @@ class _FailingAccountProfilesRepository
   }
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
   Future<void> toggleFavorite(String accountProfileId) async {}
 
   @override
@@ -439,6 +528,13 @@ class _InitFailingAccountProfilesRepository
   @override
   Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
     return null;
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    return firstPage.profiles.take(pageSize).toList(growable: false);
   }
 
   @override

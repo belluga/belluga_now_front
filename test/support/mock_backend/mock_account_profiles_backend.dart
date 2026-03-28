@@ -21,6 +21,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final filtered =
@@ -45,6 +46,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.searchAccountProfiles(
@@ -55,5 +57,17 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.getAccountProfileBySlug(slug);
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final all = _database.allAccountProfiles;
+    if (all.isEmpty) {
+      return const <AccountProfileModel>[];
+    }
+    return all.take(pageSize).toList(growable: false);
   }
 }
