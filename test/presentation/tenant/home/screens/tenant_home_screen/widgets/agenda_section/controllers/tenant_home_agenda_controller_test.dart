@@ -1044,7 +1044,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     getEventsPageCallCount += 1;
     lastOriginLat = originLat;
     lastOriginLng = originLng;
-    return const PagedEventsResult(events: [], hasMore: false);
+    return PagedEventsResult(events: [], hasMore: false);
   }
 
   @override
@@ -1256,7 +1256,7 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
       throw Exception('forced transient first-page failure');
     }
 
-    return const PagedEventsResult(events: [], hasMore: false);
+    return PagedEventsResult(events: [], hasMore: false);
   }
 }
 

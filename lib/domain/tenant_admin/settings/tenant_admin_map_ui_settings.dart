@@ -88,7 +88,7 @@ class TenantAdminMapUiSettings {
 
   TenantAdminMapFilterMarkerOverride? _sanitizeMarkerOverride(
     TenantAdminMapFilterMarkerOverride? markerOverride, {
-    required TenantAdminMapUiSettingsPrimString? fallbackImageUri,
+    required Object? fallbackImageUri,
   }) {
     if (markerOverride == null) {
       return null;
@@ -105,10 +105,12 @@ class TenantAdminMapUiSettings {
       );
     }
 
+    final fallbackImageUriValue = TenantAdminOptionalUrlValue();
+    fallbackImageUriValue.parse(fallbackImageUri?.toString());
     final resolvedImageUri =
         markerOverride.imageUriValue?.nullableValue?.trim().isNotEmpty == true
             ? markerOverride.imageUriValue!.nullableValue!.trim()
-            : (fallbackImageUri?.trim() ?? '');
+            : (fallbackImageUriValue.nullableValue?.trim() ?? '');
     if (resolvedImageUri.isEmpty) {
       return null;
     }

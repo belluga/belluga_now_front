@@ -1,14 +1,24 @@
 part of 'engagement_data.dart';
 
-typedef CuratorArticleCount = int;
-typedef CuratorDocCount = int;
-
 class CuratorEngagementData extends EngagementData {
-  final CuratorArticleCount articleCount;
-  final CuratorDocCount docCount;
+  final EngagementCountValue articleCountValue;
+  final EngagementCountValue docCountValue;
 
-  const CuratorEngagementData({
-    required this.articleCount,
-    required this.docCount,
-  });
+  CuratorEngagementData({
+    required Object articleCount,
+    required Object docCount,
+  })  : articleCountValue = _parseCount(articleCount),
+        docCountValue = _parseCount(docCount);
+
+  int get articleCount => articleCountValue.value;
+  int get docCount => docCountValue.value;
+
+  static EngagementCountValue _parseCount(Object raw) {
+    if (raw is EngagementCountValue) {
+      return raw;
+    }
+    final value = EngagementCountValue();
+    value.parse(raw.toString());
+    return value;
+  }
 }

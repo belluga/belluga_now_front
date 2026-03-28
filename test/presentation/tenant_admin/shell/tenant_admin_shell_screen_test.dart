@@ -41,7 +41,7 @@ void main() {
       appData: _buildAppData(
         envType: 'landlord',
         hostname: 'belluga.space',
-        domains: const ['https://belluga.space'],
+        domains: ['https://belluga.space'],
       ),
     );
     final controller = TenantAdminShellController(
@@ -92,7 +92,7 @@ void main() {
       appData: _buildAppData(
         envType: 'landlord',
         hostname: 'belluga.space',
-        domains: const ['https://belluga.space'],
+        domains: ['https://belluga.space'],
       ),
     );
 
@@ -101,7 +101,7 @@ void main() {
       appDataRepository: appDataRepository,
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _FixedLandlordTenantsRepository(
-        const [
+        [
           LandlordTenantOption(
             id: 'tenant-guarappari',
             name: 'Guarappari',
@@ -137,7 +137,7 @@ void main() {
       appData: _buildAppData(
         envType: 'tenant',
         hostname: 'guarappari.belluga.space',
-        domains: const [
+        domains: [
           'https://guarappari.belluga.space',
           'https://belluga.space',
         ],
@@ -167,7 +167,7 @@ void main() {
       appData: _buildAppData(
         envType: 'tenant',
         hostname: 'guarapari.belluga.space',
-        domains: const ['https://guarapari.belluga.space'],
+        domains: ['https://guarapari.belluga.space'],
       ),
     );
     final controller = TenantAdminShellController(
@@ -198,7 +198,7 @@ void main() {
       appData: _buildAppData(
         envType: 'landlord',
         hostname: 'belluga.space',
-        domains: const ['https://belluga.space'],
+        domains: ['https://belluga.space'],
       ),
     );
 
@@ -313,7 +313,7 @@ class _FakeSelectedTenantRepository
 
   final bool suppressSelectionStreamUpdates;
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
-      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
+      StreamValue<List<LandlordTenantOption>>(defaultValue: []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =

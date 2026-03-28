@@ -177,7 +177,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   }) async {
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
-      return const PagedAccountProfilesResult(
+      return PagedAccountProfilesResult(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );

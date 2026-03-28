@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef TenantAdminLoadedAccountWatchPrimString = String;
@@ -16,13 +17,14 @@ class TenantAdminLoadedAccountWatch {
 
   final StreamValue<TenantAdminAccount?> streamValue;
   final void Function() _onDispose;
-  TenantAdminLoadedAccountWatchPrimBool _disposed = false;
+  DomainBooleanValue _disposedValue = DomainBooleanValue()
+    ..parse(false.toString());
 
   void dispose() {
-    if (_disposed) {
+    if (_disposedValue.value) {
       return;
     }
-    _disposed = true;
+    _disposedValue = DomainBooleanValue()..parse(true.toString());
     _onDispose();
     streamValue.dispose();
   }

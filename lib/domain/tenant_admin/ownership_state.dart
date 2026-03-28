@@ -31,8 +31,7 @@ enum TenantAdminOwnershipState {
 
   OwnershipStatePrimString get subtitle => apiValue;
 
-  static TenantAdminOwnershipState fromApiValue(
-      OwnershipStatePrimString? value) {
+  static TenantAdminOwnershipState fromApiValue(Object? value) {
     final parsed = tryFromApiValue(value);
     if (parsed != null) {
       return parsed;
@@ -40,9 +39,9 @@ enum TenantAdminOwnershipState {
     throw FormatException('Invalid ownership_state value: $value');
   }
 
-  static TenantAdminOwnershipState? tryFromApiValue(
-      OwnershipStatePrimString? value) {
-    switch (value) {
+  static TenantAdminOwnershipState? tryFromApiValue(Object? value) {
+    final token = _normalizeApiValue(value);
+    switch (token) {
       case 'tenant_owned':
         return TenantAdminOwnershipState.tenantOwned;
       case 'unmanaged':
@@ -51,5 +50,15 @@ enum TenantAdminOwnershipState {
         return TenantAdminOwnershipState.userOwned;
     }
     return null;
+  }
+
+  static String? _normalizeApiValue(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    if (raw is TenantAdminTokenValue) {
+      return raw.value;
+    }
+    return raw.toString().trim().toLowerCase();
   }
 }

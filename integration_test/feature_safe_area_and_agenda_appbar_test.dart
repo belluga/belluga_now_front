@@ -298,7 +298,7 @@ class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     double? originLng,
     double? maxDistanceMeters,
   }) async {
-    return const PagedEventsResult(events: [], hasMore: false);
+    return PagedEventsResult(events: [], hasMore: false);
   }
 
   @override
@@ -453,7 +453,7 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
     String eventSlug,
   ) async {
-    return const [];
+    return [];
   }
 
   @override

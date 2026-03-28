@@ -278,7 +278,7 @@ class _FakeLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
-    return const [
+    return [
       LandlordTenantOption(
         id: 'tenant-guarappari',
         name: 'Guarappari',

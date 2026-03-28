@@ -7,7 +7,7 @@ void main() {
     final repository = TenantAdminSelectedTenantRepository();
 
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -24,7 +24,7 @@ void main() {
   test('selectTenantDomain preserves explicit origin and resolves tenant', () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -49,7 +49,7 @@ void main() {
       () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -78,7 +78,7 @@ void main() {
     repository.selectTenantDomain('http://tenant-a.example.com:8081');
 
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -98,7 +98,7 @@ void main() {
       () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -114,7 +114,7 @@ void main() {
 
     repository.selectTenantDomain('tenant-b.example.com');
     repository.setAvailableTenants(
-      const [
+      [
         LandlordTenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
@@ -139,7 +139,7 @@ void main() {
   test('clearSelectedTenantDomain clears both selected domain and option', () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.selectTenant(
-      const LandlordTenantOption(
+      LandlordTenantOption(
         id: 'tenant-c',
         name: 'Tenant C',
         mainDomain: 'tenant-c.example.com',

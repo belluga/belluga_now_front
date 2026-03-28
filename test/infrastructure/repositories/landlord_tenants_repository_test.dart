@@ -24,22 +24,22 @@ void main() {
     expect(
       tenants,
       equals([
-        const LandlordTenantOption(
+        LandlordTenantOption(
           id: 'alpha',
           name: 'Alpha Tenant',
           mainDomain: 'alpha.example.com',
         ),
-        const LandlordTenantOption(
+        LandlordTenantOption(
           id: 'beta',
           name: 'Beta Tenant',
           mainDomain: 'beta.example.com',
         ),
-        const LandlordTenantOption(
+        LandlordTenantOption(
           id: 'epsilon',
           name: 'Epsilon Tenant',
           mainDomain: 'epsilon.landlord.example.com',
         ),
-        const LandlordTenantOption(
+        LandlordTenantOption(
           id: 'gamma',
           name: 'Gamma Tenant',
           mainDomain: 'gamma.landlord.example.com',

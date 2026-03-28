@@ -168,7 +168,7 @@ abstract class AccountProfilesRepositoryContract {
       pagedAccountProfilesErrorStreamValue.addValue(error.toString());
       if (page == 1) {
         pagedAccountProfilesStreamValue.addValue(
-          const PagedAccountProfilesResult(
+          PagedAccountProfilesResult(
             profiles: <AccountProfileModel>[],
             hasMore: false,
           ),

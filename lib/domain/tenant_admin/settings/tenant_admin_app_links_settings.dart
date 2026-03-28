@@ -53,14 +53,12 @@ class TenantAdminAppLinksSettings {
   final TenantAdminTrimmedStringListValue iosPathsValue;
 
   Map<String, dynamic> get rawAppLinks => rawAppLinksValue.value;
-  String? get androidAppIdentifier =>
-      androidAppIdentifierValue?.value;
+  String? get androidAppIdentifier => androidAppIdentifierValue?.value;
   String? get androidPackageName => androidAppIdentifier;
   List<String> get androidSha256CertFingerprints =>
-          androidSha256CertFingerprintsValue.value;
+      androidSha256CertFingerprintsValue.value;
   String? get iosTeamId => iosTeamIdValue?.value;
-  String? get iosBundleId =>
-      iosBundleIdValue?.value;
+  String? get iosBundleId => iosBundleIdValue?.value;
   List<String> get iosPaths => iosPathsValue.value;
 
   TenantAdminAppLinksSettings applyValues({
@@ -164,8 +162,10 @@ class TenantAdminAppLinksSettings {
     );
   }
 
-  static List<String> _sanitizeIosPaths(List<String> raw) {
-    final selected = TenantAdminTrimmedStringListValue(raw).value.toSet();
+  static List<String> _sanitizeIosPaths(Iterable<Object?> raw) {
+    final selected = TenantAdminTrimmedStringListValue(
+      raw.map((item) => item?.toString() ?? ''),
+    ).value.toSet();
     final sanitized = <String>[];
     for (final canonical in canonicalIosPaths) {
       if (selected.contains(canonical)) {

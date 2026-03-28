@@ -69,7 +69,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     double? originLng,
     double? maxDistanceMeters,
   }) async =>
-      const PagedEventsResult(events: <EventModel>[], hasMore: false);
+      PagedEventsResult(events: <EventModel>[], hasMore: false);
 
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async =>

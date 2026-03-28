@@ -41,8 +41,8 @@ class TenantAdminTaxonomyDefinition {
   TenantAdminTaxonomyDefinitionPrimString? get color =>
       colorValue.nullableValue;
 
-  TenantAdminTaxonomyDefinitionPrimBool appliesToTarget(
-      TenantAdminTaxonomyDefinitionPrimString target) {
-    return appliesTo.contains(target);
+  TenantAdminTaxonomyDefinitionPrimBool appliesToTarget(Object target) {
+    final targetValue = tenantAdminRequiredText(target);
+    return appliesTo.contains(targetValue.value);
   }
 }

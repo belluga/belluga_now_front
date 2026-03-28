@@ -253,7 +253,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       ),
     );
     var result = pages[page] ??
-        const PagedAccountProfilesResult(
+        PagedAccountProfilesResult(
           profiles: <AccountProfileModel>[],
           hasMore: false,
         );
@@ -420,7 +420,7 @@ class _InitFailingAccountProfilesRepository
   }) async {
     fetchPageCalls += 1;
     if (page != 1) {
-      return const PagedAccountProfilesResult(
+      return PagedAccountProfilesResult(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );

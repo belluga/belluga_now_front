@@ -24,7 +24,7 @@ void main() {
         domains: ['tenant-one.example.com'],
       ),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -49,7 +49,7 @@ void main() {
         domains: ['tenant-a.example.com', 'tenant-b.example.com'],
       ),
       landlordTenantsRepository: _FakeLandlordTenantsRepository(
-        remoteTenants: const [
+        remoteTenants: [
           LandlordTenantOption(
             id: 'tenant-a',
             name: 'Tenant A',
@@ -80,7 +80,7 @@ void main() {
     final backendRepository = _ControllableLandlordTenantsRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository: backendRepository,
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
@@ -90,7 +90,7 @@ void main() {
     expect(controller.isTenantSelectionResolvingStreamValue.value, isTrue);
     expect(selectedTenantRepository.selectedTenantDomain, isNull);
 
-    backendRepository.complete(const [
+    backendRepository.complete([
       LandlordTenantOption(
         id: 'tenant-x',
         name: 'Tenant X',
@@ -111,9 +111,9 @@ void main() {
     final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -130,11 +130,11 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(
-        domains: const [],
+        domains: [],
         appDomains: ['com.tenant.app'],
       ),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -150,7 +150,7 @@ void main() {
     final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository: _ThrowingLandlordTenantsRepository(),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
@@ -307,7 +307,7 @@ class _ThrowingLandlordTenantsRepository
 class _FakeSelectedTenantRepository
     implements TenantAdminSelectedTenantRepositoryContract {
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
-      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
+      StreamValue<List<LandlordTenantOption>>(defaultValue: []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =

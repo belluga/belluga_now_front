@@ -27,7 +27,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
         _database.searchAccountProfiles(query: query, typeFilter: typeFilter);
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || startIndex < 0) {
-      return const PagedAccountProfilesResult(
+      return PagedAccountProfilesResult(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );

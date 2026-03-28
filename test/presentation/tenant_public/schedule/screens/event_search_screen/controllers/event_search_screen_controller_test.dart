@@ -382,7 +382,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     if (failOnPageFetch) {
       throw Exception('forced first-page failure');
     }
-    return const PagedEventsResult(events: [], hasMore: false);
+    return PagedEventsResult(events: [], hasMore: false);
   }
 
   @override

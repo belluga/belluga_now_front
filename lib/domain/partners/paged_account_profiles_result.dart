@@ -1,13 +1,23 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-
-typedef HasMoreProfilesFlag = bool;
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 
 class PagedAccountProfilesResult {
-  const PagedAccountProfilesResult({
+  PagedAccountProfilesResult({
     required this.profiles,
-    required this.hasMore,
-  });
+    required Object hasMore,
+  }) : hasMoreValue = _parseHasMore(hasMore);
 
   final List<AccountProfileModel> profiles;
-  final HasMoreProfilesFlag hasMore;
+  final DomainBooleanValue hasMoreValue;
+
+  bool get hasMore => hasMoreValue.value;
+
+  static DomainBooleanValue _parseHasMore(Object raw) {
+    if (raw is DomainBooleanValue) {
+      return raw;
+    }
+    final value = DomainBooleanValue();
+    value.parse(raw.toString());
+    return value;
+  }
 }

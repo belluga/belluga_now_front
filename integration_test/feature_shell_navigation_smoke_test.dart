@@ -348,7 +348,7 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     double? originLng,
     double? maxDistanceMeters,
   }) async =>
-      const PagedEventsResult(events: [], hasMore: false);
+      PagedEventsResult(events: [], hasMore: false);
 
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async =>

@@ -230,7 +230,7 @@ abstract class ScheduleRepositoryContract {
       pagedEventsErrorStreamValue.addValue(error.toString());
       if (page == 1) {
         pagedEventsStreamValue.addValue(
-            const PagedEventsResult(events: <EventModel>[], hasMore: false));
+            PagedEventsResult(events: <EventModel>[], hasMore: false));
         hasMorePagedEventsStreamValue.addValue(false);
       }
     } finally {

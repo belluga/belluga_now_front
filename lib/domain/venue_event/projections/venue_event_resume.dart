@@ -65,8 +65,10 @@ class VenueEventResume {
   VenueEventResumePrimString get artistNamesLabel =>
       artists.map((artist) => artist.displayName).join(', ');
 
-  static VenueEventResumePrimString slugify(VenueEventResumePrimString value) {
-    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  static VenueEventResumePrimString slugify(Object value) {
+    final rawValue =
+        value is VenueEventTagValue ? value.value : value.toString();
+    final slug = rawValue.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
