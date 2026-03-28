@@ -15,6 +15,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_search_term_valu
 import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
@@ -460,7 +462,7 @@ class MapScreenController implements Disposable {
   }) async {
     try {
       await _poiRepository.loadStackItems(
-        stackKey: normalizedStackQuery,
+        stackKey: PoiStackKeyValue()..parse(normalizedStackQuery),
         query: _currentQuery,
       );
     } catch (error) {
@@ -521,8 +523,8 @@ class MapScreenController implements Disposable {
 
     try {
       return await _poiRepository.fetchPoiByReference(
-        refType: typedReference.refType,
-        refId: typedReference.refId,
+        refType: PoiReferenceTypeValue()..parse(typedReference.refType),
+        refId: PoiReferenceIdValue()..parse(typedReference.refId),
       );
     } catch (error) {
       debugPrint('Failed to lookup poi ${typedReference.refType}:'
@@ -614,7 +616,7 @@ class MapScreenController implements Disposable {
 
     try {
       await _poiRepository.loadStackItems(
-        stackKey: poi.stackKey,
+        stackKey: PoiStackKeyValue()..parse(poi.stackKey),
         query: _currentQuery,
       );
       final stackItems =

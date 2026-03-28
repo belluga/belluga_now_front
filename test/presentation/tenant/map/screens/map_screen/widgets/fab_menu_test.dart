@@ -14,6 +14,9 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_v
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -93,21 +96,21 @@ class _FakePoiRepository implements PoiRepositoryContract {
 
   @override
   Future<List<CityPoiModel>> fetchStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) async =>
       null;
 
   @override
   Future<void> loadStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
     final stackItems = await fetchStackItems(

@@ -17,10 +17,13 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_term_va
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 
 class CityMapRepository extends CityMapRepositoryContract {
@@ -40,11 +43,11 @@ class CityMapRepository extends CityMapRepositoryContract {
   @override
   Future<List<CityPoiModel>> fetchStackItems({
     required PoiQuery query,
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
   }) async {
     final dtos = await _laravelHttpService.getPois(
       query,
-      stackKey: stackKey,
+      stackKey: stackKey.value,
     );
     if (dtos.isEmpty) {
       return const <CityPoiModel>[];
@@ -56,7 +59,7 @@ class CityMapRepository extends CityMapRepositoryContract {
     }
     return _attachStackContext(
       stackItems,
-      stackKey: stackKey,
+      stackKey: stackKey.value,
       stackCount:
           dtos.first.stackCount > 0 ? dtos.first.stackCount : stackItems.length,
     );
@@ -64,12 +67,12 @@ class CityMapRepository extends CityMapRepositoryContract {
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) async {
     final dto = await _laravelHttpService.lookupPoiByReference(
-      refType: refType,
-      refId: refId,
+      refType: refType.value,
+      refId: refId.value,
     );
     return dto?.toDomain();
   }
@@ -222,8 +225,12 @@ class CityMapRepository extends CityMapRepositoryContract {
   }
 
   @override
-  Future<String> fetchFallbackEventImage() async {
-    return '';
+  Future<ThumbUriValue> fetchFallbackEventImage() async {
+    final value = ThumbUriValue(
+      defaultValue: Uri.parse('asset://event-placeholder'),
+    );
+    value.parse(value.defaultValue.toString());
+    return value;
   }
 
   @override

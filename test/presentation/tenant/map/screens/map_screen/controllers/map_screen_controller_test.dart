@@ -37,6 +37,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -268,10 +269,10 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   @override
   Future<List<CityPoiModel>> fetchStackItems({
     required PoiQuery query,
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
   }) async {
     lastStackQuery = query;
-    lastStackKey = stackKey;
+    lastStackKey = stackKey.value;
     if (throwOnFetchStackItems) {
       throw Exception('forced stack fetch failure');
     }
@@ -280,11 +281,11 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) async {
-    lastLookupRefType = refType;
-    lastLookupRefId = refId;
+    lastLookupRefType = refType.value;
+    lastLookupRefId = refId.value;
     if (throwOnLookupPoi) {
       throw Exception('forced lookup failure');
     }
@@ -302,7 +303,13 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   Future<List<MapRegionDefinition>> fetchRegions() async => const [];
 
   @override
-  Future<String> fetchFallbackEventImage() async => '';
+  Future<ThumbUriValue> fetchFallbackEventImage() async {
+    final value = ThumbUriValue(
+      defaultValue: Uri.parse('asset://event-placeholder'),
+    );
+    value.parse(value.defaultValue.toString());
+    return value;
+  }
 
   @override
   Stream<PoiUpdateEvent?> get poiEvents => _poiEventsController.stream;
