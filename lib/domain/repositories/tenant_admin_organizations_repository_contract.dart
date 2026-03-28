@@ -1,15 +1,16 @@
 import 'dart:math' as math;
 
+import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_organizations_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef TenantAdminOrganizationsRepositoryContractPrimString = String;
-typedef TenantAdminOrganizationsRepositoryContractPrimInt = int;
-typedef TenantAdminOrganizationsRepositoryContractPrimBool = bool;
-typedef TenantAdminOrganizationsRepositoryContractPrimDouble = double;
-typedef TenantAdminOrganizationsRepositoryContractPrimDateTime = DateTime;
-typedef TenantAdminOrganizationsRepositoryContractPrimDynamic = dynamic;
+typedef TenantAdminOrganizationsRepositoryContractPrimString
+    = TenantAdminOrganizationsRepositoryContractTextValue;
+typedef TenantAdminOrganizationsRepositoryContractPrimInt
+    = TenantAdminOrganizationsRepositoryContractIntValue;
+typedef TenantAdminOrganizationsRepositoryContractPrimBool
+    = TenantAdminOrganizationsRepositoryContractBoolValue;
 
 abstract class TenantAdminOrganizationsRepositoryContract {
   static final Expando<_TenantAdminOrganizationsPaginationState>
@@ -35,23 +36,44 @@ abstract class TenantAdminOrganizationsRepositoryContract {
       get organizationsErrorStreamValue =>
           _paginationState.organizationsErrorStreamValue;
 
-  Future<void> loadOrganizations(
-      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
+  Future<void> loadOrganizations({
+    TenantAdminOrganizationsRepositoryContractPrimInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ??
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          20,
+          defaultValue: 20,
+        );
     await _waitForOrganizationsFetch();
     _resetOrganizationsPagination();
     organizationsStreamValue.addValue(null);
-    await _fetchOrganizationsPage(page: 1, pageSize: pageSize);
+    await _fetchOrganizationsPage(
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
+    );
   }
 
-  Future<void> loadNextOrganizationsPage(
-      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
-    if (_paginationState.isFetchingOrganizationsPage ||
-        !_paginationState.hasMoreOrganizations) {
+  Future<void> loadNextOrganizationsPage({
+    TenantAdminOrganizationsRepositoryContractPrimInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ??
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          20,
+          defaultValue: 20,
+        );
+    if (_paginationState.isFetchingOrganizationsPage.value ||
+        !_paginationState.hasMoreOrganizations.value) {
       return;
     }
     await _fetchOrganizationsPage(
-      page: _paginationState.currentOrganizationsPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        _paginationState.currentOrganizationsPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
     );
   }
 
@@ -68,20 +90,21 @@ abstract class TenantAdminOrganizationsRepositoryContract {
     required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     final organizations = await fetchOrganizations();
-    if (page <= 0 || pageSize <= 0) {
+    if (page.value <= 0 || pageSize.value <= 0) {
       return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
-    final startIndex = (page - 1) * pageSize;
+    final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= organizations.length) {
       return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
-    final endIndex = math.min(startIndex + pageSize, organizations.length);
+    final endIndex =
+        math.min(startIndex + pageSize.value, organizations.length);
     return TenantAdminPagedResult<TenantAdminOrganization>(
       items: organizations.sublist(startIndex, endIndex),
       hasMore: endIndex < organizations.length,
@@ -109,7 +132,7 @@ abstract class TenantAdminOrganizationsRepositoryContract {
       TenantAdminOrganizationsRepositoryContractPrimString organizationId);
 
   Future<void> _waitForOrganizationsFetch() async {
-    while (_paginationState.isFetchingOrganizationsPage) {
+    while (_paginationState.isFetchingOrganizationsPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -118,19 +141,28 @@ abstract class TenantAdminOrganizationsRepositoryContract {
     required TenantAdminOrganizationsRepositoryContractPrimInt page,
     required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
-    if (_paginationState.isFetchingOrganizationsPage) return;
-    if (page > 1 && !_paginationState.hasMoreOrganizations) return;
+    if (_paginationState.isFetchingOrganizationsPage.value) return;
+    if (page.value > 1 && !_paginationState.hasMoreOrganizations.value) return;
 
-    _paginationState.isFetchingOrganizationsPage = true;
-    if (page > 1) {
-      isOrganizationsPageLoadingStreamValue.addValue(true);
+    _paginationState.isFetchingOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    if (page.value > 1) {
+      isOrganizationsPageLoadingStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
+      );
     }
     try {
       final result = await fetchOrganizationsPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _paginationState.cachedOrganizations
           ..clear()
           ..addAll(result.items);
@@ -138,7 +170,11 @@ abstract class TenantAdminOrganizationsRepositoryContract {
         _paginationState.cachedOrganizations.addAll(result.items);
       }
       _paginationState.currentOrganizationsPage = page;
-      _paginationState.hasMoreOrganizations = result.hasMore;
+      _paginationState.hasMoreOrganizations =
+          TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        result.hasMore,
+        defaultValue: true,
+      );
       hasMoreOrganizationsStreamValue
           .addValue(_paginationState.hasMoreOrganizations);
       organizationsStreamValue.addValue(
@@ -148,23 +184,58 @@ abstract class TenantAdminOrganizationsRepositoryContract {
       );
       organizationsErrorStreamValue.addValue(null);
     } catch (error) {
-      organizationsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      organizationsErrorStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+          error.toString(),
+        ),
+      );
+      if (page.value == 1) {
         organizationsStreamValue.addValue(const <TenantAdminOrganization>[]);
       }
     } finally {
-      _paginationState.isFetchingOrganizationsPage = false;
-      isOrganizationsPageLoadingStreamValue.addValue(false);
+      _paginationState.isFetchingOrganizationsPage =
+          TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isOrganizationsPageLoadingStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
   void _resetOrganizationsPagination() {
     _paginationState.cachedOrganizations.clear();
-    _paginationState.currentOrganizationsPage = 0;
-    _paginationState.hasMoreOrganizations = true;
-    _paginationState.isFetchingOrganizationsPage = false;
-    hasMoreOrganizationsStreamValue.addValue(true);
-    isOrganizationsPageLoadingStreamValue.addValue(false);
+    _paginationState.currentOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+      0,
+      defaultValue: 0,
+    );
+    _paginationState.hasMoreOrganizations =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetchingOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreOrganizationsStreamValue.addValue(
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+    isOrganizationsPageLoadingStreamValue.addValue(
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
   }
 }
 
@@ -198,24 +269,45 @@ mixin TenantAdminOrganizationsPaginationMixin
           _mixinPaginationState.organizationsErrorStreamValue;
 
   @override
-  Future<void> loadOrganizations(
-      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
+  Future<void> loadOrganizations({
+    TenantAdminOrganizationsRepositoryContractPrimInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ??
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          20,
+          defaultValue: 20,
+        );
     await _waitForOrganizationsFetchMixin();
     _resetOrganizationsPaginationMixin();
     organizationsStreamValue.addValue(null);
-    await _fetchOrganizationsPageMixin(page: 1, pageSize: pageSize);
+    await _fetchOrganizationsPageMixin(
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
+    );
   }
 
   @override
-  Future<void> loadNextOrganizationsPage(
-      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
-    if (_mixinPaginationState.isFetchingOrganizationsPage ||
-        !_mixinPaginationState.hasMoreOrganizations) {
+  Future<void> loadNextOrganizationsPage({
+    TenantAdminOrganizationsRepositoryContractPrimInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ??
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          20,
+          defaultValue: 20,
+        );
+    if (_mixinPaginationState.isFetchingOrganizationsPage.value ||
+        !_mixinPaginationState.hasMoreOrganizations.value) {
       return;
     }
     await _fetchOrganizationsPageMixin(
-      page: _mixinPaginationState.currentOrganizationsPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        _mixinPaginationState.currentOrganizationsPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
     );
   }
 
@@ -227,7 +319,7 @@ mixin TenantAdminOrganizationsPaginationMixin
   }
 
   Future<void> _waitForOrganizationsFetchMixin() async {
-    while (_mixinPaginationState.isFetchingOrganizationsPage) {
+    while (_mixinPaginationState.isFetchingOrganizationsPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -236,19 +328,30 @@ mixin TenantAdminOrganizationsPaginationMixin
     required TenantAdminOrganizationsRepositoryContractPrimInt page,
     required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
-    if (_mixinPaginationState.isFetchingOrganizationsPage) return;
-    if (page > 1 && !_mixinPaginationState.hasMoreOrganizations) return;
+    if (_mixinPaginationState.isFetchingOrganizationsPage.value) return;
+    if (page.value > 1 && !_mixinPaginationState.hasMoreOrganizations.value) {
+      return;
+    }
 
-    _mixinPaginationState.isFetchingOrganizationsPage = true;
-    if (page > 1) {
-      isOrganizationsPageLoadingStreamValue.addValue(true);
+    _mixinPaginationState.isFetchingOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    if (page.value > 1) {
+      isOrganizationsPageLoadingStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
+      );
     }
     try {
       final result = await fetchOrganizationsPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _mixinPaginationState.cachedOrganizations
           ..clear()
           ..addAll(result.items);
@@ -256,7 +359,11 @@ mixin TenantAdminOrganizationsPaginationMixin
         _mixinPaginationState.cachedOrganizations.addAll(result.items);
       }
       _mixinPaginationState.currentOrganizationsPage = page;
-      _mixinPaginationState.hasMoreOrganizations = result.hasMore;
+      _mixinPaginationState.hasMoreOrganizations =
+          TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        result.hasMore,
+        defaultValue: true,
+      );
       hasMoreOrganizationsStreamValue
           .addValue(_mixinPaginationState.hasMoreOrganizations);
       organizationsStreamValue.addValue(
@@ -266,23 +373,58 @@ mixin TenantAdminOrganizationsPaginationMixin
       );
       organizationsErrorStreamValue.addValue(null);
     } catch (error) {
-      organizationsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      organizationsErrorStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+          error.toString(),
+        ),
+      );
+      if (page.value == 1) {
         organizationsStreamValue.addValue(const <TenantAdminOrganization>[]);
       }
     } finally {
-      _mixinPaginationState.isFetchingOrganizationsPage = false;
-      isOrganizationsPageLoadingStreamValue.addValue(false);
+      _mixinPaginationState.isFetchingOrganizationsPage =
+          TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isOrganizationsPageLoadingStreamValue.addValue(
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
   void _resetOrganizationsPaginationMixin() {
     _mixinPaginationState.cachedOrganizations.clear();
-    _mixinPaginationState.currentOrganizationsPage = 0;
-    _mixinPaginationState.hasMoreOrganizations = true;
-    _mixinPaginationState.isFetchingOrganizationsPage = false;
-    hasMoreOrganizationsStreamValue.addValue(true);
-    isOrganizationsPageLoadingStreamValue.addValue(false);
+    _mixinPaginationState.currentOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+      0,
+      defaultValue: 0,
+    );
+    _mixinPaginationState.hasMoreOrganizations =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _mixinPaginationState.isFetchingOrganizationsPage =
+        TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreOrganizationsStreamValue.addValue(
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+    isOrganizationsPageLoadingStreamValue.addValue(
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
   }
 }
 
@@ -294,18 +436,36 @@ class _TenantAdminOrganizationsPaginationState {
   final StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
       hasMoreOrganizationsStreamValue =
       StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>(
-          defaultValue: true);
+          defaultValue:
+              TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+    true,
+    defaultValue: true,
+  ));
   final StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
       isOrganizationsPageLoadingStreamValue =
       StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>(
-          defaultValue: false);
+          defaultValue:
+              TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+    false,
+    defaultValue: false,
+  ));
   final StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>
       organizationsErrorStreamValue =
       StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>();
   TenantAdminOrganizationsRepositoryContractPrimBool
-      isFetchingOrganizationsPage = false;
+      isFetchingOrganizationsPage =
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
   TenantAdminOrganizationsRepositoryContractPrimBool hasMoreOrganizations =
-      true;
+      TenantAdminOrganizationsRepositoryContractPrimBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
   TenantAdminOrganizationsRepositoryContractPrimInt currentOrganizationsPage =
-      0;
+      TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
 }

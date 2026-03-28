@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:dio/dio.dart';
@@ -30,7 +31,16 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchOrganizationsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchOrganizationsPage(
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        2,
+        defaultValue: 2,
+      ),
+    );
 
     expect(page.items, hasLength(2));
     expect(page.hasMore, isTrue);
@@ -51,12 +61,22 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'organizations',
-      loadFirstPage: () => repository.loadOrganizations(pageSize: 2),
-      loadNextPage: () => repository.loadNextOrganizationsPage(pageSize: 2),
+      loadFirstPage: () => repository.loadOrganizations(
+        pageSize: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          2,
+          defaultValue: 2,
+        ),
+      ),
+      loadNextPage: () => repository.loadNextOrganizationsPage(
+        pageSize: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          2,
+          defaultValue: 2,
+        ),
+      ),
       resetState: repository.resetOrganizationsState,
       readItems: () => repository.organizationsStreamValue.value,
-      readHasMore: () => repository.hasMoreOrganizationsStreamValue.value,
-      readError: () => repository.organizationsErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreOrganizationsStreamValue.value.value,
+      readError: () => repository.organizationsErrorStreamValue.value?.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
     );
@@ -72,7 +92,16 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchOrganizationsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchOrganizationsPage(
+      page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+        2,
+        defaultValue: 2,
+      ),
+    );
 
     expect(page.items, isNotEmpty);
     expect(page.items.first.slug, isNull);

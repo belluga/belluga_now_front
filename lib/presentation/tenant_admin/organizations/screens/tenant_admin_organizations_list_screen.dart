@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -36,20 +37,23 @@ class _TenantAdminOrganizationsListScreenState
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<String?>(
+    return StreamValueBuilder<
+        TenantAdminOrganizationsRepositoryContractPrimString?>(
       streamValue: _controller.errorStreamValue,
       builder: (context, error) {
-        return StreamValueBuilder<bool>(
+        return StreamValueBuilder<
+            TenantAdminOrganizationsRepositoryContractPrimBool>(
           streamValue: _controller.hasMoreOrganizationsStreamValue,
           builder: (context, hasMore) {
-            return StreamValueBuilder<bool>(
+            return StreamValueBuilder<
+                TenantAdminOrganizationsRepositoryContractPrimBool>(
               streamValue: _controller.isOrganizationsPageLoadingStreamValue,
               builder: (context, isPageLoading) {
                 return StreamValueBuilder<List<TenantAdminOrganization>?>(
                   streamValue: _controller.organizationsStreamValue,
                   onNullWidget: _buildScaffold(
                     context: context,
-                    error: error,
+                    error: error?.value,
                     body: const Center(child: CircularProgressIndicator()),
                   ),
                   builder: (context, organizations) {
@@ -57,7 +61,7 @@ class _TenantAdminOrganizationsListScreenState
                         organizations ?? const <TenantAdminOrganization>[];
                     return _buildScaffold(
                       context: context,
-                      error: error,
+                      error: error?.value,
                       body: loadedOrganizations.isEmpty
                           ? const TenantAdminEmptyState(
                               icon: Icons.apartment_outlined,
@@ -67,8 +71,8 @@ class _TenantAdminOrganizationsListScreenState
                             )
                           : _buildOrganizationsList(
                               organizations: loadedOrganizations,
-                              hasMore: hasMore,
-                              isPageLoading: isPageLoading,
+                              hasMore: hasMore.value,
+                              isPageLoading: isPageLoading.value,
                             ),
                     );
                   },

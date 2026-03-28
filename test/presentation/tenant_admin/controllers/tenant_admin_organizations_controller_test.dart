@@ -40,14 +40,16 @@ class _FakeOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> createOrganization({
-    required String name,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString name,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteOrganization(String organizationId) async {
+  Future<void> deleteOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -58,18 +60,20 @@ class _FakeOrganizationsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminOrganization>>
       fetchOrganizationsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminOrganizationsRepositoryContractPrimInt page,
+    required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     final all = await fetchOrganizations();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= all.length) {
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= all.length) {
       return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
-    final end = start + pageSize < all.length ? start + pageSize : all.length;
+    final end = start + pageSize.value < all.length
+        ? start + pageSize.value
+        : all.length;
     return TenantAdminPagedResult<TenantAdminOrganization>(
       items: all.sublist(start, end),
       hasMore: end < all.length,
@@ -77,26 +81,33 @@ class _FakeOrganizationsRepository
   }
 
   @override
-  Future<TenantAdminOrganization> fetchOrganization(String organizationId) {
+  Future<TenantAdminOrganization> fetchOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> forceDeleteOrganization(String organizationId) async {
+  Future<void> forceDeleteOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<TenantAdminOrganization> restoreOrganization(String organizationId) {
+  Future<TenantAdminOrganization> restoreOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminOrganization> updateOrganization({
-    required String organizationId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString
+        organizationId,
+    TenantAdminOrganizationsRepositoryContractPrimString? name,
+    TenantAdminOrganizationsRepositoryContractPrimString? slug,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   }) {
     throw UnimplementedError();
   }
