@@ -184,38 +184,38 @@ class _FailingDeleteEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {
     throw StateError('delete failed');
   }
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(TenantAdminEventsRepoString eventIdOrSlug) async {
     throw UnimplementedError();
   }
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     return <TenantAdminEvent>[];
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
@@ -225,8 +225,8 @@ class _FailingDeleteEventsRepository
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
@@ -236,7 +236,7 @@ class _FailingDeleteEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
@@ -351,41 +351,41 @@ class _TrackingEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {}
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {}
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(TenantAdminEventsRepoString eventIdOrSlug) async {
     throw UnimplementedError();
   }
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     fetchEventsCalls += 1;
-    lastLoadArchived = archived;
+    lastLoadArchived = archived?.value;
     return <TenantAdminEvent>[];
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     fetchEventsPageCalls += 1;
-    lastLoadArchived = archived;
+    lastLoadArchived = archived?.value;
     return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
@@ -394,8 +394,8 @@ class _TrackingEventsRepository
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
@@ -405,7 +405,7 @@ class _TrackingEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
@@ -486,7 +486,7 @@ class _AccountScopedEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     createOwnCalls += 1;
@@ -506,10 +506,10 @@ class _AccountScopedEventsRepository
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {}
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {}
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(TenantAdminEventsRepoString eventIdOrSlug) async {
     throw UnimplementedError();
   }
 
@@ -528,9 +528,9 @@ class _AccountScopedEventsRepository
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     fetchEventsCalls += 1;
     return <TenantAdminEvent>[];
@@ -538,11 +538,11 @@ class _AccountScopedEventsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     fetchEventsPageCalls += 1;
     return TenantAdminPagedResult<TenantAdminEvent>(
@@ -553,11 +553,11 @@ class _AccountScopedEventsRepository
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     partyCandidatesCalls += 1;
-    lastPartyCandidatesAccountSlug = accountSlug;
+    lastPartyCandidatesAccountSlug = accountSlug?.value;
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
@@ -566,7 +566,7 @@ class _AccountScopedEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
@@ -579,17 +579,17 @@ class _EventTypeUpdateTrackingRepository
 
   @override
   Future<TenantAdminEventType> updateEventType({
-    required String eventTypeId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
   }) async {
-    lastUpdateDescription = description;
+    lastUpdateDescription = description?.value;
     return TenantAdminEventType(
-      id: eventTypeId,
-      name: name ?? 'Show',
-      slug: slug ?? 'show',
-      description: description,
+      id: eventTypeId.value,
+      name: name?.value ?? 'Show',
+      slug: slug?.value ?? 'show',
+      description: description?.value,
     );
   }
 }

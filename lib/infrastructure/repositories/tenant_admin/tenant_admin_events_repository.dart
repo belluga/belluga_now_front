@@ -90,9 +90,9 @@ class TenantAdminEventsRepository
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     var page = 1;
     const pageSize = 100;
@@ -101,8 +101,9 @@ class TenantAdminEventsRepository
 
     while (hasMore) {
       final result = await fetchEventsPage(
-        page: page,
-        pageSize: pageSize,
+        page: TenantAdminEventsRepoInt.fromRaw(page, defaultValue: page),
+        pageSize:
+            TenantAdminEventsRepoInt.fromRaw(pageSize, defaultValue: pageSize),
         search: search,
         status: status,
         archived: archived,
@@ -117,23 +118,26 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     try {
-      final normalizedSearch = search?.trim();
+      final normalizedSearch = search?.value.trim();
+      final normalizedStatus = status?.value.trim();
+      final archivedValue = archived?.value ?? false;
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
           if (normalizedSearch != null && normalizedSearch.isNotEmpty)
             'search': normalizedSearch,
-          if (status != null && status.trim().isNotEmpty) 'status': status,
-          if (archived) 'archived': 1,
+          if (normalizedStatus != null && normalizedStatus.isNotEmpty)
+            'status': normalizedStatus,
+          if (archivedValue) 'archived': 1,
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
@@ -141,7 +145,7 @@ class TenantAdminEventsRepository
         items: _responseDecoder.decodeEventList(response.data),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -150,10 +154,12 @@ class TenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/events/$eventIdOrSlug',
+        '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
         options: Options(headers: _buildLandlordHeaders()),
       );
       return _responseDecoder.decodeEventItem(response.data);
@@ -196,7 +202,7 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     try {
@@ -214,7 +220,7 @@ class TenantAdminEventsRepository
             )
           : payload;
       final response = await _dio.post(
-        '$_tenantApiBaseUrl/v1/accounts/$accountSlug/events',
+        '$_tenantApiBaseUrl/v1/accounts/${accountSlug.value}/events',
         data: requestPayload,
         options: Options(
           headers: _buildAccountHeaders(),
@@ -229,7 +235,7 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     try {
@@ -241,7 +247,7 @@ class TenantAdminEventsRepository
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final response = hasMultipart
           ? await _dio.post(
-              '$_apiBaseUrl/v1/events/$eventId',
+              '$_apiBaseUrl/v1/events/${eventId.value}',
               data: _prepareEventMultipartPayload(
                 payload: payload,
                 uploadPayload: uploadPayload,
@@ -254,7 +260,7 @@ class TenantAdminEventsRepository
               ),
             )
           : await _dio.patch(
-              '$_apiBaseUrl/v1/events/$eventId',
+              '$_apiBaseUrl/v1/events/${eventId.value}',
               data: payload,
               options: Options(headers: _buildLandlordHeaders()),
             );
@@ -265,10 +271,10 @@ class TenantAdminEventsRepository
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/events/$eventId',
+        '$_apiBaseUrl/v1/events/${eventId.value}',
         options: Options(headers: _buildLandlordHeaders()),
       );
     } on DioException catch (error) {
@@ -292,17 +298,17 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminEventType> createEventType({
-    required String name,
-    required String slug,
-    String? description,
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
   }) async {
     try {
-      final normalizedDescription = description?.trim();
+      final normalizedDescription = description?.value.trim();
       final response = await _dio.post(
         '$_apiBaseUrl/v1/event_types',
         data: {
-          'name': name,
-          'slug': slug,
+          'name': name.value,
+          'slug': slug.value,
           if (normalizedDescription != null && normalizedDescription.isNotEmpty)
             'description': normalizedDescription,
         },
@@ -316,22 +322,22 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminEventType> updateEventType({
-    required String eventTypeId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
   }) async {
     try {
-      final normalizedDescription = description?.trim();
+      final normalizedDescription = description?.value.trim();
       final payload = _requestEncoder.encodeEventTypePatch(
-        name: name,
-        slug: slug,
+        name: name?.value,
+        slug: slug?.value,
         description: normalizedDescription,
         includeDescription: true,
       );
 
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/event_types/$eventTypeId',
+        '$_apiBaseUrl/v1/event_types/${eventTypeId.value}',
         data: payload,
         options: Options(headers: _buildLandlordHeaders()),
       );
@@ -343,10 +349,10 @@ class TenantAdminEventsRepository
   }
 
   @override
-  Future<void> deleteEventType(String eventTypeId) async {
+  Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/event_types/$eventTypeId',
+        '$_apiBaseUrl/v1/event_types/${eventTypeId.value}',
         options: Options(headers: _buildLandlordHeaders()),
       );
     } on DioException catch (error) {
@@ -356,11 +362,11 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     try {
-      final normalizedAccountSlug = accountSlug?.trim();
+      final normalizedAccountSlug = accountSlug?.value.trim();
       final isAccountScoped =
           normalizedAccountSlug != null && normalizedAccountSlug.isNotEmpty;
 
@@ -369,7 +375,8 @@ class TenantAdminEventsRepository
             ? '$_tenantApiBaseUrl/v1/accounts/$normalizedAccountSlug/events/party_candidates'
             : '$_apiBaseUrl/v1/events/party_candidates',
         queryParameters: {
-          if (search != null && search.trim().isNotEmpty) 'search': search,
+          if (search != null && search.value.trim().isNotEmpty)
+            'search': search.value,
           'limit': 100,
         },
         options: Options(

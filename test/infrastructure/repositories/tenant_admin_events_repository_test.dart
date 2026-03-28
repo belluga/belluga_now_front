@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -16,6 +17,27 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  TenantAdminEventsRepoString _repoText(String value) {
+    return TenantAdminEventsRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  TenantAdminEventsRepoInt _repoInt(int value) {
+    return TenantAdminEventsRepoInt.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  TenantAdminEventsRepoBool _repoBool(bool value) {
+    return TenantAdminEventsRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
   Future<void> registerAuth({
     required String landlordToken,
     required String accountToken,
@@ -166,7 +188,7 @@ void main() {
     );
 
     await repository.createOwnEvent(
-      accountSlug: 'my-account',
+      accountSlug: _repoText('my-account'),
       draft: _buildDraft(),
     );
 
@@ -215,7 +237,7 @@ void main() {
     );
 
     await repository.updateEvent(
-      eventId: 'evt-1',
+      eventId: _repoText('evt-1'),
       draft: _buildDraft(removeCover: true),
     );
 
@@ -239,8 +261,8 @@ void main() {
 
     await expectLater(
       repository.fetchEventsPage(
-        page: 1,
-        pageSize: 20,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
       ),
       throwsA(
         isA<FormatException>().having(
@@ -263,9 +285,9 @@ void main() {
     );
 
     await repository.fetchEventsPage(
-      page: 1,
-      pageSize: 20,
-      archived: true,
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      archived: _repoBool(true),
     );
 
     final request = adapter.requests.lastWhere(
@@ -364,7 +386,9 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(search: 'main');
+    final candidates = await repository.fetchPartyCandidates(
+      search: _repoText('main'),
+    );
 
     expect(candidates.venues, hasLength(1));
     expect(candidates.venues.first.id, 'venue-1');
@@ -394,8 +418,8 @@ void main() {
     );
 
     final candidates = await repository.fetchPartyCandidates(
-      search: 'main',
-      accountSlug: 'my-account',
+      search: _repoText('main'),
+      accountSlug: _repoText('my-account'),
     );
 
     expect(candidates.venues, hasLength(1));
@@ -426,7 +450,9 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(search: 'legacy');
+    final candidates = await repository.fetchPartyCandidates(
+      search: _repoText('legacy'),
+    );
 
     expect(candidates.venues, isEmpty);
     expect(candidates.artists, isEmpty);
@@ -443,7 +469,7 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: 'main'),
+      () => repository.fetchPartyCandidates(search: _repoText('main')),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -471,7 +497,7 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: 'main'),
+      () => repository.fetchPartyCandidates(search: _repoText('main')),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -502,9 +528,9 @@ void main() {
     );
 
     await repository.updateEventType(
-      eventTypeId: '507f1f77bcf86cd799439011',
-      name: 'Show',
-      slug: 'show',
+      eventTypeId: _repoText('507f1f77bcf86cd799439011'),
+      name: _repoText('Show'),
+      slug: _repoText('show'),
       description: null,
     );
 
@@ -533,9 +559,9 @@ void main() {
     );
 
     await repository.createEventType(
-      name: 'Show',
-      slug: 'show',
-      description: '   ',
+      name: _repoText('Show'),
+      slug: _repoText('show'),
+      description: _repoText('   '),
     );
 
     final request = adapter.requests.singleWhere(

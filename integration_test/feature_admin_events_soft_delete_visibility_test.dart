@@ -250,7 +250,7 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
@@ -258,15 +258,15 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {
-    final index = _events.indexWhere((event) => event.eventId == eventId);
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {
+    final index = _events.indexWhere((event) => event.eventId == eventId.value);
     if (index < 0) {
       return;
     }
@@ -292,44 +292,44 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     return _filterEvents(
-      status: status,
-      archived: archived,
+      status: status?.value,
+      archived: archived?.value ?? false,
     );
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     final filtered = _filterEvents(
-      status: status,
-      archived: archived,
+      status: status?.value,
+      archived: archived?.value ?? false,
     );
-    if (page <= 0 || pageSize <= 0) {
+    if (page.value <= 0 || pageSize.value <= 0) {
       return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
-    final start = (page - 1) * pageSize;
+    final start = (page.value - 1) * pageSize.value;
     if (start >= filtered.length) {
       return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
-    final end = (start + pageSize) > filtered.length
+    final end = (start + pageSize.value) > filtered.length
         ? filtered.length
-        : (start + pageSize);
+        : (start + pageSize.value);
     return TenantAdminPagedResult<TenantAdminEvent>(
       items: filtered.sublist(start, end),
       hasMore: end < filtered.length,
@@ -357,14 +357,14 @@ class _FakeTenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(TenantAdminEventsRepoString eventIdOrSlug) async {
     return _events.first;
   }
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
