@@ -34,14 +34,15 @@ class DiscoveryFilterChips extends StatelessWidget {
                 child: ChoiceChip(
                   label: Text(item.label),
                   selected: selectedType == item.type,
+                  showCheckmark: false,
                   selectedColor: colorScheme.primary,
-                  backgroundColor: colorScheme.primaryContainer,
+                  backgroundColor: colorScheme.secondaryContainer,
                   side: BorderSide.none,
                   labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: selectedType == item.type
                             ? colorScheme.onPrimary
-                            : colorScheme.onPrimaryContainer,
+                            : colorScheme.onSecondaryContainer,
                       ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999),

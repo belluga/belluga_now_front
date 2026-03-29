@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -356,10 +357,14 @@ class TenantAdminEventsResponseDecoder {
 
   DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
-      return value;
+      return TimezoneConverter.utcToLocal(value);
     }
     if (value is String && value.trim().isNotEmpty) {
-      return DateTime.tryParse(value)?.toLocal();
+      final parsed = DateTime.tryParse(value);
+      if (parsed == null) {
+        return null;
+      }
+      return TimezoneConverter.utcToLocal(parsed);
     }
     return null;
   }

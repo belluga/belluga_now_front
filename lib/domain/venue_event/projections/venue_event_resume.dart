@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -53,7 +54,7 @@ class VenueEventResume {
     if (date == null) {
       throw StateError('startDateTime should not be null');
     }
-    return date;
+    return TimezoneConverter.utcToLocal(date);
   }
 
   VenueEventResumePrimString get location => locationValue.value;

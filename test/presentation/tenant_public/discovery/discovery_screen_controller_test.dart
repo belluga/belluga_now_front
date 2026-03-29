@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
@@ -14,7 +21,9 @@ import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
@@ -149,6 +158,24 @@ void main() {
 
   test('discovery live-now section loads real event page with live_now_only',
       () async {
+    final preferredRadiusMeters = 9200.0;
+    final locationRepository = _FakeUserLocationRepository(
+      userCoordinate: _coordinate(
+        latitude: -20.671339,
+        longitude: -40.495395,
+      ),
+    );
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(),
+      maxRadiusMeters: preferredRadiusMeters,
+    );
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      locationRepository,
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      appDataRepository,
+    );
+
     final repository = _FakeAccountProfilesRepository(
       pages: {
         1: PagedAccountProfilesResult(
@@ -179,6 +206,13 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
     expect(scheduleRepository.liveNowFetchCalls, 1);
+    expect(scheduleRepository.lastLiveNowRequest, isNotNull);
+    expect(scheduleRepository.lastLiveNowRequest!.originLat,
+        closeTo(-20.671339, 0.000001));
+    expect(scheduleRepository.lastLiveNowRequest!.originLng,
+        closeTo(-40.495395, 0.000001));
+    expect(scheduleRepository.lastLiveNowRequest!.maxDistanceMeters,
+        closeTo(preferredRadiusMeters, 0.000001));
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
     expect(controller.liveNowEventsStreamValue.value.first.slug, 'evento-live');
     expect(
@@ -186,6 +220,196 @@ void main() {
       'Artista Live',
     );
     controller.onDispose();
+  });
+
+  test(
+      'discovery live-now reloads when user location arrives during first live-now fetch',
+      () async {
+    final locationRepository = _FakeUserLocationRepository();
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(),
+      maxRadiusMeters: 9200.0,
+    );
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      locationRepository,
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      appDataRepository,
+    );
+
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [
+            _profile(id: _mongoId('lr1'), type: 'artist', name: 'Grid Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final scheduleRepository = _FakeDiscoveryScheduleRepository(
+      liveNowEvents: [
+        _event(
+          id: _mongoId('evt-live-race'),
+          slug: 'evento-live-race',
+          title: 'Evento ao vivo corrida',
+          artistName: 'Artista Corrida',
+        ),
+      ],
+      requireOriginForLiveNow: true,
+      liveNowFetchDelay: const Duration(milliseconds: 80),
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      scheduleRepository: scheduleRepository,
+    );
+
+    await controller.init();
+    await scheduleRepository.waitUntilFirstLiveNowFetchStarts();
+
+    locationRepository.userLocationStreamValue.addValue(
+      _coordinate(
+        latitude: -20.671339,
+        longitude: -40.495395,
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+
+    expect(scheduleRepository.liveNowFetchCalls, 2);
+    expect(scheduleRepository.lastLiveNowRequest, isNotNull);
+    expect(
+      scheduleRepository.lastLiveNowRequest!.originLat,
+      closeTo(-20.671339, 0.000001),
+    );
+    expect(
+      scheduleRepository.lastLiveNowRequest!.originLng,
+      closeTo(-40.495395, 0.000001),
+    );
+    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+    expect(controller.liveNowEventsStreamValue.value.first.slug,
+        'evento-live-race');
+    controller.onDispose();
+  });
+
+  test(
+      'discovery live-now resolves ScheduleRepositoryContract registered after controller construction',
+      () async {
+    final locationRepository = _FakeUserLocationRepository(
+      userCoordinate: _coordinate(
+        latitude: -20.671339,
+        longitude: -40.495395,
+      ),
+    );
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(),
+      maxRadiusMeters: 9200.0,
+    );
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      locationRepository,
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      appDataRepository,
+    );
+
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: const PagedAccountProfilesResult(
+          profiles: <AccountProfileModel>[],
+          hasMore: false,
+        ),
+      },
+    );
+
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    final scheduleRepository = _FakeDiscoveryScheduleRepository(
+      liveNowEvents: [
+        _event(
+          id: _mongoId('evt-live-late'),
+          slug: 'evento-live-late',
+          title: 'Evento ao vivo tardio',
+          artistName: 'Artista Tardio',
+          thumbUrl: null,
+        ),
+      ],
+    );
+    GetIt.I.registerSingleton<ScheduleRepositoryContract>(
+      scheduleRepository,
+    );
+
+    await controller.init();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(scheduleRepository.liveNowFetchCalls, 1);
+    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+    expect(controller.liveNowEventsStreamValue.value.first.slug,
+        'evento-live-late');
+    controller.onDispose();
+  });
+
+  testWidgets(
+      'DiscoveryScreen renders "Tocando agora" when live-now stream contains events',
+      (tester) async {
+    final locationRepository = _FakeUserLocationRepository(
+      userCoordinate: _coordinate(
+        latitude: -20.671339,
+        longitude: -40.495395,
+      ),
+    );
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(),
+      maxRadiusMeters: 9200.0,
+    );
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      locationRepository,
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      appDataRepository,
+    );
+
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: const PagedAccountProfilesResult(
+          profiles: <AccountProfileModel>[],
+          hasMore: false,
+        ),
+      },
+    );
+    final scheduleRepository = _FakeDiscoveryScheduleRepository(
+      liveNowEvents: [
+        _event(
+          id: _mongoId('evt-live-ui'),
+          slug: 'evento-live-ui',
+          title: 'Evento ao vivo UI',
+          artistName: 'Artista UI',
+          thumbUrl: null,
+        ),
+      ],
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DiscoveryScreen(),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(find.text('Tocando agora'), findsOneWidget);
+    expect(find.text('Artista UI'), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
   test(
@@ -214,7 +438,17 @@ void main() {
 
     await controller.init();
     controller.setSearchQuery('slug-exato-remoto');
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    final deadline = DateTime.now().add(const Duration(seconds: 2));
+    while (DateTime.now().isBefore(deadline)) {
+      final latestQuery = repository.pageRequests.isEmpty
+          ? null
+          : repository.pageRequests.last.query;
+      final partners = controller.filteredPartnersStreamValue.value;
+      if (latestQuery == 'slug-exato-remoto' && partners.length == 1) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
 
     expect(controller.filteredPartnersStreamValue.value, hasLength(1));
     expect(controller.filteredPartnersStreamValue.value.first.slug,
@@ -669,11 +903,20 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   _FakeDiscoveryScheduleRepository({
     required this.liveNowEvents,
+    this.requireOriginForLiveNow = false,
+    this.liveNowFetchDelay = Duration.zero,
   });
 
   final List<EventModel> liveNowEvents;
+  final bool requireOriginForLiveNow;
+  final Duration liveNowFetchDelay;
   int liveNowFetchCalls = 0;
+  _LiveNowRequest? lastLiveNowRequest;
   HomeAgendaCacheSnapshot? _cacheSnapshot;
+  final Completer<void> _firstLiveNowFetchStarted = Completer<void>();
+
+  Future<void> waitUntilFirstLiveNowFetchStarts() =>
+      _firstLiveNowFetchStarted.future;
 
   @override
   final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
@@ -761,8 +1004,26 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   }) async {
     if (liveNowOnly) {
       liveNowFetchCalls += 1;
+      if (!_firstLiveNowFetchStarted.isCompleted) {
+        _firstLiveNowFetchStarted.complete();
+      }
+      lastLiveNowRequest = _LiveNowRequest(
+        page: page,
+        pageSize: pageSize,
+        showPastOnly: showPastOnly,
+        originLat: originLat,
+        originLng: originLng,
+        maxDistanceMeters: maxDistanceMeters,
+      );
+      if (liveNowFetchDelay > Duration.zero) {
+        await Future<void>.delayed(liveNowFetchDelay);
+      }
+      final hasOrigin = originLat != null && originLng != null;
+      final events = requireOriginForLiveNow && !hasOrigin
+          ? const <EventModel>[]
+          : liveNowEvents.take(pageSize).toList(growable: false);
       return PagedEventsResult(
-        events: liveNowEvents.take(pageSize).toList(growable: false),
+        events: events,
         hasMore: false,
       );
     }
@@ -824,6 +1085,24 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   }
 }
 
+class _LiveNowRequest {
+  const _LiveNowRequest({
+    required this.page,
+    required this.pageSize,
+    required this.showPastOnly,
+    required this.originLat,
+    required this.originLng,
+    required this.maxDistanceMeters,
+  });
+
+  final int page;
+  final int pageSize;
+  final bool showPastOnly;
+  final double? originLat;
+  final double? originLng;
+  final double? maxDistanceMeters;
+}
+
 class _PageRequest {
   const _PageRequest({
     required this.page,
@@ -836,6 +1115,125 @@ class _PageRequest {
   final int pageSize;
   final String? query;
   final String? typeFilter;
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository({
+    required AppData appData,
+    required double maxRadiusMeters,
+  })  : _appData = appData,
+        _maxRadiusMeters = maxRadiusMeters {
+    maxRadiusMetersStreamValue.addValue(maxRadiusMeters);
+  }
+
+  final AppData _appData;
+  double _maxRadiusMeters;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
+
+  @override
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeModeStreamValue.addValue(mode);
+  }
+
+  @override
+  final StreamValue<double> maxRadiusMetersStreamValue =
+      StreamValue<double>(defaultValue: 0);
+
+  @override
+  double get maxRadiusMeters => _maxRadiusMeters;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => true;
+
+  @override
+  Future<void> setMaxRadiusMeters(double meters) async {
+    _maxRadiusMeters = meters;
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
+}
+
+class _FakeUserLocationRepository extends UserLocationRepositoryContract {
+  _FakeUserLocationRepository({
+    CityCoordinate? userCoordinate,
+    CityCoordinate? lastKnownCoordinate,
+  }) {
+    userLocationStreamValue.addValue(userCoordinate);
+    lastKnownLocationStreamValue.addValue(lastKnownCoordinate);
+  }
+
+  @override
+  final StreamValue<CityCoordinate?> userLocationStreamValue =
+      StreamValue<CityCoordinate?>();
+
+  @override
+  final StreamValue<CityCoordinate?> lastKnownLocationStreamValue =
+      StreamValue<CityCoordinate?>();
+
+  @override
+  final StreamValue<DateTime?> lastKnownCapturedAtStreamValue =
+      StreamValue<DateTime?>();
+
+  @override
+  final StreamValue<double?> lastKnownAccuracyStreamValue =
+      StreamValue<double?>();
+
+  @override
+  final StreamValue<String?> lastKnownAddressStreamValue =
+      StreamValue<String?>();
+
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
+
+  @override
+  Future<void> ensureLoaded() async {}
+
+  @override
+  Future<void> setLastKnownAddress(String? address) async {
+    lastKnownAddressStreamValue.addValue(address);
+  }
+
+  @override
+  Future<bool> warmUpIfPermitted() async {
+    return userLocationStreamValue.value != null ||
+        lastKnownLocationStreamValue.value != null;
+  }
+
+  @override
+  Future<bool> refreshIfPermitted({
+    Duration minInterval = const Duration(seconds: 30),
+  }) async {
+    return warmUpIfPermitted();
+  }
+
+  @override
+  Future<String?> resolveUserLocation() async {
+    return null;
+  }
+
+  @override
+  Future<bool> startTracking({
+    LocationTrackingMode mode = LocationTrackingMode.mapForeground,
+  }) async {
+    return true;
+  }
+
+  @override
+  Future<void> stopTracking() async {}
 }
 
 AppData _buildAppData() {
@@ -888,6 +1286,16 @@ AppData _buildAppData() {
       remoteData: remoteData, localInfo: localInfo);
 }
 
+CityCoordinate _coordinate({
+  required double latitude,
+  required double longitude,
+}) {
+  return CityCoordinate(
+    latitudeValue: LatitudeValue()..parse(latitude.toString()),
+    longitudeValue: LongitudeValue()..parse(longitude.toString()),
+  );
+}
+
 AccountProfileModel _profile({
   required String id,
   required String type,
@@ -906,6 +1314,7 @@ EventModel _event({
   required String slug,
   required String title,
   required String artistName,
+  String? thumbUrl = 'https://tenant.test/live.jpg',
 }) {
   return EventDTO.fromJson({
     'event_id': id,
@@ -933,10 +1342,11 @@ EventModel _event({
         'genres': ['samba'],
       },
     ],
-    'thumb': {
-      'type': 'image',
-      'data': {'url': 'https://tenant.test/live.jpg'},
-    },
+    if (thumbUrl != null)
+      'thumb': {
+        'type': 'image',
+        'data': {'url': thumbUrl},
+      },
   }).toDomain();
 }
 

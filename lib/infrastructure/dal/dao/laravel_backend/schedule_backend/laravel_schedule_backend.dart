@@ -123,11 +123,12 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     final params = <String, dynamic>{
       'page': page,
       'page_size': pageSize,
-      'past_only': showPastOnly ? 1 : 0,
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
     if (liveNowOnly) {
       params['live_now_only'] = 1;
+    } else {
+      params['past_only'] = showPastOnly ? 1 : 0;
     }
 
     final normalizedSearchQuery = searchQuery?.trim();

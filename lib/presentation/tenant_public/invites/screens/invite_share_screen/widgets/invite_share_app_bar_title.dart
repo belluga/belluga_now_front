@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +13,7 @@ class InviteShareAppBarTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final date = invite.eventDateTime.toLocal();
+    final date = TimezoneConverter.utcToLocal(invite.eventDateTime);
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     final hour = date.hour.toString().padLeft(2, '0');

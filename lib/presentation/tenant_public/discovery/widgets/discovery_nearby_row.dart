@@ -73,7 +73,7 @@ class DiscoveryNearbyRow extends StatelessWidget {
                               bottom: 2,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary,
+                                  color: colorScheme.tertiary,
                                   border: Border.all(
                                     color: colorScheme.surface,
                                     width: 2,
@@ -94,7 +94,7 @@ class DiscoveryNearbyRow extends StatelessWidget {
                                         .textTheme
                                         .labelSmall
                                         ?.copyWith(
-                                          color: colorScheme.onPrimary,
+                                          color: colorScheme.onTertiary,
                                           fontWeight: FontWeight.w700,
                                         ),
                                   ),

@@ -4,6 +4,7 @@ export 'tenant_admin_event_type_form_state.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -233,9 +234,15 @@ class TenantAdminEventsController implements Disposable {
       bucket.add(term.value);
     }
     final nextState = TenantAdminEventFormState(
-      startAt: firstOccurrence?.dateTimeStart.toLocal(),
-      endAt: firstOccurrence?.dateTimeEnd?.toLocal(),
-      publishAt: existingEvent?.publication.publishAt?.toLocal(),
+      startAt: firstOccurrence?.dateTimeStart == null
+          ? null
+          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeStart),
+      endAt: firstOccurrence?.dateTimeEnd == null
+          ? null
+          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeEnd!),
+      publishAt: existingEvent?.publication.publishAt == null
+          ? null
+          : TimezoneConverter.utcToLocal(existingEvent!.publication.publishAt!),
       locationMode: existingEvent?.location?.mode ?? 'physical',
       publicationStatus: existingEvent?.publication.status ?? 'draft',
       selectedVenueId: existingEvent?.placeRef?.id,
@@ -907,7 +914,7 @@ class TenantAdminEventsController implements Disposable {
     if (dateTime == null) {
       return '';
     }
-    final local = dateTime.toLocal();
+    final local = TimezoneConverter.utcToLocal(dateTime);
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
     final hour = local.hour.toString().padLeft(2, '0');

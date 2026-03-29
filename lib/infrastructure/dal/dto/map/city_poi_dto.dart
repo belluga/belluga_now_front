@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -199,7 +200,9 @@ class CityPoiDTO {
       'stack_count': stackCount,
       'items': items.map((item) => item.toJson()).toList(growable: false),
       'is_happening_now': isHappeningNow,
-      'updated_at': updatedAt?.toUtc().toIso8601String(),
+      'updated_at': updatedAt == null
+          ? null
+          : TimezoneConverter.localToUtc(updatedAt!).toIso8601String(),
       'distance_meters': distanceMeters,
       if (visual != null) 'visual': visual!.toJson(),
     };

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:auto_route/auto_route.dart';
@@ -276,7 +277,10 @@ class _ImmersiveEventDetailScreenState
 
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
-    final eventDate = event.dateTimeStart.value ?? DateTime.now();
+    final rawEventDate = event.dateTimeStart.value;
+    final eventDate = rawEventDate == null
+        ? DateTime.now()
+        : TimezoneConverter.utcToLocal(rawEventDate);
     final fallbackImageValue = ThumbUriValue(
       defaultValue: _controller.defaultEventImageUri,
       isRequired: true,
@@ -309,8 +313,8 @@ class _ImmersiveEventDetailScreenState
       )..parse(imageUrl),
       locationValue: InviteLocationValue()..parse(locationLabel),
       hostNameValue: InviteHostNameValue()..parse(hostName),
-      messageValue:
-          InviteMessageValue()..parse(description.isEmpty ? 'Partiu $eventName?' : description),
+      messageValue: InviteMessageValue()
+        ..parse(description.isEmpty ? 'Partiu $eventName?' : description),
       tagValues: parsedTags,
       occurrenceIdValue: InviteOccurrenceIdValue(),
       attendancePolicyValue: InviteAttendancePolicyValue(

@@ -172,6 +172,7 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     expect(options!.queryParameters['live_now_only'], 1);
+    expect(options.queryParameters.containsKey('past_only'), isFalse);
   });
 }
 

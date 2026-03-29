@@ -1,6 +1,14 @@
+import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
+
+class _LiveArtistItem {
+  final ArtistResume artist;
+  final EventModel event;
+
+  _LiveArtistItem(this.artist, this.event);
+}
 
 class DiscoveryLiveNowSection extends StatelessWidget {
   const DiscoveryLiveNowSection({
@@ -18,39 +26,48 @@ class DiscoveryLiveNowSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _LiveNowHeader(),
-          const SizedBox(height: 10),
-          if (items.length == 1)
-            _LiveNowCard(
-              event: items.first,
-              onTap: () => onTap(items.first),
-            )
-          else
-            SizedBox(
-              height: 188,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final event = items[index];
-                  return SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.88,
-                    child: _LiveNowCard(
-                      event: event,
-                      onTap: () => onTap(event),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
+    final uniqueArtists = <String, _LiveArtistItem>{};
+    for (final event in items) {
+      for (final artist in event.artists) {
+        if (!uniqueArtists.containsKey(artist.id)) {
+          uniqueArtists[artist.id] = _LiveArtistItem(artist, event);
+        }
+      }
+    }
+
+    final liveArtists = uniqueArtists.values.toList();
+    if (liveArtists.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: _LiveNowHeader(),
+        ),
+        SizedBox(
+          height: 196,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: liveArtists.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final item = liveArtists[index];
+              return SizedBox(
+                width: MediaQuery.of(context).size.width * 0.42,
+                child: _LiveArtistCard(
+                  item: item,
+                  onTap: () => onTap(item.event),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 32),
+      ],
     );
   }
 }
@@ -103,36 +120,35 @@ class _LiveNowHeader extends StatelessWidget {
   }
 }
 
-class _LiveNowCard extends StatelessWidget {
-  const _LiveNowCard({
-    required this.event,
+class _LiveArtistCard extends StatelessWidget {
+  const _LiveArtistCard({
+    required this.item,
     required this.onTap,
   });
 
-  final EventModel event;
+  final _LiveArtistItem item;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final imageUrl = _resolveImageUrl(event);
-    final venueLabel = _resolveVenueLabel(event).toUpperCase();
+    final imageUrl = item.artist.avatarUri?.toString();
+    final venueLabel = _resolveVenueLabel(item.event).toUpperCase();
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(20),
       child: Ink(
-        height: 188,
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Stack(
           fit: StackFit.expand,
           children: [
             if (imageUrl != null && imageUrl.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(20),
                 child: BellugaNetworkImage(
                   imageUrl,
                   fit: BoxFit.cover,
@@ -140,66 +156,60 @@ class _LiveNowCard extends StatelessWidget {
                 ),
               ),
             ClipRRect(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(20),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.72),
+                      Colors.black.withValues(alpha: 0.82),
                       Colors.black.withValues(alpha: 0.28),
-                      Colors.black.withValues(alpha: 0.06),
+                      Colors.transparent,
                     ],
                   ),
                 ),
               ),
             ),
             Positioned(
-              top: 14,
-              left: 16,
-              child: Text(
-                venueLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.8,
-                    ),
-              ),
-            ),
-            Positioned(
-              left: 16,
-              right: 16,
+              left: 14,
+              right: 14,
               bottom: 14,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    event.title.value,
+                    item.artist.displayName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
+                          height: 1.15,
                         ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      FilledButton(
-                        onPressed: onTap,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text('Ver detalhes'),
+                      Icon(
+                        Icons.pin_drop,
+                        size: 12,
+                        color: Colors.white.withValues(alpha: 0.85),
                       ),
-                      const Spacer(),
-                      _LiveNowArtistStack(event: event),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          venueLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -210,111 +220,6 @@ class _LiveNowCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _LiveNowArtistStack extends StatelessWidget {
-  const _LiveNowArtistStack({required this.event});
-
-  final EventModel event;
-
-  @override
-  Widget build(BuildContext context) {
-    final artists = event.artists;
-    if (artists.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final visible = artists.take(3).toList(growable: false);
-    final extraCount = artists.length - visible.length;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      width: 92,
-      height: 30,
-      child: Stack(
-        children: [
-          for (var index = 0; index < visible.length; index++)
-            Positioned(
-              left: index * 18,
-              child: _ArtistAvatar(
-                imageUrl: visible[index].avatarUri?.toString(),
-                fallbackLabel: visible[index].displayName,
-              ),
-            ),
-          if (extraCount > 0)
-            Positioned(
-              left: visible.length * 18,
-              child: CircleAvatar(
-                radius: 15,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Text(
-                  '+$extraCount',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArtistAvatar extends StatelessWidget {
-  const _ArtistAvatar({
-    required this.imageUrl,
-    required this.fallbackLabel,
-  });
-
-  final String? imageUrl;
-  final String fallbackLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final trimmedLabel = fallbackLabel.trim();
-    final colorScheme = Theme.of(context).colorScheme;
-    final initial =
-        trimmedLabel.isEmpty ? '?' : trimmedLabel.substring(0, 1).toUpperCase();
-
-    return CircleAvatar(
-      radius: 15,
-      backgroundColor: colorScheme.surface,
-      child: CircleAvatar(
-        radius: 13,
-        backgroundColor: colorScheme.surfaceContainerHighest,
-        backgroundImage: (imageUrl != null && imageUrl!.trim().isNotEmpty)
-            ? NetworkImage(imageUrl!)
-            : null,
-        child: (imageUrl == null || imageUrl!.trim().isEmpty)
-            ? Text(
-                initial,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              )
-            : null,
-      ),
-    );
-  }
-}
-
-String? _resolveImageUrl(EventModel event) {
-  final thumb = event.thumb?.thumbUri.value.toString();
-  if (thumb != null && thumb.trim().isNotEmpty) {
-    return thumb;
-  }
-  final hero = event.venue?.heroImageUrl;
-  if (hero != null && hero.trim().isNotEmpty) {
-    return hero;
-  }
-  final logo = event.venue?.logoImageUrl;
-  if (logo != null && logo.trim().isNotEmpty) {
-    return logo;
-  }
-  return null;
 }
 
 String _resolveVenueLabel(EventModel event) {

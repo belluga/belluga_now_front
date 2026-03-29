@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 
 class TenantAdminEventsRequestEncoder {
@@ -38,17 +39,21 @@ class TenantAdminEventsRequestEncoder {
       },
       'occurrences': draft.occurrences
           .map((occurrence) => <String, dynamic>{
-                'date_time_start':
-                    occurrence.dateTimeStart.toUtc().toIso8601String(),
+                'date_time_start': TimezoneConverter.localToUtc(
+                  occurrence.dateTimeStart,
+                ).toIso8601String(),
                 if (occurrence.dateTimeEnd != null)
-                  'date_time_end':
-                      occurrence.dateTimeEnd!.toUtc().toIso8601String(),
+                  'date_time_end': TimezoneConverter.localToUtc(
+                    occurrence.dateTimeEnd!,
+                  ).toIso8601String(),
               })
           .toList(growable: false),
       'publication': <String, dynamic>{
         'status': draft.publication.status,
         if (draft.publication.publishAt != null)
-          'publish_at': draft.publication.publishAt!.toUtc().toIso8601String(),
+          'publish_at': TimezoneConverter.localToUtc(
+            draft.publication.publishAt!,
+          ).toIso8601String(),
       },
     };
 

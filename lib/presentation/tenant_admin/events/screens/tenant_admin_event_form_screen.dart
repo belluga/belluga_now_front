@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
@@ -510,9 +511,11 @@ class _TenantAdminEventFormScreenState
             onTap: _pickStartDateTime,
             validator: (_) {
               final startAt = formState.startAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventStartController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventStartController.text,
+                    ),
+                  );
               if (startAt == null) {
                 return 'Início é obrigatório.';
               }
@@ -528,13 +531,17 @@ class _TenantAdminEventFormScreenState
                 formState.endAt == null ? null : _controller.clearEventEndAt,
             validator: (_) {
               final startAt = formState.startAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventStartController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventStartController.text,
+                    ),
+                  );
               final endAt = formState.endAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventEndController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventEndController.text,
+                    ),
+                  );
               if (endAt == null) {
                 return null;
               }
@@ -589,9 +596,11 @@ class _TenantAdminEventFormScreenState
                   return null;
                 }
                 final publishAt = formState.publishAt ??
-                    _parseDateTimeFromField(
-                      _controller.eventPublishAtController.text,
-                    )?.toLocal();
+                    _toLocalDateTime(
+                      _parseDateTimeFromField(
+                        _controller.eventPublishAtController.text,
+                      ),
+                    );
                 if (publishAt == null) {
                   return 'Publish at é obrigatório para publish_scheduled.';
                 }
@@ -1233,22 +1242,26 @@ class _TenantAdminEventFormScreenState
     }
 
     final startAt = formState.startAt ??
-        _parseDateTimeFromField(_controller.eventStartController.text)
-            ?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventStartController.text),
+        );
 
     if (startAt == null) {
       return;
     }
 
     final endAt = formState.endAt ??
-        _parseDateTimeFromField(_controller.eventEndController.text)?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventEndController.text),
+        );
     if (endAt != null && endAt.isBefore(startAt)) {
       return;
     }
 
     final publishAt = formState.publishAt ??
-        _parseDateTimeFromField(_controller.eventPublishAtController.text)
-            ?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventPublishAtController.text),
+        );
 
     final selectedType = eventTypes.firstWhereOrNull(
       (type) => type.slug.trim() == (formState.selectedTypeSlug ?? '').trim(),
@@ -1330,15 +1343,20 @@ class _TenantAdminEventFormScreenState
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
-            dateTimeStartValue: tenantAdminDateTime(startAt.toUtc()),
-            dateTimeEndValue: tenantAdminOptionalDateTime(endAt?.toUtc()),
+            dateTimeStartValue:
+                tenantAdminDateTime(TimezoneConverter.localToUtc(startAt)),
+            dateTimeEndValue: tenantAdminOptionalDateTime(
+              endAt == null ? null : TimezoneConverter.localToUtc(endAt),
+            ),
           ),
         ],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(formState.publicationStatus),
           publishAtValue: tenantAdminOptionalDateTime(
             formState.publicationStatus == 'publish_scheduled'
-                ? publishAt?.toUtc()
+                ? publishAt == null
+                    ? null
+                    : TimezoneConverter.localToUtc(publishAt)
                 : null,
           ),
         ),
@@ -1415,6 +1433,13 @@ class _TenantAdminEventFormScreenState
     final normalized =
         trimmed.contains('T') ? trimmed : trimmed.replaceFirst(' ', 'T');
     return DateTime.tryParse(normalized);
+  }
+
+  DateTime? _toLocalDateTime(DateTime? value) {
+    if (value == null) {
+      return null;
+    }
+    return TimezoneConverter.utcToLocal(value);
   }
 }
 

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -30,14 +32,11 @@ class DiscoveryScreenController implements Disposable {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
-        _scheduleRepository = scheduleRepository ??
-            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-                ? GetIt.I.get<ScheduleRepositoryContract>()
-                : null);
+        _scheduleRepository = scheduleRepository;
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
-  final ScheduleRepositoryContract? _scheduleRepository;
+  ScheduleRepositoryContract? _scheduleRepository;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
@@ -50,6 +49,7 @@ class DiscoveryScreenController implements Disposable {
   bool _isFetchingPage = false;
   bool _isFetchingNearby = false;
   bool _isFetchingLiveNow = false;
+  bool _hasPendingLiveNowReload = false;
   bool _hasMore = true;
   bool _scrollListenerAttached = false;
   int _currentPage = 0;
@@ -167,6 +167,7 @@ class DiscoveryScreenController implements Disposable {
     }
     _lastOriginSignature = signature;
     unawaited(_reloadNearbySection());
+    unawaited(_reloadLiveNowSection());
   }
 
   Future<void> _reloadPartners({bool showFullScreenLoader = false}) async {
@@ -415,10 +416,17 @@ class DiscoveryScreenController implements Disposable {
   }
 
   Future<void> _reloadLiveNowSection() async {
-    final scheduleRepository = _scheduleRepository;
-    if (scheduleRepository == null || _isFetchingLiveNow) {
+    final scheduleRepository = _resolveScheduleRepository();
+    if (scheduleRepository == null) {
       return;
     }
+    if (_isFetchingLiveNow) {
+      _hasPendingLiveNowReload = true;
+      return;
+    }
+
+    final origin = _resolveDiscoveryOrigin();
+    final maxDistanceMeters = _resolveDiscoveryMaxDistanceMeters();
 
     _isFetchingLiveNow = true;
     try {
@@ -427,6 +435,9 @@ class DiscoveryScreenController implements Disposable {
         pageSize: 10,
         showPastOnly: false,
         liveNowOnly: true,
+        originLat: origin?.latitude,
+        originLng: origin?.longitude,
+        maxDistanceMeters: maxDistanceMeters,
       );
       liveNowEventsStreamValue.addValue(page.events);
     } catch (error) {
@@ -434,6 +445,10 @@ class DiscoveryScreenController implements Disposable {
           'DiscoveryScreenController._reloadLiveNowSection failed: $error');
     } finally {
       _isFetchingLiveNow = false;
+      if (_hasPendingLiveNowReload) {
+        _hasPendingLiveNowReload = false;
+        unawaited(_reloadLiveNowSection());
+      }
     }
   }
 
@@ -477,11 +492,48 @@ class DiscoveryScreenController implements Disposable {
     return appData?.profileTypeRegistry;
   }
 
+  CityCoordinate? _resolveDiscoveryOrigin() {
+    UserLocationRepositoryContract? locationRepository;
+    if (GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+      locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
+      final current = locationRepository.userLocationStreamValue.value ??
+          locationRepository.lastKnownLocationStreamValue.value;
+      if (current != null) {
+        return current;
+      }
+    }
+    return appData?.tenantDefaultOrigin;
+  }
+
+  double? _resolveDiscoveryMaxDistanceMeters() {
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      final repository = GetIt.I.get<AppDataRepositoryContract>();
+      final preferred = repository.maxRadiusMetersStreamValue.value;
+      if (preferred > 0) {
+        return preferred;
+      }
+    }
+    return appData?.mapRadiusDefaultMeters;
+  }
+
   AppData? get appData {
     if (!GetIt.I.isRegistered<AppData>()) {
       return null;
     }
     return GetIt.I.get<AppData>();
+  }
+
+  ScheduleRepositoryContract? _resolveScheduleRepository() {
+    final cached = _scheduleRepository;
+    if (cached != null) {
+      return cached;
+    }
+    if (!GetIt.I.isRegistered<ScheduleRepositoryContract>()) {
+      return null;
+    }
+    final resolved = GetIt.I.get<ScheduleRepositoryContract>();
+    _scheduleRepository = resolved;
+    return resolved;
   }
 
   String _fallbackLabelForType(String type) {
