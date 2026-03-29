@@ -26,6 +26,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -227,7 +228,18 @@ void main() {
 
       await _waitForFinder(tester, find.text('BORA? Agitar a galera!'));
       expect(userEventsRepository.confirmCalls, 1);
-      expect(userEventsRepository.isEventConfirmed(event.id.value), isTrue);
+      expect(
+        userEventsRepository
+            .isEventConfirmed(
+              userEventsRepoString(
+                event.id.value,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .value,
+        isTrue,
+      );
 
       await app.appRouter.maybePop();
       await _pumpFor(tester, const Duration(milliseconds: 500));
@@ -505,8 +517,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
-    _maxRadiusMetersStreamValue.addValue(meters);
+  Future<void> setMaxRadiusMeters(Object meters) async {
+    _maxRadiusMetersStreamValue.addValue(meters is num
+        ? meters.toDouble()
+        : (meters as dynamic).value as double);
   }
 }
 
@@ -583,7 +597,10 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     return ScheduleSummaryModel(
       items: [
         ScheduleSummaryItemModel(
-          dateTimeStart: _event.dateTimeStart.value ?? DateTime.now(),
+          dateTimeStartValue: DateTimeValue(isRequired: true)
+            ..parse(
+              (_event.dateTimeStart.value ?? DateTime.now()).toIso8601String(),
+            ),
         ),
       ],
     );
@@ -660,7 +677,10 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -694,17 +714,31 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: <String>{});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+    defaultValue: const <UserEventsRepositoryContractPrimString>{},
+  );
 
   final Set<String> _confirmedIds = <String>{};
   int confirmCalls = 0;
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {
     confirmCalls += 1;
-    _confirmedIds.add(eventId);
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+    _confirmedIds.add(eventId.value);
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 
   @override
@@ -714,25 +748,54 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  bool isEventConfirmed(String eventId) => _confirmedIds.contains(eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+    UserEventsRepositoryContractPrimString eventId,
+  ) =>
+      userEventsRepoBool(
+        _confirmedIds.contains(eventId.value),
+        defaultValue: false,
+        isRequired: true,
+      );
 
   @override
   Future<void> refreshConfirmedEventIds() async {
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {
-    _confirmedIds.remove(eventId);
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {
+    _confirmedIds.remove(eventId.value);
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteAcceptResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -743,27 +806,27 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId);
+    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId.value);
   }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteDeclineResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'declined',
       groupHasOtherPending: false,
     );
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites({
-    int page = 1,
-    int pageSize = 20,
-  }) async {
+  Future<List<InviteModel>> fetchInvites(
+      {InvitesRepositoryContractPrimInt? page,
+      InvitesRepositoryContractPrimInt? pageSize}) async {
     return const <InviteModel>[];
   }
 
@@ -778,7 +841,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventId) async {
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
   }
 
@@ -790,12 +854,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<void> sendInvites(
-    String eventId,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
-  }) async {}
+  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
+      List<EventFriendResume> recipients,
+      {InvitesRepositoryContractPrimString? occurrenceId,
+      InvitesRepositoryContractPrimString? message}) async {}
 }
 
 class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -809,7 +871,8 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) {
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) {
     return Future<void>.value();
   }
 
@@ -829,7 +892,8 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isUserLoggedIn => _authorized;
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {
     _setAuthorized();
   }
 
@@ -841,30 +905,31 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {
-    _setAuthorized(name: name, email: email);
+    _setAuthorized(name: name.value, email: email.value);
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      Map<AuthRepositoryContractParamString, Object?> data) async {}
 
   @override
   String get userToken => _token;
@@ -924,8 +989,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -933,7 +998,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 

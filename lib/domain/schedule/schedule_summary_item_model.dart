@@ -6,10 +6,9 @@ class ScheduleSummaryItemModel {
   final DateTimeValue dateTimeStartValue;
 
   ScheduleSummaryItemModel({
-    Object? color,
-    required Object dateTimeStart,
-  })  : colorValue = _parseColor(color),
-        dateTimeStartValue = _parseDateTime(dateTimeStart);
+    ScheduleSummaryColorValue? colorValue,
+    required this.dateTimeStartValue,
+  }) : colorValue = colorValue ?? ScheduleSummaryColorValue();
 
   String? get color =>
       colorValue.value.trim().isEmpty ? null : colorValue.value;
@@ -18,28 +17,6 @@ class ScheduleSummaryItemModel {
     if (value == null) {
       throw StateError('dateTimeStart should not be null');
     }
-    return value;
-  }
-
-  static ScheduleSummaryColorValue _parseColor(Object? raw) {
-    if (raw is ScheduleSummaryColorValue) {
-      return raw;
-    }
-    final value = ScheduleSummaryColorValue();
-    value.parse(raw?.toString());
-    return value;
-  }
-
-  static DateTimeValue _parseDateTime(Object raw) {
-    if (raw is DateTimeValue) {
-      return raw;
-    }
-    final value = DateTimeValue(isRequired: true);
-    if (raw is DateTime) {
-      value.parse(raw.toIso8601String());
-      return value;
-    }
-    value.parse(raw.toString());
     return value;
   }
 }
