@@ -189,5 +189,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   double get maxRadiusMeters => 1000;
 
   @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
   Future<void> setMaxRadiusMeters(double meters) async {}
 }

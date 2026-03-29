@@ -5,12 +5,20 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/paged_events_result.dart';
+import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -136,6 +144,47 @@ void main() {
     expect(controller.nearbyStreamValue.value, hasLength(1));
     expect(controller.nearbyStreamValue.value.first.name, 'Nearby Venue');
     expect(controller.nearbyStreamValue.value.first.distanceMeters, 320);
+    controller.onDispose();
+  });
+
+  test('discovery live-now section loads real event page with live_now_only',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [
+            _profile(id: _mongoId('l1'), type: 'artist', name: 'Grid Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final scheduleRepository = _FakeDiscoveryScheduleRepository(
+      liveNowEvents: [
+        _event(
+          id: _mongoId('evt-live'),
+          slug: 'evento-live',
+          title: 'Evento ao vivo',
+          artistName: 'Artista Live',
+        ),
+      ],
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      scheduleRepository: scheduleRepository,
+    );
+
+    await controller.init();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(scheduleRepository.liveNowFetchCalls, 1);
+    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+    expect(controller.liveNowEventsStreamValue.value.first.slug, 'evento-live');
+    expect(
+      controller.liveNowEventsStreamValue.value.first.artists.first.displayName,
+      'Artista Live',
+    );
     controller.onDispose();
   });
 
@@ -617,6 +666,164 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> updateUser(Map<String, Object?> data) async {}
 }
 
+class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
+  _FakeDiscoveryScheduleRepository({
+    required this.liveNowEvents,
+  });
+
+  final List<EventModel> liveNowEvents;
+  int liveNowFetchCalls = 0;
+  HomeAgendaCacheSnapshot? _cacheSnapshot;
+
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = _cacheSnapshot;
+    if (snapshot == null) {
+      return null;
+    }
+    if (snapshot.showPastOnly != showPastOnly) {
+      return null;
+    }
+    if (snapshot.searchQuery != searchQuery) {
+      return null;
+    }
+    if (snapshot.confirmedOnly != confirmedOnly) {
+      return null;
+    }
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    _cacheSnapshot = snapshot;
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    _cacheSnapshot = null;
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
+
+  @override
+  Future<ScheduleSummaryModel> getScheduleSummary() async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<EventModel>> getEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    return const <EventModel>[];
+  }
+
+  @override
+  Future<List<EventModel>> getAllEvents() async {
+    return const <EventModel>[];
+  }
+
+  @override
+  Future<EventModel?> getEventBySlug(String slug) async {
+    return null;
+  }
+
+  @override
+  Future<PagedEventsResult> getEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (liveNowOnly) {
+      liveNowFetchCalls += 1;
+      return PagedEventsResult(
+        events: liveNowEvents.take(pageSize).toList(growable: false),
+        hasMore: false,
+      );
+    }
+    return const PagedEventsResult(events: <EventModel>[], hasMore: false);
+  }
+
+  @override
+  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+    return const <VenueEventResume>[];
+  }
+
+  @override
+  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
+    return const <VenueEventResume>[];
+  }
+
+  @override
+  Stream<EventDeltaModel> watchEventsStream({
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return const Stream<EventDeltaModel>.empty();
+  }
+
+  @override
+  Stream<void> watchEventsSignal({
+    required void Function(EventDeltaModel delta) onDelta,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return watchEventsStream(
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+      lastEventId: lastEventId,
+      showPastOnly: showPastOnly,
+    ).map((delta) => onDelta(delta));
+  }
+}
+
 class _PageRequest {
   const _PageRequest({
     required this.page,
@@ -692,6 +899,45 @@ AccountProfileModel _profile({
     slug: '$name-$type'.toLowerCase().replaceAll(' ', '-'),
     type: type,
   );
+}
+
+EventModel _event({
+  required String id,
+  required String slug,
+  required String title,
+  required String artistName,
+}) {
+  return EventDTO.fromJson({
+    'event_id': id,
+    'slug': slug,
+    'type': {
+      'id': 'type-live',
+      'name': 'Show',
+      'slug': 'show',
+      'description': 'Show',
+      'icon': null,
+      'color': null,
+    },
+    'title': title,
+    'content': 'Conteúdo',
+    'location': 'Local',
+    'date_time_start': DateTime.now().toIso8601String(),
+    'date_time_end':
+        DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
+    'artists': [
+      {
+        'id': _mongoId('artist-live'),
+        'display_name': artistName,
+        'avatar_url': null,
+        'highlight': true,
+        'genres': ['samba'],
+      },
+    ],
+    'thumb': {
+      'type': 'image',
+      'data': {'url': 'https://tenant.test/live.jpg'},
+    },
+  }).toDomain();
 }
 
 String _mongoId(String seed) {

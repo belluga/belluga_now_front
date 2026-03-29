@@ -225,6 +225,25 @@ void main() {
     expect(result.events.first.type.description.value, isEmpty);
   });
 
+  test('getEventsPage forwards liveNowOnly to backend', () async {
+    final backend = _CapturingScheduleBackend();
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+      liveNowOnly: true,
+    );
+
+    expect(backend.requests, hasLength(1));
+    expect(backend.requests.first.liveNowOnly, isTrue);
+  });
+
   test('getEventsPage maps events when event content is null', () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -290,7 +309,8 @@ void main() {
     expect(result.events.first.content.valueText, isEmpty);
   });
 
-  test('loadEventsPage ignores second first-page request while one is in-flight',
+  test(
+      'loadEventsPage ignores second first-page request while one is in-flight',
       () async {
     final backend = _BlockingFirstPageScheduleBackend();
     final repository = ScheduleRepository(
@@ -350,6 +370,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -362,6 +383,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     requests.add(
       _AgendaRequestSample(
         page: page,
+        liveNowOnly: liveNowOnly,
         originLat: originLat,
         originLng: originLng,
       ),
@@ -428,6 +450,7 @@ class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -468,11 +491,13 @@ class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
+    required this.liveNowOnly,
     required this.originLat,
     required this.originLng,
   });
 
   final int page;
+  final bool liveNowOnly;
   final double? originLat;
   final double? originLng;
 }
@@ -580,6 +605,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
   @override
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
 
   @override
   Future<void> setMaxRadiusMeters(double meters) async {

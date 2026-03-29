@@ -67,6 +67,33 @@ void main() {
       controller.onDispose();
     });
 
+    test('initializes from persisted user radius preference when available',
+        () async {
+      final appData = _buildAppData(
+        minKm: 2,
+        defaultKm: 7,
+        maxKm: 15,
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData,
+        initialMaxRadiusMeters: 9000,
+        hasPersistedMaxRadiusPreference: true,
+      );
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(controller.radiusMetersStreamValue.value, 9000);
+
+      controller.onDispose();
+    });
+
     test('clamps radius updates to tenant bounds and reacts to max changes',
         () async {
       final appData = _buildAppData(
@@ -900,11 +927,17 @@ AppData _buildAppData({
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
-  _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: _appData.mapRadiusMaxMeters);
+  _FakeAppDataRepository(
+    this._appData, {
+    double? initialMaxRadiusMeters,
+    bool hasPersistedMaxRadiusPreference = false,
+  })  : _hasPersistedMaxRadiusPreference = hasPersistedMaxRadiusPreference,
+        maxRadiusMetersStreamValue = StreamValue<double>(
+          defaultValue: initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
+        );
 
   final AppData _appData;
+  bool _hasPersistedMaxRadiusPreference;
 
   @override
   AppData get appData => _appData;
@@ -931,7 +964,11 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
+  bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
+
+  @override
   Future<void> setMaxRadiusMeters(double meters) async {
+    _hasPersistedMaxRadiusPreference = true;
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }
@@ -973,6 +1010,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,
+    bool liveNowOnly = false,
     required String searchQuery,
     required bool confirmedOnly,
   }) {
@@ -1032,6 +1070,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1052,6 +1091,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1081,6 +1121,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<void> loadEventsPage({
     int pageSize = 25,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1112,6 +1153,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<void> loadNextEventsPage({
     int pageSize = 25,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1217,6 +1259,7 @@ class _FailingScheduleRepository extends _FakeScheduleRepository {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1238,6 +1281,7 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1266,6 +1310,7 @@ class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -1299,6 +1344,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -1388,6 +1434,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -1500,6 +1547,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,

@@ -564,6 +564,13 @@ class EventSearchScreenController
   }
 
   double _resolveDefaultRadiusMeters() {
+    if (_appDataRepository.hasPersistedMaxRadiusPreference) {
+      final preferred = _appDataRepository.maxRadiusMeters;
+      if (preferred > 0) {
+        return _clampRadiusMeters(preferred);
+      }
+    }
+
     final configured = _configuredDefaultRadiusMeters();
     if (configured > 0) {
       return _clampRadiusMeters(configured);

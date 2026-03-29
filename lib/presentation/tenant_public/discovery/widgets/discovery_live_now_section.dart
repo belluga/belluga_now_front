@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -6,19 +6,11 @@ class DiscoveryLiveNowSection extends StatelessWidget {
   const DiscoveryLiveNowSection({
     super.key,
     required this.items,
-    required this.isFavorite,
-    required this.isFavoritable,
-    required this.onFavoriteTap,
     required this.onTap,
-    required this.typeLabelForPartner,
   });
 
-  final List<AccountProfileModel> items;
-  final bool Function(AccountProfileModel) isFavorite;
-  final bool Function(AccountProfileModel) isFavoritable;
-  final ValueChanged<AccountProfileModel> onFavoriteTap;
-  final ValueChanged<AccountProfileModel> onTap;
-  final String Function(AccountProfileModel) typeLabelForPartner;
+  final List<EventModel> items;
+  final ValueChanged<EventModel> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +23,12 @@ class DiscoveryLiveNowSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _LiveNowHeader(),
+          const _LiveNowHeader(),
           const SizedBox(height: 10),
           if (items.length == 1)
             _LiveNowCard(
-              partner: items.first,
-              isFavorite: isFavorite(items.first),
-              isFavoritable: isFavoritable(items.first),
-              onFavoriteTap: () => onFavoriteTap(items.first),
+              event: items.first,
               onTap: () => onTap(items.first),
-              typeLabel: typeLabelForPartner(items.first),
             )
           else
             SizedBox(
@@ -50,16 +38,12 @@ class DiscoveryLiveNowSection extends StatelessWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
-                  final partner = items[index];
+                  final event = items[index];
                   return SizedBox(
                     width: MediaQuery.of(context).size.width * 0.88,
                     child: _LiveNowCard(
-                      partner: partner,
-                      isFavorite: isFavorite(partner),
-                      isFavoritable: isFavoritable(partner),
-                      onFavoriteTap: () => onFavoriteTap(partner),
-                      onTap: () => onTap(partner),
-                      typeLabel: typeLabelForPartner(partner),
+                      event: event,
+                      onTap: () => onTap(event),
                     ),
                   );
                 },
@@ -72,6 +56,8 @@ class DiscoveryLiveNowSection extends StatelessWidget {
 }
 
 class _LiveNowHeader extends StatelessWidget {
+  const _LiveNowHeader();
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -119,25 +105,18 @@ class _LiveNowHeader extends StatelessWidget {
 
 class _LiveNowCard extends StatelessWidget {
   const _LiveNowCard({
-    required this.partner,
-    required this.isFavorite,
-    required this.isFavoritable,
-    required this.onFavoriteTap,
+    required this.event,
     required this.onTap,
-    required this.typeLabel,
   });
 
-  final AccountProfileModel partner;
-  final bool isFavorite;
-  final bool isFavoritable;
-  final VoidCallback onFavoriteTap;
+  final EventModel event;
   final VoidCallback onTap;
-  final String typeLabel;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final imageUrl = partner.coverUrl ?? partner.avatarUrl;
+    final imageUrl = _resolveImageUrl(event);
+    final venueLabel = _resolveVenueLabel(event).toUpperCase();
 
     return InkWell(
       onTap: onTap,
@@ -180,7 +159,9 @@ class _LiveNowCard extends StatelessWidget {
               top: 14,
               left: 16,
               child: Text(
-                typeLabel.toUpperCase(),
+                venueLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: Colors.white.withValues(alpha: 0.92),
                       fontWeight: FontWeight.w700,
@@ -188,24 +169,6 @@ class _LiveNowCard extends StatelessWidget {
                     ),
               ),
             ),
-            if (isFavoritable)
-              Positioned(
-                top: 10,
-                right: 10,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.44),
-                  ),
-                  child: IconButton(
-                    onPressed: onFavoriteTap,
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? colorScheme.error : Colors.white,
-                    ),
-                  ),
-                ),
-              ),
             Positioned(
               left: 16,
               right: 16,
@@ -214,7 +177,7 @@ class _LiveNowCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    partner.name,
+                    event.title.value,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -223,15 +186,21 @@ class _LiveNowCard extends StatelessWidget {
                         ),
                   ),
                   const SizedBox(height: 10),
-                  FilledButton(
-                    onPressed: onTap,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
+                  Row(
+                    children: [
+                      FilledButton(
+                        onPressed: onTap,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text('Ver detalhes'),
                       ),
-                    ),
-                    child: const Text('Ver detalhes'),
+                      const Spacer(),
+                      _LiveNowArtistStack(event: event),
+                    ],
                   ),
                 ],
               ),
@@ -241,4 +210,119 @@ class _LiveNowCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LiveNowArtistStack extends StatelessWidget {
+  const _LiveNowArtistStack({required this.event});
+
+  final EventModel event;
+
+  @override
+  Widget build(BuildContext context) {
+    final artists = event.artists;
+    if (artists.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final visible = artists.take(3).toList(growable: false);
+    final extraCount = artists.length - visible.length;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 92,
+      height: 30,
+      child: Stack(
+        children: [
+          for (var index = 0; index < visible.length; index++)
+            Positioned(
+              left: index * 18,
+              child: _ArtistAvatar(
+                imageUrl: visible[index].avatarUri?.toString(),
+                fallbackLabel: visible[index].displayName,
+              ),
+            ),
+          if (extraCount > 0)
+            Positioned(
+              left: visible.length * 18,
+              child: CircleAvatar(
+                radius: 15,
+                backgroundColor: colorScheme.primaryContainer,
+                child: Text(
+                  '+$extraCount',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArtistAvatar extends StatelessWidget {
+  const _ArtistAvatar({
+    required this.imageUrl,
+    required this.fallbackLabel,
+  });
+
+  final String? imageUrl;
+  final String fallbackLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmedLabel = fallbackLabel.trim();
+    final colorScheme = Theme.of(context).colorScheme;
+    final initial =
+        trimmedLabel.isEmpty ? '?' : trimmedLabel.substring(0, 1).toUpperCase();
+
+    return CircleAvatar(
+      radius: 15,
+      backgroundColor: colorScheme.surface,
+      child: CircleAvatar(
+        radius: 13,
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        backgroundImage: (imageUrl != null && imageUrl!.trim().isNotEmpty)
+            ? NetworkImage(imageUrl!)
+            : null,
+        child: (imageUrl == null || imageUrl!.trim().isEmpty)
+            ? Text(
+                initial,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+String? _resolveImageUrl(EventModel event) {
+  final thumb = event.thumb?.thumbUri.value.toString();
+  if (thumb != null && thumb.trim().isNotEmpty) {
+    return thumb;
+  }
+  final hero = event.venue?.heroImageUrl;
+  if (hero != null && hero.trim().isNotEmpty) {
+    return hero;
+  }
+  final logo = event.venue?.logoImageUrl;
+  if (logo != null && logo.trim().isNotEmpty) {
+    return logo;
+  }
+  return null;
+}
+
+String _resolveVenueLabel(EventModel event) {
+  final venueName = event.venue?.displayName.trim();
+  if (venueName != null && venueName.isNotEmpty) {
+    return venueName;
+  }
+  return event.type.name.value.trim().isEmpty
+      ? 'Evento'
+      : event.type.name.value;
 }

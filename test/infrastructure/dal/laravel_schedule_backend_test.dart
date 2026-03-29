@@ -147,6 +147,32 @@ void main() {
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
   });
+
+  test('fetchEventsPage forwards live_now_only query parameter', () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+      liveNowOnly: true,
+    );
+
+    final options = adapter.lastOptions;
+    expect(options, isNotNull);
+    expect(options!.queryParameters['live_now_only'], 1);
+  });
 }
 
 class _RecordingSseClient implements SseClient {

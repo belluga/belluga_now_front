@@ -33,11 +33,14 @@ class AppDataRepository implements AppDataRepositoryContract {
   static const String _maxRadiusStorageKey = 'max_radius_meters';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  bool _hasPersistedMaxRadiusPreference = false;
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
   @override
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  @override
+  bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
 
   @override
   Future<void> init() async {
@@ -54,6 +57,9 @@ class AppDataRepository implements AppDataRepositoryContract {
         appData.mapRadiusMaxMeters,
       );
       maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+      _hasPersistedMaxRadiusPreference = true;
+    } else {
+      _hasPersistedMaxRadiusPreference = false;
     }
     await _precacheLogos();
     await _persistRuntimeMetadata();
@@ -79,6 +85,7 @@ class AppDataRepository implements AppDataRepositoryContract {
     );
     // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
     maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+    _hasPersistedMaxRadiusPreference = true;
     await _storage.write(
       key: _maxRadiusStorageKey,
       value: clamped.toString(),

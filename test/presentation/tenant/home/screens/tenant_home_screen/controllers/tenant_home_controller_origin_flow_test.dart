@@ -161,6 +161,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -354,6 +355,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
   @override
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
 
   @override
   Future<void> setMaxRadiusMeters(double meters) async {

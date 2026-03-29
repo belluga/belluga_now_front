@@ -246,6 +246,7 @@ class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,
+    bool liveNowOnly = false,
     required String searchQuery,
     required bool confirmedOnly,
   }) {
@@ -289,6 +290,7 @@ class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,

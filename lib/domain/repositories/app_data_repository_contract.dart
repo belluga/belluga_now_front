@@ -21,5 +21,6 @@ abstract class AppDataRepositoryContract {
   StreamValue<AppDataRepositoryContractPrimDouble>
       get maxRadiusMetersStreamValue;
   AppDataRepositoryContractPrimDouble get maxRadiusMeters;
+  bool get hasPersistedMaxRadiusPreference => false;
   Future<void> setMaxRadiusMeters(AppDataRepositoryContractPrimDouble meters);
 }

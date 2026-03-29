@@ -2,12 +2,13 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -22,15 +23,21 @@ class DiscoveryScreenController implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
     AuthRepositoryContract? authRepository,
+    ScheduleRepositoryContract? scheduleRepository,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
+        _scheduleRepository = scheduleRepository ??
+            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
+                ? GetIt.I.get<ScheduleRepositoryContract>()
                 : null);
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
+  final ScheduleRepositoryContract? _scheduleRepository;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
@@ -42,6 +49,7 @@ class DiscoveryScreenController implements Disposable {
   int _reloadRequestToken = 0;
   bool _isFetchingPage = false;
   bool _isFetchingNearby = false;
+  bool _isFetchingLiveNow = false;
   bool _hasMore = true;
   bool _scrollListenerAttached = false;
   int _currentPage = 0;
@@ -66,8 +74,8 @@ class DiscoveryScreenController implements Disposable {
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
-  StreamValue<List<AccountProfileModel>> get liveNowStreamValue =>
-      _accountProfilesRepository.discoveryLiveAccountProfilesStreamValue;
+  final liveNowEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const []);
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get curatorStreamValue =>
@@ -82,6 +90,7 @@ class DiscoveryScreenController implements Disposable {
         await _reloadPartners(showFullScreenLoader: false);
       }
       unawaited(_reloadNearbySection());
+      unawaited(_reloadLiveNowSection());
       return;
     }
     _initialized = true;
@@ -187,6 +196,7 @@ class DiscoveryScreenController implements Disposable {
         isLoadingStreamValue.addValue(false);
         isRefreshingStreamValue.addValue(false);
         unawaited(_reloadNearbySection());
+        unawaited(_reloadLiveNowSection());
       }
     }
   }
@@ -194,7 +204,7 @@ class DiscoveryScreenController implements Disposable {
   void _clearVisibleData() {
     _allAccountProfiles = const [];
     filteredPartnersStreamValue.addValue(const []);
-    liveNowStreamValue.addValue(const []);
+    liveNowEventsStreamValue.addValue(const []);
     nearbyStreamValue.addValue(const []);
     curatorStreamValue.addValue(const []);
     curatorContentStreamValue.addValue(const []);
@@ -352,14 +362,6 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void _buildSections() {
-    final live = _allAccountProfiles.where(_isLiveNow).toList()
-      ..sort((a, b) {
-        final aDist = a.distanceMeters ?? double.infinity;
-        final bDist = b.distanceMeters ?? double.infinity;
-        return aDist.compareTo(bDist);
-      });
-    liveNowStreamValue.addValue(live.take(10).toList());
-
     final curators = _allAccountProfiles
         .where((p) => p.type == 'curator')
         .toList()
@@ -409,6 +411,29 @@ class DiscoveryScreenController implements Disposable {
           'DiscoveryScreenController._reloadNearbySection failed: $error');
     } finally {
       _isFetchingNearby = false;
+    }
+  }
+
+  Future<void> _reloadLiveNowSection() async {
+    final scheduleRepository = _scheduleRepository;
+    if (scheduleRepository == null || _isFetchingLiveNow) {
+      return;
+    }
+
+    _isFetchingLiveNow = true;
+    try {
+      final page = await scheduleRepository.getEventsPage(
+        page: 1,
+        pageSize: 10,
+        showPastOnly: false,
+        liveNowOnly: true,
+      );
+      liveNowEventsStreamValue.addValue(page.events);
+    } catch (error) {
+      debugPrint(
+          'DiscoveryScreenController._reloadLiveNowSection failed: $error');
+    } finally {
+      _isFetchingLiveNow = false;
     }
   }
 
@@ -479,17 +504,6 @@ class DiscoveryScreenController implements Disposable {
     return type;
   }
 
-  bool _isLiveNow(AccountProfileModel profile) {
-    if (profile.type != 'artist' || profile.engagementData == null) {
-      return false;
-    }
-    final engagement = profile.engagementData;
-    if (engagement is ArtistEngagementData) {
-      return engagement.status.toLowerCase().contains('agora');
-    }
-    return false;
-  }
-
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
   @override
@@ -507,6 +521,7 @@ class DiscoveryScreenController implements Disposable {
     hasMoreStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();
+    liveNowEventsStreamValue.dispose();
     curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();

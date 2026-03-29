@@ -1462,6 +1462,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
   StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);

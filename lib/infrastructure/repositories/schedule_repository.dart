@@ -43,6 +43,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,
+    bool liveNowOnly = false,
     required String searchQuery,
     required bool confirmedOnly,
   }) {
@@ -208,6 +209,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -221,6 +223,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       page: page,
       pageSize: pageSize,
       showPastOnly: showPastOnly,
+      liveNowOnly: liveNowOnly,
       searchQuery: searchQuery,
       categories: categories,
       tags: tags,

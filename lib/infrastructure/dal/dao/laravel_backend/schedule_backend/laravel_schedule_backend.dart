@@ -110,6 +110,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -125,6 +126,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       'past_only': showPastOnly ? 1 : 0,
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
+    if (liveNowOnly) {
+      params['live_now_only'] = 1;
+    }
 
     final normalizedSearchQuery = searchQuery?.trim();
     final hasSearchQuery =

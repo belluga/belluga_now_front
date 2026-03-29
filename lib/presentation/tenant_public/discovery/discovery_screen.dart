@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_curator_content_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
@@ -120,32 +121,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     if (showSections)
                                       SliverToBoxAdapter(
                                         child: StreamValueBuilder<
-                                            List<AccountProfileModel>>(
-                                          streamValue:
-                                              _controller.liveNowStreamValue,
+                                            List<EventModel>>(
+                                          streamValue: _controller
+                                              .liveNowEventsStreamValue,
                                           builder: (context, liveNow) {
                                             return DiscoveryLiveNowSection(
                                               items: liveNow,
-                                              isFavorite: (partner) => favorites
-                                                  .contains(partner.id),
-                                              isFavoritable:
-                                                  _controller.isFavoritable,
-                                              onFavoriteTap: (partner) {
-                                                if (!_controller
-                                                    .isFavoritable(partner)) {
-                                                  return;
-                                                }
-                                                _handleFavoriteTap(partner);
-                                              },
-                                              onTap: (partner) =>
+                                              onTap: (event) =>
                                                   context.router.push(
-                                                PartnerDetailRoute(
-                                                    slug: partner.slug),
-                                              ),
-                                              typeLabelForPartner: (partner) =>
-                                                  _controller
-                                                      .labelForAccountProfileType(
-                                                partner.type,
+                                                ImmersiveEventDetailRoute(
+                                                  eventSlug: event.slug,
+                                                ),
                                               ),
                                             );
                                           },

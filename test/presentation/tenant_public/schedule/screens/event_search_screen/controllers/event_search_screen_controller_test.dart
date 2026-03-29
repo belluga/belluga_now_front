@@ -246,6 +246,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
   Future<void> setMaxRadiusMeters(double meters) async {
     maxRadiusMetersStreamValue.addValue(meters);
   }
@@ -304,6 +307,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,
+    bool liveNowOnly = false,
     required String searchQuery,
     required bool confirmedOnly,
   }) {
@@ -366,6 +370,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -390,6 +395,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -421,6 +427,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<void> loadEventsPage({
     int pageSize = 25,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
@@ -449,6 +456,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<void> loadNextEventsPage({
     int pageSize = 25,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String searchQuery = '',
     List<String>? categories,
     List<String>? tags,
