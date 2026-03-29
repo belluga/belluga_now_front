@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
 import 'package:flutter/material.dart';
@@ -34,10 +35,10 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439011',
-        name: 'Feira',
-        slug: 'feira',
-        description: 'Tipo default do teste',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+        descriptionValue: tenantAdminOptionalText('Tipo default do teste'),
       ),
     ];
 
@@ -89,9 +90,9 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439021',
-        name: 'Feira',
-        slug: 'feira',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439021'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
       ),
     ];
 
@@ -131,10 +132,10 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439012',
-        name: 'Workshop',
-        slug: 'workshop',
-        description: 'Tipo de evento: Workshop',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439012'),
+        nameValue: tenantAdminRequiredText('Workshop'),
+        slugValue: tenantAdminRequiredText('workshop'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Workshop'),
       ),
     ];
 
@@ -173,10 +174,10 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439015',
-        name: 'Live',
-        slug: 'live',
-        description: 'Tipo de evento: Live',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+        nameValue: tenantAdminRequiredText('Live'),
+        slugValue: tenantAdminRequiredText('live'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
       ),
     ];
 
@@ -219,9 +220,9 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439016',
-        name: 'Show',
-        slug: 'show',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439016'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
       ),
     ];
 
@@ -263,10 +264,10 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439013',
-        name: 'Show',
-        slug: 'show',
-        description: 'Tipo de evento: Show',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439013'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Show'),
       ),
     ];
 
@@ -311,10 +312,10 @@ void main() {
 
     eventsRepository.eventTypes = [
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439014',
-        name: 'Show',
-        slug: 'show',
-        description: 'Tipo de evento: Show',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439014'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Show'),
       ),
     ];
 
@@ -447,7 +448,8 @@ class _FakeEventsRepository
   Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {}
 
   @override
-  Future<TenantAdminEvent> fetchEvent(TenantAdminEventsRepoString eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(
+      TenantAdminEventsRepoString eventIdOrSlug) async {
     throw UnimplementedError();
   }
 
@@ -518,16 +520,16 @@ class _FakeEventsRepository
 
   TenantAdminEvent _eventFromDraft(TenantAdminEventDraft draft) {
     return TenantAdminEvent(
-      eventId: 'evt-1',
-      slug: 'event-1',
-      title: draft.title,
-      content: draft.content,
+      eventIdValue: tenantAdminRequiredText('evt-1'),
+      slugValue: tenantAdminRequiredText('event-1'),
+      titleValue: tenantAdminRequiredText(draft.title),
+      contentValue: tenantAdminOptionalText(draft.content),
       type: draft.type,
       occurrences: draft.occurrences,
       publication: draft.publication,
       location: draft.location,
       placeRef: draft.placeRef,
-      artistIds: draft.artistIds,
+      artistIdValues: draft.artistIds,
       taxonomyTerms: draft.taxonomyTerms,
     );
   }
@@ -538,33 +540,33 @@ class _FakeTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) {
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) {
     throw UnimplementedError();
   }
@@ -586,8 +588,8 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final taxonomies = await fetchTaxonomies();
     return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
@@ -598,7 +600,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return [
       TenantAdminTaxonomyTermDefinition(
@@ -613,44 +615,15 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: terms,
       hasMore: false,
     );
-  }
-
-  @override
-  Future<void> loadNextTaxonomiesPage({int pageSize = 20}) async {}
-
-  @override
-  Future<void> loadNextTermsPage({int pageSize = 20}) async {}
-
-  @override
-  Future<void> loadTaxonomies({int pageSize = 20}) async {
-    final result = await fetchTaxonomiesPage(page: 1, pageSize: pageSize);
-    taxonomiesStreamValue.addValue(result.items);
-    hasMoreTaxonomiesStreamValue.addValue(result.hasMore);
-    taxonomiesErrorStreamValue.addValue(null);
-  }
-
-  @override
-  Future<void> loadTerms({
-    required String taxonomyId,
-    int pageSize = 20,
-  }) async {
-    final result = await fetchTermsPage(
-      taxonomyId: taxonomyId,
-      page: 1,
-      pageSize: pageSize,
-    );
-    termsStreamValue.addValue(result.items);
-    hasMoreTermsStreamValue.addValue(result.hasMore);
-    termsErrorStreamValue.addValue(null);
   }
 
   @override
@@ -661,22 +634,22 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) {
     throw UnimplementedError();
   }

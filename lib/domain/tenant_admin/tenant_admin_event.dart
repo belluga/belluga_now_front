@@ -24,31 +24,30 @@ part 'tenant_admin_event/tenant_admin_event_type.dart';
 
 class TenantAdminEvent {
   TenantAdminEvent({
-    required Object eventId,
-    required Object slug,
-    required Object title,
-    required Object content,
+    required this.eventIdValue,
+    required this.slugValue,
+    required this.titleValue,
+    required this.contentValue,
     required this.type,
     required this.occurrences,
     required this.publication,
     this.location,
     this.placeRef,
-    Object? thumbUrl,
-    Object? artistIds,
+    TenantAdminOptionalUrlValue? thumbUrlValue,
+    TenantAdminTrimmedStringListValue? artistIdValues,
     this.eventParties = const <TenantAdminEventParty>[],
     this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
-    Object? createdAt,
-    Object? updatedAt,
-    Object? deletedAt,
-  })  : eventIdValue = tenantAdminRequiredText(eventId),
-        slugValue = tenantAdminRequiredText(slug),
-        titleValue = tenantAdminRequiredText(title),
-        contentValue = tenantAdminOptionalText(content),
-        thumbUrlValue = tenantAdminOptionalUrl(thumbUrl),
-        artistIdValues = tenantAdminTrimmedStringList(artistIds),
-        createdAtValue = tenantAdminOptionalDateTime(createdAt),
-        updatedAtValue = tenantAdminOptionalDateTime(updatedAt),
-        deletedAtValue = tenantAdminOptionalDateTime(deletedAt);
+    TenantAdminOptionalDateTimeValue? createdAtValue,
+    TenantAdminOptionalDateTimeValue? updatedAtValue,
+    TenantAdminOptionalDateTimeValue? deletedAtValue,
+  })  : thumbUrlValue = thumbUrlValue ?? TenantAdminOptionalUrlValue(),
+        artistIdValues = artistIdValues ?? TenantAdminTrimmedStringListValue(),
+        createdAtValue =
+            createdAtValue ?? const TenantAdminOptionalDateTimeValue(null),
+        updatedAtValue =
+            updatedAtValue ?? const TenantAdminOptionalDateTimeValue(null),
+        deletedAtValue =
+            deletedAtValue ?? const TenantAdminOptionalDateTimeValue(null);
 
   final TenantAdminRequiredTextValue eventIdValue;
   final TenantAdminRequiredTextValue slugValue;
@@ -72,7 +71,7 @@ class TenantAdminEvent {
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get thumbUrl => thumbUrlValue.nullableValue;
-  List<String> get artistIds => artistIdValues.value;
+  TenantAdminTrimmedStringListValue get artistIds => artistIdValues;
   DateTime? get createdAt => createdAtValue.value;
   DateTime? get updatedAt => updatedAtValue.value;
   DateTime? get deletedAt => deletedAtValue.value;

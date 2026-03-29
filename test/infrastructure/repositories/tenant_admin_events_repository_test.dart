@@ -121,11 +121,11 @@ void main() {
     await repository.createEvent(
       draft: _buildDraft(
         location: TenantAdminEventLocation(
-          mode: 'online',
-          latitude: -20.611121,
-          longitude: -40.498617,
+          modeValue: tenantAdminRequiredText('online'),
+          latitudeValue: tenantAdminOptionalDouble(-20.611121),
+          longitudeValue: tenantAdminOptionalDouble(-40.498617),
           online: TenantAdminEventOnlineLocation(
-            url: 'https://example.com/live',
+            urlValue: tenantAdminRequiredText('https://example.com/live'),
           ),
         ),
       ),
@@ -155,9 +155,9 @@ void main() {
     await repository.createEvent(
       draft: _buildDraft(
         location: TenantAdminEventLocation(
-          mode: 'physical',
-          latitude: -20.611121,
-          longitude: -40.498617,
+          modeValue: tenantAdminRequiredText('physical'),
+          latitudeValue: tenantAdminOptionalDouble(-20.611121),
+          longitudeValue: tenantAdminOptionalDouble(-40.498617),
         ),
         placeRef: TenantAdminEventPlaceRef(
           typeValue: tenantAdminRequiredText('account_profile'),
@@ -586,11 +586,11 @@ TenantAdminEventDraft _buildDraft({
   bool removeCover = false,
 }) {
   return TenantAdminEventDraft(
-    title: 'My event',
-    content: 'Content',
+    titleValue: tenantAdminRequiredText('My event'),
+    contentValue: tenantAdminOptionalText('Content'),
     type: TenantAdminEventType(
-      name: 'Show',
-      slug: 'show',
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
     ),
     occurrences: [
       TenantAdminEventOccurrence(
@@ -603,7 +603,7 @@ TenantAdminEventDraft _buildDraft({
     location: location,
     placeRef: placeRef,
     coverUpload: coverUpload,
-    removeCover: removeCover,
+    removeCoverValue: tenantAdminFlag(removeCover),
     taxonomyTerms: taxonomyTerms,
   );
 }
@@ -623,7 +623,10 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -647,7 +650,7 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   String get userToken => tokenValue;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-id';
@@ -668,35 +671,37 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      Map<AuthRepositoryContractParamString, Object?> data) async {}
 }
 
 class _MutableTenantScope implements TenantAdminTenantScopeContract {
@@ -723,8 +728,8 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String ? tenantDomain : (tenantDomain as dynamic).value as String).trim());
   }
 }
 

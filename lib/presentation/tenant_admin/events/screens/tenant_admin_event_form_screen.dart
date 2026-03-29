@@ -1318,15 +1318,17 @@ class _TenantAdminEventFormScreenState
           : null;
 
       final draft = TenantAdminEventDraft(
-        title: _controller.eventTitleController.text.trim(),
-        content: _controller.eventContentController.text.trim(),
+        titleValue:
+            tenantAdminRequiredText(_controller.eventTitleController.text.trim()),
+        contentValue:
+            tenantAdminOptionalText(_controller.eventContentController.text.trim()),
         type: TenantAdminEventType(
-          id: selectedTypeId,
-          name: selectedType.name,
-          slug: selectedType.slug,
-          description: selectedType.description,
-          icon: selectedType.icon,
-          color: selectedType.color,
+          idValue: tenantAdminOptionalText(selectedTypeId),
+          nameValue: tenantAdminRequiredText(selectedType.name),
+          slugValue: tenantAdminRequiredText(selectedType.slug),
+          descriptionValue: tenantAdminOptionalText(selectedType.description),
+          iconValue: tenantAdminOptionalText(selectedType.icon),
+          colorValue: tenantAdminOptionalText(selectedType.color),
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
@@ -1345,8 +1347,10 @@ class _TenantAdminEventFormScreenState
         location: location,
         placeRef: placeRef,
         coverUpload: coverUpload,
-        removeCover: removeCover,
-        artistIds: formState.selectedArtistIds.toList(growable: false),
+        removeCoverValue: tenantAdminFlag(removeCover),
+        artistIdValues: tenantAdminTrimmedStringList(
+          formState.selectedArtistIds.toList(growable: false),
+        ),
         taxonomyTerms: taxonomyTerms,
       );
 
@@ -1387,8 +1391,9 @@ class _TenantAdminEventFormScreenState
     final online = (formState.locationMode == 'online' ||
             formState.locationMode == 'hybrid')
         ? TenantAdminEventOnlineLocation(
-            url: onlineUrl,
-            platform: onlinePlatform.isEmpty ? null : onlinePlatform,
+            urlValue: tenantAdminRequiredText(onlineUrl),
+            platformValue:
+                tenantAdminOptionalText(onlinePlatform.isEmpty ? null : onlinePlatform),
           )
         : null;
 
@@ -1400,9 +1405,9 @@ class _TenantAdminEventFormScreenState
         includesPhysicalVenue ? selectedVenue?.location?.longitude : null;
 
     return TenantAdminEventLocation(
-      mode: formState.locationMode,
-      latitude: latitude,
-      longitude: longitude,
+      modeValue: tenantAdminRequiredText(formState.locationMode),
+      latitudeValue: tenantAdminOptionalDouble(latitude),
+      longitudeValue: tenantAdminOptionalDouble(longitude),
       online: online,
     );
   }

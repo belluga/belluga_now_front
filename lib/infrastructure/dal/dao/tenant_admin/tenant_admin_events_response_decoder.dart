@@ -164,15 +164,21 @@ class TenantAdminEventsResponseDecoder {
     final location = mode.isEmpty
         ? null
         : TenantAdminEventLocation(
-            mode: mode,
-            latitude: latitude,
-            longitude: longitude,
+            modeValue: tenantAdminRequiredText(mode),
+            latitudeValue: tenantAdminOptionalDouble(latitude),
+            longitudeValue: tenantAdminOptionalDouble(longitude),
             online: onlineRow.isEmpty
                 ? null
                 : TenantAdminEventOnlineLocation(
-                    url: _asString(onlineRow['url']) ?? '',
-                    platform: _asString(onlineRow['platform']),
-                    label: _asString(onlineRow['label']),
+                    urlValue: tenantAdminRequiredText(
+                      _asString(onlineRow['url']) ?? '',
+                    ),
+                    platformValue: tenantAdminOptionalText(
+                      _asString(onlineRow['platform']),
+                    ),
+                    labelValue: tenantAdminOptionalText(
+                      _asString(onlineRow['label']),
+                    ),
                   ),
           );
 
@@ -198,21 +204,24 @@ class TenantAdminEventsResponseDecoder {
         ),
       );
       return TenantAdminEvent(
-        eventId: _asString(row['event_id']) ?? _asString(row['id']) ?? '',
-        slug: _asString(row['slug']) ?? '',
-        title: _asString(row['title']) ?? '',
-        content: _asString(row['content']) ?? '',
+        eventIdValue:
+            tenantAdminRequiredText(_asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+        slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+        titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
+        contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
         type: TenantAdminEventType(
-          id: _asString(typeRow['id']),
-          name: _asString(typeRow['name']) ?? '',
-          slug: _asString(typeRow['slug']) ?? '',
-          description: _asString(typeRow['description']),
-          icon: _asString(typeRow['icon']),
-          color: _asString(typeRow['color']),
+          idValue: tenantAdminOptionalText(_asString(typeRow['id'])),
+          nameValue: tenantAdminRequiredText(_asString(typeRow['name']) ?? ''),
+          slugValue: tenantAdminRequiredText(_asString(typeRow['slug']) ?? ''),
+          descriptionValue: tenantAdminOptionalText(
+            _asString(typeRow['description']),
+          ),
+          iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
+          colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
         ),
         location: location,
         placeRef: placeRef,
-        thumbUrl: thumbUrl,
+        thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(
@@ -221,31 +230,32 @@ class TenantAdminEventsResponseDecoder {
             _parseDate(publicationRow['publish_at']),
           ),
         ),
-        artistIds: artistIds,
+        artistIdValues: tenantAdminTrimmedStringList(artistIds),
         eventParties: eventParties,
         taxonomyTerms: taxonomyTerms,
-        createdAt: _parseDate(row['created_at']),
-        updatedAt: _parseDate(row['updated_at']),
-        deletedAt: _parseDate(row['deleted_at']),
+        createdAtValue: tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
+        updatedAtValue: tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
+        deletedAtValue: tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
       );
     }
 
     return TenantAdminEvent(
-      eventId: _asString(row['event_id']) ?? _asString(row['id']) ?? '',
-      slug: _asString(row['slug']) ?? '',
-      title: _asString(row['title']) ?? '',
-      content: _asString(row['content']) ?? '',
+      eventIdValue:
+          tenantAdminRequiredText(_asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+      slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+      titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
+      contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
       type: TenantAdminEventType(
-        id: _asString(typeRow['id']),
-        name: _asString(typeRow['name']) ?? '',
-        slug: _asString(typeRow['slug']) ?? '',
-        description: _asString(typeRow['description']),
-        icon: _asString(typeRow['icon']),
-        color: _asString(typeRow['color']),
+        idValue: tenantAdminOptionalText(_asString(typeRow['id'])),
+        nameValue: tenantAdminRequiredText(_asString(typeRow['name']) ?? ''),
+        slugValue: tenantAdminRequiredText(_asString(typeRow['slug']) ?? ''),
+        descriptionValue: tenantAdminOptionalText(_asString(typeRow['description'])),
+        iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
+        colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
       ),
       location: location,
       placeRef: placeRef,
-      thumbUrl: thumbUrl,
+      thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         statusValue: tenantAdminRequiredText(
@@ -254,23 +264,23 @@ class TenantAdminEventsResponseDecoder {
           _parseDate(publicationRow['publish_at']),
         ),
       ),
-      artistIds: artistIds,
+      artistIdValues: tenantAdminTrimmedStringList(artistIds),
       eventParties: eventParties,
       taxonomyTerms: taxonomyTerms,
-      createdAt: _parseDate(row['created_at']),
-      updatedAt: _parseDate(row['updated_at']),
-      deletedAt: _parseDate(row['deleted_at']),
+      createdAtValue: tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
+      updatedAtValue: tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
+      deletedAtValue: tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
     );
   }
 
   TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
     return TenantAdminEventType(
-      id: _asString(row['id']),
-      name: _asString(row['name']) ?? '',
-      slug: _asString(row['slug']) ?? '',
-      description: _asString(row['description']),
-      icon: _asString(row['icon']),
-      color: _asString(row['color']),
+      idValue: tenantAdminOptionalText(_asString(row['id'])),
+      nameValue: tenantAdminRequiredText(_asString(row['name']) ?? ''),
+      slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+      descriptionValue: tenantAdminOptionalText(_asString(row['description'])),
+      iconValue: tenantAdminOptionalText(_asString(row['icon'])),
+      colorValue: tenantAdminOptionalText(_asString(row['color'])),
     );
   }
 
