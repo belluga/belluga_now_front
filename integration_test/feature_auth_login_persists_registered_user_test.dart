@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
@@ -68,9 +69,9 @@ void main() {
       const password = 'SecurePass!123';
 
       await authRepository.signUpWithEmailPassword(
-        'Login Regression',
-        email,
-        password,
+        authRepoString('Login Regression'),
+        authRepoString(email),
+        authRepoString(password),
       );
 
       final registeredUser = authRepository.userStreamValue.value;
@@ -79,7 +80,10 @@ void main() {
       await authRepository.logout();
       expect(authRepository.userStreamValue.value, isNull);
 
-      await authRepository.loginWithEmailPassword(email, password);
+      await authRepository.loginWithEmailPassword(
+        authRepoString(email),
+        authRepoString(password),
+      );
       final loggedUser = authRepository.userStreamValue.value;
       expect(loggedUser, isNotNull);
 

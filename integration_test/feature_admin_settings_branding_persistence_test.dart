@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -148,7 +150,10 @@ void main() {
 
       try {
         await authRepository.init();
-        await authRepository.loginWithEmailPassword(adminEmail, adminPassword);
+        await authRepository.loginWithEmailPassword(
+          landlordAuthRepoString(adminEmail),
+          landlordAuthRepoString(adminPassword),
+        );
         expect(authRepository.hasValidSession, isTrue);
 
         final tenantsRepository = LandlordTenantsRepository(
@@ -224,7 +229,9 @@ void main() {
         if (mutationApplied && originalBranding != null) {
           final restoreRepository = TenantAdminSettingsRepository(
             tenantScope: TenantAdminSelectedTenantRepository()
-              ..selectTenantDomain(tenantDomainDefine),
+              ..selectTenantDomain(
+                TenantLookupDomainValue.fromRaw(tenantDomainDefine),
+              ),
           );
 
           await restoreRepository.updateBranding(
