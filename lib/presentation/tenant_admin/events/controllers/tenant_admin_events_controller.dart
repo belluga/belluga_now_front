@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
@@ -198,9 +198,8 @@ class TenantAdminEventsController implements Disposable {
       hasMoreEventsStreamValue.addValue(value.value);
     });
 
-    _isEventsPageLoadingSubscription = _eventsRepository
-        .isEventsPageLoadingStreamValue.stream
-        .listen((value) {
+    _isEventsPageLoadingSubscription =
+        _eventsRepository.isEventsPageLoadingStreamValue.stream.listen((value) {
       if (_isDisposed) {
         return;
       }
@@ -287,8 +286,8 @@ class TenantAdminEventsController implements Disposable {
   }) {
     final firstOccurrence = existingEvent?.occurrences.firstOrNull;
     final selectedTaxonomyTerms = <String, Set<String>>{};
-    for (final term
-        in existingEvent?.taxonomyTerms ?? const <TenantAdminTaxonomyTerm>[]) {
+    for (final term in existingEvent?.taxonomyTerms ??
+        const TenantAdminTaxonomyTerms.empty()) {
       final bucket =
           selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
@@ -302,7 +301,7 @@ class TenantAdminEventsController implements Disposable {
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedArtistIds: {
-        ...?existingEvent?.artistIds,
+        ...?existingEvent?.artistIds.map((artistId) => artistId.value),
       },
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
@@ -716,7 +715,7 @@ class TenantAdminEventsController implements Disposable {
       final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
-          .where((taxonomy) => taxonomy.appliesToTarget('event'))
+          .where((taxonomy) => taxonomy.appliesToEvent())
           .toList(growable: false);
       if (_isDisposed) {
         return;
@@ -726,7 +725,9 @@ class TenantAdminEventsController implements Disposable {
       final entries =
           <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
       for (final taxonomy in filtered) {
-        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        await _taxonomiesRepository.loadAllTerms(
+            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
+                defaultValue: '', isRequired: true));
         final terms = _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         entries.add(

@@ -1,16 +1,15 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_date_time_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_date_time_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_double_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 
 part 'tenant_admin_event/tenant_admin_event_draft.dart';
 part 'tenant_admin_event/tenant_admin_event_location.dart';
@@ -34,20 +33,23 @@ class TenantAdminEvent {
     this.location,
     this.placeRef,
     TenantAdminOptionalUrlValue? thumbUrlValue,
-    TenantAdminTrimmedStringListValue? artistIdValues,
+    List<TenantAdminArtistIdValue>? artistIdValues,
     this.eventParties = const <TenantAdminEventParty>[],
-    this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminOptionalDateTimeValue? createdAtValue,
     TenantAdminOptionalDateTimeValue? updatedAtValue,
     TenantAdminOptionalDateTimeValue? deletedAtValue,
   })  : thumbUrlValue = thumbUrlValue ?? TenantAdminOptionalUrlValue(),
-        artistIdValues = artistIdValues ?? TenantAdminTrimmedStringListValue(),
+        artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
+          artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        ),
         createdAtValue =
-            createdAtValue ?? const TenantAdminOptionalDateTimeValue(null),
+            createdAtValue ?? TenantAdminOptionalDateTimeValue(null),
         updatedAtValue =
-            updatedAtValue ?? const TenantAdminOptionalDateTimeValue(null),
+            updatedAtValue ?? TenantAdminOptionalDateTimeValue(null),
         deletedAtValue =
-            deletedAtValue ?? const TenantAdminOptionalDateTimeValue(null);
+            deletedAtValue ?? TenantAdminOptionalDateTimeValue(null),
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
   final TenantAdminRequiredTextValue eventIdValue;
   final TenantAdminRequiredTextValue slugValue;
@@ -59,9 +61,9 @@ class TenantAdminEvent {
   final TenantAdminOptionalUrlValue thumbUrlValue;
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
-  final TenantAdminTrimmedStringListValue artistIdValues;
+  final List<TenantAdminArtistIdValue> artistIdValues;
   final List<TenantAdminEventParty> eventParties;
-  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
   final TenantAdminOptionalDateTimeValue createdAtValue;
   final TenantAdminOptionalDateTimeValue updatedAtValue;
   final TenantAdminOptionalDateTimeValue deletedAtValue;
@@ -71,7 +73,7 @@ class TenantAdminEvent {
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get thumbUrl => thumbUrlValue.nullableValue;
-  TenantAdminTrimmedStringListValue get artistIds => artistIdValues;
+  List<TenantAdminArtistIdValue> get artistIds => artistIdValues;
   DateTime? get createdAt => createdAtValue.value;
   DateTime? get updatedAt => updatedAtValue.value;
   DateTime? get deletedAt => deletedAtValue.value;

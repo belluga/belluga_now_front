@@ -62,7 +62,9 @@ class TenantAdminEventsRequestEncoder {
     }
 
     if (draft.artistIds.isNotEmpty) {
-      payload['artist_ids'] = draft.artistIds;
+      payload['artist_ids'] = draft.artistIds
+          .map((artistId) => artistId.value)
+          .toList(growable: false);
     }
 
     final normalizedCoverUrl = draft.coverUrl?.trim();

@@ -4,7 +4,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -1287,7 +1289,7 @@ class _TenantAdminEventFormScreenState
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
       for (final termSlug in termSlugs) {
         taxonomyTerms.add(
-          TenantAdminTaxonomyTerm(type: taxonomySlug, value: termSlug),
+          tenantAdminTaxonomyTermFromRaw(type: taxonomySlug, value: termSlug),
         );
       }
     });
@@ -1318,10 +1320,10 @@ class _TenantAdminEventFormScreenState
           : null;
 
       final draft = TenantAdminEventDraft(
-        titleValue:
-            tenantAdminRequiredText(_controller.eventTitleController.text.trim()),
-        contentValue:
-            tenantAdminOptionalText(_controller.eventContentController.text.trim()),
+        titleValue: tenantAdminRequiredText(
+            _controller.eventTitleController.text.trim()),
+        contentValue: tenantAdminOptionalText(
+            _controller.eventContentController.text.trim()),
         type: TenantAdminEventType(
           idValue: tenantAdminOptionalText(selectedTypeId),
           nameValue: tenantAdminRequiredText(selectedType.name),
@@ -1348,10 +1350,10 @@ class _TenantAdminEventFormScreenState
         placeRef: placeRef,
         coverUpload: coverUpload,
         removeCoverValue: tenantAdminFlag(removeCover),
-        artistIdValues: tenantAdminTrimmedStringList(
-          formState.selectedArtistIds.toList(growable: false),
-        ),
-        taxonomyTerms: taxonomyTerms,
+        artistIdValues: formState.selectedArtistIds
+            .map(TenantAdminArtistIdValue.new)
+            .toList(growable: false),
+        taxonomyTerms: TenantAdminTaxonomyTerms(taxonomyTerms),
       );
 
       final result = await (_isEditing
@@ -1392,8 +1394,8 @@ class _TenantAdminEventFormScreenState
             formState.locationMode == 'hybrid')
         ? TenantAdminEventOnlineLocation(
             urlValue: tenantAdminRequiredText(onlineUrl),
-            platformValue:
-                tenantAdminOptionalText(onlinePlatform.isEmpty ? null : onlinePlatform),
+            platformValue: tenantAdminOptionalText(
+                onlinePlatform.isEmpty ? null : onlinePlatform),
           )
         : null;
 

@@ -12,11 +12,14 @@ class TenantAdminEventDraft {
     TenantAdminOptionalUrlValue? coverUrlValue,
     this.coverUpload,
     TenantAdminFlagValue? removeCoverValue,
-    TenantAdminTrimmedStringListValue? artistIdValues,
-    this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
+    List<TenantAdminArtistIdValue>? artistIdValues,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
   })  : coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
-        removeCoverValue = removeCoverValue ?? const TenantAdminFlagValue(false),
-        artistIdValues = artistIdValues ?? TenantAdminTrimmedStringListValue();
+        removeCoverValue = removeCoverValue ?? TenantAdminFlagValue(false),
+        artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
+          artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        ),
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
   final TenantAdminRequiredTextValue titleValue;
   final TenantAdminOptionalTextValue contentValue;
@@ -28,12 +31,12 @@ class TenantAdminEventDraft {
   final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminMediaUpload? coverUpload;
   final TenantAdminFlagValue removeCoverValue;
-  final TenantAdminTrimmedStringListValue artistIdValues;
-  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final List<TenantAdminArtistIdValue> artistIdValues;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
 
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get coverUrl => coverUrlValue.nullableValue;
   bool get removeCover => removeCoverValue.value;
-  TenantAdminTrimmedStringListValue get artistIds => artistIdValues;
+  List<TenantAdminArtistIdValue> get artistIds => artistIdValues;
 }
