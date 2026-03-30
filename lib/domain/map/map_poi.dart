@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
 /// Base contract for any point-of-interest rendered on the map layers.
 /// Concrete POI types (city curated points, events, partner spots, etc.)
@@ -16,5 +17,5 @@ abstract class MapPoi {
   int get priority;
   double? get movementRadiusMeters;
   String? get assetPath;
-  List<String> get tags;
+  List<PoiTagValue> get tags;
 }

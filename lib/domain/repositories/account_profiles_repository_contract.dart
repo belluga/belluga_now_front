@@ -1,13 +1,14 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef AccountProfilesRepositoryContractPrimString = String;
-typedef AccountProfilesRepositoryContractPrimInt = int;
-typedef AccountProfilesRepositoryContractPrimBool = bool;
-typedef AccountProfilesRepositoryContractPrimDouble = double;
-typedef AccountProfilesRepositoryContractPrimDateTime = DateTime;
-typedef AccountProfilesRepositoryContractPrimDynamic = dynamic;
+typedef AccountProfilesRepositoryContractPrimString
+    = AccountProfilesRepositoryContractTextValue;
+typedef AccountProfilesRepositoryContractPrimInt
+    = AccountProfilesRepositoryContractIntValue;
+typedef AccountProfilesRepositoryContractPrimBool
+    = AccountProfilesRepositoryContractBoolValue;
 
 abstract class AccountProfilesRepositoryContract {
   static final Expando<_AccountProfilesPaginationState>
@@ -69,32 +70,48 @@ abstract class AccountProfilesRepositoryContract {
   });
 
   Future<void> loadAccountProfilesPage({
-    AccountProfilesRepositoryContractPrimInt pageSize = 30,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
+    final effectivePageSize = pageSize ??
+        AccountProfilesRepositoryContractPrimInt.fromRaw(
+          30,
+          defaultValue: 30,
+        );
     await _waitForPagedAccountProfilesFetch();
     _resetPagedAccountProfilesState();
     pagedAccountProfilesStreamValue.addValue(null);
     await _fetchPagedAccountProfiles(
-      page: 1,
-      pageSize: pageSize,
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
       query: query,
       typeFilter: typeFilter,
     );
   }
 
   Future<void> loadNextAccountProfilesPage({
-    AccountProfilesRepositoryContractPrimInt pageSize = 30,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
-    if (_paginationState.isFetching || !_paginationState.hasMore) {
+    final effectivePageSize = pageSize ??
+        AccountProfilesRepositoryContractPrimInt.fromRaw(
+          30,
+          defaultValue: 30,
+        );
+    if (_paginationState.isFetching.value || !_paginationState.hasMore.value) {
       return;
     }
     await _fetchPagedAccountProfiles(
-      page: _paginationState.currentPage + 1,
-      pageSize: pageSize,
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(
+        _paginationState.currentPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
       query: query,
       typeFilter: typeFilter,
     );
@@ -117,7 +134,7 @@ abstract class AccountProfilesRepositoryContract {
       AccountProfilesRepositoryContractPrimString slug);
 
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
-    AccountProfilesRepositoryContractPrimInt pageSize = 10,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
   });
 
   Future<void> loadAccountProfileBySlug(
@@ -138,7 +155,7 @@ abstract class AccountProfilesRepositoryContract {
   List<AccountProfileModel> getFavoriteAccountProfiles();
 
   Future<void> _waitForPagedAccountProfilesFetch() async {
-    while (_paginationState.isFetching) {
+    while (_paginationState.isFetching.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -149,12 +166,21 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
-    if (_paginationState.isFetching) return;
-    if (page > 1 && !_paginationState.hasMore) return;
+    if (_paginationState.isFetching.value) return;
+    if (page.value > 1 && !_paginationState.hasMore.value) return;
 
-    _paginationState.isFetching = true;
-    if (page > 1) {
-      isPagedAccountProfilesLoadingStreamValue.addValue(true);
+    _paginationState.isFetching =
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    if (page.value > 1) {
+      isPagedAccountProfilesLoadingStreamValue.addValue(
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
+      );
     }
     try {
       final result = await fetchAccountProfilesPage(
@@ -164,33 +190,75 @@ abstract class AccountProfilesRepositoryContract {
         typeFilter: typeFilter,
       );
       _paginationState.currentPage = page;
-      _paginationState.hasMore = result.hasMore;
+      _paginationState.hasMore =
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+        result.hasMore,
+        defaultValue: true,
+      );
       hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
       pagedAccountProfilesStreamValue.addValue(result);
       pagedAccountProfilesErrorStreamValue.addValue(null);
     } catch (error) {
-      pagedAccountProfilesErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      pagedAccountProfilesErrorStreamValue.addValue(
+        AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         pagedAccountProfilesStreamValue.addValue(
-          const PagedAccountProfilesResult(
+          pagedAccountProfilesResultFromRaw(
             profiles: <AccountProfileModel>[],
             hasMore: false,
           ),
         );
-        hasMorePagedAccountProfilesStreamValue.addValue(false);
+        hasMorePagedAccountProfilesStreamValue.addValue(
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+            false,
+            defaultValue: false,
+          ),
+        );
       }
     } finally {
-      _paginationState.isFetching = false;
-      isPagedAccountProfilesLoadingStreamValue.addValue(false);
+      _paginationState.isFetching =
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isPagedAccountProfilesLoadingStreamValue.addValue(
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
   void _resetPagedAccountProfilesState() {
-    _paginationState.currentPage = 0;
-    _paginationState.hasMore = true;
-    _paginationState.isFetching = false;
-    hasMorePagedAccountProfilesStreamValue.addValue(true);
-    isPagedAccountProfilesLoadingStreamValue.addValue(false);
+    _paginationState.currentPage =
+        AccountProfilesRepositoryContractPrimInt.fromRaw(
+      0,
+      defaultValue: 0,
+    );
+    _paginationState.hasMore =
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetching =
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMorePagedAccountProfilesStreamValue.addValue(
+      AccountProfilesRepositoryContractPrimBool.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+    isPagedAccountProfilesLoadingStreamValue.addValue(
+      AccountProfilesRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
   }
 }
 
@@ -201,15 +269,33 @@ class _AccountProfilesPaginationState {
   final StreamValue<AccountProfilesRepositoryContractPrimBool>
       hasMoreStreamValue =
       StreamValue<AccountProfilesRepositoryContractPrimBool>(
-          defaultValue: true);
+          defaultValue: AccountProfilesRepositoryContractPrimBool.fromRaw(
+    true,
+    defaultValue: true,
+  ));
   final StreamValue<AccountProfilesRepositoryContractPrimBool>
       isPageLoadingStreamValue =
       StreamValue<AccountProfilesRepositoryContractPrimBool>(
-          defaultValue: false);
+          defaultValue: AccountProfilesRepositoryContractPrimBool.fromRaw(
+    false,
+    defaultValue: false,
+  ));
   final StreamValue<AccountProfilesRepositoryContractPrimString?>
       errorStreamValue =
       StreamValue<AccountProfilesRepositoryContractPrimString?>();
-  AccountProfilesRepositoryContractPrimInt currentPage = 0;
-  AccountProfilesRepositoryContractPrimBool hasMore = true;
-  AccountProfilesRepositoryContractPrimBool isFetching = false;
+  AccountProfilesRepositoryContractPrimInt currentPage =
+      AccountProfilesRepositoryContractPrimInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
+  AccountProfilesRepositoryContractPrimBool hasMore =
+      AccountProfilesRepositoryContractPrimBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  AccountProfilesRepositoryContractPrimBool isFetching =
+      AccountProfilesRepositoryContractPrimBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
 }

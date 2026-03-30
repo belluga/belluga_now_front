@@ -1,19 +1,26 @@
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
+import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
 
 class TimezoneService implements TimezoneServiceContract {
   @override
-  DateTime utcToLocal(DateTime value) {
-    if (!value.isUtc) {
-      return value;
+  TimezoneServiceContractDateTimeValue utcToLocal(
+    TimezoneServiceContractDateTimeValue value,
+  ) {
+    final raw = value.value;
+    if (!raw.isUtc) {
+      return timezoneServiceDateTime(raw, defaultValue: raw);
     }
-    return value.toLocal();
+    return timezoneServiceDateTime(raw.toLocal(), defaultValue: raw.toLocal());
   }
 
   @override
-  DateTime localToUtc(DateTime value) {
-    if (value.isUtc) {
-      return value;
+  TimezoneServiceContractDateTimeValue localToUtc(
+    TimezoneServiceContractDateTimeValue value,
+  ) {
+    final raw = value.value;
+    if (raw.isUtc) {
+      return timezoneServiceDateTime(raw, defaultValue: raw);
     }
-    return value.toUtc();
+    return timezoneServiceDateTime(raw.toUtc(), defaultValue: raw.toUtc());
   }
 }

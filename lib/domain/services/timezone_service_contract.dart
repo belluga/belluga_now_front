@@ -1,9 +1,6 @@
-typedef TimezoneServiceContractPrimString = String;
-typedef TimezoneServiceContractPrimInt = int;
-typedef TimezoneServiceContractPrimBool = bool;
-typedef TimezoneServiceContractPrimDouble = double;
-typedef TimezoneServiceContractPrimDateTime = DateTime;
-typedef TimezoneServiceContractPrimDynamic = dynamic;
+import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
+
+typedef TimezoneServiceContractPrimDateTime = TimezoneServiceContractDateTimeValue;
 
 abstract class TimezoneServiceContract {
   TimezoneServiceContractPrimDateTime utcToLocal(

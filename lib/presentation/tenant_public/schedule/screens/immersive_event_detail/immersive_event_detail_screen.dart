@@ -18,6 +18,8 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -89,11 +91,17 @@ class _ImmersiveEventDetailScreenState
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
-                return StreamValueBuilder<Map<String, List<SentInviteStatus>>>(
+                return StreamValueBuilder<
+                    Map<InvitesRepositoryContractPrimString,
+                        List<SentInviteStatus>>>(
                   streamValue: _controller.sentInvitesByEventStreamValue,
                   builder: (context, sentInvitesByEvent) {
-                    final sentForEvent =
-                        sentInvitesByEvent[resolvedEvent.id.value] ?? const [];
+                    final sentForEvent = sentInvitesByEvent[invitesRepoString(
+                          resolvedEvent.id.value,
+                          defaultValue: '',
+                          isRequired: true,
+                        )] ??
+                        const [];
 
                     final Widget? topBanner = receivedInvites.isNotEmpty
                         ? Padding(
@@ -270,7 +278,9 @@ class _ImmersiveEventDetailScreenState
         }
 
         router.push(
-          InviteShareRoute(invite: invite.prioritizeInviter(inviteId)),
+          InviteShareRoute(
+            invite: invite.prioritizeInviter(InviteIdValue()..parse(inviteId)),
+          ),
         );
       });
     });
@@ -328,9 +338,11 @@ class _ImmersiveEventDetailScreenState
     final tags = event.taxonomyTags;
     final eventId = event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
-    final parsedTags = (tags.isEmpty ? const ['belluga'] : tags)
-        .map((tag) => InviteTagValue()..parse(tag))
-        .toList(growable: false);
+    final parsedTags = tags.isEmpty
+        ? <InviteTagValue>[InviteTagValue()..parse('belluga')]
+        : tags
+            .map((tag) => InviteTagValue()..parse(tag.value))
+            .toList(growable: false);
 
     return InviteModel(
       idValue: InviteIdValue()..parse(inviteId),

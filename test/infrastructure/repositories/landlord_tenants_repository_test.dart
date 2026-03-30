@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,27 +21,22 @@ void main() {
     final tenants = await repository.fetchTenants();
 
     expect(
-      tenants,
+      tenants
+          .map((entry) =>
+              (id: entry.id, name: entry.name, domain: entry.mainDomain))
+          .toList(growable: false),
       equals([
-        const LandlordTenantOption(
-          id: 'alpha',
-          name: 'Alpha Tenant',
-          mainDomain: 'alpha.example.com',
-        ),
-        const LandlordTenantOption(
-          id: 'beta',
-          name: 'Beta Tenant',
-          mainDomain: 'beta.example.com',
-        ),
-        const LandlordTenantOption(
+        (id: 'alpha', name: 'Alpha Tenant', domain: 'alpha.example.com'),
+        (id: 'beta', name: 'Beta Tenant', domain: 'beta.example.com'),
+        (
           id: 'epsilon',
           name: 'Epsilon Tenant',
-          mainDomain: 'epsilon.landlord.example.com',
+          domain: 'epsilon.landlord.example.com',
         ),
-        const LandlordTenantOption(
+        (
           id: 'gamma',
           name: 'Gamma Tenant',
-          mainDomain: 'gamma.landlord.example.com',
+          domain: 'gamma.landlord.example.com'
         ),
       ]),
     );
@@ -64,7 +58,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}

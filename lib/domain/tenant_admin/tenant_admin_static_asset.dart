@@ -1,33 +1,29 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_static_asset_values.dart';
 
 class TenantAdminStaticAsset {
   TenantAdminStaticAsset({
-    required Object id,
-    required Object profileType,
-    required Object displayName,
-    required Object slug,
-    required Object isActive,
-    Object? avatarUrl,
-    Object? coverUrl,
-    Object? bio,
-    Object? content,
-    this.taxonomyTerms = const [],
+    required this.idValue,
+    required this.profileTypeValue,
+    required this.displayNameValue,
+    required this.slugValue,
+    required this.isActiveValue,
+    TenantAdminOptionalUrlValue? avatarUrlValue,
+    TenantAdminOptionalUrlValue? coverUrlValue,
+    TenantAdminOptionalTextValue? bioValue,
+    TenantAdminOptionalTextValue? contentValue,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     this.location,
-  })  : idValue = tenantAdminRequiredText(id),
-        profileTypeValue = tenantAdminRequiredText(profileType),
-        displayNameValue = tenantAdminRequiredText(displayName),
-        slugValue = tenantAdminRequiredText(slug),
-        isActiveValue = tenantAdminFlag(isActive),
-        avatarUrlValue = tenantAdminOptionalUrl(avatarUrl),
-        coverUrlValue = tenantAdminOptionalUrl(coverUrl),
-        bioValue = tenantAdminOptionalText(bio),
-        contentValue = tenantAdminOptionalText(content);
+  })  : avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
+        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
+        bioValue = bioValue ?? TenantAdminOptionalTextValue(),
+        contentValue = contentValue ?? TenantAdminOptionalTextValue(),
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue profileTypeValue;
@@ -38,7 +34,7 @@ class TenantAdminStaticAsset {
   final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminOptionalTextValue bioValue;
   final TenantAdminOptionalTextValue contentValue;
-  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
   final TenantAdminLocation? location;
 
   String get id => idValue.value;

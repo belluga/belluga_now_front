@@ -15,7 +15,7 @@ class MenuScreenController implements Disposable {
   ThemeMode get themeMode => _appDataRepository.themeMode;
 
   Future<void> setThemeMode(ThemeMode mode) =>
-      _appDataRepository.setThemeMode(mode);
+      _appDataRepository.setThemeMode(AppThemeModeValue.fromRaw(mode));
 
   @override
   void onDispose() {}

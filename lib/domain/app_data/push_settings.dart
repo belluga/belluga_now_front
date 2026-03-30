@@ -14,6 +14,6 @@ class PushSettings {
   final PushThrottlesValue throttlesValue;
 
   bool get enabled => enabledValue.value;
-  List<String> get types => typeValues.value;
-  Map<String, dynamic> get throttles => throttlesValue.value;
+  PushTypesValue get types => typeValues;
+  PushThrottlesValue get throttles => throttlesValue;
 }

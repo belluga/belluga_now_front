@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
+import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
 import 'package:get_it/get_it.dart';
 
 class TimezoneConverter {
@@ -7,7 +8,11 @@ class TimezoneConverter {
   static DateTime utcToLocal(DateTime value) {
     final service = _resolveService();
     if (service != null) {
-      return service.utcToLocal(value);
+      return service
+          .utcToLocal(
+            timezoneServiceDateTime(value, defaultValue: value),
+          )
+          .value;
     }
     return value.isUtc ? value.toLocal() : value;
   }
@@ -15,7 +20,11 @@ class TimezoneConverter {
   static DateTime localToUtc(DateTime value) {
     final service = _resolveService();
     if (service != null) {
-      return service.localToUtc(value);
+      return service
+          .localToUtc(
+            timezoneServiceDateTime(value, defaultValue: value),
+          )
+          .value;
     }
     return value.isUtc ? value : value.toUtc();
   }

@@ -1,10 +1,10 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_links_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 
 TenantAdminAppLinksSettings buildTenantAdminAppLinksSettings({
   required Map<String, dynamic> rawAppLinks,
@@ -37,11 +37,17 @@ TenantAdminAppLinksSettings buildTenantAdminAppLinksSettings({
   return TenantAdminAppLinksSettings(
     rawAppLinksValue: TenantAdminDynamicMapValue(rawAppLinks),
     androidAppIdentifierValue: androidAppIdentifierValue,
-    androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
-      androidSha256CertFingerprints,
-    ),
+    androidSha256CertFingerprintValues: androidSha256CertFingerprints
+        .map(
+          (entry) => TenantAdminSha256FingerprintValue()..parse(entry),
+        )
+        .toList(growable: false),
     iosTeamIdValue: iosTeamIdValue,
     iosBundleIdValue: iosBundleIdValue,
-    iosPathsValue: TenantAdminTrimmedStringListValue(iosPaths),
+    iosPathValues: iosPaths
+        .map(
+          (entry) => TenantAdminAppLinkPathValue()..parse(entry),
+        )
+        .toList(growable: false),
   );
 }

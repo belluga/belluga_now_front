@@ -60,7 +60,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
     if (index < 0 || index >= settings.filters.length) {
       return;
     }
-    final current = settings.filters[index];
+    final current = settings.filters.elementAt(index);
     final result = await showTenantAdminFieldEditSheet(
       context: context,
       title: 'Editar chave do filtro',
@@ -86,7 +86,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
     if (index < 0 || index >= settings.filters.length) {
       return;
     }
-    final current = settings.filters[index];
+    final current = settings.filters.elementAt(index);
     final result = await showTenantAdminFieldEditSheet(
       context: context,
       title: 'Editar rótulo do filtro',
@@ -124,7 +124,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
       return;
     }
 
-    final filter = settings.filters[index];
+    final filter = settings.filters.elementAt(index);
     final result = await showTenantAdminMapFilterRuleSheet(
       context: context,
       filter: filter,
@@ -143,7 +143,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
       return;
     }
 
-    final filter = settings.filters[index];
+    final filter = settings.filters.elementAt(index);
     final result = await showTenantAdminMapFilterVisualSheet(
       context: context,
       filter: filter,

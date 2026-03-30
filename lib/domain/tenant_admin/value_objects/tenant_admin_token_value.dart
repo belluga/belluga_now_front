@@ -1,5 +1,8 @@
-class TenantAdminTokenValue {
-  const TenantAdminTokenValue(this.value);
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
+class TenantAdminTokenValue extends GenericStringValue {
+  TenantAdminTokenValue([String raw = ''])
+      : super(defaultValue: '', isRequired: true, minLenght: 1) {
+    parse(raw);
+  }
 }

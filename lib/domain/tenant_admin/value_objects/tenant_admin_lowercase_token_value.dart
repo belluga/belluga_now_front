@@ -9,4 +9,18 @@ class TenantAdminLowercaseTokenValue extends GenericStringValue {
 
   @override
   String doParse(String? parseValue) => (parseValue ?? '').trim().toLowerCase();
+
+  factory TenantAdminLowercaseTokenValue.fromRaw(
+    Object? raw, {
+    String defaultValue = '',
+    bool isRequired = true,
+  }) {
+    final value = TenantAdminLowercaseTokenValue(
+      defaultValue: defaultValue,
+      isRequired: isRequired,
+      minLenght: 1,
+    );
+    value.parse(raw?.toString());
+    return value;
+  }
 }

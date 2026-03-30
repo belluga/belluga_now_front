@@ -1,9 +1,12 @@
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/landlord_home_screen.dart';
 import 'package:flutter/material.dart';
@@ -124,7 +127,10 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractTextValue email,
+    LandlordAuthRepositoryContractTextValue password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -179,18 +185,21 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 }

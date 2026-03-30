@@ -23,7 +23,7 @@ class TenantAdminOrganizationDTO {
   }
 
   TenantAdminOrganization toDomain() {
-    return TenantAdminOrganization(
+    return tenantAdminOrganizationFromRaw(
       id: id,
       name: name,
       slug: slug,

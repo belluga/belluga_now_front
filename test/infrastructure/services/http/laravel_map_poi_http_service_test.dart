@@ -1,7 +1,13 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
@@ -35,7 +41,7 @@ void main() {
     );
 
     await service.getPois(
-      PoiQuery(
+      _buildPoiQuery(
         source: 'static_asset',
         categoryKeys: <String>{'beach'},
         types: <String>{'beach_spot'},
@@ -80,7 +86,7 @@ void main() {
     );
 
     await service.getFilters(
-      PoiQuery(
+      _buildPoiQuery(
         source: 'event',
         types: <String>{'showcase'},
       ),
@@ -99,7 +105,7 @@ void main() {
   test('getPois bootstraps auth token when initially missing', () async {
     final authRepository =
         GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
-    authRepository.setUserToken('');
+    authRepository.setUserToken(authRepoString(''));
     authRepository.tokenAfterInit = 'refreshed-token';
 
     final adapter = _RecordingAdapter();
@@ -141,6 +147,94 @@ void main() {
   });
 }
 
+PoiQuery _buildPoiQuery({
+  String? source,
+  Set<String>? categoryKeys,
+  Set<String>? types,
+  Set<String>? tags,
+  Set<String>? taxonomy,
+}) {
+  return PoiQuery(
+    sourceValue: _buildSourceValue(source),
+    categoryKeyValues:
+        categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
+    typeValues: types == null ? null : _buildFilterTypeValues(types),
+    tagValues: tags == null ? null : _buildTagValues(tags),
+    taxonomyTokenValues:
+        taxonomy == null ? null : _buildTaxonomyValues(taxonomy),
+  );
+}
+
+PoiFilterSourceValue? _buildSourceValue(String? raw) {
+  final normalized = raw?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterSourceValue();
+  value.parse(normalized);
+  return value;
+}
+
+List<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterKeyValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
+}
+
+List<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTypeValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
+}
+
+List<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiTagValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiTagValue>.unmodifiable(values.toSet().toList());
+}
+
+List<PoiFilterTaxonomyTokenValue> _buildTaxonomyValues(
+  Iterable<String> rawValues,
+) {
+  final values = <PoiFilterTaxonomyTokenValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTaxonomyTokenValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+    values.toSet().toList(),
+  );
+}
+
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
   String? tokenAfterInit;
@@ -153,8 +247,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
@@ -183,33 +277,35 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

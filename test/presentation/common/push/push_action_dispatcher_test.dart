@@ -38,14 +38,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 

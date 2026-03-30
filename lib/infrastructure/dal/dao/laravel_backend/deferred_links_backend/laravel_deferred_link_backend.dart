@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/dal/dto/deferred_link/deferred_link_resolution_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/services/deferred_link_backend_contract.dart';
 import 'package:dio/dio.dart';
@@ -13,7 +14,7 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
   @override
-  Future<Map<String, dynamic>> resolveDeferredLink({
+  Future<DeferredLinkResolutionDto> resolveDeferredLink({
     required String platform,
     String? installReferrer,
     String? storeChannel,
@@ -45,15 +46,24 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
     }
   }
 
-  Map<String, dynamic> _normalizeResponse(dynamic raw) {
+  DeferredLinkResolutionDto _normalizeResponse(dynamic raw) {
     if (raw is Map<String, dynamic>) {
       final data = raw['data'];
       if (data is Map<String, dynamic>) {
-        return data;
+        return _mapResolutionDto(data);
       }
-      return raw;
+      return _mapResolutionDto(raw);
     }
 
     throw Exception('Unexpected deferred deep link response shape.');
+  }
+
+  DeferredLinkResolutionDto _mapResolutionDto(Map<String, dynamic> data) {
+    return DeferredLinkResolutionDto(
+      status: data['status']?.toString().trim() ?? 'not_captured',
+      code: data['code']?.toString().trim(),
+      storeChannel: data['store_channel']?.toString().trim(),
+      failureReason: data['failure_reason']?.toString().trim(),
+    );
   }
 }

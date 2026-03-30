@@ -6,10 +6,11 @@
 
 ## Official Commands
 - Full project analyzer gate (local + CI, run at repository root):
-  - `fvm dart analyze --format machine`
+  - `fvm dart analyze . --format machine`
 - Important:
   - Do not use `fvm dart analyze lib` as architecture source-of-truth in this repo.
-  - Directory-target mode is currently inconsistent here (`lib` can false-clean while root/file targets emit diagnostics).
+  - In this workspace, `fvm dart analyze` without an explicit target can false-clean. Use `.` explicitly.
+  - Directory-target mode is currently inconsistent here (`lib` can false-clean while `.`/file targets emit diagnostics).
 - Rule matrix anti-regression gate:
   - `bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh`
 
@@ -18,7 +19,11 @@
 ### Canonical remediation (mandatory)
 - The ONLY acceptable remediation is **ValueObject**.
 - Validation ownership stays in ValueObjects (never in controllers/parsers outside domain VOs).
+- DTOs are the only boundary allowed to receive transport primitives.
+- Domain constructors/method parameters must be only: `Domain`, `ValueObject<T>`, or `List/Set/Iterable` whose element type is `Domain` or `ValueObject<T>`.
+- Any other parameter type is forbidden (`String`, `int`, `DateTime`, `Map`, bare `List/Set/Iterable`, `List<String>`, etc.).
 - Typedef aliases do not remediate primitive usage.
+- Any class under `domain/**/value_objects/**` must extend `ValueObject<T>` (plain classes in this folder are forbidden).
 
 ### Approved ValueObject bases
 Use existing base classes when they match the semantic type, for example:
@@ -30,11 +35,17 @@ Use existing base classes when they match the semantic type, for example:
 
 If none matches the domain semantic, create a new `*Value` class extending `ValueObject<T>`.
 
+`ValueObject<T>` generic constraints:
+- `T` cannot be `Map`, `List`, `Set`, `Iterable`, or collection-like abstractions.
+- If grouped data is needed, model it as auxiliary domain types with their own ValueObject fields.
+
 ### Collections and map policy
 - `List/Set/Iterable` are allowed only when element types are ValueObjects or domain-owned types.
 - Bare `List/Set/Iterable` (without type argument) are forbidden.
-- `Map` in domain fields/constructors/method signatures is forbidden.
+- `Map` in domain fields/constructors/method signatures and collection/map return signatures is forbidden.
 - Replace `Map` usage with auxiliary domain models composed by ValueObjects.
+- Getter/method return types cannot expose `Map/List/Set/Iterable` with primitive payload.
+- Parsing helpers like `fromRaw`/`fromJson` belong to DTO/decoder/VO layers, not domain entities.
 
 ### Quick examples
 Violation:

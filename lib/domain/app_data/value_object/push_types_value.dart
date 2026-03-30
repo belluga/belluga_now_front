@@ -1,10 +1,21 @@
-class PushTypesValue {
+import 'package:value_object_pattern/value_object.dart';
+
+class PushTypesValue extends ValueObject<List<String>> {
   PushTypesValue([Iterable<String>? rawTypes])
-      : _value = List<String>.unmodifiable(_sanitize(rawTypes));
+      : super(defaultValue: const <String>[], isRequired: false) {
+    parse(rawTypes?.join('\n'));
+  }
 
-  final List<String> _value;
+  @override
+  List<String> doParse(dynamic parseValue) {
+    if (parseValue is Iterable) {
+      return List<String>.unmodifiable(
+        _sanitize(parseValue.map((item) => item.toString())),
+      );
+    }
 
-  List<String> get value => _value;
+    return defaultValue;
+  }
 
   static List<String> _sanitize(Iterable<String>? rawTypes) {
     if (rawTypes == null) {
@@ -22,4 +33,8 @@ class PushTypesValue {
     }
     return ordered;
   }
+
+  bool get isEmpty => value.isEmpty;
+
+  String join(String separator) => value.join(separator);
 }

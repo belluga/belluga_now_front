@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -12,6 +13,7 @@ import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_cont
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -85,7 +87,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           ? currentPage < lastPage
           : raw['next_page_url'] != null;
 
-      return PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: _parseProfiles(data),
         hasMore: hasMore,
       );
@@ -220,7 +222,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           avatarValue: avatarValue,
           coverValue: coverValue,
           bioValue: bioValue,
-          tagsValue: AccountProfileTagsValue(tags),
+          tagValues: tags
+              .map(AccountProfileTagValue.new)
+              .toList(growable: false),
           distanceMetersValue:
               AccountProfileDistanceMetersValue(distanceMeters),
         ),
@@ -281,11 +285,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return haversineDistanceMeters(
-      lat1: origin.$1,
-      lon1: origin.$2,
-      lat2: location.$1,
-      lon2: location.$2,
-    );
+      coordinateA: CityCoordinate.fromLatLng(
+        LatLng(origin.$1, origin.$2),
+      ),
+      coordinateB: CityCoordinate.fromLatLng(
+        LatLng(location.$1, location.$2),
+      ),
+    ).value;
   }
 
   double? _parseDirectDistanceMeters(Map<String, dynamic> json) {

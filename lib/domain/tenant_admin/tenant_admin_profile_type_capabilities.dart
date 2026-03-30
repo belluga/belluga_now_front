@@ -1,24 +1,25 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 
 class TenantAdminProfileTypeCapabilities {
   TenantAdminProfileTypeCapabilities({
-    required Object isFavoritable,
-    required Object isPoiEnabled,
-    required Object hasBio,
-    required Object hasContent,
-    required Object hasTaxonomies,
-    required Object hasAvatar,
-    required Object hasCover,
-    required Object hasEvents,
-  })  : isFavoritableValue = tenantAdminFlag(isFavoritable),
-        isPoiEnabledValue = tenantAdminFlag(isPoiEnabled),
-        hasBioValue = tenantAdminFlag(hasBio),
-        hasContentValue = tenantAdminFlag(hasContent),
-        hasTaxonomiesValue = tenantAdminFlag(hasTaxonomies),
-        hasAvatarValue = tenantAdminFlag(hasAvatar),
-        hasCoverValue = tenantAdminFlag(hasCover),
-        hasEventsValue = tenantAdminFlag(hasEvents);
+    required TenantAdminFlagValue isFavoritable,
+    required TenantAdminFlagValue isPoiEnabled,
+    required TenantAdminFlagValue hasBio,
+    required TenantAdminFlagValue hasContent,
+    required TenantAdminFlagValue hasTaxonomies,
+    required TenantAdminFlagValue hasAvatar,
+    required TenantAdminFlagValue hasCover,
+    required TenantAdminFlagValue hasEvents,
+  })  : isFavoritableValue = isFavoritable,
+        isPoiEnabledValue = isPoiEnabled,
+        hasBioValue = hasBio,
+        hasContentValue = hasContent,
+        hasTaxonomiesValue = hasTaxonomies,
+        hasAvatarValue = hasAvatar,
+        hasCoverValue = hasCover,
+        hasEventsValue = hasEvents;
 
   final TenantAdminFlagValue isFavoritableValue;
   final TenantAdminFlagValue isPoiEnabledValue;

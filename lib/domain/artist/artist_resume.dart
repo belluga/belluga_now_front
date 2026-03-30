@@ -23,6 +23,6 @@ class ArtistResume {
   String get displayName => nameValue.value;
   Uri? get avatarUri => avatarValue.value;
   bool get isHighlight => isHighlightValue.value;
-  List<String> get genres =>
-      genreValues.map((genre) => genre.value).toList(growable: false);
+  List<ArtistGenreValue> get genres =>
+      List<ArtistGenreValue>.unmodifiable(genreValues);
 }

@@ -1,3 +1,5 @@
+export 'value_objects/event_model_values.dart';
+
 import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
@@ -6,8 +8,10 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
@@ -20,7 +24,6 @@ typedef EventModelPrimString = String;
 typedef EventModelPrimInt = int;
 typedef EventModelPrimBool = bool;
 typedef EventModelPrimDouble = double;
-typedef EventModelPrimDateTime = DateTime;
 typedef EventModelPrimDynamic = dynamic;
 
 class EventModel {
@@ -36,11 +39,11 @@ class EventModel {
   final DateTimeValue? dateTimeEnd;
   final List<ArtistResume> artists; // Keep for backward compatibility
   final CityCoordinate? coordinate;
-  final List<EventModelPrimString> tags;
+  final List<VenueEventTagValue> tagValues;
 
   // Confirmation state
   final EventIsConfirmedValue isConfirmedValue;
-  final EventModelPrimDateTime? confirmedAt;
+  final DomainOptionalDateTimeValue confirmedAtValue;
 
   // Received invites (who invited me)
   final List<InviteModel>? receivedInvites;
@@ -55,17 +58,25 @@ class EventModel {
   EventModelPrimBool get isConfirmed => isConfirmedValue.value;
   EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
   EventModelPrimString get slug => slugValue.value; // Added getter
-  List<EventModelPrimString> get taxonomyTags {
+  DateTime? get confirmedAt => confirmedAtValue.value;
+  List<VenueEventTagValue> get tags =>
+      List<VenueEventTagValue>.unmodifiable(tagValues);
+  List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
-        tags.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet().toList();
-    if (cleaned.isNotEmpty) return cleaned;
+        tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
+    if (cleaned.isNotEmpty) {
+      return List<VenueEventTagValue>.unmodifiable(
+        cleaned.map(VenueEventTagValue.new),
+      );
+    }
 
     final artistGenres = artists
         .expand((artist) => artist.genres)
-        .map((g) => g.trim())
+        .map((genre) => genre.value.trim())
         .where((g) => g.isNotEmpty)
         .toSet()
-        .toList();
+        .map(VenueEventTagValue.new)
+        .toList(growable: false);
     return artistGenres;
   }
 
@@ -82,12 +93,13 @@ class EventModel {
     required this.dateTimeEnd,
     required this.artists,
     required this.coordinate,
-    required this.tags,
+    required List<VenueEventTagValue> tags,
     required this.isConfirmedValue,
-    this.confirmedAt,
+    DomainOptionalDateTimeValue? confirmedAtValue,
     this.receivedInvites,
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  });
+  })  : tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+        confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

@@ -100,7 +100,7 @@ EventModel _buildEvent({
   List<ArtistResume> artists = const [],
   PartnerResume? venue,
 }) {
-  return EventModel(
+  return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse('sample-event'),
     type: EventTypeModel(

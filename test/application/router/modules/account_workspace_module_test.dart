@@ -2,6 +2,7 @@ import 'package:belluga_now/application/router/modular_app/modules/account_works
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
@@ -95,11 +96,11 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -115,10 +116,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -190,9 +191,12 @@ class _FakeSelectedTenantRepository
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
+  void selectTenantDomain(Object tenantDomain) {
     selectTenantDomainCalls += 1;
-    final normalized = tenantDomain.trim();
+    final normalized = (tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim();
     _selectedTenantDomainStreamValue.addValue(
       normalized.isEmpty ? null : normalized,
     );

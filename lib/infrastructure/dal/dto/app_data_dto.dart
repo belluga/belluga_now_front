@@ -23,6 +23,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
+import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
 import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
@@ -345,7 +346,7 @@ class AppDataDTO {
   static ProfileTypeRegistry _buildProfileTypeRegistry(
     List<Map<String, dynamic>> rawTypes,
   ) {
-    final types = <ProfileTypeDefinition>[];
+    final types = ProfileTypeDefinitions();
     for (final rawType in rawTypes) {
       final type = rawType['type']?.toString().trim() ?? '';
       if (type.isEmpty) {

@@ -3,10 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
-import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class AuthLoginEffects extends StatefulWidget {
   const AuthLoginEffects({
@@ -121,17 +118,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
   }
 
   Future<void> _trackSignupCompleted() async {
-    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
-      return;
-    }
-
-    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
-    final properties = AuthWallTelemetry.consumeSignupCompletedProperties();
-    await telemetry.logEvent(
-      EventTrackerEvents.buttonClick,
-      eventName: 'app_signup_completed',
-      properties: properties,
-    );
+    await AuthWallTelemetry.trackSignupCompleted();
   }
 
   void _navigateAfterAuth() {

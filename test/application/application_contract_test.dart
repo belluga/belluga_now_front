@@ -13,6 +13,8 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -212,19 +214,20 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   final List<Map<String, Object?>> lifecycleEvents = <Map<String, Object?>>[];
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
-    if (eventName == 'app_init') {
+    if (eventName?.value == 'app_init') {
       appInitCalls += 1;
       if (_appInitResults.isNotEmpty) {
-        return _appInitResults.removeFirst();
+        return telemetryRepoBool(_appInitResults.removeFirst());
       }
-    } else if (eventName == 'app_lifecycle') {
-      final state = properties?['state'];
-      final sequence = properties?['sequence'];
+    } else if (eventName?.value == 'app_lifecycle') {
+      final payload = TelemetryPropertiesCodec.toRawMap(properties);
+      final state = payload['state'];
+      final sequence = payload['sequence'];
       if (state is String && sequence is List) {
         lifecycleEvents.add({
           'state': state,
@@ -232,37 +235,39 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
         });
       }
     }
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     return null;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle) async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+    return telemetryRepoBool(true);
   }
 }
 
@@ -274,7 +279,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -295,35 +300,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _FakeAppDataRepository extends AppDataRepository {

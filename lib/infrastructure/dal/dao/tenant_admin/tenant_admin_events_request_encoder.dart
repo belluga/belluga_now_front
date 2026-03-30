@@ -67,7 +67,9 @@ class TenantAdminEventsRequestEncoder {
     }
 
     if (draft.artistIds.isNotEmpty) {
-      payload['artist_ids'] = draft.artistIds;
+      payload['artist_ids'] = draft.artistIds
+          .map((artistId) => artistId.value)
+          .toList(growable: false);
     }
 
     final normalizedCoverUrl = draft.coverUrl?.trim();
@@ -110,9 +112,6 @@ class TenantAdminEventsRequestEncoder {
       payload['place_ref'] = <String, dynamic>{
         'type': draft.placeRef!.type,
         'id': draft.placeRef!.id,
-        if (draft.placeRef!.metadata != null &&
-            draft.placeRef!.metadata!.isNotEmpty)
-          'metadata': draft.placeRef!.metadata,
       };
     } else if (location != null && location.mode == 'online') {
       payload['place_ref'] = null;

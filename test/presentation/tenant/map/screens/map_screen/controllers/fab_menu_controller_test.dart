@@ -5,6 +5,9 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
@@ -55,8 +58,8 @@ class _FakePoiRepository implements PoiRepositoryContract {
   @override
   final StreamValue<List<MainFilterOption>> mainFilterOptionsStreamValue =
       StreamValue<List<MainFilterOption>>(
-        defaultValue: const <MainFilterOption>[],
-      );
+    defaultValue: const <MainFilterOption>[],
+  );
 
   @override
   CityCoordinate get defaultCenter => _buildCoordinate(-20.611121, -40.498617);
@@ -102,21 +105,21 @@ class _FakePoiRepository implements PoiRepositoryContract {
 
   @override
   Future<List<CityPoiModel>> fetchStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) async =>
       null;
 
   @override
   Future<void> loadStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
     final stackItems = await fetchStackItems(

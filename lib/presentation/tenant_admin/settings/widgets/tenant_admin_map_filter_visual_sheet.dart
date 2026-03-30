@@ -1,6 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_catalog_item.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_color_picker_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
@@ -132,24 +136,35 @@ class _TenantAdminMapFilterVisualSheetState
     TenantAdminMapFilterMarkerOverride? nextMarkerOverride;
     if (_overrideMarker) {
       if (_markerMode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+        final iconValue = TenantAdminRequiredTextValue()
+          ..parse(_markerIconController.text);
+        final colorValue = TenantAdminHexColorValue()
+          ..parse(_markerColorController.text);
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(_markerIconColorController.text);
         nextMarkerOverride = TenantAdminMapFilterMarkerOverride.icon(
-          icon: _markerIconController.text,
-          color: _markerColorController.text,
-          iconColor: _markerIconColorController.text,
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
         );
       } else {
+        final imageUriValue = TenantAdminOptionalUrlValue()
+          ..parse(imageUri ?? '');
         nextMarkerOverride = TenantAdminMapFilterMarkerOverride.image(
-          imageUri: imageUri ?? '',
+          imageUriValue: imageUriValue,
         );
       }
     }
 
+    final imageUriValue = imageUri == null
+        ? null
+        : (TenantAdminOptionalUrlValue()..parse(imageUri));
     return widget.filter.copyWith(
-      imageUri: imageUri,
-      clearImageUri: imageUri == null,
-      overrideMarker: _overrideMarker,
+      imageUriValue: imageUriValue,
+      clearImageUriValue: TenantAdminFlagValue(imageUri == null),
+      overrideMarkerValue: TenantAdminFlagValue(_overrideMarker),
       markerOverride: nextMarkerOverride,
-      clearMarkerOverride: !_overrideMarker,
+      clearMarkerOverrideValue: TenantAdminFlagValue(!_overrideMarker),
     );
   }
 

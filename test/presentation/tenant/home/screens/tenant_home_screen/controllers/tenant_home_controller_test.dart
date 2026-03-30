@@ -4,6 +4,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -148,8 +149,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       : _events = events ?? [];
 
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+          defaultValue: {});
   List<VenueEventResume> _events;
   int fetchMyEventsCallCount = 0;
   bool throwOnRefreshConfirmedIds = false;
@@ -168,10 +171,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {}
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {}
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
   Future<void> refreshConfirmedEventIds() async {
@@ -181,8 +186,13 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  bool isEventConfirmed(String eventId) =>
-      confirmedEventIdsStream.value.contains(eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+          UserEventsRepositoryContractPrimString eventId) =>
+      userEventsRepoBool(
+        confirmedEventIdsStream.value.contains(eventId),
+        defaultValue: false,
+        isRequired: true,
+      );
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -219,8 +229,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -232,9 +242,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<bool> refreshIfPermitted(
-          {Duration minInterval = const Duration(seconds: 30)}) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation() async => null;

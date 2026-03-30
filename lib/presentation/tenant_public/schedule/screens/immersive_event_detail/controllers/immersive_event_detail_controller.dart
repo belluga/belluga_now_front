@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -67,7 +69,7 @@ class ImmersiveEventDetailController implements Disposable {
   final missionStreamValue = StreamValue<MissionResume?>();
 
   // Delegate to repository for single source of truth
-  StreamValue<Map<String, List<SentInviteStatus>>>
+  StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
       get sentInvitesByEventStreamValue =>
           _invitesRepository.sentInvitesByEventStreamValue;
 
@@ -84,10 +86,15 @@ class ImmersiveEventDetailController implements Disposable {
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
   void _hydrateState(EventModel event) {
-    final isConfirmedLocally =
-        _userEventsRepository.isEventConfirmed(event.id.value);
+    final isConfirmedLocally = _userEventsRepository.isEventConfirmed(
+      userEventsRepoString(
+        event.id.value,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     isConfirmedStreamValue
-        .addValue(isConfirmedLocally || event.isConfirmedValue.value);
+        .addValue(isConfirmedLocally.value || event.isConfirmedValue.value);
 
     _updateReceivedInvites(
       _invitesRepository.pendingInvitesStreamValue.value,
@@ -101,11 +108,18 @@ class ImmersiveEventDetailController implements Disposable {
 
   Future<void> _refreshConfirmationState(String eventId) async {
     await _userEventsRepository.refreshConfirmedEventIds();
-    final isConfirmedFromBackend =
-        _userEventsRepository.isEventConfirmed(eventId);
+    final isConfirmedFromBackend = _userEventsRepository.isEventConfirmed(
+      userEventsRepoString(
+        eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     final eventConfirmed =
         eventStreamValue.value?.isConfirmedValue.value ?? false;
-    isConfirmedStreamValue.addValue(isConfirmedFromBackend || eventConfirmed);
+    isConfirmedStreamValue.addValue(
+      isConfirmedFromBackend.value || eventConfirmed,
+    );
   }
 
   void _updateReceivedInvites(List<InviteModel> invites, String eventId) {
@@ -129,16 +143,22 @@ class ImmersiveEventDetailController implements Disposable {
     isLoadingStreamValue.addValue(true);
 
     try {
-      await _userEventsRepository.confirmEventAttendance(event.id.value);
+      await _userEventsRepository.confirmEventAttendance(
+        userEventsRepoString(
+          event.id.value,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       await _refreshConfirmationState(event.id.value);
 
       // Activate mission upon confirmation.
       missionStreamValue.addValue(MissionResume(
         titleValue: TitleValue(defaultValue: 'Missao VIP Ativa!')
           ..parse('Missao VIP Ativa!'),
-        descriptionValue:
-            DescriptionValue(defaultValue: 'Traga 3 amigos para ganhar 1 drink.')
-              ..parse('Traga 3 amigos para ganhar 1 drink.'),
+        descriptionValue: DescriptionValue(
+            defaultValue: 'Traga 3 amigos para ganhar 1 drink.')
+          ..parse('Traga 3 amigos para ganhar 1 drink.'),
         progressValue: const MissionProgressValue(0),
         totalRequiredValue: const MissionTotalRequiredValue(3),
         rewardValue: const MissionRewardValue('#DRINK123'),
@@ -154,7 +174,13 @@ class ImmersiveEventDetailController implements Disposable {
     final eventId = eventStreamValue.value?.id.value;
     isLoadingStreamValue.addValue(true);
     try {
-      final result = await _invitesRepository.acceptInvite(inviteId);
+      final result = await _invitesRepository.acceptInvite(
+        invitesRepoString(
+          inviteId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       if (result.status == 'accepted' &&
           eventId != null &&
           eventId.isNotEmpty) {
@@ -169,7 +195,13 @@ class ImmersiveEventDetailController implements Disposable {
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
     try {
-      return await _invitesRepository.declineInvite(inviteId);
+      return await _invitesRepository.declineInvite(
+        invitesRepoString(
+          inviteId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
     } finally {
       isLoadingStreamValue.addValue(false);
     }

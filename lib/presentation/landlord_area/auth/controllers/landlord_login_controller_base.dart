@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_text_value.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_sheet_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -27,7 +28,10 @@ abstract class LandlordLoginControllerBase
 
   @override
   Future<void> loginWithEmailPassword(String email, String password) async {
-    await _landlordAuthRepository.loginWithEmailPassword(email, password);
+    await _landlordAuthRepository.loginWithEmailPassword(
+      _authTextValue(email),
+      _authTextValue(password),
+    );
   }
 
   @override
@@ -64,5 +68,9 @@ abstract class LandlordLoginControllerBase
   void onDispose() {
     emailController.dispose();
     passwordController.dispose();
+  }
+
+  LandlordAuthRepositoryContractTextValue _authTextValue(String raw) {
+    return LandlordAuthRepositoryContractTextValue.fromRaw(raw);
   }
 }

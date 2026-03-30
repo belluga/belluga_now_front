@@ -9,6 +9,9 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -67,7 +70,7 @@ void main() {
   test('fetchAccountProfiles bootstraps auth token when empty', () async {
     final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
         as _FakeAuthRepository;
-    authRepository.setUserToken('');
+    authRepository.setUserToken(authRepoString(''));
 
     final validId = _generateMongoId();
     final adapter = _RecordingAdapter(
@@ -185,12 +188,10 @@ void main() {
 
     expect(profiles, hasLength(1));
     final expected = haversineDistanceMeters(
-      lat1: -20.670000,
-      lon1: -40.500000,
-      lat2: targetLat,
-      lon2: targetLng,
+      coordinateA: _coordinate(lat: -20.670000, lng: -40.500000),
+      coordinateB: _coordinate(lat: targetLat, lng: targetLng),
     );
-    expect(profiles.first.distanceMeters, closeTo(expected, 0.001));
+    expect(profiles.first.distanceMeters, closeTo(expected.value, 0.001));
   });
 
   test('fetchNearbyAccountProfiles calls near endpoint with origin', () async {
@@ -288,8 +289,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
@@ -316,19 +317,22 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
   ) async {}
 
   @override
@@ -336,13 +340,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
@@ -408,14 +416,16 @@ class _FakeUserLocationRepository extends UserLocationRepositoryContract {
   }
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(
+    UserLocationRepositoryContractTextValue? address,
+  ) async {}
 
   @override
   Future<bool> warmUpIfPermitted() async => true;
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    UserLocationRepositoryContractDurationValue? minInterval,
   }) async =>
       true;
 

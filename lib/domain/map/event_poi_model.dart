@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart
 import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -21,7 +22,7 @@ class EventPoiModel extends CityPoiModel {
     super.tagValues,
   }) : super(
           category: CityPoiCategory.culture,
-          isDynamic: true,
+          isDynamicValue: _dynamicTrueValue(),
         );
 
   final EventModel event;
@@ -89,6 +90,12 @@ class EventPoiModel extends CityPoiModel {
       return 120;
     }
     return 200 + (diffMinutes ~/ 60);
+  }
+
+  static PoiBooleanValue _dynamicTrueValue() {
+    final value = PoiBooleanValue();
+    value.parse('true');
+    return value;
   }
 
   static List<PoiTagValue> _buildTagValues(EventModel event) {

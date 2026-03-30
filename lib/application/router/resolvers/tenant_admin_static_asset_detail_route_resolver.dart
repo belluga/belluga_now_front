@@ -25,6 +25,8 @@ class TenantAdminStaticAssetDetailRouteResolver
       );
     }
 
-    return _staticAssetsRepository.fetchStaticAsset(assetId.trim());
+    return _staticAssetsRepository.fetchStaticAsset(
+      TenantAdminStaticAssetsRepoString.fromRaw(assetId.trim()),
+    );
   }
 }

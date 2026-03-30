@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
@@ -16,16 +17,15 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    if (snapshot.showPastOnly != showPastOnly.value) return null;
+    if (snapshot.searchQuery != searchQuery.value) return null;
+    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
     return snapshot;
   }
 
@@ -45,40 +45,41 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
   Future<List<EventModel>> getAllEvents() async => const <EventModel>[];
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       const <EventModel>[];
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
-      const PagedEventsResult(events: <EventModel>[], hasMore: false);
+      pagedEventsResultFromRaw(events: <EventModel>[], hasMore: false);
 
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async =>
       ScheduleSummaryModel(items: const []);
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
+  Future<List<VenueEventResume>> getEventResumesByDate(
+          ScheduleRepoDateTime date) async =>
       const <VenueEventResume>[];
 
   @override
@@ -87,32 +88,32 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) =>
       const Stream<EventDeltaModel>.empty();
 
   @override
   Stream<void> watchEventsSignal({
-    required void Function(EventDeltaModel delta) onDelta,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    required ScheduleRepositoryContractDeltaHandler onDelta,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return watchEventsStream(
       searchQuery: searchQuery,

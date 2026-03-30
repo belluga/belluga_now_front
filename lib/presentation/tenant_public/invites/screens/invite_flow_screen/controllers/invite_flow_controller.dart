@@ -6,10 +6,13 @@ import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_decision_result.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -139,10 +142,32 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  Future<void> trackWebLanding(String? shareCode) async {
+    if (!kIsWeb) {
+      return;
+    }
+    final normalizedCode = shareCode?.trim();
+    final hasCode = normalizedCode != null && normalizedCode.isNotEmpty;
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.viewContent,
+      eventName: telemetryRepoString('web_invite_landing_opened'),
+      properties: telemetryRepoMap(<String, dynamic>{
+        'store_channel': 'web',
+        'has_code': hasCode,
+      }),
+    );
+  }
+
   Future<InviteMaterializeResult?> _materializeShareCode(
       String shareCode) async {
     try {
-      return await _repository.materializeShareCode(shareCode);
+      return await _repository.materializeShareCode(
+        invitesRepoString(
+          shareCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
     } catch (_) {
       return null;
     }
@@ -166,7 +191,13 @@ class InviteFlowScreenController with Disposable {
     }
 
     try {
-      await _repository.loadShareCodePreview(normalizedCode);
+      await _repository.loadShareCodePreview(
+        invitesRepoString(
+          normalizedCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       final preview = _repository.shareCodePreviewInviteStreamValue.value;
       if (preview == null) {
         return const <InviteModel>[];
@@ -202,14 +233,15 @@ class InviteFlowScreenController with Disposable {
   }
 
   void _prioritizeInvite(String inviteId) {
+    final inviteIdValue = _inviteIdValue(inviteId);
     final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
     final index =
-        invites.indexWhere((invite) => invite.containsInviteId(inviteId));
+        invites.indexWhere((invite) => invite.containsInviteId(inviteIdValue));
     if (index < 0) {
       return;
     }
 
-    final invite = invites.removeAt(index).prioritizeInviter(inviteId);
+    final invite = invites.removeAt(index).prioritizeInviter(inviteIdValue);
     invites.insert(0, invite);
     pendingInvitesStreamValue.addValue(invites);
     _syncDisplayInvitesWithPending();
@@ -298,7 +330,7 @@ class InviteFlowScreenController with Disposable {
     if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
         materializedInviteId.isNotEmpty &&
         (current.id == materializedInviteId ||
-            current.containsInviteId(materializedInviteId))) {
+            current.containsInviteId(_inviteIdValue(materializedInviteId)))) {
       resolvedInviteId = materializedInviteId;
     }
 
@@ -313,7 +345,13 @@ class InviteFlowScreenController with Disposable {
     if (decision == InviteDecision.accepted) {
       final isAnonymousDecision = !_isAuthorized;
       final acceptedInviteId = resolvedInviteId;
-      final result = await _repository.acceptInvite(resolvedInviteId);
+      final result = await _repository.acceptInvite(
+        invitesRepoString(
+          resolvedInviteId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       if (isAnonymousDecision) {
         unawaited(
           _trackAnonymousInviteAccepted(
@@ -323,14 +361,21 @@ class InviteFlowScreenController with Disposable {
         );
       }
       _syncDisplayInvitesWithPending();
+      final resolvedInviteIdValue = _inviteIdValue(resolvedInviteId);
       return InviteDecisionResult(
-        invite: current.prioritizeInviter(resolvedInviteId),
+        invite: current.prioritizeInviter(resolvedInviteIdValue),
         queued: false,
         nextStep: result.nextStep,
       );
     }
 
-    await _repository.declineInvite(resolvedInviteId);
+    await _repository.declineInvite(
+      invitesRepoString(
+        resolvedInviteId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     _syncDisplayInvitesWithPending();
     return const InviteDecisionResult(invite: null, queued: false);
   }
@@ -479,8 +524,8 @@ class InviteFlowScreenController with Disposable {
     if (_openedInviteIds.add(current.id)) {
       _activeInviteTimedEventFuture = _telemetryRepository.startTimedEvent(
         EventTrackerEvents.inviteOpened,
-        eventName: 'invite_opened',
-        properties: _buildInviteTelemetryProperties(current),
+        eventName: telemetryRepoString('invite_opened'),
+        properties: telemetryRepoMap(_buildInviteTelemetryProperties(current)),
       );
       _activeInviteId = current.id;
     }
@@ -527,9 +572,15 @@ class InviteFlowScreenController with Disposable {
 
     await _telemetryRepository.logEvent(
       EventTrackerEvents.buttonClick,
-      eventName: 'app_anonymous_invite_accepted',
-      properties: properties,
+      eventName: telemetryRepoString('app_anonymous_invite_accepted'),
+      properties: telemetryRepoMap(properties),
     );
+  }
+
+  InviteIdValue _inviteIdValue(String raw) {
+    final value = InviteIdValue();
+    value.parse(raw);
+    return value;
   }
 
   String? _extractShareCode(String inviteId) {

@@ -9,7 +9,6 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -19,6 +18,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -26,11 +26,11 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
@@ -227,7 +227,18 @@ void main() {
 
       await _waitForFinder(tester, find.text('BORA? Agitar a galera!'));
       expect(userEventsRepository.confirmCalls, 1);
-      expect(userEventsRepository.isEventConfirmed(event.id.value), isTrue);
+      expect(
+        userEventsRepository
+            .isEventConfirmed(
+              userEventsRepoString(
+                event.id.value,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .value,
+        isTrue,
+      );
 
       await app.appRouter.maybePop();
       await _pumpFor(tester, const Duration(milliseconds: 500));
@@ -472,8 +483,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   final AppData _appData;
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 1000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
   AppData get appData => _appData;
@@ -493,22 +504,22 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadiusMetersStreamValue.addValue(meters);
   }
 }
@@ -520,16 +531,15 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    if (snapshot.showPastOnly != showPastOnly.value) return null;
+    if (snapshot.searchQuery != searchQuery.value) return null;
+    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
     return snapshot;
   }
 
@@ -549,8 +559,8 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   Future<List<EventModel>> getAllEvents() async => [_event];
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async {
-    if (slug == _event.slugValue.value) {
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+    if (slug.value == _event.slugValue.value) {
       return _event;
     }
     return null;
@@ -558,29 +568,29 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       [_event];
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    return PagedEventsResult(events: [_event], hasMore: false);
+    return pagedEventsResultFromRaw(events: [_event], hasMore: false);
   }
 
   @override
@@ -588,18 +598,24 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     return ScheduleSummaryModel(
       items: [
         ScheduleSummaryItemModel(
-          dateTimeStart: _event.dateTimeStart.value ?? DateTime.now(),
+          dateTimeStartValue: DateTimeValue(isRequired: true)
+            ..parse(
+              (_event.dateTimeStart.value ?? DateTime.now()).toIso8601String(),
+            ),
         ),
       ],
     );
   }
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+  Future<List<VenueEventResume>> getEventResumesByDate(
+      ScheduleRepoDateTime date) async {
     return [
       VenueEventResume.fromScheduleEvent(
         _event,
-        Uri.parse('https://example.com/event.png'),
+        ThumbUriValue(
+          defaultValue: Uri.parse('https://example.com/event.png'),
+        ),
       ),
     ];
   }
@@ -609,23 +625,25 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     return [
       VenueEventResume.fromScheduleEvent(
         _event,
-        Uri.parse('https://example.com/event.png'),
+        ThumbUriValue(
+          defaultValue: Uri.parse('https://example.com/event.png'),
+        ),
       ),
     ];
   }
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<EventDeltaModel>.empty();
   }
@@ -664,7 +682,10 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -698,17 +719,31 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: <String>{});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+    defaultValue: const <UserEventsRepositoryContractPrimString>{},
+  );
 
   final Set<String> _confirmedIds = <String>{};
   int confirmCalls = 0;
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {
     confirmCalls += 1;
-    _confirmedIds.add(eventId);
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+    _confirmedIds.add(eventId.value);
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 
   @override
@@ -718,25 +753,54 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  bool isEventConfirmed(String eventId) => _confirmedIds.contains(eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+    UserEventsRepositoryContractPrimString eventId,
+  ) =>
+      userEventsRepoBool(
+        _confirmedIds.contains(eventId.value),
+        defaultValue: false,
+        isRequired: true,
+      );
 
   @override
   Future<void> refreshConfirmedEventIds() async {
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {
-    _confirmedIds.remove(eventId);
-    confirmedEventIdsStream.addValue(Set<String>.from(_confirmedIds));
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {
+    _confirmedIds.remove(eventId.value);
+    confirmedEventIdsStream.addValue(
+      _confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteAcceptResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -746,9 +810,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteAcceptResult> acceptInviteByCode(String code) async {
+  Future<InviteAcceptResult> acceptInviteByCode(
+    InvitesRepositoryContractPrimString code,
+  ) async {
     return buildInviteAcceptResult(
-      inviteId: 'mock-$code',
+      inviteId: 'mock-${code.value}',
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -759,27 +825,27 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId);
+    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId.value);
   }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteDeclineResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'declined',
       groupHasOtherPending: false,
     );
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites({
-    int page = 1,
-    int pageSize = 20,
-  }) async {
+  Future<List<InviteModel>> fetchInvites(
+      {InvitesRepositoryContractPrimInt? page,
+      InvitesRepositoryContractPrimInt? pageSize}) async {
     return const <InviteModel>[];
   }
 
@@ -794,24 +860,23 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventId) async {
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
   }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async {
     return const <InviteContactMatch>[];
   }
 
   @override
-  Future<void> sendInvites(
-    String eventId,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
-  }) async {}
+  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
+      InviteRecipients recipients,
+      {InvitesRepositoryContractPrimString? occurrenceId,
+      InvitesRepositoryContractPrimString? message}) async {}
 }
 
 class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -825,7 +890,8 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) {
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) {
     return Future<void>.value();
   }
 
@@ -845,7 +911,8 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isUserLoggedIn => _authorized;
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {
     _setAuthorized();
   }
 
@@ -857,30 +924,31 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {
-    _setAuthorized(name: name, email: email);
+    _setAuthorized(name: name.value, email: email.value);
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 
   @override
   String get userToken => _token;
@@ -940,8 +1008,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -949,7 +1017,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -967,7 +1035,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 }
 
 EventModel _buildEvent({required String slug}) {
-  return EventModel(
+  return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse(slug),
     type: EventTypeModel(

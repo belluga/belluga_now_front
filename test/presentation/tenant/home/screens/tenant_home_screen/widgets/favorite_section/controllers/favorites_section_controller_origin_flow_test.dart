@@ -2,11 +2,13 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:flutter/material.dart';
@@ -116,7 +118,7 @@ FavoriteResume _favoriteResume({
 }) {
   return FavoriteResume(
     titleValue: TitleValue()..parse(title),
-    slug: slug,
+    slugValue: slug != null ? (SlugValue()..parse(slug)) : null,
     assetPathValue: AssetPathValue()
       ..parse('assets/images/placeholder_avatar.png'),
   );
@@ -157,7 +159,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
       : _appData = _FakeAppData(),
         themeModeStreamValue =
             StreamValue<ThemeMode?>(defaultValue: ThemeMode.light),
-        maxRadiusMetersStreamValue = StreamValue<double>(defaultValue: 5000);
+        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+        );
 
   final AppData _appData;
 
@@ -174,17 +178,18 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => ThemeMode.light;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue;
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => 5000;
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(5000, defaultValue: 5000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 }

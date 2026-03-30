@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -67,6 +69,7 @@ class EventSearchScreenController
   late StreamValue<InviteFilter> inviteFilterStreamValue;
   @override
   late StreamValue<double> radiusMetersStreamValue;
+  late StreamValue<double> _maxRadiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -98,6 +101,34 @@ class EventSearchScreenController
     stream.addValue(value);
   }
 
+  ScheduleRepoBool _toScheduleBool(bool value) {
+    return ScheduleRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoString _toScheduleText(String value) {
+    return ScheduleRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble _toScheduleDouble(double value) {
+    return ScheduleRepoDouble.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble? _toNullableScheduleDouble(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return _toScheduleDouble(value);
+  }
+
   void _initializeStateHolders() {
     searchController = TextEditingController();
     focusNode = FocusNode();
@@ -110,6 +141,8 @@ class EventSearchScreenController
     inviteFilterStreamValue =
         StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
     radiusMetersStreamValue =
+        StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+    _maxRadiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     _isScrollListenerAttached = false;
   }
@@ -207,23 +240,25 @@ class EventSearchScreenController
     try {
       if (page <= 1) {
         await _scheduleRepository.loadEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       } else {
         await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       }
       final result = _scheduleRepository.pagedEventsStreamValue.value;
@@ -233,7 +268,7 @@ class EventSearchScreenController
         return;
       }
 
-      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
       if (loadedPage <= 0) {
         return;
       }
@@ -336,7 +371,8 @@ class EventSearchScreenController
         .map((invite) => invite.eventId)
         .toSet();
 
-    bool isConfirmed(String id) => confirmedIds.contains(id);
+    bool isConfirmed(String id) =>
+        confirmedIds.any((confirmed) => confirmed.value == id);
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
@@ -384,8 +420,15 @@ class EventSearchScreenController
     }
   }
 
-  bool isEventConfirmed(String eventId) =>
-      _userEventsRepository.isEventConfirmed(eventId);
+  bool isEventConfirmed(String eventId) => _userEventsRepository
+      .isEventConfirmed(
+        userEventsRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      )
+      .value;
 
   int pendingInviteCount(String eventId) =>
       _invitesRepository.pendingInvitesStreamValue.value
@@ -403,12 +446,10 @@ class EventSearchScreenController
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
   }
 
   String _formatDistanceLabel(double meters) {
@@ -443,8 +484,10 @@ class EventSearchScreenController
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
+    _setValue(_maxRadiusMetersStreamValue, _currentMaxRadiusMeters());
     _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((_) {
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
+      _setValue(_maxRadiusMetersStreamValue, value.value);
       final current = radiusMetersStreamValue.value;
       final clamped = _clampRadiusMeters(current);
       _setValue(radiusMetersStreamValue, clamped);
@@ -556,7 +599,7 @@ class EventSearchScreenController
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
-      _appDataRepository.maxRadiusMetersStreamValue;
+      _maxRadiusMetersStreamValue;
 
   double _resolveMinRadiusMeters() {
     final configured = _configuredMinRadiusMeters();
@@ -566,8 +609,8 @@ class EventSearchScreenController
   double _resolveDefaultRadiusMeters() {
     if (_appDataRepository.hasPersistedMaxRadiusPreference) {
       final preferred = _appDataRepository.maxRadiusMeters;
-      if (preferred > 0) {
-        return _clampRadiusMeters(preferred);
+      if (preferred.value > 0) {
+        return _clampRadiusMeters(preferred.value);
       }
     }
 
@@ -575,7 +618,7 @@ class EventSearchScreenController
     if (configured > 0) {
       return _clampRadiusMeters(configured);
     }
-    return _clampRadiusMeters(_appDataRepository.maxRadiusMeters);
+    return _clampRadiusMeters(_currentMaxRadiusMeters());
   }
 
   double _configuredMinRadiusMeters() {
@@ -590,13 +633,15 @@ class EventSearchScreenController
     try {
       return _appDataRepository.appData.mapRadiusDefaultMeters;
     } on Object {
-      return _appDataRepository.maxRadiusMeters;
+      return _currentMaxRadiusMeters();
     }
   }
 
+  double _currentMaxRadiusMeters() => _appDataRepository.maxRadiusMeters.value;
+
   double _clampRadiusMeters(double meters) {
     final min = _resolveMinRadiusMeters();
-    final max = _appDataRepository.maxRadiusMeters;
+    final max = _currentMaxRadiusMeters();
     final effectiveMax = max < min ? min : max;
     return meters.clamp(min, effectiveMax).toDouble();
   }
@@ -610,19 +655,22 @@ class EventSearchScreenController
     }
     _eventsStreamSubscription = _scheduleRepository
         .watchEventsSignal(
-      onDelta: (delta) {
+      onDelta: ScheduleRepositoryContractDeltaHandler((delta) {
         if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
           _lastEventStreamId = delta.lastEventId;
         }
-      },
-      searchQuery: searchController.text,
-      confirmedOnly:
-          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-      originLat: _effectiveOriginLat,
-      originLng: _effectiveOriginLng,
-      maxDistanceMeters: radiusMetersStreamValue.value,
-      lastEventId: _lastEventStreamId,
-      showPastOnly: showHistoryStreamValue.value,
+      }),
+      searchQuery: _toScheduleText(searchController.text),
+      confirmedOnly: _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      ),
+      originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+      originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
+      lastEventId: _lastEventStreamId == null
+          ? null
+          : _toScheduleText(_lastEventStreamId!),
+      showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
     )
         .listen(
       (_) {
@@ -678,6 +726,7 @@ class EventSearchScreenController
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
+    _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();
     scrollController.dispose();

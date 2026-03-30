@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
+import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -53,34 +54,43 @@ class _FakeTimezoneService implements TimezoneServiceContract {
   final int hoursOffset;
 
   @override
-  DateTime utcToLocal(DateTime value) {
-    final baseUtc = value.isUtc ? value : value.toUtc();
+  TimezoneServiceContractDateTimeValue utcToLocal(
+    TimezoneServiceContractDateTimeValue value,
+  ) {
+    final raw = value.value;
+    final baseUtc = raw.isUtc ? raw : raw.toUtc();
     final shifted = baseUtc.add(Duration(hours: hoursOffset));
-    return DateTime(
-      shifted.year,
-      shifted.month,
-      shifted.day,
-      shifted.hour,
-      shifted.minute,
-      shifted.second,
-      shifted.millisecond,
-      shifted.microsecond,
+    return timezoneServiceDateTime(
+      DateTime(
+        shifted.year,
+        shifted.month,
+        shifted.day,
+        shifted.hour,
+        shifted.minute,
+        shifted.second,
+        shifted.millisecond,
+        shifted.microsecond,
+      ),
+      defaultValue: shifted,
     );
   }
 
   @override
-  DateTime localToUtc(DateTime value) {
+  TimezoneServiceContractDateTimeValue localToUtc(
+    TimezoneServiceContractDateTimeValue value,
+  ) {
+    final raw = value.value;
     final normalized = DateTime(
-      value.year,
-      value.month,
-      value.day,
-      value.hour,
-      value.minute,
-      value.second,
-      value.millisecond,
-      value.microsecond,
+      raw.year,
+      raw.month,
+      raw.day,
+      raw.hour,
+      raw.minute,
+      raw.second,
+      raw.millisecond,
+      raw.microsecond,
     );
-    return DateTime.utc(
+    final utcValue = DateTime.utc(
       normalized.year,
       normalized.month,
       normalized.day,
@@ -90,5 +100,6 @@ class _FakeTimezoneService implements TimezoneServiceContract {
       normalized.millisecond,
       normalized.microsecond,
     ).subtract(Duration(hours: hoursOffset));
+    return timezoneServiceDateTime(utcValue, defaultValue: utcValue);
   }
 }

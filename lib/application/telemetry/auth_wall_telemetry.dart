@@ -1,25 +1,15 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/telemetry/auth_wall_action.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_action_type.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 
-final class AuthWallActionType {
-  AuthWallActionType._();
-
-  static const favorite = 'favorite';
-  static const sendInvite = 'send_invite';
-}
-
-final class AuthWallAction {
-  const AuthWallAction({
-    required this.actionType,
-    this.payload,
-  });
-
-  final String actionType;
-  final Map<String, dynamic>? payload;
-}
+export 'auth_wall_action.dart';
+export 'auth_wall_action_type.dart';
 
 final class AuthWallTelemetry {
   AuthWallTelemetry._();
@@ -61,7 +51,7 @@ final class AuthWallTelemetry {
     }
 
     _lastTrackedActionType = actionType;
-    _lastTrackedAt = DateTime.now().toUtc();
+    _lastTrackedAt = TimezoneConverter.localToUtc(DateTime.now());
     unawaited(
       _logAuthWallTriggered(
         actionType: actionType,
@@ -70,8 +60,22 @@ final class AuthWallTelemetry {
     );
   }
 
+  static Future<void> trackSignupCompleted() async {
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    final properties = consumeSignupCompletedProperties();
+    await telemetry.logEvent(
+      EventTrackerEvents.buttonClick,
+      eventName: telemetryRepoString('app_signup_completed'),
+      properties: telemetryRepoMap(properties),
+    );
+  }
+
   static Map<String, dynamic> consumeSignupCompletedProperties() {
-    final now = DateTime.now().toUtc();
+    final now = TimezoneConverter.localToUtc(DateTime.now());
     final capturedAt = _lastAuthWallAt;
     if (capturedAt == null || now.difference(capturedAt) > _signupContextTtl) {
       _clearAuthWallContext();
@@ -127,7 +131,7 @@ final class AuthWallTelemetry {
     _lastAuthWallActionType = actionType;
     _lastAuthWallRedirectPath = _normalizePath(redirectPath);
     _lastAuthWallPayload = payload;
-    _lastAuthWallAt = DateTime.now().toUtc();
+    _lastAuthWallAt = TimezoneConverter.localToUtc(DateTime.now());
   }
 
   static bool _shouldSuppressDuplicate(String actionType) {
@@ -136,7 +140,8 @@ final class AuthWallTelemetry {
       return false;
     }
 
-    final elapsed = DateTime.now().toUtc().difference(lastTrackedAt);
+    final elapsed =
+        TimezoneConverter.localToUtc(DateTime.now()).difference(lastTrackedAt);
     return elapsed >= Duration.zero && elapsed <= _dedupeWindow;
   }
 
@@ -151,12 +156,12 @@ final class AuthWallTelemetry {
     final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
     await telemetry.logEvent(
       EventTrackerEvents.buttonClick,
-      eventName: 'app_auth_wall_triggered',
-      properties: <String, dynamic>{
+      eventName: telemetryRepoString('app_auth_wall_triggered'),
+      properties: telemetryRepoMap(<String, dynamic>{
         'source': authWallSource,
         'action_type': actionType,
         'redirect_path': _normalizePath(redirectPath),
-      },
+      }),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
+
 enum InviteNextStep {
   none,
   freeConfirmationCreated,
@@ -6,11 +8,9 @@ enum InviteNextStep {
   openAppToContinue,
 }
 
-typedef InviteNextStepRaw = String;
-
 extension InviteNextStepApiMapper on InviteNextStep {
-  static InviteNextStep parse(InviteNextStepRaw? raw) {
-    switch (raw?.trim().toLowerCase()) {
+  static InviteNextStep parse(InviteNextStepRawValue? raw) {
+    switch (raw?.value.trim().toLowerCase()) {
       case 'free_confirmation_created':
         return InviteNextStep.freeConfirmationCreated;
       case 'reservation_required':

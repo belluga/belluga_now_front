@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -13,12 +12,9 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -244,89 +240,17 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
 
 class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    required String searchQuery,
-    required bool confirmedOnly,
-  }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly) return null;
-    if (snapshot.searchQuery != searchQuery) return null;
-    if (snapshot.confirmedOnly != confirmedOnly) return null;
-    return snapshot;
-  }
-
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
-  }
-
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
-  }
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async {
-    return const PagedEventsResult(events: [], hasMore: false);
-  }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
-
-  @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     // Keep the stream open in tests; a closed stream triggers reconnect loops.
     return Stream<EventDeltaModel>.multi((_) {});
@@ -372,15 +296,18 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
 }
 
 class FakeUserEventsRepository implements UserEventsRepositoryContract {
-  final StreamValue<Set<String>> _confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: const {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      _confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+          defaultValue: const {});
 
   @override
-  StreamValue<Set<String>> get confirmedEventIdsStream =>
-      _confirmedEventIdsStream;
+  StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      get confirmedEventIdsStream => _confirmedEventIdsStream;
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {}
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -389,10 +316,13 @@ class FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  bool isEventConfirmed(String eventId) => false;
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+          UserEventsRepositoryContractPrimString eventId) =>
+      userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {}
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
   Future<void> refreshConfirmedEventIds() async {}
@@ -400,10 +330,9 @@ class FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class FakeInvitesRepository extends InvitesRepositoryContract {
   @override
-  Future<List<InviteModel>> fetchInvites({
-    int page = 1,
-    int pageSize = 20,
-  }) async =>
+  Future<List<InviteModel>> fetchInvites(
+          {InvitesRepositoryContractPrimInt? page,
+          InvitesRepositoryContractPrimInt? pageSize}) async =>
       const [];
 
   @override
@@ -416,9 +345,10 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
+  Future<InviteAcceptResult> acceptInvite(
+          InvitesRepositoryContractPrimString inviteId) async =>
       buildInviteAcceptResult(
-        inviteId: inviteId,
+        inviteId: inviteId.value,
         status: 'accepted',
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
@@ -427,9 +357,10 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInviteByCode(String code) async =>
+  Future<InviteAcceptResult> acceptInviteByCode(
+          InvitesRepositoryContractPrimString code) async =>
       buildInviteAcceptResult(
-        inviteId: 'mock-$code',
+        inviteId: 'mock-${code.value}',
         status: 'accepted',
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
@@ -438,44 +369,42 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
+  Future<InviteDeclineResult> declineInvite(
+          InvitesRepositoryContractPrimString inviteId) async =>
       buildInviteDeclineResult(
-        inviteId: inviteId,
+        inviteId: inviteId.value,
         status: 'declined',
         groupHasOtherPending: false,
       );
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async =>
       const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async =>
       buildInviteShareCodeResult(
         code: 'test-share-code',
-        eventId: eventId,
-        occurrenceId: occurrenceId,
+        eventId: eventId.value,
+        occurrenceId: occurrenceId?.value,
       );
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
-    String eventSlug,
-  ) async {
-    return const [];
+      InvitesRepositoryContractPrimString eventSlug) async {
+    return [];
   }
 
   @override
-  Future<void> sendInvites(
-    String eventSlug,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
-  }) async {}
+  Future<void> sendInvites(InvitesRepositoryContractPrimString eventSlug,
+      InviteRecipients recipients,
+      {InvitesRepositoryContractPrimString? occurrenceId,
+      InvitesRepositoryContractPrimString? message}) async {}
 }
 
 class FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -523,9 +452,7 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> refreshIfPermitted(
-          {Duration minInterval = const Duration(seconds: 30)}) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<bool> startTracking({
@@ -537,7 +464,7 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> stopTracking() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> warmUpIfPermitted() async => false;

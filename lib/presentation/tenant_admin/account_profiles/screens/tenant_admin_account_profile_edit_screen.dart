@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -140,14 +141,14 @@ class _TenantAdminAccountProfileEditScreenState
     final allowed = _allowedTaxonomies(selectedType).toSet();
     return _controller.taxonomiesStreamValue.value
         .where((taxonomy) =>
-            taxonomy.appliesToTarget('account_profile') &&
+            taxonomy.appliesToAccountProfile() &&
             allowed.contains(taxonomy.slug))
         .toList(growable: false);
   }
 
   void _syncTaxonomySelection({
     required List<TenantAdminTaxonomyDefinition> allowed,
-    required List<TenantAdminTaxonomyTerm> terms,
+    required TenantAdminTaxonomyTerms terms,
   }) {
     final slugs = allowed.map((taxonomy) => taxonomy.slug).toList();
     _controller.ensureTaxonomySelectionKeys(slugs);
@@ -317,18 +318,23 @@ class _TenantAdminAccountProfileEditScreenState
     }
   }
 
-  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms(String? selectedType) {
+  TenantAdminTaxonomyTerms _buildTaxonomyTerms(String? selectedType) {
     if (!_hasTaxonomies(selectedType)) {
-      return const [];
+      return const TenantAdminTaxonomyTerms.empty();
     }
     final terms = <TenantAdminTaxonomyTerm>[];
     final selections = _controller.taxonomySelectionStreamValue.value;
     for (final entry in selections.entries) {
       for (final value in entry.value) {
-        terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
+        terms
+            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
       }
     }
-    return terms;
+    final taxonomyTerms = TenantAdminTaxonomyTerms();
+    for (final term in terms) {
+      taxonomyTerms.add(term);
+    }
+    return taxonomyTerms;
   }
 
   Map<String, Set<String>> _cloneTaxonomySelection(
@@ -427,7 +433,7 @@ class _TenantAdminAccountProfileEditScreenState
     if (lat == null || lng == null) {
       return null;
     }
-    return TenantAdminLocation(latitude: lat, longitude: lng);
+    return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
   }
 
   Future<void> _openMapPicker() async {
@@ -989,7 +995,7 @@ class _TenantAdminAccountProfileEditScreenState
                   _initialTaxonomiesSynced = true;
                   _syncTaxonomySelection(
                     allowed: _allowedTaxonomyDefinitions(value),
-                    terms: const [],
+                    terms: const TenantAdminTaxonomyTerms.empty(),
                   );
                 },
                 validator: (value) {

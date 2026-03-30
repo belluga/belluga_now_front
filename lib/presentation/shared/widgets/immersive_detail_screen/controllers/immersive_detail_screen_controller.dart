@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -174,11 +175,11 @@ class ImmersiveDetailScreenController {
     }
     _activeSectionTimedEventFuture = telemetry.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'section_viewed',
-      properties: {
+      eventName: telemetryRepoString('section_viewed'),
+      properties: telemetryRepoMap({
         'section_title': title,
         'position_index': index,
-      },
+      }),
     );
     _activeSectionIndex = index;
   }

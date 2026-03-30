@@ -40,7 +40,8 @@ class DiscoveryScreenController implements Disposable {
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
-  StreamSubscription<Set<String>>? _favoriteIdsSubscription;
+  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
+      _favoriteIdsSubscription;
   StreamSubscription<Object?>? _userLocationSubscription;
   StreamSubscription<Object?>? _lastKnownLocationSubscription;
   Timer? _searchDebounce;
@@ -74,8 +75,9 @@ class DiscoveryScreenController implements Disposable {
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
-  final liveNowEventsStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const []);
+  StreamValue<List<EventModel>> get liveNowEventsStreamValue =>
+      _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get curatorStreamValue =>
@@ -110,7 +112,9 @@ class DiscoveryScreenController implements Disposable {
         .favoriteAccountProfileIdsStreamValue.stream
         .listen(
       (ids) {
-        favoriteIdsStreamValue.addValue(Set<String>.from(ids));
+        favoriteIdsStreamValue.addValue(
+          ids.map((entry) => entry.value).toSet(),
+        );
       },
     );
     await _loadFavoriteIds();
@@ -237,13 +241,25 @@ class DiscoveryScreenController implements Disposable {
       final shouldLoadFirstPage = isInitial || _currentPage <= 0;
       if (shouldLoadFirstPage) {
         await _accountProfilesRepository.loadAccountProfilesPage(
-          query: query.isEmpty ? null : query,
-          typeFilter: selectedType,
+          query: query.isEmpty
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+          typeFilter: selectedType == null
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  selectedType,
+                ),
         );
       } else {
         await _accountProfilesRepository.loadNextAccountProfilesPage(
-          query: query.isEmpty ? null : query,
-          typeFilter: selectedType,
+          query: query.isEmpty
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+          typeFilter: selectedType == null
+              ? null
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  selectedType,
+                ),
         );
       }
 
@@ -255,7 +271,7 @@ class DiscoveryScreenController implements Disposable {
 
       final loadedPage =
           _accountProfilesRepository.currentPagedAccountProfilesPage;
-      if (loadedPage <= 0) {
+      if (loadedPage.value <= 0) {
         return;
       }
 
@@ -263,7 +279,7 @@ class DiscoveryScreenController implements Disposable {
         return;
       }
 
-      if (loadedPage == 1) {
+      if (loadedPage.value == 1) {
         _allAccountProfiles =
             List<AccountProfileModel>.from(pageResult.profiles);
       } else {
@@ -273,7 +289,7 @@ class DiscoveryScreenController implements Disposable {
         ];
       }
 
-      _currentPage = loadedPage;
+      _currentPage = loadedPage.value;
       _hasMore = pageResult.hasMore;
       hasMoreStreamValue.addValue(_hasMore);
 
@@ -345,7 +361,11 @@ class DiscoveryScreenController implements Disposable {
     }
     favoriteIdsStreamValue.addValue(current);
 
-    unawaited(_accountProfilesRepository.toggleFavorite(accountProfileId));
+    unawaited(
+      _accountProfilesRepository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
+      ),
+    );
     return FavoriteToggleOutcome.toggled;
   }
 
@@ -357,7 +377,8 @@ class DiscoveryScreenController implements Disposable {
 
   Future<void> _loadFavoriteIds() async {
     final ids = Set<String>.from(
-      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value,
+      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value),
     );
     favoriteIdsStreamValue.addValue(ids);
   }
@@ -402,10 +423,7 @@ class DiscoveryScreenController implements Disposable {
 
     _isFetchingNearby = true;
     try {
-      final nearby =
-          await _accountProfilesRepository.fetchNearbyAccountProfiles(
-        pageSize: 10,
-      );
+      final nearby = await _accountProfilesRepository.fetchNearbyAccountProfiles();
       nearbyStreamValue.addValue(nearby);
     } catch (error) {
       debugPrint(
@@ -430,16 +448,26 @@ class DiscoveryScreenController implements Disposable {
 
     _isFetchingLiveNow = true;
     try {
-      final page = await scheduleRepository.getEventsPage(
-        page: 1,
-        pageSize: 10,
-        showPastOnly: false,
-        liveNowOnly: true,
-        originLat: origin?.latitude,
-        originLng: origin?.longitude,
-        maxDistanceMeters: maxDistanceMeters,
+      await scheduleRepository.refreshDiscoveryLiveNowEvents(
+        originLat: origin == null
+            ? null
+            : ScheduleRepoDouble.fromRaw(
+                origin.latitude,
+                defaultValue: origin.latitude,
+              ),
+        originLng: origin == null
+            ? null
+            : ScheduleRepoDouble.fromRaw(
+                origin.longitude,
+                defaultValue: origin.longitude,
+              ),
+        maxDistanceMeters: maxDistanceMeters == null
+            ? null
+            : ScheduleRepoDouble.fromRaw(
+                maxDistanceMeters,
+                defaultValue: maxDistanceMeters,
+              ),
       );
-      liveNowEventsStreamValue.addValue(page.events);
     } catch (error) {
       debugPrint(
           'DiscoveryScreenController._reloadLiveNowSection failed: $error');
@@ -466,8 +494,9 @@ class DiscoveryScreenController implements Disposable {
     final allowed = registry
         .enabledAccountProfileTypes()
         .where(
-          (type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)),
+          registry.isFavoritableFor,
         )
+        .map((type) => type.value)
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }
@@ -509,8 +538,8 @@ class DiscoveryScreenController implements Disposable {
     if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
       final repository = GetIt.I.get<AppDataRepositoryContract>();
       final preferred = repository.maxRadiusMetersStreamValue.value;
-      if (preferred > 0) {
-        return preferred;
+      if (preferred.value > 0) {
+        return preferred.value;
       }
     }
     return appData?.mapRadiusDefaultMeters;

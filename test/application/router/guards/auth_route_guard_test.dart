@@ -3,6 +3,9 @@ import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract_properties.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -130,49 +133,55 @@ class _RecordingTelemetryRepository implements TelemetryRepositoryContract {
   final List<_LoggedEvent> loggedEvents = <_LoggedEvent>[];
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractBoolValue> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractTextValue? eventName,
+    TelemetryRepositoryContractProperties? properties,
   }) async {
     loggedEvents.add(
       _LoggedEvent(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
-    return true;
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractTextValue? eventName,
+    TelemetryRepositoryContractProperties? properties,
   }) async {
     return null;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> flushTimedEvents() async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractProperties? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> mergeIdentity({
+    required TelemetryRepositoryContractTextValue previousUserId,
+  }) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 }
 
@@ -225,7 +234,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Object get backend => Object();
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   String get userToken => authorized ? 'token' : '';
@@ -249,31 +258,33 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
