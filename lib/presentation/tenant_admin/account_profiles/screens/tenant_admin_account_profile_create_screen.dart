@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -165,7 +166,7 @@ class _TenantAdminAccountProfileCreateScreenState
     final allowed = _allowedTaxonomies(selectedType).toSet();
     return _controller.taxonomiesStreamValue.value
         .where((taxonomy) =>
-            taxonomy.appliesToTarget('account_profile') &&
+            taxonomy.appliesToAccountProfile() &&
             allowed.contains(taxonomy.slug))
         .toList(growable: false);
   }
@@ -198,18 +199,23 @@ class _TenantAdminAccountProfileCreateScreenState
     }
   }
 
-  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms(String? selectedType) {
+  TenantAdminTaxonomyTerms _buildTaxonomyTerms(String? selectedType) {
     if (!_hasTaxonomies(selectedType)) {
-      return const [];
+      return const TenantAdminTaxonomyTerms.empty();
     }
     final terms = <TenantAdminTaxonomyTerm>[];
     final selections = _controller.taxonomySelectionStreamValue.value;
     for (final entry in selections.entries) {
       for (final value in entry.value) {
-        terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
+        terms
+            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
       }
     }
-    return terms;
+    final taxonomyTerms = TenantAdminTaxonomyTerms();
+    for (final term in terms) {
+      taxonomyTerms.add(term);
+    }
+    return taxonomyTerms;
   }
 
   String? _validateLatitude(String? value) {
@@ -265,7 +271,7 @@ class _TenantAdminAccountProfileCreateScreenState
     if (lat == null || lng == null) {
       return null;
     }
-    return TenantAdminLocation(latitude: lat, longitude: lng);
+    return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {

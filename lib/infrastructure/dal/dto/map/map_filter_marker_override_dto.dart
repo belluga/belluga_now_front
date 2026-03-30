@@ -1,4 +1,7 @@
 import 'package:belluga_now/domain/map/filters/poi_filter_marker_override.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 
 class MapFilterMarkerOverrideDTO {
   const MapFilterMarkerOverrideDTO.icon({
@@ -61,15 +64,19 @@ class MapFilterMarkerOverrideDTO {
 
   PoiFilterMarkerOverride toDomain() {
     if (mode == 'icon') {
+      final iconValue = PoiIconSymbolValue()..parse(icon);
+      final colorHexValue = PoiHexColorValue()..parse(color);
+      final iconColorHexValue = PoiHexColorValue()..parse(iconColor);
       return PoiFilterMarkerOverride.icon(
-        icon: icon!,
-        colorHex: color!,
-        iconColorHex: iconColor!,
+        iconValue: iconValue,
+        colorHexValue: colorHexValue,
+        iconColorHexValue: iconColorHexValue,
       );
     }
 
+    final imageUriValue = PoiFilterImageUriValue()..parse(imageUri);
     return PoiFilterMarkerOverride.image(
-      imageUri: imageUri!,
+      imageUriValue: imageUriValue,
     );
   }
 

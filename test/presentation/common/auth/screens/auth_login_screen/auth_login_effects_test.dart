@@ -1,6 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract_properties.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -212,48 +215,54 @@ class _RecordingTelemetryRepository implements TelemetryRepositoryContract {
   final List<_LoggedEvent> loggedEvents = <_LoggedEvent>[];
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractBoolValue> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractTextValue? eventName,
+    TelemetryRepositoryContractProperties? properties,
   }) async {
     loggedEvents.add(
       _LoggedEvent(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
-    return true;
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractTextValue? eventName,
+    TelemetryRepositoryContractProperties? properties,
   }) async {
     return null;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> flushTimedEvents() async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractProperties? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    return true;
+  Future<TelemetryRepositoryContractBoolValue> mergeIdentity({
+    required TelemetryRepositoryContractTextValue previousUserId,
+  }) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
   }
 }

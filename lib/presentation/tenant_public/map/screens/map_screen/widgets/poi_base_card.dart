@@ -104,7 +104,7 @@ abstract class PoiBaseCard extends StatelessWidget {
       children: tags
           .map(
             (tag) => Chip(
-              label: Text(tag),
+              label: Text(tag.value),
               visualDensity: VisualDensity.compact,
             ),
           )

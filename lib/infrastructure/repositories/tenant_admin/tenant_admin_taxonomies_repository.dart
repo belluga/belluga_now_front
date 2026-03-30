@@ -41,19 +41,25 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    var page = 1;
-    const pageSize = 100;
-    var hasMore = true;
+    var page = TenantAdminTaxRepoInt.fromRaw(1, defaultValue: 1);
+    final pageSize = TenantAdminTaxRepoInt.fromRaw(100, defaultValue: 100);
+    var hasMore = TenantAdminTaxRepoBool.fromRaw(true, defaultValue: true);
     final taxonomies = <TenantAdminTaxonomyDefinition>[];
 
-    while (hasMore) {
+    while (hasMore.value) {
       final result = await fetchTaxonomiesPage(
         page: page,
         pageSize: pageSize,
       );
       taxonomies.addAll(result.items);
-      hasMore = result.hasMore;
-      page += 1;
+      hasMore = TenantAdminTaxRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: true,
+      );
+      page = TenantAdminTaxRepoInt.fromRaw(
+        page.value + 1,
+        defaultValue: 1,
+      );
     }
 
     return List<TenantAdminTaxonomyDefinition>.unmodifiable(taxonomies);
@@ -62,24 +68,24 @@ class TenantAdminTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeTaxonomyList(response.data);
-      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -89,21 +95,24 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/taxonomies',
         data: {
-          'slug': slug,
-          'name': name,
-          'applies_to': appliesTo,
-          if (icon != null && icon.trim().isNotEmpty) 'icon': icon.trim(),
-          if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
+          'slug': slug.value,
+          'name': name.value,
+          'applies_to':
+              appliesTo.map((value) => value.value).toList(growable: false),
+          if (icon != null && icon.value.trim().isNotEmpty)
+            'icon': icon.value.trim(),
+          if (color != null && color.value.trim().isNotEmpty)
+            'color': color.value.trim(),
         },
         options: Options(headers: _buildHeaders()),
       );
@@ -116,23 +125,24 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     try {
       final payload = _requestEncoder.encodeTaxonomyUpdate(
-        slug: slug,
-        name: name,
-        appliesTo: appliesTo,
-        icon: icon,
-        color: color,
+        slug: slug?.value,
+        name: name?.value,
+        appliesTo:
+            appliesTo?.map((value) => value.value).toList(growable: false),
+        icon: icon?.value,
+        color: color?.value,
       );
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
@@ -144,10 +154,10 @@ class TenantAdminTaxonomiesRepository
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -157,22 +167,28 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
-    var page = 1;
-    const pageSize = 100;
-    var hasMore = true;
+    var page = TenantAdminTaxRepoInt.fromRaw(1, defaultValue: 1);
+    final pageSize = TenantAdminTaxRepoInt.fromRaw(100, defaultValue: 100);
+    var hasMore = TenantAdminTaxRepoBool.fromRaw(true, defaultValue: true);
     final terms = <TenantAdminTaxonomyTermDefinition>[];
 
-    while (hasMore) {
+    while (hasMore.value) {
       final result = await fetchTermsPage(
         taxonomyId: taxonomyId,
         page: page,
         pageSize: pageSize,
       );
       terms.addAll(result.items);
-      hasMore = result.hasMore;
-      page += 1;
+      hasMore = TenantAdminTaxRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: true,
+      );
+      page = TenantAdminTaxRepoInt.fromRaw(
+        page.value + 1,
+        defaultValue: 1,
+      );
     }
 
     return List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
@@ -181,26 +197,25 @@ class TenantAdminTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeTermList(response.data);
-      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
-        items:
-            dtos.map((dto) => dto.toDomain()).toList(growable: false),
+      return tenantAdminPagedResultFromRaw(
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -210,16 +225,16 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) async {
     try {
       final response = await _dio.post(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms',
         data: {
-          'slug': slug,
-          'name': name,
+          'slug': slug.value,
+          'name': name.value,
         },
         options: Options(headers: _buildHeaders()),
       );
@@ -232,18 +247,18 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) async {
     try {
       final payload = _requestEncoder.encodeTermUpdate(
-        slug: slug,
-        name: name,
+        slug: slug?.value,
+        name: name?.value,
       );
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms/$termId',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms/${termId.value}',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
@@ -256,12 +271,12 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms/$termId',
+        '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms/${termId.value}',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_exception.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_slot.dart';
@@ -47,8 +48,9 @@ class TenantAdminImageIngestionService {
     try {
       final proxy = _externalImageProxy ??
           GetIt.I.get<TenantAdminExternalImageProxyContract>();
-      final data =
-          await proxy.fetchExternalImageBytes(imageUrl: uri.toString());
+      final imageUrlValue = TenantAdminOptionalUrlValue();
+      imageUrlValue.parse(uri.toString());
+      final data = await proxy.fetchExternalImageBytes(imageUrl: imageUrlValue);
       if (data.isEmpty) {
         throw TenantAdminImageIngestionException(
           'Nao foi possivel baixar a imagem da URL informada.',
@@ -126,7 +128,7 @@ class TenantAdminImageIngestionService {
       final prepared = await prepareXFile(file, slot: slot);
       bytes = await prepared.readAsBytes();
     }
-    return TenantAdminMediaUpload(
+    return tenantAdminMediaUploadFromRaw(
       bytes: bytes,
       fileName: _buildOutputFileName(
         slot,

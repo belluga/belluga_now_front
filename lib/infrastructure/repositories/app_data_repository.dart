@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -28,8 +29,13 @@ class AppDataRepository implements AppDataRepositoryContract {
   final StreamValue<ThemeMode?> themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(
+      50000,
+      defaultValue: 50000,
+    ),
+  );
   static const String _maxRadiusStorageKey = 'max_radius_meters';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
@@ -38,7 +44,7 @@ class AppDataRepository implements AppDataRepositoryContract {
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
   @override
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
 
@@ -49,14 +55,24 @@ class AppDataRepository implements AppDataRepositoryContract {
     appData = remoteData.toDomain(localInfo: localInfo);
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
-    maxRadiusMetersStreamValue.addValue(appData.mapRadiusMaxMeters);
+    maxRadiusMetersStreamValue.addValue(
+      DistanceInMetersValue.fromRaw(
+        appData.mapRadiusMaxMeters,
+        defaultValue: appData.mapRadiusMaxMeters,
+      ),
+    );
     final storedRadius = await _loadMaxRadiusMeters();
     if (storedRadius != null) {
       final clamped = storedRadius.clamp(
         appData.mapRadiusMinMeters,
         appData.mapRadiusMaxMeters,
       );
-      maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+      maxRadiusMetersStreamValue.addValue(
+        DistanceInMetersValue.fromRaw(
+          clamped.toDouble(),
+          defaultValue: clamped.toDouble(),
+        ),
+      );
       _hasPersistedMaxRadiusPreference = true;
     } else {
       _hasPersistedMaxRadiusPreference = false;
@@ -71,20 +87,26 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
     // TODO(Delphi): Persist theme preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
-    themeModeStreamValue.addValue(mode);
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
-    if (meters <= 0) return;
-    final clamped = meters.clamp(
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    final normalized = meters.value;
+    if (normalized <= 0) return;
+    final clamped = normalized.clamp(
       appData.mapRadiusMinMeters,
       appData.mapRadiusMaxMeters,
     );
     // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
-    maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+    maxRadiusMetersStreamValue.addValue(
+      DistanceInMetersValue.fromRaw(
+        clamped.toDouble(),
+        defaultValue: clamped.toDouble(),
+      ),
+    );
     _hasPersistedMaxRadiusPreference = true;
     await _storage.write(
       key: _maxRadiusStorageKey,

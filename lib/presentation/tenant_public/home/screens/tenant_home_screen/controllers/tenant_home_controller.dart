@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:flutter/material.dart';
@@ -38,8 +39,9 @@ class TenantHomeController implements Disposable {
 
   ScrollController get scrollController => _scrollController;
 
-  StreamValue<Set<String>> get confirmedIdsStreamValue =>
-      _userEventsRepository.confirmedEventIdsStream;
+  StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      get confirmedIdsStreamValue =>
+          _userEventsRepository.confirmedEventIdsStream;
   AppData get appData => _appData;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -176,7 +178,9 @@ class TenantHomeController implements Disposable {
           first!.administrativeArea!,
       ];
       final label = parts.isNotEmpty ? parts.join(', ') : null;
-      await _userLocationRepository?.setLastKnownAddress(label);
+      await _userLocationRepository?.setLastKnownAddress(
+        _addressValue(label),
+      );
       if (_isDisposed) return;
       userAddressStreamValue.addValue(
         (label == null || label.trim().isEmpty)
@@ -191,7 +195,7 @@ class TenantHomeController implements Disposable {
         return;
       }
       await _userLocationRepository
-          ?.setLastKnownAddress('Localizacao detectada');
+          ?.setLastKnownAddress(_addressValue('Localizacao detectada'));
       if (_isDisposed) return;
       userAddressStreamValue.addValue('Localizacao detectada');
     }
@@ -226,12 +230,10 @@ class TenantHomeController implements Disposable {
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
   }
 
   String _formatDistanceLabel(double meters) {
@@ -239,6 +241,13 @@ class TenantHomeController implements Disposable {
       return '${meters.round()} m';
     }
     return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  UserLocationRepositoryContractTextValue? _addressValue(String? raw) {
+    if (raw == null) {
+      return null;
+    }
+    return UserLocationRepositoryContractTextValue.fromRaw(raw);
   }
 
   @override

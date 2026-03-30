@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/user/friend.dart';
+import 'package:belluga_now/domain/repositories/value_objects/friends_repository_contract_bool_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef FriendsRepositoryContractPrimString = String;
@@ -21,7 +22,7 @@ abstract class FriendsRepositoryContract {
   /// [forceRefresh] - If true, fetches from source even if cache exists
   /// If false and cache is populated, returns immediately without fetching
   Future<void> fetchAndCacheFriends(
-      {FriendsRepositoryContractPrimBool forceRefresh = false});
+      {FriendsRepositoryContractBoolValue? forceRefresh});
 
   /// Get raw Friend objects (for internal repository use)
   /// This is typically used by other repositories that need Friend domain objects

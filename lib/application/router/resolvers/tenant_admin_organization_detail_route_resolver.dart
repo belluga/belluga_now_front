@@ -25,6 +25,10 @@ class TenantAdminOrganizationDetailRouteResolver
       );
     }
 
-    return _organizationsRepository.fetchOrganization(organizationId.trim());
+    return _organizationsRepository.fetchOrganization(
+      TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+        organizationId,
+      ),
+    );
   }
 }

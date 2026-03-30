@@ -15,6 +15,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 
 final class InitScreenController extends BellugaInitScreenControllerContract {
@@ -140,12 +141,12 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       ).toString();
       await _telemetryRepository?.logEvent(
         EventTrackerEvents.buttonClick,
-        eventName: 'app_deferred_deep_link_captured',
-        properties: <String, dynamic>{
+        eventName: telemetryRepoString('app_deferred_deep_link_captured'),
+        properties: telemetryRepoMap(<String, dynamic>{
           'code': result.code,
           'platform': 'android',
           if (result.storeChannel != null) 'store_channel': result.storeChannel,
-        },
+        }),
       );
       return;
     }
@@ -156,12 +157,12 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
     await _telemetryRepository?.logEvent(
       EventTrackerEvents.buttonClick,
-      eventName: 'app_deferred_deep_link_capture_failed',
-      properties: <String, dynamic>{
+      eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
+      properties: telemetryRepoMap(<String, dynamic>{
         'platform': 'android',
         'failure_reason': result.failureReason,
         if (result.storeChannel != null) 'store_channel': result.storeChannel,
-      },
+      }),
     );
   }
 
@@ -170,7 +171,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       return const LandlordHomeRoute();
     }
 
-    if (_invitesRepository.hasPendingInvites) {
+    if (_invitesRepository.hasPendingInvites.value) {
       return const InviteFlowRoute();
     }
 

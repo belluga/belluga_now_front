@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/schedule_event_id_value.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class EventDeltaDTO {
   EventDeltaDTO({
@@ -21,18 +23,30 @@ class EventDeltaDTO {
     return EventDeltaDTO(
       eventId: json['event_id']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
-      updatedAt:
-          updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null,
+      updatedAt: updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null,
       lastEventId: lastEventId,
     );
   }
 
   EventDeltaModel toDomain() {
+    final eventIdValue = ScheduleEventIdValue()..parse(eventId);
+    final updatedAtValue = updatedAt != null
+        ? (DateTimeValue(
+            defaultValue: updatedAt,
+            isRequired: false,
+          )..parse(updatedAt?.toIso8601String()))
+        : null;
+
+    ScheduleEventIdValue? lastEventIdValue;
+    if (lastEventId != null && lastEventId!.trim().isNotEmpty) {
+      lastEventIdValue = ScheduleEventIdValue()..parse(lastEventId);
+    }
+
     return EventDeltaModel(
-      eventId: eventId,
+      eventIdValue: eventIdValue,
       type: _parseEventDeltaType(type),
-      updatedAt: updatedAt,
-      lastEventId: lastEventId,
+      updatedAtValue: updatedAtValue,
+      lastEventIdValue: lastEventIdValue,
     );
   }
 

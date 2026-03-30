@@ -197,7 +197,8 @@ class _CardSubtitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final distanceLabel = _distanceLabel(partner.distanceMeters);
-    final secondary = partner.tags.isNotEmpty ? partner.tags.first : null;
+    final secondary =
+        partner.tags.isNotEmpty ? partner.tags.first.value.trim() : null;
     final text = <String>[
       if (secondary != null && secondary.isNotEmpty) secondary,
       if (distanceLabel != null) distanceLabel,

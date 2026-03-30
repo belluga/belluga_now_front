@@ -20,7 +20,7 @@ class InviteEventHero extends StatelessWidget {
     final idValue = MongoIDValue(defaultValue: _coerceMongoId(invite.eventId))
       ..parse(_coerceMongoId(invite.eventId));
     final tagValues = invite.tags
-        .map((tag) => VenueEventTagValue(tag))
+        .map((tag) => VenueEventTagValue(tag.value))
         .toList(growable: false);
 
     return CarouselCard(

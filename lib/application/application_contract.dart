@@ -34,6 +34,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
@@ -298,7 +299,7 @@ abstract class ApplicationContract extends ModularAppContract {
         return;
       }
       await telemetryRepository.mergeIdentity(
-        previousUserId: storedUserId,
+        previousUserId: telemetryRepoString(storedUserId),
       );
     });
     final currentUser = authRepository.userStreamValue.value;
@@ -319,7 +320,7 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
     await telemetryRepository.mergeIdentity(
-      previousUserId: storedUserId,
+      previousUserId: telemetryRepoString(storedUserId),
     );
   }
 
@@ -368,13 +369,13 @@ abstract class ApplicationContract extends ModularAppContract {
       .get<AppDataRepositoryContract>()
       .appData
       .themeDataSettings
-      .themeData(Brightness.light);
+      .themeDataLight();
 
   ThemeData getDarkThemeData() => GetIt.I
       .get<AppDataRepositoryContract>()
       .appData
       .themeDataSettings
-      .themeData(Brightness.dark);
+      .themeDataDark();
 
   ThemeMode get themeMode => GetIt.I.get<AppDataRepositoryContract>().themeMode;
 
@@ -477,13 +478,13 @@ class _ApplicationContractState extends State<ApplicationContract>
     _finishRouterTimedEvent();
     final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
     final screenContext = _buildRouterScreenContext(routeData);
-    telemetry.setScreenContext(screenContext);
+    telemetry.setScreenContext(telemetryRepoMap(screenContext));
     _routerTimedEvent = await telemetry.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'screen_view',
-      properties: {
+      eventName: telemetryRepoString('screen_view'),
+      properties: telemetryRepoMap({
         'screen_context': screenContext,
-      },
+      }),
     );
     _debugWebTelemetry(
       'timed event started',
@@ -614,10 +615,11 @@ class _ApplicationContractState extends State<ApplicationContract>
     final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
     var success = false;
     try {
-      success = await telemetry.logEvent(
+      success = (await telemetry.logEvent(
         EventTrackerEvents.openApp,
-        eventName: 'app_init',
-      );
+        eventName: telemetryRepoString('app_init'),
+      ))
+          .value;
     } catch (_) {
       success = false;
     }
@@ -672,11 +674,11 @@ class _ApplicationContractState extends State<ApplicationContract>
     unawaited(
       telemetry.logEvent(
         EventTrackerEvents.openApp,
-        eventName: 'app_lifecycle',
-        properties: {
+        eventName: telemetryRepoString('app_lifecycle'),
+        properties: telemetryRepoMap({
           'state': finalState.name,
           'sequence': sequence,
-        },
+        }),
       ),
     );
   }

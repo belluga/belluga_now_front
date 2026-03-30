@@ -24,7 +24,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_ad
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -247,11 +247,11 @@ class _FakeAccountsRepository
     this.initialOwnershipState = TenantAdminOwnershipState.tenantOwned,
   }) {
     _seedAccount(
-      TenantAdminAccount(
+      tenantAdminAccountFromRaw(
         id: 'acc-1',
         name: 'Conta base',
         slug: 'yuri-dias',
-        document: TenantAdminDocument(type: 'cpf', number: '000'),
+        document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
         ownershipState: initialOwnershipState,
       ),
     );
@@ -267,48 +267,35 @@ class _FakeAccountsRepository
   String? lastDeletedSlug;
 
   @override
-  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>?>(defaultValue: []);
-
-  @override
-  final StreamValue<bool> hasMoreAccountsStreamValue =
-      StreamValue<bool>(defaultValue: false);
-
-  @override
-  final StreamValue<bool> isAccountsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-
-  @override
-  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
-
-  @override
   Future<void> loadAccounts({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {}
 
   @override
   Future<void> loadNextAccountsPage({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {}
 
   @override
   void resetAccountsState() {}
 
   @override
-  Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
+  Future<TenantAdminAccount> fetchAccountBySlug(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     fetchAccountBySlugCalls += 1;
-    lastFetchedSlug = accountSlug;
+    lastFetchedSlug = accountSlug.value;
     final account = _accountsById.values.firstWhere(
-      (entry) => entry.slug == accountSlug,
-      orElse: () => TenantAdminAccount(
+      (entry) => entry.slug == accountSlug.value,
+      orElse: () => tenantAdminAccountFromRaw(
         id: 'acc-1',
         name: 'Conta base',
-        slug: accountSlug,
-        document: TenantAdminDocument(type: 'cpf', number: '000'),
+        slug: accountSlug.value,
+        document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
     );
@@ -323,12 +310,12 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
-    return TenantAdminPagedAccountsResult(
+    return tenantAdminPagedAccountsResultFromRaw(
       accounts: List<TenantAdminAccount>.unmodifiable(_accountsById.values),
       hasMore: false,
     );
@@ -336,18 +323,19 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminAccount> createAccount({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
-    String? organizationId,
+    TenantAdminAccountsRepositoryContractPrimString? organizationId,
   }) async {
-    final created = TenantAdminAccount(
+    final created = tenantAdminAccountFromRaw(
       id: 'acc-created',
-      name: name,
+      name: name.value,
       slug: 'acc-created',
-      document: document ?? TenantAdminDocument(type: 'cpf', number: '001'),
+      document:
+          document ?? tenantAdminDocumentFromRaw(type: 'cpf', number: '001'),
       ownershipState: ownershipState,
-      organizationId: organizationId,
+      organizationId: organizationId?.value,
     );
     _seedAccount(created);
     return created;
@@ -355,13 +343,14 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     required TenantAdminOwnershipState ownershipState,
-    required String profileType,
+    required TenantAdminAccountsRepositoryContractPrimString profileType,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountsRepositoryContractPrimString? bio,
+    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -371,32 +360,32 @@ class _FakeAccountsRepository
     );
     return TenantAdminAccountOnboardingResult(
       account: account,
-      accountProfile: TenantAdminAccountProfile(
+      accountProfile: tenantAdminAccountProfileFromRaw(
         id: 'profile-onboarding',
         accountId: account.id,
-        profileType: profileType,
-        displayName: name,
+        profileType: profileType.value,
+        displayName: name.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
+        bio: bio?.value,
+        content: content?.value,
       ),
     );
   }
 
   @override
   Future<TenantAdminAccount> updateAccount({
-    required String accountSlug,
-    String? name,
-    String? slug,
+    required TenantAdminAccountsRepositoryContractPrimString accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? name,
+    TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
   }) async {
     final current = await fetchAccountBySlug(accountSlug);
-    final updated = TenantAdminAccount(
+    final updated = tenantAdminAccountFromRaw(
       id: current.id,
-      name: name ?? current.name,
-      slug: slug ?? current.slug,
+      name: name?.value ?? current.name,
+      slug: slug?.value ?? current.slug,
       document: document ?? current.document,
       ownershipState: ownershipState ?? current.ownershipState,
       organizationId: current.organizationId,
@@ -411,7 +400,7 @@ class _FakeAccountsRepository
       return;
     }
     _seedAccount(
-      TenantAdminAccount(
+      tenantAdminAccountFromRaw(
         id: current.id,
         name: name,
         slug: slug,
@@ -423,16 +412,18 @@ class _FakeAccountsRepository
   }
 
   @override
-  Future<void> deleteAccount(String accountSlug) async {
+  Future<void> deleteAccount(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     deleteAccountCalls += 1;
-    lastDeletedSlug = accountSlug;
+    lastDeletedSlug = accountSlug.value;
     final accountToRemove = _accountsById.values.firstWhere(
-      (entry) => entry.slug == accountSlug,
-      orElse: () => TenantAdminAccount(
+      (entry) => entry.slug == accountSlug.value,
+      orElse: () => tenantAdminAccountFromRaw(
         id: '',
         name: '',
         slug: '',
-        document: TenantAdminDocument(type: 'cpf', number: ''),
+        document: tenantAdminDocumentFromRaw(type: 'cpf', number: ''),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
     );
@@ -445,12 +436,15 @@ class _FakeAccountsRepository
   }
 
   @override
-  Future<TenantAdminAccount> restoreAccount(String accountSlug) async {
+  Future<TenantAdminAccount> restoreAccount(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     return fetchAccountBySlug(accountSlug);
   }
 
   @override
-  Future<void> forceDeleteAccount(String accountSlug) async {}
+  Future<void> forceDeleteAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
 
   void _seedAccount(TenantAdminAccount account) {
     _accountsById[account.id] = account;
@@ -469,13 +463,13 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
-    String? accountId,
+    TenantAdminAccountProfilesRepoString? accountId,
   }) async {
     if (accountId == null || !withProfile) {
       return [];
     }
     return [
-      TenantAdminAccountProfile(
+      tenantAdminAccountProfileFromRaw(
         id: 'profile-1',
         accountId: accountId,
         profileType: 'artist',
@@ -487,19 +481,19 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return [
-      TenantAdminProfileTypeDefinition(
+      tenantAdminProfileTypeDefinitionFromRaw(
         type: 'artist',
         label: 'Artist',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: false,
-          hasBio: true,
-          hasContent: true,
-          hasTaxonomies: true,
-          hasAvatar: true,
-          hasCover: true,
-          hasEvents: true,
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
       ),
     ];
@@ -508,11 +502,11 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     final types = await fetchProfileTypes();
-    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: types,
       hasMore: false,
     );
@@ -520,9 +514,9 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'artist',
@@ -532,19 +526,20 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
-    required String accountId,
-    required String profileType,
-    required String displayName,
+    required TenantAdminAccountProfilesRepoString accountId,
+    required TenantAdminAccountProfilesRepoString profileType,
+    required TenantAdminAccountProfilesRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-created',
       accountId: accountId,
       profileType: profileType,
@@ -560,29 +555,29 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> updateAccountProfile({
-    required String accountProfileId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? displayName,
+    TenantAdminAccountProfilesRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
+    TenantAdminAccountProfilesRepoBool? removeAvatar,
+    TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: accountProfileId,
       accountId: 'acc-1',
       profileType: profileType ?? 'artist',
       displayName: displayName ?? 'Perfil',
       slug: slug ?? 'perfil',
       location: location,
-      taxonomyTerms: taxonomyTerms ?? [],
+      taxonomyTerms: taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,
@@ -591,26 +586,28 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<void> deleteAccountProfile(String accountProfileId) async {}
+  Future<void> deleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
     return fetchAccountProfile(accountProfileId);
   }
 
   @override
-  Future<void> forceDeleteAccountProfile(String accountProfileId) async {}
+  Future<void> forceDeleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
-    return TenantAdminProfileTypeDefinition(
+    return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
@@ -620,32 +617,33 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
-    return TenantAdminProfileTypeDefinition(
+    return tenantAdminProfileTypeDefinitionFromRaw(
       type: newType ?? type,
       label: label ?? 'Updated',
       allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
-            isFavoritable: true,
-            isPoiEnabled: false,
-            hasBio: true,
-            hasContent: true,
-            hasTaxonomies: true,
-            hasAvatar: true,
-            hasCover: true,
-            hasEvents: true,
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
           ),
     );
   }
 
   @override
-  Future<void> deleteProfileType(String type) async {}
+  Future<void> deleteProfileType(
+      TenantAdminAccountProfilesRepoString type) async {}
 }
 
 class _FakeTaxonomiesRepository
@@ -659,10 +657,10 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -670,13 +668,13 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
-    return TenantAdminTaxonomyDefinition(
+    return tenantAdminTaxonomyDefinitionFromRaw(
       id: 'taxonomy-1',
       slug: slug,
       name: name,
@@ -688,14 +686,14 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
-    return TenantAdminTaxonomyDefinition(
+    return tenantAdminTaxonomyDefinitionFromRaw(
       id: taxonomyId,
       slug: slug ?? 'taxonomy',
       name: name ?? 'Taxonomy',
@@ -706,11 +704,11 @@ class _FakeTaxonomiesRepository
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {}
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {}
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return [];
   }
@@ -718,11 +716,11 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -730,11 +728,11 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) async {
-    return TenantAdminTaxonomyTermDefinition(
+    return tenantAdminTaxonomyTermDefinitionFromRaw(
       id: 'term-1',
       taxonomyId: taxonomyId,
       slug: slug,
@@ -744,12 +742,12 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) async {
-    return TenantAdminTaxonomyTermDefinition(
+    return tenantAdminTaxonomyTermDefinitionFromRaw(
       id: termId,
       taxonomyId: taxonomyId,
       slug: slug ?? 'term',
@@ -759,7 +757,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {}
 }

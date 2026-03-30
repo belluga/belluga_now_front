@@ -1,10 +1,21 @@
-class AppDataMapFilterCatalogKeysValue {
+import 'package:value_object_pattern/value_object.dart';
+
+class AppDataMapFilterCatalogKeysValue extends ValueObject<List<String>> {
   AppDataMapFilterCatalogKeysValue([Iterable<String>? rawKeys])
-      : _value = List<String>.unmodifiable(_sanitize(rawKeys));
+      : super(defaultValue: const <String>[], isRequired: false) {
+    parse(rawKeys?.join('\n'));
+  }
 
-  final List<String> _value;
+  @override
+  List<String> doParse(dynamic parseValue) {
+    if (parseValue is Iterable) {
+      return List<String>.unmodifiable(
+        _sanitize(parseValue.map((item) => item.toString())),
+      );
+    }
 
-  List<String> get value => _value;
+    return defaultValue;
+  }
 
   static List<String> _sanitize(Iterable<String>? rawKeys) {
     if (rawKeys == null) {
@@ -22,4 +33,11 @@ class AppDataMapFilterCatalogKeysValue {
     }
     return ordered;
   }
+
+  bool get isEmpty => value.isEmpty;
+
+  int get length => value.length;
+
+  List<String> toList({bool growable = false}) =>
+      List<String>.from(value, growable: growable);
 }

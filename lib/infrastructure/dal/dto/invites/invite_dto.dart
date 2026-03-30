@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_type_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
@@ -187,7 +188,9 @@ class InviteDto {
 
       return InviteInviter(
         inviteIdValue: InviteInviterIdValue()..parse(candidate.inviteId),
-        type: InviteInviterTypeApiMapper.tryParse(candidate.principalKind) ??
+        type: InviteInviterTypeApiMapper.tryParse(
+              InviteInviterTypeRawValue()..parse(candidate.principalKind),
+            ) ??
             InviteInviterType.user,
         nameValue: InviteInviterNameValue()..parse(candidate.displayName),
         principal: _parseInviterPrincipal(
@@ -301,7 +304,9 @@ class InviteDto {
     if (normalizedKind == null || normalizedKind.isEmpty) return null;
     if (normalizedId == null || normalizedId.isEmpty) return null;
 
-    final parsedType = InviteInviterTypeApiMapper.tryParse(normalizedKind);
+    final parsedType = InviteInviterTypeApiMapper.tryParse(
+      InviteInviterTypeRawValue()..parse(normalizedKind),
+    );
     if (parsedType == null) return null;
 
     return InviteInviterPrincipal(

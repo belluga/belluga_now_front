@@ -2,18 +2,16 @@ part of '../tenant_admin_event.dart';
 
 class TenantAdminEventType {
   TenantAdminEventType({
-    required Object name,
-    required Object slug,
-    Object? id,
-    Object? description,
-    Object? icon,
-    Object? color,
-  })  : nameValue = tenantAdminRequiredText(name),
-        slugValue = tenantAdminRequiredText(slug),
-        idValue = tenantAdminOptionalText(id),
-        descriptionValue = tenantAdminOptionalText(description),
-        iconValue = tenantAdminOptionalText(icon),
-        colorValue = tenantAdminOptionalText(color);
+    required this.nameValue,
+    required this.slugValue,
+    TenantAdminOptionalTextValue? idValue,
+    TenantAdminOptionalTextValue? descriptionValue,
+    TenantAdminOptionalTextValue? iconValue,
+    TenantAdminOptionalTextValue? colorValue,
+  })  : idValue = idValue ?? TenantAdminOptionalTextValue(),
+        descriptionValue = descriptionValue ?? TenantAdminOptionalTextValue(),
+        iconValue = iconValue ?? TenantAdminOptionalTextValue(),
+        colorValue = colorValue ?? TenantAdminOptionalTextValue();
 
   final TenantAdminRequiredTextValue nameValue;
   final TenantAdminRequiredTextValue slugValue;

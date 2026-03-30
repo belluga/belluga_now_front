@@ -2,13 +2,12 @@ part of '../tenant_admin_event.dart';
 
 class TenantAdminEventLocation {
   TenantAdminEventLocation({
-    required Object mode,
-    Object? latitude,
-    Object? longitude,
+    required this.modeValue,
+    TenantAdminOptionalDoubleValue? latitudeValue,
+    TenantAdminOptionalDoubleValue? longitudeValue,
     this.online,
-  })  : modeValue = tenantAdminRequiredText(mode),
-        latitudeValue = tenantAdminOptionalDouble(latitude),
-        longitudeValue = tenantAdminOptionalDouble(longitude);
+  })  : latitudeValue = latitudeValue ?? TenantAdminOptionalDoubleValue(null),
+        longitudeValue = longitudeValue ?? TenantAdminOptionalDoubleValue(null);
 
   final TenantAdminRequiredTextValue modeValue;
   final TenantAdminOptionalDoubleValue latitudeValue;

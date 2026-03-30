@@ -1,11 +1,11 @@
 part of 'engagement_data.dart';
 
-typedef ExperienceCount = int;
-
 class ExperienceEngagementData extends EngagementData {
-  final ExperienceCount experienceCount;
+  final EngagementCountValue experienceCountValue;
 
-  const ExperienceEngagementData({
-    required this.experienceCount,
+  ExperienceEngagementData({
+    required this.experienceCountValue,
   });
+
+  int get experienceCount => experienceCountValue.value;
 }

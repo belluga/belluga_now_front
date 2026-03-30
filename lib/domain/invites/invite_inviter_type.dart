@@ -1,9 +1,9 @@
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_type_raw_value.dart';
+
 enum InviteInviterType {
   user,
   accountProfile,
 }
-
-typedef InviteInviterTypeRaw = String;
 
 extension InviteInviterTypeApiMapper on InviteInviterType {
   String get apiValue {
@@ -15,8 +15,8 @@ extension InviteInviterTypeApiMapper on InviteInviterType {
     }
   }
 
-  static InviteInviterType? tryParse(InviteInviterTypeRaw? raw) {
-    switch (raw?.trim().toLowerCase()) {
+  static InviteInviterType? tryParse(InviteInviterTypeRawValue? raw) {
+    switch (raw?.value.trim().toLowerCase()) {
       case 'user':
         return InviteInviterType.user;
       case 'account_profile':

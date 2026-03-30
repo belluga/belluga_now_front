@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/value_objects/engagement_count_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/engagement_status_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'mock_schedule_backend.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
@@ -101,7 +103,9 @@ class MockAccountProfilesDatabase {
       tags: ['beach club', 'restaurante', 'festas', 'praia'],
       upcomingEventIds: [],
       isVerified: true,
-      engagementData: const VenueEngagementData(presenceCount: 120),
+      engagementData: VenueEngagementData(
+        presenceCountValue: _engagementCount(120),
+      ),
       acceptedInvites: 45,
       distanceMeters: 1200,
     ));
@@ -120,7 +124,9 @@ class MockAccountProfilesDatabase {
       tags: ['bistrô', 'francês', 'jantar', 'romântico'],
       upcomingEventIds: [],
       isVerified: true,
-      engagementData: const VenueEngagementData(presenceCount: 45),
+      engagementData: VenueEngagementData(
+        presenceCountValue: _engagementCount(45),
+      ),
       acceptedInvites: 23,
       distanceMeters: 2400,
     ));
@@ -138,7 +144,9 @@ class MockAccountProfilesDatabase {
       bio: 'Residente do Beach Club. House music e vibes eletrônicas.',
       tags: ['dj', 'house', 'eletrônica', 'música'],
       upcomingEventIds: [],
-      engagementData: const ArtistEngagementData(status: 'TOCANDO AGORA'),
+      engagementData: ArtistEngagementData(
+        statusValue: _engagementStatus('TOCANDO AGORA'),
+      ),
       acceptedInvites: 87,
       distanceMeters: 1800,
     ));
@@ -155,7 +163,9 @@ class MockAccountProfilesDatabase {
       bio: 'Indie e MPB com clima de pôr do sol.',
       tags: ['indie', 'mpb', 'show'],
       upcomingEventIds: [],
-      engagementData: const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
+      engagementData: ArtistEngagementData(
+        statusValue: _engagementStatus('COMEÇA EM BREVE'),
+      ),
       acceptedInvites: 54,
       distanceMeters: 3100,
     ));
@@ -172,7 +182,9 @@ class MockAccountProfilesDatabase {
       bio: 'Eletrônica e deep house para madrugadas intensas.',
       tags: ['eletrônica', 'house', 'dj'],
       upcomingEventIds: [],
-      engagementData: const ArtistEngagementData(status: 'TOCANDO AGORA'),
+      engagementData: ArtistEngagementData(
+        statusValue: _engagementStatus('TOCANDO AGORA'),
+      ),
       acceptedInvites: 102,
       distanceMeters: 900,
     ));
@@ -190,7 +202,9 @@ class MockAccountProfilesDatabase {
       bio: 'Guias locais especializados em trilhas e mergulho.',
       tags: ['aventura', 'trilhas', 'mergulho', 'turismo'],
       upcomingEventIds: [],
-      engagementData: const ExperienceEngagementData(experienceCount: 12),
+      engagementData: ExperienceEngagementData(
+        experienceCountValue: _engagementCount(12),
+      ),
       acceptedInvites: 34,
       distanceMeters: 5200,
     ));
@@ -211,7 +225,9 @@ class MockAccountProfilesDatabase {
       tags: ['lifestyle', 'moda', 'dicas', 'influencer'],
       upcomingEventIds: [],
       isVerified: true,
-      engagementData: const InfluencerEngagementData(inviteCount: 150),
+      engagementData: InfluencerEngagementData(
+        inviteCountValue: _engagementCount(150),
+      ),
       acceptedInvites: 150,
       distanceMeters: 4200,
     ));
@@ -229,8 +245,10 @@ class MockAccountProfilesDatabase {
       bio: 'A curadoria mais completa dos eventos culturais do Espírito Santo.',
       tags: ['cultura', 'arte', 'teatro', 'agenda'],
       upcomingEventIds: [],
-      engagementData:
-          const CuratorEngagementData(articleCount: 50, docCount: 20),
+      engagementData: CuratorEngagementData(
+        articleCountValue: _engagementCount(50),
+        docCountValue: _engagementCount(20),
+      ),
       acceptedInvites: 92,
       distanceMeters: 3600,
     ));
@@ -366,16 +384,24 @@ class MockAccountProfilesDatabase {
                       : tags,
           upcomingEventIds: const [],
           engagementData: type == 'artist'
-              ? const ArtistEngagementData(status: 'COMEÇA EM BREVE')
+              ? ArtistEngagementData(
+                  statusValue: _engagementStatus('COMEÇA EM BREVE'),
+                )
               : type == 'venue'
-                  ? VenueEngagementData(presenceCount: 15 + (i % 30))
+                  ? VenueEngagementData(
+                      presenceCountValue: _engagementCount(15 + (i % 30)),
+                    )
                   : type == 'experience_provider'
-                      ? ExperienceEngagementData(experienceCount: 3 + (i % 10))
+                      ? ExperienceEngagementData(
+                          experienceCountValue: _engagementCount(3 + (i % 10)),
+                        )
                       : type == 'influencer'
-                          ? InfluencerEngagementData(inviteCount: 10 + (i % 20))
+                          ? InfluencerEngagementData(
+                              inviteCountValue: _engagementCount(10 + (i % 20)),
+                            )
                           : CuratorEngagementData(
-                              articleCount: 5 + (i % 12),
-                              docCount: 3 + (i % 8),
+                              articleCountValue: _engagementCount(5 + (i % 12)),
+                              docCountValue: _engagementCount(3 + (i % 8)),
                             ),
           acceptedInvites: 20 + i,
           distanceMeters: 500 + (i % 15) * 250,
@@ -415,8 +441,9 @@ class MockAccountProfilesDatabase {
             avatarUrl: artist.avatarUrl,
             coverUrl: seed.thumbUrl,
             tags: const ['show', 'artista'],
-            engagementData:
-                const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
+            engagementData: ArtistEngagementData(
+              statusValue: _engagementStatus('COMEÇA EM BREVE'),
+            ),
             acceptedInvites: 15,
             distanceMeters: 1900,
           ),
@@ -446,7 +473,7 @@ class MockAccountProfilesDatabase {
       final lowerQuery = query.toLowerCase();
       results = results.where((p) {
         return p.name.toLowerCase().contains(lowerQuery) ||
-            p.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
+            p.tags.any((tag) => tag.value.toLowerCase().contains(lowerQuery));
       }).toList();
     }
 
@@ -460,6 +487,14 @@ class MockAccountProfilesDatabase {
     } catch (e) {
       return null;
     }
+  }
+
+  static EngagementCountValue _engagementCount(int raw) {
+    return EngagementCountValue()..parse(raw.toString());
+  }
+
+  static EngagementStatusValue _engagementStatus(String raw) {
+    return EngagementStatusValue()..parse(raw);
   }
 
   static String _slugify(String input) {

@@ -8,6 +8,9 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_marker.dart';
@@ -44,15 +47,33 @@ CityPoiModel _buildPoiFromTransportPayload(Map<String, dynamic> payload) {
   return CityPoiDTO.fromJson(payload).toDomain();
 }
 
+PoiIconSymbolValue _iconValue(String raw) {
+  final value = PoiIconSymbolValue();
+  value.parse(raw);
+  return value;
+}
+
+PoiHexColorValue _hexColorValue(String raw) {
+  final value = PoiHexColorValue();
+  value.parse(raw);
+  return value;
+}
+
+PoiFilterImageUriValue _imageUriValue(String raw) {
+  final value = PoiFilterImageUriValue();
+  value.parse(raw);
+  return value;
+}
+
 void main() {
   testWidgets('uses poi visual icon instead of category hardcoded icon', (
     tester,
   ) async {
     final poi = _buildPoi(
       category: CityPoiCategory.beach,
-      visual: const CityPoiVisual.icon(
-        icon: 'restaurant',
-        colorHex: '#00AAFF',
+      visual: CityPoiVisual.icon(
+        iconValue: _iconValue('restaurant'),
+        colorHexValue: _hexColorValue('#00AAFF'),
       ),
     );
 
@@ -82,9 +103,9 @@ void main() {
   ) async {
     final poi = _buildPoi(
       category: CityPoiCategory.beach,
-      visual: const CityPoiVisual.icon(
-        icon: 'restaurant',
-        colorHex: '#00AAFF',
+      visual: CityPoiVisual.icon(
+        iconValue: _iconValue('restaurant'),
+        colorHexValue: _hexColorValue('#00AAFF'),
       ),
     );
 
@@ -150,8 +171,8 @@ void main() {
   ) async {
     final poi = _buildPoi(
       category: CityPoiCategory.culture,
-      visual: const CityPoiVisual.image(
-        imageUri: 'https://tenant.test/media/poi-1.png',
+      visual: CityPoiVisual.image(
+        imageUriValue: _imageUriValue('https://tenant.test/media/poi-1.png'),
       ),
     );
 
@@ -181,9 +202,9 @@ void main() {
     (tester) async {
       final poi = _buildPoi(
         category: CityPoiCategory.culture,
-        visual: const CityPoiVisual.icon(
-          icon: 'museum',
-          colorHex: '#11AA11',
+        visual: CityPoiVisual.icon(
+          iconValue: _iconValue('museum'),
+          colorHexValue: _hexColorValue('#11AA11'),
         ),
       );
 
@@ -197,9 +218,9 @@ void main() {
                 child: PoiMarker(
                   poi: poi,
                   isSelected: false,
-                  overrideVisual: const CityPoiVisual.icon(
-                    icon: 'restaurant',
-                    colorHex: '#AA1111',
+                  overrideVisual: CityPoiVisual.icon(
+                    iconValue: _iconValue('restaurant'),
+                    colorHexValue: _hexColorValue('#AA1111'),
                   ),
                 ),
               ),
@@ -218,9 +239,9 @@ void main() {
     (tester) async {
       final poi = _buildPoi(
         category: CityPoiCategory.culture,
-        visual: const CityPoiVisual.icon(
-          icon: 'museum',
-          colorHex: '#11AA11',
+        visual: CityPoiVisual.icon(
+          iconValue: _iconValue('museum'),
+          colorHexValue: _hexColorValue('#11AA11'),
         ),
       );
 
@@ -234,9 +255,9 @@ void main() {
                 child: PoiMarker(
                   poi: poi,
                   isSelected: false,
-                  overrideVisual: const CityPoiVisual.icon(
-                    icon: 'restaurant',
-                    colorHex: 'red',
+                  overrideVisual: CityPoiVisual.icon(
+                    iconValue: PoiIconSymbolValue(),
+                    colorHexValue: _hexColorValue('#AA1111'),
                   ),
                 ),
               ),

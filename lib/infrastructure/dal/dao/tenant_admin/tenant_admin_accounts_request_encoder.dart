@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountsRequestEncoder {
   const TenantAdminAccountsRequestEncoder();
@@ -32,7 +32,8 @@ class TenantAdminAccountsRequestEncoder {
     required TenantAdminOwnershipState ownershipState,
     required String profileType,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     String? bio,
     String? content,
   }) {

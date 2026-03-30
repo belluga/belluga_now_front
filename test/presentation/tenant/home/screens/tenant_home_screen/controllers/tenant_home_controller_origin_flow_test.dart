@@ -2,10 +2,12 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -46,8 +48,9 @@ void main() {
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
     );
-    await userEventsRepository
-        .confirmEventAttendance(_CapturingScheduleBackend.eventId);
+    await userEventsRepository.confirmEventAttendance(
+      userEventsRepoString(_CapturingScheduleBackend.eventId),
+    );
 
     final controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
@@ -85,8 +88,9 @@ void main() {
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
     );
-    await userEventsRepository
-        .confirmEventAttendance(_CapturingScheduleBackend.eventId);
+    await userEventsRepository.confirmEventAttendance(
+      userEventsRepoString(_CapturingScheduleBackend.eventId),
+    );
 
     final controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
@@ -296,8 +300,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -308,7 +312,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -328,7 +332,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
       : maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: _appData.mapRadiusMaxMeters);
+            StreamValue<DistanceInMetersValue>(
+              defaultValue: DistanceInMetersValue.fromRaw(
+                _appData.mapRadiusMaxMeters,
+                defaultValue: _appData.mapRadiusMaxMeters,
+              ),
+            );
 
   final AppData _appData;
 
@@ -346,21 +355,21 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue;
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }

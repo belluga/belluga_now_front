@@ -61,13 +61,14 @@ class VenueEventResume {
   CityCoordinate? get coordinateValue => coordinate;
   VenueEventResumePrimBool get hasArtists => artists.isNotEmpty;
   ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
-  List<VenueEventResumePrimString> get tags =>
-      tagValues.map((tagValue) => tagValue.value).toList(growable: false);
+  List<VenueEventTagValue> get tags =>
+      List<VenueEventTagValue>.unmodifiable(tagValues);
   VenueEventResumePrimString get artistNamesLabel =>
       artists.map((artist) => artist.displayName).join(', ');
 
-  static VenueEventResumePrimString slugify(VenueEventResumePrimString value) {
-    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  static VenueEventResumePrimString slugify(TitleValue value) {
+    final rawValue = value.value;
+    final slug = rawValue.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
@@ -103,15 +104,14 @@ class VenueEventResume {
 
   factory VenueEventResume.fromScheduleEvent(
     EventModel event,
-    Object fallbackImage,
+    ThumbUriValue fallbackImageValue,
   ) {
-    final fallbackImageValue = _coerceFallbackImageValue(fallbackImage);
     final slugSource = event.slug;
     final slug = SlugValue()
       ..parse(
         slugSource.isNotEmpty
             ? slugSource
-            : VenueEventResume.slugify(event.title.value),
+            : VenueEventResume.slugify(event.title),
       );
 
     final preferredImageUri = resolvePreferredImageUri(
@@ -138,27 +138,9 @@ class VenueEventResume {
       startDateTimeValue: startValue,
       locationValue: event.location,
       artists: event.artists,
-      tagValues: event.taxonomyTags
-          .map((tag) => VenueEventTagValue(tag))
-          .toList(growable: false),
+      tagValues: event.taxonomyTags,
       coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available
-    );
-  }
-
-  static ThumbUriValue _coerceFallbackImageValue(Object raw) {
-    if (raw is ThumbUriValue) {
-      return raw;
-    }
-    if (raw is Uri) {
-      final thumb = ThumbUriValue(defaultValue: raw, isRequired: true)
-        ..parse(raw.toString());
-      return thumb;
-    }
-    throw ArgumentError.value(
-      raw,
-      'fallbackImage',
-      'Expected Uri or ThumbUriValue',
     );
   }
 }

@@ -18,16 +18,17 @@ class TenantAdminTaxonomyTermsController implements Disposable {
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
                 : null) {
     _bindTenantScope();
+    _bindPaginationMirrors();
   }
 
   final TenantAdminTaxonomiesRepositoryContract _repository;
   final TenantAdminTenantScopeContract? _tenantScope;
   StreamValue<List<TenantAdminTaxonomyTermDefinition>?> get termsStreamValue =>
       _repository.termsStreamValue;
-  StreamValue<bool> get hasMoreTermsStreamValue =>
-      _repository.hasMoreTermsStreamValue;
-  StreamValue<bool> get isTermsPageLoadingStreamValue =>
-      _repository.isTermsPageLoadingStreamValue;
+  final StreamValue<bool> hasMoreTermsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isTermsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
   final StreamValue<String?> actionErrorMessageStreamValue =
@@ -45,8 +46,31 @@ class TenantAdminTaxonomyTermsController implements Disposable {
   bool _isDisposed = false;
   bool _termsListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminTaxRepoBool>? _hasMoreTermsSubscription;
+  StreamSubscription<TenantAdminTaxRepoBool>? _isTermsPageLoadingSubscription;
   String? _lastTenantDomain;
   String? _activeTaxonomyId;
+
+  void _bindPaginationMirrors() {
+    _syncPaginationMirrors();
+    _hasMoreTermsSubscription ??=
+        _repository.hasMoreTermsStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      hasMoreTermsStreamValue.addValue(value.value);
+    });
+    _isTermsPageLoadingSubscription ??=
+        _repository.isTermsPageLoadingStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      isTermsPageLoadingStreamValue.addValue(value.value);
+    });
+  }
+
+  void _syncPaginationMirrors() {
+    hasMoreTermsStreamValue
+        .addValue(_repository.hasMoreTermsStreamValue.value.value);
+    isTermsPageLoadingStreamValue
+        .addValue(_repository.isTermsPageLoadingStreamValue.value.value);
+  }
 
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
@@ -88,9 +112,14 @@ class TenantAdminTaxonomyTermsController implements Disposable {
   Future<void> loadTerms(String taxonomyId) async {
     _activeTaxonomyId = taxonomyId;
     await _repository.loadTerms(
-      taxonomyId: taxonomyId,
+      taxonomyId: TenantAdminTaxRepoString.fromRaw(
+        taxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
     );
-    errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
+    errorStreamValue.addValue(_repository.termsErrorStreamValue.value?.value);
+    _syncPaginationMirrors();
   }
 
   Future<void> loadNextTermsPage() async {
@@ -99,7 +128,8 @@ class TenantAdminTaxonomyTermsController implements Disposable {
       return;
     }
     await _repository.loadNextTermsPage();
-    errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
+    errorStreamValue.addValue(_repository.termsErrorStreamValue.value?.value);
+    _syncPaginationMirrors();
   }
 
   void bindTermsListScrollPagination() {
@@ -135,9 +165,21 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     required String name,
   }) async {
     final created = await _repository.createTerm(
-      taxonomyId: taxonomyId,
-      slug: slug,
-      name: name,
+      taxonomyId: TenantAdminTaxRepoString.fromRaw(
+        taxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      slug: TenantAdminTaxRepoString.fromRaw(
+        slug,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      name: TenantAdminTaxRepoString.fromRaw(
+        name,
+        defaultValue: '',
+        isRequired: true,
+      ),
     );
     await loadTerms(taxonomyId);
     return created;
@@ -150,10 +192,18 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     String? name,
   }) async {
     final updated = await _repository.updateTerm(
-      taxonomyId: taxonomyId,
-      termId: termId,
-      slug: slug,
-      name: name,
+      taxonomyId: TenantAdminTaxRepoString.fromRaw(
+        taxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      termId: TenantAdminTaxRepoString.fromRaw(
+        termId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      slug: slug == null ? null : TenantAdminTaxRepoString.fromRaw(slug),
+      name: name == null ? null : TenantAdminTaxRepoString.fromRaw(name),
     );
     await loadTerms(taxonomyId);
     return updated;
@@ -163,7 +213,18 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     required String taxonomyId,
     required String termId,
   }) async {
-    await _repository.deleteTerm(taxonomyId: taxonomyId, termId: termId);
+    await _repository.deleteTerm(
+      taxonomyId: TenantAdminTaxRepoString.fromRaw(
+        taxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      termId: TenantAdminTaxRepoString.fromRaw(
+        termId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     await loadTerms(taxonomyId);
   }
 
@@ -278,6 +339,7 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     _repository.resetTermsState();
     termsStreamValue.addValue(null);
     errorStreamValue.addValue(null);
+    _syncPaginationMirrors();
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
     resetForm();
@@ -301,6 +363,8 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     _isDisposed = true;
     unbindTermsListScrollPagination();
     _tenantScopeSubscription?.cancel();
+    _hasMoreTermsSubscription?.cancel();
+    _isTermsPageLoadingSubscription?.cancel();
     slugController.dispose();
     nameController.dispose();
     termsListScrollController.dispose();
@@ -309,6 +373,8 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     actionErrorMessageStreamValue.dispose();
     detailTermStreamValue.dispose();
     detailSavingStreamValue.dispose();
+    hasMoreTermsStreamValue.dispose();
+    isTermsPageLoadingStreamValue.dispose();
   }
 
   @override

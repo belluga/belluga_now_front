@@ -1,16 +1,16 @@
 part of '../partner_profile_config.dart';
 
-typedef ProfileModuleTitle = String;
-typedef ProfileModuleDataKey = String;
-
 class ProfileModuleConfig {
   ProfileModuleConfig({
     required this.id,
-    this.title,
-    this.dataKey,
+    this.titleValue,
+    this.dataKeyValue,
   });
 
   final ProfileModuleId id;
-  final ProfileModuleTitle? title;
-  final ProfileModuleDataKey? dataKey;
+  final PartnerProjectionOptionalTextValue? titleValue;
+  final PartnerProjectionOptionalTextValue? dataKeyValue;
+
+  String? get title => titleValue?.value;
+  String? get dataKey => dataKeyValue?.value;
 }

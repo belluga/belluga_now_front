@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -15,6 +16,20 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'support/tenant_admin_paged_stream_contract.dart';
+
+TenantAdminAccountsRepositoryContractPrimInt _repoInt(int raw) {
+  return TenantAdminAccountsRepositoryContractPrimInt.fromRaw(
+    raw,
+    defaultValue: raw,
+  );
+}
+
+TenantAdminAccountsRepositoryContractPrimString _repoText(String raw) {
+  return TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+    raw,
+    defaultValue: raw,
+  );
+}
 
 void main() {
   setUp(() async {
@@ -36,7 +51,8 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchAccountsPage(
+        page: _repoInt(1), pageSize: _repoInt(2));
 
     expect(page.accounts, hasLength(2));
     expect(page.hasMore, isTrue);
@@ -56,8 +72,8 @@ void main() {
     );
 
     final page = await repository.fetchAccountsPage(
-      page: 1,
-      pageSize: 2,
+      page: _repoInt(1),
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.unmanaged,
     );
 
@@ -80,9 +96,9 @@ void main() {
     );
 
     await repository.fetchAccountsPage(
-      page: 1,
-      pageSize: 2,
-      searchQuery: '  conta test  ',
+      page: _repoInt(1),
+      pageSize: _repoInt(2),
+      searchQuery: _repoText('  conta test  '),
     );
 
     expect(adapter.requests, hasLength(1));
@@ -115,7 +131,8 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchAccountsPage(
+        page: _repoInt(1), pageSize: _repoInt(2));
 
     expect(page.accounts, isNotEmpty);
     expect(page.accounts.first.avatarUrl, 'https://cdn.test/avatars/acc-1.png');
@@ -130,7 +147,8 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchAccountsPage(
+        page: _repoInt(1), pageSize: _repoInt(2));
 
     expect(page.accounts, hasLength(1));
     expect(page.accounts.single.slug, 'acc-missing-document');
@@ -148,7 +166,8 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchAccountsPage(
+        page: _repoInt(1), pageSize: _repoInt(2));
 
     expect(page.accounts, hasLength(1));
     expect(
@@ -166,7 +185,8 @@ void main() {
       tenantScope: scope,
     );
 
-    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+    final page = await repository.fetchAccountsPage(
+        page: _repoInt(1), pageSize: _repoInt(2));
 
     expect(page.accounts, isNotEmpty);
     expect(
@@ -187,7 +207,7 @@ void main() {
       tenantScope: scope,
     );
 
-    await repository.loadAccounts(pageSize: 2);
+    await repository.loadAccounts(pageSize: _repoInt(2));
 
     final loaded = repository.accountsStreamValue.value;
     expect(loaded, isNotNull);
@@ -206,12 +226,13 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'accounts',
-      loadFirstPage: () => repository.loadAccounts(pageSize: 2),
-      loadNextPage: () => repository.loadNextAccountsPage(pageSize: 2),
+      loadFirstPage: () => repository.loadAccounts(pageSize: _repoInt(2)),
+      loadNextPage: () =>
+          repository.loadNextAccountsPage(pageSize: _repoInt(2)),
       resetState: repository.resetAccountsState,
       readItems: () => repository.accountsStreamValue.value,
-      readHasMore: () => repository.hasMoreAccountsStreamValue.value,
-      readError: () => repository.accountsErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreAccountsStreamValue.value.value,
+      readError: () => repository.accountsErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
@@ -228,13 +249,13 @@ void main() {
     );
 
     await repository.loadAccounts(
-      pageSize: 2,
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
     expect(repository.accountsStreamValue.value, hasLength(2));
 
     await repository.loadAccounts(
-      pageSize: 2,
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.unmanaged,
     );
 
@@ -259,19 +280,19 @@ void main() {
     );
 
     await repository.loadAccounts(
-      pageSize: 2,
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
     expect(adapter.requests.length, 1);
 
     await repository.loadAccounts(
-      pageSize: 2,
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.unmanaged,
     );
     expect(adapter.requests.length, 2);
 
     await repository.loadAccounts(
-      pageSize: 2,
+      pageSize: _repoInt(2),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
     expect(adapter.requests.length, 3);
@@ -294,8 +315,8 @@ void main() {
 
     expect(
       repository.fetchAccountsPage(
-        page: 1,
-        pageSize: 2,
+        page: _repoInt(1),
+        pageSize: _repoInt(2),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
       throwsA(
@@ -319,7 +340,7 @@ void main() {
 
     expect(
       repository.createAccount(
-        name: '',
+        name: _repoText(''),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
       throwsA(
@@ -346,7 +367,7 @@ void main() {
 
     expect(
       repository.createAccount(
-        name: 'Conta',
+        name: _repoText('Conta'),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
       throwsA(
@@ -373,14 +394,16 @@ void main() {
     );
 
     final result = await repository.createAccountOnboarding(
-      name: 'Conta onboarding',
+      name: _repoText('Conta onboarding'),
       ownershipState: TenantAdminOwnershipState.unmanaged,
-      profileType: 'venue',
-      location: TenantAdminLocation(latitude: -20.31, longitude: -40.29),
-      taxonomyTerms: [
-        TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
-      ],
-      bio: '<p>Bio</p>',
+      profileType: _repoText('venue'),
+      location: tenantAdminLocationFromRaw(latitude: -20.31, longitude: -40.29),
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        terms.add(tenantAdminTaxonomyTermFromRaw(type: 'genre', value: 'urbana'));
+        return terms;
+      })(),
+      bio: _repoText('<p>Bio</p>'),
     );
 
     expect(result.account.name, 'Conta onboarding');
@@ -401,14 +424,14 @@ void main() {
     );
 
     await repository.createAccountOnboarding(
-      name: 'Conta onboarding',
+      name: _repoText('Conta onboarding'),
       ownershipState: TenantAdminOwnershipState.unmanaged,
-      profileType: 'venue',
-      avatarUpload: TenantAdminMediaUpload(
+      profileType: _repoText('venue'),
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3]),
         fileName: 'avatar.jpg',
       ),
-      coverUpload: TenantAdminMediaUpload(
+      coverUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([4, 5, 6]),
         fileName: 'cover.jpg',
       ),
@@ -435,7 +458,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -465,8 +490,11 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -30,13 +31,13 @@ class TelemetryRouteObserver extends NavigatorObserver {
     _finishActiveTimedEvent();
     if (route == null) return;
     final screenContext = _buildScreenContext(route);
-    _telemetryRepository.setScreenContext(screenContext);
+    _telemetryRepository.setScreenContext(telemetryRepoMap(screenContext));
     _activeTimedEvent = await _telemetryRepository.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'screen_view',
-      properties: {
+      eventName: telemetryRepoString('screen_view'),
+      properties: telemetryRepoMap({
         'screen_context': screenContext,
-      },
+      }),
     );
     _debugWebTelemetry(
       'track started',
@@ -54,8 +55,7 @@ class TelemetryRouteObserver extends NavigatorObserver {
     }
     _lastEnqueuedRoute = route;
     _debugWebTelemetry('enqueue track', route?.settings.name);
-    _pendingTrack =
-        _pendingTrack.then((_) => _track(route)).catchError((_) {});
+    _pendingTrack = _pendingTrack.then((_) => _track(route)).catchError((_) {});
   }
 
   void _finishActiveTimedEvent() {
@@ -135,10 +135,7 @@ class TelemetryRouteObserver extends NavigatorObserver {
   }
 
   Object? _sanitizeJsonValue(Object? value) {
-    if (value == null ||
-        value is String ||
-        value is num ||
-        value is bool) {
+    if (value == null || value is String || value is num || value is bool) {
       return value;
     }
     if (value is Map) {
@@ -152,10 +149,8 @@ class TelemetryRouteObserver extends NavigatorObserver {
       return sanitized.isEmpty ? null : sanitized;
     }
     if (value is Iterable) {
-      final sanitized = value
-          .map(_sanitizeJsonValue)
-          .where((item) => item != null)
-          .toList();
+      final sanitized =
+          value.map(_sanitizeJsonValue).where((item) => item != null).toList();
       return sanitized.isEmpty ? null : sanitized;
     }
     return null;

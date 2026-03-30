@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
@@ -109,9 +110,25 @@ class InviteShareScreenController with Disposable {
     if (selectedFriends.isEmpty) return;
 
     await _invitesRepository.sendInvites(
-      invite.eventId,
-      selectedFriends.map(_toEventFriendResume).toList(growable: false),
-      occurrenceId: invite.occurrenceId,
+      invitesRepoString(
+        invite.eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      (() {
+        final recipients = InviteRecipients();
+        for (final selectedFriend in selectedFriends) {
+          recipients.add(_toEventFriendResume(selectedFriend));
+        }
+        return recipients;
+      })(),
+      occurrenceId: invite.occurrenceId == null
+          ? null
+          : invitesRepoString(
+              invite.occurrenceId,
+              defaultValue: '',
+              isRequired: false,
+            ),
     );
 
     selectedFriendsSuggestionsStreamValue.addValue(const []);
@@ -123,9 +140,23 @@ class InviteShareScreenController with Disposable {
     if (invite == null) return;
 
     await _invitesRepository.sendInvites(
-      invite.eventId,
-      <EventFriendResume>[_toEventFriendResume(friend)],
-      occurrenceId: invite.occurrenceId,
+      invitesRepoString(
+        invite.eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      (() {
+        final recipients = InviteRecipients();
+        recipients.add(_toEventFriendResume(friend));
+        return recipients;
+      })(),
+      occurrenceId: invite.occurrenceId == null
+          ? null
+          : invitesRepoString(
+              invite.occurrenceId,
+              defaultValue: '',
+              isRequired: false,
+            ),
     );
     await _syncSentInvites();
   }
@@ -140,7 +171,15 @@ class InviteShareScreenController with Disposable {
       await loadContacts();
     }
 
-    final matches = await _invitesRepository.importContacts(_availableContacts);
+    final matches = await _invitesRepository.importContacts(
+      (() {
+        final contacts = InviteContacts();
+        for (final availableContact in _availableContacts) {
+          contacts.add(availableContact);
+        }
+        return contacts;
+      })(),
+    );
     if (_isDisposed) return;
 
     final recipients = matches
@@ -150,8 +189,13 @@ class InviteShareScreenController with Disposable {
         .toList(growable: false)
       ..sort((left, right) => left.name.compareTo(right.name));
 
-    final sentInvites =
-        await _invitesRepository.getSentInvitesForEvent(invite.eventId);
+    final sentInvites = await _invitesRepository.getSentInvitesForEvent(
+      invitesRepoString(
+        invite.eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     if (_isDisposed) return;
     sentInvitesStreamValue.addValue(sentInvites);
 
@@ -177,8 +221,13 @@ class InviteShareScreenController with Disposable {
     final invite = _currentInvite;
     if (invite == null) return;
 
-    final sentInvites =
-        await _invitesRepository.getSentInvitesForEvent(invite.eventId);
+    final sentInvites = await _invitesRepository.getSentInvitesForEvent(
+      invitesRepoString(
+        invite.eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     if (_isDisposed) return;
 
     sentInvitesStreamValue.addValue(sentInvites);
@@ -194,8 +243,18 @@ class InviteShareScreenController with Disposable {
     if (invite == null) return;
 
     final shareCode = await _invitesRepository.createShareCode(
-      eventId: invite.eventId,
-      occurrenceId: invite.occurrenceId,
+      eventId: invitesRepoString(
+        invite.eventId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      occurrenceId: invite.occurrenceId == null
+          ? null
+          : invitesRepoString(
+              invite.occurrenceId,
+              defaultValue: '',
+              isRequired: false,
+            ),
     );
     if (_isDisposed) return;
     shareCodeStreamValue.addValue(shareCode);

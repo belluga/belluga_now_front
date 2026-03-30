@@ -1,3 +1,5 @@
+export 'value_objects/tenant_admin_taxonomy_values.dart';
+
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
@@ -12,18 +14,13 @@ typedef TenantAdminTaxonomyDefinitionPrimDynamic = dynamic;
 
 class TenantAdminTaxonomyDefinition {
   TenantAdminTaxonomyDefinition({
-    required Object id,
-    required Object slug,
-    required Object name,
-    required Object appliesTo,
-    Object? icon,
-    Object? color,
-  })  : idValue = tenantAdminRequiredText(id),
-        slugValue = tenantAdminRequiredText(slug),
-        nameValue = tenantAdminRequiredText(name),
-        appliesToValue = tenantAdminTrimmedStringList(appliesTo),
-        iconValue = tenantAdminOptionalText(icon),
-        colorValue = tenantAdminOptionalText(color);
+    required this.idValue,
+    required this.slugValue,
+    required this.nameValue,
+    required this.appliesToValue,
+    required this.iconValue,
+    required this.colorValue,
+  });
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue slugValue;
@@ -35,14 +32,26 @@ class TenantAdminTaxonomyDefinition {
   TenantAdminTaxonomyDefinitionPrimString get id => idValue.value;
   TenantAdminTaxonomyDefinitionPrimString get slug => slugValue.value;
   TenantAdminTaxonomyDefinitionPrimString get name => nameValue.value;
-  List<TenantAdminTaxonomyDefinitionPrimString> get appliesTo =>
-      appliesToValue.value;
+  TenantAdminTrimmedStringListValue get appliesTo => appliesToValue;
   TenantAdminTaxonomyDefinitionPrimString? get icon => iconValue.nullableValue;
   TenantAdminTaxonomyDefinitionPrimString? get color =>
       colorValue.nullableValue;
 
   TenantAdminTaxonomyDefinitionPrimBool appliesToTarget(
-      TenantAdminTaxonomyDefinitionPrimString target) {
-    return appliesTo.contains(target);
+    TenantAdminRequiredTextValue targetValue,
+  ) {
+    return appliesTo.contains(targetValue.value);
+  }
+
+  TenantAdminTaxonomyDefinitionPrimBool appliesToAccountProfile() {
+    return appliesToTarget(tenantAdminRequiredText('account_profile'));
+  }
+
+  TenantAdminTaxonomyDefinitionPrimBool appliesToStaticAsset() {
+    return appliesToTarget(tenantAdminRequiredText('static_asset'));
+  }
+
+  TenantAdminTaxonomyDefinitionPrimBool appliesToEvent() {
+    return appliesToTarget(tenantAdminRequiredText('event'));
   }
 }

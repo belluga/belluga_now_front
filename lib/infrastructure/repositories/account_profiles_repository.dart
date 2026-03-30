@@ -1,12 +1,13 @@
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart';
@@ -50,7 +51,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     }
 
     favoriteAccountProfileIdsStreamValue.addValue(
-      Set<String>.from(_favoriteAccountProfileIds),
+      _toFavoriteIdValues(_favoriteAccountProfileIds),
     );
   }
 
@@ -62,8 +63,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
     while (hasMore && page <= _maxPagedFetches) {
       final result = await fetchAccountProfilesPage(
-        page: page,
-        pageSize: _defaultPageSize,
+        page: _toIntValue(
+          page,
+          defaultValue: 1,
+        ),
+        pageSize: _toIntValue(
+          _defaultPageSize,
+          defaultValue: _defaultPageSize,
+        ),
       );
       profiles.addAll(result.profiles);
       hasMore = result.hasMore;
@@ -75,37 +82,37 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     final favoritableTypes = _favoritableEnabledTypes();
     if (favoritableTypes.isEmpty) {
-      return const PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
     }
 
-    final normalizedTypeFilter = typeFilter?.trim();
+    final normalizedTypeFilter = typeFilter?.value.trim();
     if (normalizedTypeFilter != null &&
         normalizedTypeFilter.isNotEmpty &&
-        !favoritableTypes.contains(normalizedTypeFilter)) {
-      return const PagedAccountProfilesResult(
+        !favoritableTypes.any((type) => type.value == normalizedTypeFilter)) {
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
     }
 
     final result = await _backend.fetchAccountProfilesPage(
-      page: page,
-      pageSize: pageSize,
-      query: query,
+      page: page.value,
+      pageSize: pageSize.value,
+      query: query?.value,
       typeFilter: normalizedTypeFilter,
     );
     final filtered = _filterByRegistry(result.profiles);
-    return PagedAccountProfilesResult(
+    return pagedAccountProfilesResultFromRaw(
       profiles: filtered,
       hasMore: result.hasMore,
     );
@@ -113,8 +120,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     final results = <AccountProfileModel>[];
     var page = 1;
@@ -122,8 +129,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
     while (hasMore && page <= _maxPagedFetches) {
       final pageResult = await fetchAccountProfilesPage(
-        page: page,
-        pageSize: _defaultPageSize,
+        page: _toIntValue(
+          page,
+          defaultValue: 1,
+        ),
+        pageSize: _toIntValue(
+          _defaultPageSize,
+          defaultValue: _defaultPageSize,
+        ),
         query: query,
         typeFilter: typeFilter,
       );
@@ -137,24 +150,33 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
-    int pageSize = 10,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
   }) async {
+    final effectivePageSize = pageSize ??
+        _toIntValue(
+          10,
+          defaultValue: 10,
+        );
     final profiles = await _backend.fetchNearbyAccountProfiles(
-      pageSize: pageSize,
+      pageSize: effectivePageSize.value,
     );
     return _filterByRegistry(profiles);
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
-    final profile = await _backend.fetchAccountProfileBySlug(slug);
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    final profile = await _backend.fetchAccountProfileBySlug(slug.value);
     if (profile == null) return null;
     return _isAccountProfileTypeEnabled(profile) ? profile : null;
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {
-    final normalizedProfileId = accountProfileId.trim();
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    final normalizedProfileId = accountProfileId.value.trim();
     if (normalizedProfileId.isEmpty) {
       return;
     }
@@ -166,7 +188,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       _favoriteAccountProfileIds.add(normalizedProfileId);
     }
     favoriteAccountProfileIdsStreamValue.addValue(
-      Set<String>.from(_favoriteAccountProfileIds),
+      _toFavoriteIdValues(_favoriteAccountProfileIds),
     );
     try {
       if (wasFavorite) {
@@ -176,11 +198,11 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       }
       await _telemetryRepository.logEvent(
         EventTrackerEvents.favoriteArtistToggled,
-        eventName: 'favorite_artist_toggled',
-        properties: {
+        eventName: telemetryRepoString('favorite_artist_toggled'),
+        properties: telemetryRepoMap({
           'account_profile_id': normalizedProfileId,
           'is_favorite': !wasFavorite,
-        },
+        }),
       );
     } catch (error) {
       if (wasFavorite) {
@@ -189,7 +211,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         _favoriteAccountProfileIds.remove(normalizedProfileId);
       }
       favoriteAccountProfileIdsStreamValue.addValue(
-        Set<String>.from(_favoriteAccountProfileIds),
+        _toFavoriteIdValues(_favoriteAccountProfileIds),
       );
       debugPrint(
           'Failed to persist favorite mutation for $normalizedProfileId: $error');
@@ -197,14 +219,21 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return favoriteAccountProfileIdsStreamValue.value
-        .contains(accountProfileId);
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return _toBoolValue(
+      favoriteAccountProfileIdsStreamValue.value
+          .map((value) => value.value)
+          .contains(accountProfileId.value),
+    );
   }
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() {
-    final favoriteIds = favoriteAccountProfileIdsStreamValue.value;
+    final favoriteIds = favoriteAccountProfileIdsStreamValue.value
+        .map((value) => value.value)
+        .toSet();
     final allAccountProfiles = allAccountProfilesStreamValue.value;
 
     return allAccountProfiles
@@ -239,14 +268,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         false;
   }
 
-  List<String> _favoritableEnabledTypes() {
+  List<ProfileTypeKeyValue> _favoritableEnabledTypes() {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
-      return const <String>[];
+      return const <ProfileTypeKeyValue>[];
     }
     return registry
         .enabledAccountProfileTypes()
-        .where((type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)))
+        .where(registry.isFavoritableFor)
         .toList(growable: false);
   }
 
@@ -276,6 +305,43 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         stackTrace,
       );
     }
+  }
+
+  Set<AccountProfilesRepositoryContractPrimString> _toFavoriteIdValues(
+    Iterable<String> values,
+  ) {
+    return values
+        .map(
+          (value) => _toTextValue(value),
+        )
+        .toSet();
+  }
+
+  AccountProfilesRepositoryContractPrimString _toTextValue(
+    String value, {
+    String defaultValue = '',
+  }) {
+    return AccountProfilesRepositoryContractPrimString.fromRaw(
+      value,
+      defaultValue: defaultValue,
+    );
+  }
+
+  AccountProfilesRepositoryContractPrimInt _toIntValue(
+    int value, {
+    int defaultValue = 0,
+  }) {
+    return AccountProfilesRepositoryContractPrimInt.fromRaw(
+      value,
+      defaultValue: defaultValue,
+    );
+  }
+
+  AccountProfilesRepositoryContractPrimBool _toBoolValue(bool value) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      value,
+      defaultValue: false,
+    );
   }
 
   static FavoriteBackendContract _resolveFavoriteBackend({

@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminStaticAssetsRequestEncoder {
   const TenantAdminStaticAssetsRequestEncoder();
@@ -11,7 +11,7 @@ class TenantAdminStaticAssetsRequestEncoder {
     String? displayName,
     String? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? content,
     String? avatarUrl,

@@ -1,9 +1,11 @@
+import 'package:auto_route/auto_route.dart';
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -13,6 +15,9 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
@@ -26,6 +31,7 @@ import 'package:belluga_now/presentation/tenant_public/discovery/controllers/dis
 import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mockito/mockito.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -45,7 +51,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('a'), type: 'artist', name: 'Artist'),
             _profile(id: _mongoId('b'), type: 'curator', name: 'Curator'),
@@ -69,7 +75,7 @@ void main() {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [artist],
           hasMore: false,
         ),
@@ -91,13 +97,13 @@ void main() {
   test('discovery loads additional pages with loadNextPage', () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('d'), type: 'artist', name: 'First'),
           ],
           hasMore: true,
         ),
-        2: PagedAccountProfilesResult(
+        2: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('e'), type: 'artist', name: 'Second'),
           ],
@@ -124,7 +130,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('d1'), type: 'artist', name: 'Grid Artist'),
           ],
@@ -178,7 +184,7 @@ void main() {
 
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('l1'), type: 'artist', name: 'Grid Artist'),
           ],
@@ -239,7 +245,7 @@ void main() {
 
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('lr1'), type: 'artist', name: 'Grid Artist'),
           ],
@@ -315,7 +321,7 @@ void main() {
 
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: const PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: <AccountProfileModel>[],
           hasMore: false,
         ),
@@ -374,7 +380,7 @@ void main() {
 
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: const PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: <AccountProfileModel>[],
           hasMore: false,
         ),
@@ -398,9 +404,25 @@ void main() {
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
     await tester.pumpWidget(
-      const MaterialApp(
-        home: DiscoveryScreen(),
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
       ),
     );
 
@@ -417,7 +439,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             buildAccountProfileModelFromPrimitives(
               id: _mongoId('f'),
@@ -460,7 +482,7 @@ void main() {
   test('discovery selecting "Todos" resets to unfiltered list', () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('t1'), type: 'artist', name: 'Artist One'),
             _profile(id: _mongoId('t2'), type: 'venue', name: 'Venue One'),
@@ -509,7 +531,7 @@ void main() {
 
   test('discovery still loads first page when repository init fails', () async {
     final repository = _InitFailingAccountProfilesRepository(
-      firstPage: PagedAccountProfilesResult(
+      firstPage: pagedAccountProfilesResultFromRaw(
         profiles: [
           _profile(id: _mongoId('h'), type: 'artist', name: 'Recovered'),
         ],
@@ -537,7 +559,7 @@ void main() {
     final artist = _profile(id: _mongoId('g'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [artist],
           hasMore: false,
         ),
@@ -559,6 +581,23 @@ void main() {
   });
 }
 
+class _RecordingStackRouter extends Mock implements StackRouter {}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const {},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  final String fullPath;
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
+}
+
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     required this.pages,
@@ -578,7 +617,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     final all =
         pages.values.expand((entry) => entry.profiles).toList(growable: false);
     allAccountProfilesStreamValue.addValue(all);
-    favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+    favoriteAccountProfileIdsStreamValue
+        .addValue(<AccountProfilesRepositoryContractPrimString>{});
     for (final profile in all) {
       _bySlug[profile.slug] = profile;
     }
@@ -593,45 +633,49 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
+    final pageValue = page.value;
+    final pageSizeValue = pageSize.value;
+    final normalizedQueryInput = query?.value;
+    final normalizedTypeInput = typeFilter?.value;
     pageRequests.add(
       _PageRequest(
-        page: page,
-        pageSize: pageSize,
-        query: query?.trim(),
-        typeFilter: typeFilter?.trim(),
+        page: pageValue,
+        pageSize: pageSizeValue,
+        query: normalizedQueryInput?.trim(),
+        typeFilter: normalizedTypeInput?.trim(),
       ),
     );
-    var result = pages[page] ??
-        const PagedAccountProfilesResult(
-          profiles: <AccountProfileModel>[],
+    var result = pages[pageValue] ??
+        pagedAccountProfilesResultFromRaw(
+          profiles: const <AccountProfileModel>[],
           hasMore: false,
         );
 
     var profiles = result.profiles;
-    final normalizedType = typeFilter?.trim();
+    final normalizedType = normalizedTypeInput?.trim();
     if (normalizedType != null && normalizedType.isNotEmpty) {
       profiles = profiles
           .where((profile) => profile.type == normalizedType)
           .toList(growable: false);
     }
 
-    final normalizedQuery = query?.trim().toLowerCase();
+    final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
     if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
       profiles = profiles.where((profile) {
         return profile.name.toLowerCase().contains(normalizedQuery) ||
             profile.slug.toLowerCase().contains(normalizedQuery) ||
             profile.tags.any(
-              (tag) => tag.toLowerCase().contains(normalizedQuery),
+              (tag) => tag.value.toLowerCase().contains(normalizedQuery),
             );
       }).toList(growable: false);
     }
 
-    result = PagedAccountProfilesResult(
+    result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
     );
@@ -641,12 +685,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     final all = await fetchAllAccountProfiles();
-    final normalizedType = typeFilter?.trim();
-    final normalizedQuery = query?.trim().toLowerCase();
+    final normalizedType = typeFilter?.value.trim();
+    final normalizedQuery = query?.value.trim().toLowerCase();
 
     return all.where((profile) {
       final typeMatches = normalizedType == null ||
@@ -659,50 +703,70 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       return profile.name.toLowerCase().contains(normalizedQuery) ||
           profile.slug.toLowerCase().contains(normalizedQuery) ||
           profile.tags
-              .any((tag) => tag.toLowerCase().contains(normalizedQuery));
+              .any((tag) => tag.value.toLowerCase().contains(normalizedQuery));
     }).toList(growable: false);
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
-    return _bySlug[slug];
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    return _bySlug[slug.value];
   }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
-    int pageSize = 10,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
   }) async {
     nearbyFetchCalls += 1;
     final source = nearbyProfiles.isEmpty
         ? await fetchAllAccountProfiles()
         : nearbyProfiles;
-    return source.take(pageSize).toList(growable: false);
+    return source
+        .take(pageSize?.value ?? 10)
+        .toList(growable: false);
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {
-    toggleCalls.add(accountProfileId);
-    final current =
-        Set<String>.from(favoriteAccountProfileIdsStreamValue.value);
-    if (current.contains(accountProfileId)) {
-      current.remove(accountProfileId);
-    } else {
-      current.add(accountProfileId);
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    toggleCalls.add(accountProfileId.value);
+    final current = Set<AccountProfilesRepositoryContractPrimString>.from(
+      favoriteAccountProfileIdsStreamValue.value,
+    );
+    current.removeWhere((id) => id.value == accountProfileId.value);
+    final wasPresent = favoriteAccountProfileIdsStreamValue.value
+        .any((id) => id.value == accountProfileId.value);
+    if (!wasPresent) {
+      current.add(
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          accountProfileId.value,
+          defaultValue: accountProfileId.value,
+          isRequired: true,
+        ),
+      );
     }
     favoriteAccountProfileIdsStreamValue.addValue(current);
   }
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return favoriteAccountProfileIdsStreamValue.value
-        .contains(accountProfileId);
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      favoriteAccountProfileIdsStreamValue.value
+          .any((id) => id.value == accountProfileId.value),
+      defaultValue: false,
+      isRequired: true,
+    );
   }
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() {
     final ids = favoriteAccountProfileIdsStreamValue.value;
     return allAccountProfilesStreamValue.value
-        .where((profile) => ids.contains(profile.id))
+        .where((profile) => ids.any((id) => id.value == profile.id))
         .toList(growable: false);
   }
 }
@@ -712,7 +776,8 @@ class _FailingAccountProfilesRepository
   @override
   Future<void> init() async {
     allAccountProfilesStreamValue.addValue(const <AccountProfileModel>[]);
-    favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+    favoriteAccountProfileIdsStreamValue
+        .addValue(<AccountProfilesRepositoryContractPrimString>{});
   }
 
   @override
@@ -722,40 +787,50 @@ class _FailingAccountProfilesRepository
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     throw Exception('forced discovery page failure');
   }
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     return const <AccountProfileModel>[];
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
     return null;
   }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
-    int pageSize = 10,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
   }) async {
     return const <AccountProfileModel>[];
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {}
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {}
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return false;
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+      isRequired: true,
+    );
   }
 
   @override
@@ -785,15 +860,15 @@ class _InitFailingAccountProfilesRepository
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
-    required int page,
-    required int pageSize,
-    String? query,
-    String? typeFilter,
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     fetchPageCalls += 1;
-    if (page != 1) {
-      return const PagedAccountProfilesResult(
-        profiles: <AccountProfileModel>[],
+    if (page.value != 1) {
+      return pagedAccountProfilesResultFromRaw(
+        profiles: const <AccountProfileModel>[],
         hasMore: false,
       );
     }
@@ -802,30 +877,42 @@ class _InitFailingAccountProfilesRepository
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     return firstPage.profiles;
   }
 
   @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
     return null;
   }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
-    int pageSize = 10,
+    AccountProfilesRepositoryContractPrimInt? pageSize,
   }) async {
-    return firstPage.profiles.take(pageSize).toList(growable: false);
+    return firstPage.profiles
+        .take(pageSize?.value ?? 10)
+        .toList(growable: false);
   }
 
   @override
-  Future<void> toggleFavorite(String accountProfileId) async {}
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {}
 
   @override
-  bool isFavorite(String accountProfileId) {
-    return false;
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+      isRequired: true,
+    );
   }
 
   @override
@@ -848,7 +935,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => 'token';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -869,19 +956,22 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
   ) async {}
 
   @override
@@ -889,15 +979,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
@@ -928,21 +1020,21 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   }) {
     final snapshot = _cacheSnapshot;
     if (snapshot == null) {
       return null;
     }
-    if (snapshot.showPastOnly != showPastOnly) {
+    if (snapshot.showPastOnly != showPastOnly.value) {
       return null;
     }
-    if (snapshot.searchQuery != searchQuery) {
+    if (snapshot.searchQuery != searchQuery.value) {
       return null;
     }
-    if (snapshot.confirmedOnly != confirmedOnly) {
+    if (snapshot.confirmedOnly != confirmedOnly.value) {
       return null;
     }
     return snapshot;
@@ -969,10 +1061,10 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     return const <EventModel>[];
   }
@@ -983,37 +1075,37 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<EventModel?> getEventBySlug(String slug) async {
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
     return null;
   }
 
   @override
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (liveNowOnly) {
+    if (liveNowOnly?.value ?? false) {
       liveNowFetchCalls += 1;
       if (!_firstLiveNowFetchStarted.isCompleted) {
         _firstLiveNowFetchStarted.complete();
       }
       lastLiveNowRequest = _LiveNowRequest(
-        page: page,
-        pageSize: pageSize,
-        showPastOnly: showPastOnly,
-        originLat: originLat,
-        originLng: originLng,
-        maxDistanceMeters: maxDistanceMeters,
+        page: page.value,
+        pageSize: pageSize.value,
+        showPastOnly: showPastOnly.value,
+        originLat: originLat?.value,
+        originLng: originLng?.value,
+        maxDistanceMeters: maxDistanceMeters?.value,
       );
       if (liveNowFetchDelay > Duration.zero) {
         await Future<void>.delayed(liveNowFetchDelay);
@@ -1021,17 +1113,22 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
       final hasOrigin = originLat != null && originLng != null;
       final events = requireOriginForLiveNow && !hasOrigin
           ? const <EventModel>[]
-          : liveNowEvents.take(pageSize).toList(growable: false);
-      return PagedEventsResult(
+          : liveNowEvents.take(pageSize.value).toList(growable: false);
+      return pagedEventsResultFromRaw(
         events: events,
         hasMore: false,
       );
     }
-    return const PagedEventsResult(events: <EventModel>[], hasMore: false);
+    return pagedEventsResultFromRaw(
+      events: const <EventModel>[],
+      hasMore: false,
+    );
   }
 
   @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+  Future<List<VenueEventResume>> getEventResumesByDate(
+    ScheduleRepoDateTime date,
+  ) async {
     return const <VenueEventResume>[];
   }
 
@@ -1042,33 +1139,33 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<EventDeltaModel>.empty();
   }
 
   @override
   Stream<void> watchEventsSignal({
-    required void Function(EventDeltaModel delta) onDelta,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    required ScheduleRepositoryContractDeltaHandler onDelta,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
   }) {
     return watchEventsStream(
       searchQuery: searchQuery,
@@ -1081,7 +1178,9 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters,
       lastEventId: lastEventId,
       showPastOnly: showPastOnly,
-    ).map((delta) => onDelta(delta));
+    ).map((delta) {
+      onDelta(delta);
+    });
   }
 }
 
@@ -1117,13 +1216,18 @@ class _PageRequest {
   final String? typeFilter;
 }
 
-class _FakeAppDataRepository extends AppDataRepositoryContract {
+class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository({
     required AppData appData,
     required double maxRadiusMeters,
   })  : _appData = appData,
         _maxRadiusMeters = maxRadiusMeters {
-    maxRadiusMetersStreamValue.addValue(maxRadiusMeters);
+    maxRadiusMetersStreamValue.addValue(
+      DistanceInMetersValue.fromRaw(
+        maxRadiusMeters,
+        defaultValue: maxRadiusMeters,
+      ),
+    );
   }
 
   final AppData _appData;
@@ -1143,28 +1247,33 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 0);
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(0, defaultValue: 0),
+      );
 
   @override
-  double get maxRadiusMeters => _maxRadiusMeters;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(
+        _maxRadiusMeters,
+        defaultValue: _maxRadiusMeters,
+      );
 
   @override
   bool get hasPersistedMaxRadiusPreference => true;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
-    _maxRadiusMeters = meters;
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMeters = meters.value;
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }
 
-class _FakeUserLocationRepository extends UserLocationRepositoryContract {
+class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   _FakeUserLocationRepository({
     CityCoordinate? userCoordinate,
     CityCoordinate? lastKnownCoordinate,
@@ -1203,8 +1312,10 @@ class _FakeUserLocationRepository extends UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(
+    UserLocationRepositoryContractTextValue? address,
+  ) async {
+    lastKnownAddressStreamValue.addValue(address?.value);
   }
 
   @override
@@ -1215,7 +1326,7 @@ class _FakeUserLocationRepository extends UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    UserLocationRepositoryContractDurationValue? minInterval,
   }) async {
     return warmUpIfPermitted();
   }
@@ -1283,7 +1394,9 @@ AppData _buildAppData() {
     'device': 'test-device',
   };
   return buildAppDataFromInitialization(
-      remoteData: remoteData, localInfo: localInfo);
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }
 
 CityCoordinate _coordinate({
@@ -1328,7 +1441,7 @@ EventModel _event({
       'color': null,
     },
     'title': title,
-    'content': 'Conteúdo',
+    'content': 'Conteudo',
     'location': 'Local',
     'date_time_start': DateTime.now().toIso8601String(),
     'date_time_end':

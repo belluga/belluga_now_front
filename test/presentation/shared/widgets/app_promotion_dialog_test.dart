@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:flutter/material.dart';
@@ -86,11 +88,14 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -106,10 +111,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _FakeAppData extends Fake implements AppData {

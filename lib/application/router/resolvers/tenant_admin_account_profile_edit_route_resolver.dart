@@ -34,7 +34,11 @@ class TenantAdminAccountProfileEditRouteResolver
     }
 
     return _accountProfilesRepository.fetchAccountProfile(
-      accountProfileId.trim(),
+      tenantAdminAccountProfilesRepoString(
+        accountProfileId.trim(),
+        defaultValue: '',
+        isRequired: true,
+      ),
     );
   }
 }

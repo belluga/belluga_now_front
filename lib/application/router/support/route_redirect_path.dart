@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:get_it/get_it.dart';
 
 String buildRedirectPathFromRouteMatch(RouteMatch route) {
   return buildRedirectPath(
@@ -66,6 +68,45 @@ String? resolveWebPromotionShareCode({
   }
 
   return code;
+}
+
+Uri? buildTenantPromotionUriFromAppContext({
+  String? redirectPath,
+  String? shareCode,
+  Uri? mainDomainUri,
+}) {
+  final normalizedRedirectPath = redirectPath?.trim();
+  final hasRedirectPath =
+      normalizedRedirectPath != null && normalizedRedirectPath.isNotEmpty;
+  final redirectContextCode = hasRedirectPath
+      ? resolveWebPromotionShareCode(
+          redirectPath: normalizedRedirectPath,
+        )
+      : null;
+  final trimmedCode = shareCode?.trim();
+  final normalizedShareCode =
+      (trimmedCode == null || trimmedCode.isEmpty) ? null : trimmedCode;
+  final normalizedCode =
+      redirectContextCode ?? (hasRedirectPath ? null : normalizedShareCode);
+  final targetPath = normalizedCode == null ? '/' : '/invite';
+
+  final resolvedBaseUri = mainDomainUri ??
+      (GetIt.I.isRegistered<AppDataRepositoryContract>()
+          ? GetIt.I.get<AppDataRepositoryContract>().appData.mainDomainValue.value
+          : Uri.tryParse(Uri.base.origin));
+  if (resolvedBaseUri == null || resolvedBaseUri.host.trim().isEmpty) {
+    return null;
+  }
+
+  final targetUri = resolvedBaseUri.resolve('/open-app');
+  final query = <String, String>{
+    'path': targetPath,
+    'store_channel': 'web',
+    if (normalizedCode != null) 'code': normalizedCode,
+  };
+  return targetUri.replace(
+    queryParameters: query.isEmpty ? null : query,
+  );
 }
 
 String _normalizePath(String path) {

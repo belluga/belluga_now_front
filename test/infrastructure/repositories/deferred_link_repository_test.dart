@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
+import 'package:belluga_now/infrastructure/dal/dto/deferred_link/deferred_link_resolution_dto.dart';
 import 'package:belluga_now/infrastructure/services/deferred_link_backend_contract.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -30,12 +31,11 @@ void main() {
     });
 
     final backend = _FakeDeferredLinkBackend(
-      response: <String, dynamic>{
-        'status': 'captured',
-        'code': 'ABCD1234',
-        'store_channel': 'play',
-        'failure_reason': null,
-      },
+      response: const DeferredLinkResolutionDto(
+        status: 'captured',
+        code: 'ABCD1234',
+        storeChannel: 'play',
+      ),
     );
 
     final repository = DeferredLinkRepository(
@@ -64,12 +64,11 @@ void main() {
     });
 
     final backend = _FakeDeferredLinkBackend(
-      response: <String, dynamic>{
-        'status': 'not_captured',
-        'code': null,
-        'store_channel': 'play',
-        'failure_reason': 'code_missing',
-      },
+      response: const DeferredLinkResolutionDto(
+        status: 'not_captured',
+        storeChannel: 'play',
+        failureReason: 'code_missing',
+      ),
     );
 
     final repository = DeferredLinkRepository(
@@ -95,7 +94,7 @@ void main() {
     });
 
     final backend = _FakeDeferredLinkBackend(
-      response: const <String, dynamic>{},
+      response: const DeferredLinkResolutionDto(status: 'not_captured'),
       throwsOnResolve: true,
     );
 
@@ -118,7 +117,7 @@ void main() {
     );
 
     final backend = _FakeDeferredLinkBackend(
-      response: const <String, dynamic>{},
+      response: const DeferredLinkResolutionDto(status: 'not_captured'),
     );
 
     final repository = DeferredLinkRepository(
@@ -141,7 +140,7 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
     this.throwsOnResolve = false,
   });
 
-  final Map<String, dynamic> response;
+  final DeferredLinkResolutionDto response;
   final bool throwsOnResolve;
 
   int callCount = 0;
@@ -150,7 +149,7 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
   String? lastStoreChannel;
 
   @override
-  Future<Map<String, dynamic>> resolveDeferredLink({
+  Future<DeferredLinkResolutionDto> resolveDeferredLink({
     required String platform,
     String? installReferrer,
     String? storeChannel,

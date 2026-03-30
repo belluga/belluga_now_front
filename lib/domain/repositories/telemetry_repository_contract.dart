@@ -1,27 +1,25 @@
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract_properties.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 
-typedef TelemetryRepositoryContractPrimString = String;
-typedef TelemetryRepositoryContractPrimInt = int;
-typedef TelemetryRepositoryContractPrimBool = bool;
-typedef TelemetryRepositoryContractPrimDouble = double;
-typedef TelemetryRepositoryContractPrimDateTime = DateTime;
-typedef TelemetryRepositoryContractPrimDynamic = dynamic;
+typedef TelemetryRepositoryContractPrimString
+    = TelemetryRepositoryContractTextValue;
+typedef TelemetryRepositoryContractPrimBool
+    = TelemetryRepositoryContractBoolValue;
+typedef TelemetryRepositoryContractPrimMap
+    = TelemetryRepositoryContractProperties;
 
 abstract class TelemetryRepositoryContract {
   Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
-    Map<TelemetryRepositoryContractPrimString,
-            TelemetryRepositoryContractPrimDynamic>?
-        properties,
+    TelemetryRepositoryContractPrimMap? properties,
   });
 
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
-    Map<TelemetryRepositoryContractPrimString,
-            TelemetryRepositoryContractPrimDynamic>?
-        properties,
+    TelemetryRepositoryContractPrimMap? properties,
   });
 
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
@@ -29,10 +27,7 @@ abstract class TelemetryRepositoryContract {
 
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents();
 
-  void setScreenContext(
-      Map<TelemetryRepositoryContractPrimString,
-              TelemetryRepositoryContractPrimDynamic>?
-          screenContext);
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext);
 
   EventTrackerLifecycleObserver? buildLifecycleObserver();
 

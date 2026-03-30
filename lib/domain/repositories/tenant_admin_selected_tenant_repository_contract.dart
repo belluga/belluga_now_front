@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef TenantAdminSelectedTenantRepositoryContractPrimString = String;
@@ -28,8 +29,7 @@ abstract class TenantAdminSelectedTenantRepositoryContract {
 
   void setAvailableTenants(List<LandlordTenantOption> tenants);
 
-  void selectTenantDomain(
-      TenantAdminSelectedTenantRepositoryContractPrimString tenantDomain);
+  void selectTenantDomain(TenantLookupDomainValue tenantDomain);
 
   void selectTenant(LandlordTenantOption tenant);
 

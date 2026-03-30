@@ -200,7 +200,7 @@ class _TenantAdminStaticAssetEditScreenState
     if (lat == null || lng == null) {
       return null;
     }
-    return TenantAdminLocation(latitude: lat, longitude: lng);
+    return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
   }
 
   String? _validateLatitude(String? value) {

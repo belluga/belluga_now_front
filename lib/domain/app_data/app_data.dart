@@ -94,7 +94,8 @@ class AppData {
   double get mapRadiusMinMeters => mapRadiusMinMetersValue.value;
   double get mapRadiusDefaultMeters => mapRadiusDefaultMetersValue.value;
   double get mapRadiusMaxMeters => mapRadiusMaxMetersValue.value;
-  List<String> get mapFilterCatalogKeys => mapFilterCatalogKeysValue.value;
+  AppDataMapFilterCatalogKeysValue get mapFilterCatalogKeys =>
+      mapFilterCatalogKeysValue;
 
   IconUrlValue get iconMUrl => mainIconDarkUrl;
 
