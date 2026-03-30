@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -36,6 +37,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
@@ -79,46 +82,51 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   int _handleSeed = 0;
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     events.add(
       _LoggedEvent(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     final handle = EventTrackerTimedEventHandle('handle-${_handleSeed++}');
     activeTimedEvents.add(
       _TimedEvent(
         handle: handle,
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
     return handle;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle) async {
     final index = activeTimedEvents.indexWhere(
       (entry) => entry.handle.id == handle.id,
     );
     if (index == -1) {
-      return true;
+      return telemetryRepoBool(true);
     }
     final entry = activeTimedEvents.removeAt(index);
     events.add(
@@ -128,19 +136,22 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
         properties: entry.properties,
       ),
     );
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
@@ -173,7 +184,6 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>();
 
   @override
-  @override
   final StreamValue<LocationResolutionPhase>
       locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
@@ -183,14 +193,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted(
-      {Duration minInterval = const Duration(seconds: 30)}) async {
+  Future<bool> refreshIfPermitted({Object? minInterval}) async {
     refreshIfPermittedCallCount += 1;
     final completer = refreshIfPermittedCompleter;
     if (completer != null) {
@@ -494,6 +503,10 @@ CityPoiModel _buildPoi({
   final refIdValue = PoiReferenceIdValue()..parse(refId);
   final stackKeyValue = PoiStackKeyValue()..parse(stackKey);
   final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
+  final stackItemCollection = CityPoiStackItems();
+  for (final item in stackItems ?? const <CityPoiModel>[]) {
+    stackItemCollection.add(item);
+  }
   final latitude = LatitudeValue()..parse('-20.0');
   final longitude = LongitudeValue()..parse('-40.0');
   final coordinate = CityCoordinate(
@@ -513,7 +526,7 @@ CityPoiModel _buildPoi({
     refIdValue: refIdValue,
     stackKeyValue: stackKeyValue,
     stackCountValue: stackCountValue,
-    stackItems: stackItems,
+    stackItems: stackItemCollection,
   );
 }
 
@@ -537,6 +550,50 @@ PoiQuery _buildQuery({
     categoryKeyValues:
         categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
   );
+}
+
+Set<String>? _queryCategoryKeys(PoiQuery? query) {
+  return query?.categoryKeyValues
+      ?.map((entry) => entry.value.trim().toLowerCase())
+      .where((entry) => entry.isNotEmpty)
+      .toSet();
+}
+
+String? _querySource(PoiQuery? query) {
+  final raw = query?.sourceValue?.value.trim().toLowerCase();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+  return raw;
+}
+
+Set<String>? _queryTypes(PoiQuery? query) {
+  return query?.typeValues
+      ?.map((entry) => entry.value.trim().toLowerCase())
+      .where((entry) => entry.isNotEmpty)
+      .toSet();
+}
+
+Set<String>? _queryTags(PoiQuery? query) {
+  return query?.tagValues
+      ?.map((entry) => entry.value.trim().toLowerCase())
+      .where((entry) => entry.isNotEmpty)
+      .toSet();
+}
+
+Set<String>? _queryTaxonomy(PoiQuery? query) {
+  return query?.taxonomyTokenValues
+      ?.map((entry) => entry.value.trim().toLowerCase())
+      .where((entry) => entry.isNotEmpty)
+      .toSet();
+}
+
+String? _querySearchTerm(PoiQuery? query) {
+  final raw = query?.searchTermValue?.value.trim();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+  return raw;
 }
 
 PoiFilterTaxonomyTerm _buildTaxonomyTerm({
@@ -659,8 +716,8 @@ PoiFilterTaxonomyTermValue _buildTaxonomyTermValue(String raw) {
   return value;
 }
 
-Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
-  final values = <PoiFilterTypeValue>{};
+List<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -670,11 +727,11 @@ Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTypeValue>.unmodifiable(values);
+  return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
-  final values = <PoiFilterKeyValue>{};
+List<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -684,13 +741,13 @@ Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterKeyValue>.unmodifiable(values);
+  return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
+List<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
   Iterable<String> rawValues,
 ) {
-  final values = <PoiFilterTaxonomyTokenValue>{};
+  final values = <PoiFilterTaxonomyTokenValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -700,11 +757,13 @@ Set<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+  return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+    values.toSet().toList(),
+  );
 }
 
-Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
-  final values = <PoiTagValue>{};
+List<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -714,7 +773,7 @@ Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiTagValue>.unmodifiable(values);
+  return List<PoiTagValue>.unmodifiable(values.toSet().toList());
 }
 
 PoiIconSymbolValue _buildIconSymbolValue(String raw) {
@@ -815,7 +874,7 @@ void main() {
       await _flushMicrotasks();
 
       expect(mapRepository.lastQuery, isNotNull);
-      expect(mapRepository.lastQuery?.categoryKeys, equals({'nature'}));
+      expect(_queryCategoryKeys(mapRepository.lastQuery), equals({'nature'}));
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
     });
 
@@ -837,12 +896,12 @@ void main() {
       await _flushMicrotasks();
 
       expect(mapRepository.lastQuery, isNotNull);
-      expect(mapRepository.lastQuery?.source, equals('event'));
-      expect(mapRepository.lastQuery?.types, equals({'show'}));
-      expect(mapRepository.lastQuery?.categoryKeys, equals({'culture'}));
-      expect(mapRepository.lastQuery?.tags, equals({'live'}));
+      expect(_querySource(mapRepository.lastQuery), equals('event'));
+      expect(_queryTypes(mapRepository.lastQuery), equals({'show'}));
+      expect(_queryCategoryKeys(mapRepository.lastQuery), equals({'culture'}));
+      expect(_queryTags(mapRepository.lastQuery), equals({'live'}));
       expect(
-        mapRepository.lastQuery?.taxonomy,
+        _queryTaxonomy(mapRepository.lastQuery),
         equals({'music_genre:rock'}),
       );
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
@@ -867,11 +926,13 @@ void main() {
         await _flushMicrotasks();
 
         expect(mapRepository.lastQuery, isNotNull);
-        expect(mapRepository.lastQuery?.categoryKeys, isNull);
-        expect(mapRepository.lastQuery?.source, equals('account_profile'));
-        expect(mapRepository.lastQuery?.types, equals({'artist'}));
-        expect(mapRepository.lastQuery?.tags, equals({'live'}));
-        expect(mapRepository.lastQuery?.taxonomy, equals({'music_genre:jazz'}));
+        expect(_queryCategoryKeys(mapRepository.lastQuery), isNull);
+        expect(
+            _querySource(mapRepository.lastQuery), equals('account_profile'));
+        expect(_queryTypes(mapRepository.lastQuery), equals({'artist'}));
+        expect(_queryTags(mapRepository.lastQuery), equals({'live'}));
+        expect(_queryTaxonomy(mapRepository.lastQuery),
+            equals({'music_genre:jazz'}));
       },
     );
 
@@ -914,7 +975,7 @@ void main() {
 
       expect(mapRepository.lastQuery, isNotNull);
       expect(
-        mapRepository.lastQuery?.taxonomy,
+        _queryTaxonomy(mapRepository.lastQuery),
         equals({'cuisine:italian'}),
       );
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
@@ -954,9 +1015,10 @@ void main() {
           controller.activeTaxonomyTokensStreamValue.value,
           equals({'cuisine:italian'}),
         );
-        expect(mapRepository.lastQuery?.source, isNull);
-        expect(mapRepository.lastQuery?.types, isNull);
-        expect(mapRepository.lastQuery?.taxonomy, equals({'cuisine:italian'}));
+        expect(_querySource(mapRepository.lastQuery), isNull);
+        expect(_queryTypes(mapRepository.lastQuery), isNull);
+        expect(_queryTaxonomy(mapRepository.lastQuery),
+            equals({'cuisine:italian'}));
       },
     );
 
@@ -1123,7 +1185,7 @@ void main() {
       await controller.searchPois('pizza');
 
       expect(mapRepository.lastQuery?.origin, latestOrigin);
-      expect(mapRepository.lastQuery?.searchTerm, 'pizza');
+      expect(_querySearchTerm(mapRepository.lastQuery), 'pizza');
     });
 
     test('logs directions and ride share events', () async {

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 
 class TenantAdminFirebaseSettings {
   TenantAdminFirebaseSettings({
@@ -25,13 +26,13 @@ class TenantAdminFirebaseSettings {
   String get messagingSenderId => messagingSenderIdValue.value;
   String get storageBucket => storageBucketValue.value;
 
-  Map<String, Object?> toJson() {
-    return {
+  TenantAdminDynamicMapValue toJson() {
+    return TenantAdminDynamicMapValue({
       'apiKey': apiKey,
       'appId': appId,
       'projectId': projectId,
       'messagingSenderId': messagingSenderId,
       'storageBucket': storageBucket,
-    };
+    });
   }
 }

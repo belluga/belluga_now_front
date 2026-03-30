@@ -1,18 +1,8 @@
-import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
+export 'partner_projection_optional_text_value.dart';
+export 'partner_projection_required_text_value.dart';
 
-class PartnerProjectionRequiredTextValue extends GenericStringValue {
-  PartnerProjectionRequiredTextValue({
-    super.defaultValue = '',
-    super.isRequired = true,
-  });
-}
-
-class PartnerProjectionOptionalTextValue extends GenericStringValue {
-  PartnerProjectionOptionalTextValue({
-    super.defaultValue = '',
-    super.isRequired = false,
-  });
-}
+import 'partner_projection_optional_text_value.dart';
+import 'partner_projection_required_text_value.dart';
 
 PartnerProjectionRequiredTextValue partnerProjectionRequiredText(Object? raw) {
   if (raw is PartnerProjectionRequiredTextValue) {

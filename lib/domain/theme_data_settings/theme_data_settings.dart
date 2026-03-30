@@ -12,14 +12,31 @@ class ThemeDataSettings {
     required this.brightnessDefault,
   });
 
-  ThemeData themeData([Brightness? brightness]) {
-    final resolvedBrightness = brightness ?? brightnessDefault;
-    final ColorScheme colorScheme = switch (resolvedBrightness) {
-      Brightness.dark => darkSchemeData.colorScheme,
-      Brightness.light => lightSchemeData.colorScheme,
+  ThemeData themeData() {
+    final schemeData = switch (brightnessDefault) {
+      Brightness.dark => darkSchemeData,
+      Brightness.light => lightSchemeData,
     };
+    return _buildThemeData(schemeData);
+  }
 
-    final TextTheme textTheme = _buildTextTheme(colorScheme);
+  ThemeData themeDataLight() {
+    return _buildThemeData(lightSchemeData);
+  }
+
+  ThemeData themeDataDark() {
+    return _buildThemeData(darkSchemeData);
+  }
+
+  ThemeData _buildThemeData(ColorSchemeData schemeData) {
+    final colorScheme = schemeData.colorScheme;
+    final base = Typography.material2021();
+    final themedBase =
+        colorScheme.brightness == Brightness.dark ? base.white : base.black;
+    final TextTheme textTheme = themedBase.apply(
+      displayColor: colorScheme.onSurface,
+      bodyColor: colorScheme.onSurfaceVariant,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -115,16 +132,6 @@ class ThemeDataSettings {
           borderRadius: BorderRadius.circular(28),
         ),
       ),
-    );
-  }
-
-  TextTheme _buildTextTheme(ColorScheme colorScheme) {
-    final base = Typography.material2021();
-    final themedBase =
-        colorScheme.brightness == Brightness.dark ? base.white : base.black;
-    return themedBase.apply(
-      displayColor: colorScheme.onSurface,
-      bodyColor: colorScheme.onSurfaceVariant,
     );
   }
 }

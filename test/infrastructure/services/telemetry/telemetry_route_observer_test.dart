@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -37,26 +39,28 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   int _handleSeed = 0;
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     events.add(
       _LoggedEvent(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     final handle = EventTrackerTimedEventHandle(
       'handle-${_handleSeed++}',
@@ -65,20 +69,23 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
       _TimedEvent(
         handle: handle,
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
     return handle;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle) async {
     final index = startedEvents.indexWhere(
       (entry) => entry.handle.id == handle.id,
     );
     if (index == -1) {
-      return true;
+      return telemetryRepoBool(true);
     }
     final entry = startedEvents.removeAt(index);
     events.add(
@@ -88,25 +95,28 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
         properties: entry.properties,
       ),
     );
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {
-    lastScreenContext = screenContext;
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {
+    lastScreenContext = screenContext == null
+        ? null
+        : TelemetryPropertiesCodec.toRawMap(screenContext);
   }
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+    return telemetryRepoBool(true);
   }
 }
 

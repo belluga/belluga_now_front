@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
@@ -11,7 +11,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     String? bio,
     String? content,
     String? avatarUrl,
@@ -42,7 +43,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? displayName,
     String? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? content,
     String? avatarUrl,

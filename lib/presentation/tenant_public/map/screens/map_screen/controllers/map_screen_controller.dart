@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -23,6 +23,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
@@ -140,7 +142,10 @@ class MapScreenController implements Disposable {
       loadFilters(force: true),
       loadPois(PoiQuery()),
       _userLocationRepository.refreshIfPermitted(
-        minInterval: Duration.zero,
+        minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
+          Duration.zero,
+          defaultValue: Duration.zero,
+        ),
       ),
       initialPoiHydrationFuture,
     ]);
@@ -237,7 +242,7 @@ class MapScreenController implements Disposable {
     if (coordinate == null) {
       _logMapTelemetry(
         EventTrackerEvents.viewContent,
-        eventName: 'map_location_resolved',
+        eventName: telemetryRepoString('map_location_resolved'),
         properties: const {
           'status': 'fallback',
           'reason': 'not_found',
@@ -260,7 +265,7 @@ class MapScreenController implements Disposable {
     }
     _logMapTelemetry(
       EventTrackerEvents.viewContent,
-      eventName: 'map_location_resolved',
+      eventName: telemetryRepoString('map_location_resolved'),
       properties: const {
         'status': 'success',
       },
@@ -300,7 +305,7 @@ class MapScreenController implements Disposable {
     final nextQuery = _composeQuery(searchTerm: query);
     _logMapTelemetry(
       EventTrackerEvents.search,
-      eventName: 'map_search_submitted',
+      eventName: telemetryRepoString('map_search_submitted'),
       properties: {
         'query_len': trimmed.length,
         'filter_mode': filterModeStreamValue.value.name,
@@ -312,10 +317,11 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> clearSearch() async {
-    final previousQueryLen = _currentQuery.searchTerm?.trim().length ?? 0;
+    final previousQueryLen =
+        _currentQuery.searchTermValue?.value.trim().length ?? 0;
     _logMapTelemetry(
       EventTrackerEvents.buttonClick,
-      eventName: 'map_search_cleared',
+      eventName: telemetryRepoString('map_search_cleared'),
       properties: {
         'previous_query_len': previousQueryLen,
         'filter_mode': filterModeStreamValue.value.name,
@@ -334,7 +340,7 @@ class MapScreenController implements Disposable {
     final requestSequence = ++_poiRequestSequence;
     final resolvedQuery = _resolveRuntimeQuery(query);
     _currentQuery = resolvedQuery;
-    searchTermStreamValue.addValue(resolvedQuery.searchTerm);
+    searchTermStreamValue.addValue(resolvedQuery.searchTermValue?.value);
 
     _setMapStatus(MapStatus.fetching);
     _setMapMessage(loadingMessage ?? 'Carregando pontos...');
@@ -373,7 +379,6 @@ class MapScreenController implements Disposable {
       southWest: query.southWest,
       origin: origin,
       maxDistanceMetersValue: query.maxDistanceMetersValue,
-      categories: query.categories,
       categoryKeyValues: query.categoryKeyValues,
       sourceValue: query.sourceValue,
       typeValues: query.typeValues,
@@ -659,9 +664,13 @@ class MapScreenController implements Disposable {
           ),
         )
         .toList(growable: false);
+    final stackItems = CityPoiStackItems();
+    for (final item in seeded) {
+      stackItems.add(item);
+    }
     return seeded
         .map(
-          (item) => item.copyWith(stackItems: seeded),
+          (item) => item.copyWith(stackItems: stackItems),
         )
         .toList(growable: false);
   }
@@ -714,7 +723,7 @@ class MapScreenController implements Disposable {
     _poiRepository.applyFilterMode(mode);
     _logMapTelemetry(
       EventTrackerEvents.selectItem,
-      eventName: 'map_main_filter_applied',
+      eventName: telemetryRepoString('map_main_filter_applied'),
       properties: {
         'filter_mode': mode.name,
       },
@@ -771,7 +780,7 @@ class MapScreenController implements Disposable {
     );
     _logMapTelemetry(
       EventTrackerEvents.buttonClick,
-      eventName: 'map_main_filter_cleared',
+      eventName: telemetryRepoString('map_main_filter_cleared'),
     );
   }
 
@@ -819,7 +828,7 @@ class MapScreenController implements Disposable {
     _poiRepository.applyFilterMode(PoiFilterMode.server);
     _logMapTelemetry(
       EventTrackerEvents.selectItem,
-      eventName: 'map_catalog_filter_applied',
+      eventName: telemetryRepoString('map_catalog_filter_applied'),
       properties: {
         'category_keys': categoryKeys.toList(growable: false),
         if (source != null) 'source': source,
@@ -880,7 +889,7 @@ class MapScreenController implements Disposable {
     _poiRepository.applyFilterMode(PoiFilterMode.server);
     _logMapTelemetry(
       EventTrackerEvents.selectItem,
-      eventName: 'map_taxonomy_filter_toggled',
+      eventName: telemetryRepoString('map_taxonomy_filter_toggled'),
       properties: {
         'taxonomy_token': token,
         'selected': true,
@@ -950,7 +959,7 @@ class MapScreenController implements Disposable {
   void logDirectionsOpened(CityPoiModel poi) {
     _logMapTelemetry(
       EventTrackerEvents.viewContent,
-      eventName: 'map_directions_opened',
+      eventName: telemetryRepoString('map_directions_opened'),
       properties: {
         'source': 'poi',
         'poi_id': poi.id,
@@ -972,7 +981,7 @@ class MapScreenController implements Disposable {
   }) {
     _logMapTelemetry(
       EventTrackerEvents.buttonClick,
-      eventName: 'map_ride_share_clicked',
+      eventName: telemetryRepoString('map_ride_share_clicked'),
       properties: {
         'provider': provider.name,
         if (poiId != null) 'poi_id': poiId,
@@ -1002,7 +1011,6 @@ class MapScreenController implements Disposable {
     CityCoordinate? southWest,
     CityCoordinate? origin,
     double? maxDistanceMeters,
-    Iterable<CityPoiCategory>? categories,
     Iterable<String>? categoryKeys,
     String? source,
     Iterable<String>? types,
@@ -1023,7 +1031,6 @@ class MapScreenController implements Disposable {
       southWest: southWest,
       origin: origin,
       maxDistanceMetersValue: _parseDistanceValue(maxDistanceMeters),
-      categories: categories,
       categoryKeyValues: _parseFilterKeyValues(categoryKeys),
       sourceValue: resolvedSourceValue,
       typeValues: _parseFilterTypeValues(types),
@@ -1042,11 +1049,11 @@ class MapScreenController implements Disposable {
     return value;
   }
 
-  Set<PoiFilterKeyValue>? _parseFilterKeyValues(Iterable<String>? rawValues) {
+  List<PoiFilterKeyValue>? _parseFilterKeyValues(Iterable<String>? rawValues) {
     if (rawValues == null) {
       return null;
     }
-    final values = <PoiFilterKeyValue>{};
+    final values = <PoiFilterKeyValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -1056,7 +1063,7 @@ class MapScreenController implements Disposable {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterKeyValue>.unmodifiable(values);
+    return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
   }
 
   PoiFilterSourceValue? _parseFilterSourceValue(String raw) {
@@ -1069,11 +1076,12 @@ class MapScreenController implements Disposable {
     return value;
   }
 
-  Set<PoiFilterTypeValue>? _parseFilterTypeValues(Iterable<String>? rawValues) {
+  List<PoiFilterTypeValue>? _parseFilterTypeValues(
+      Iterable<String>? rawValues) {
     if (rawValues == null) {
       return null;
     }
-    final values = <PoiFilterTypeValue>{};
+    final values = <PoiFilterTypeValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -1083,14 +1091,14 @@ class MapScreenController implements Disposable {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterTypeValue>.unmodifiable(values);
+    return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
   }
 
-  Set<PoiTagValue>? _parseTagValues(Iterable<String>? rawValues) {
+  List<PoiTagValue>? _parseTagValues(Iterable<String>? rawValues) {
     if (rawValues == null) {
       return null;
     }
-    final values = <PoiTagValue>{};
+    final values = <PoiTagValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -1100,16 +1108,16 @@ class MapScreenController implements Disposable {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiTagValue>.unmodifiable(values);
+    return List<PoiTagValue>.unmodifiable(values.toSet().toList());
   }
 
-  Set<PoiFilterTaxonomyTokenValue>? _parseTaxonomyTokenValues(
+  List<PoiFilterTaxonomyTokenValue>? _parseTaxonomyTokenValues(
     Iterable<String>? rawValues,
   ) {
     if (rawValues == null) {
       return null;
     }
-    final values = <PoiFilterTaxonomyTokenValue>{};
+    final values = <PoiFilterTaxonomyTokenValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -1119,7 +1127,9 @@ class MapScreenController implements Disposable {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+    return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+      values.toSet().toList(),
+    );
   }
 
   PoiFilterSearchTermValue? _parseSearchTermValue(String raw) {
@@ -1150,8 +1160,8 @@ class MapScreenController implements Disposable {
 
   Set<String> _categoryKeysForCatalogFilter(PoiFilterCategory category) {
     final serverQuery = category.serverQuery;
-    final configured = category.serverQuery?.categoryKeys
-            .map((entry) => entry.trim().toLowerCase())
+    final configured = category.serverQuery?.categoryKeyValues
+            .map((entry) => entry.value.trim().toLowerCase())
             .where((entry) => entry.isNotEmpty)
             .toSet() ??
         const <String>{};
@@ -1169,7 +1179,8 @@ class MapScreenController implements Disposable {
   }
 
   String? _sourceForCatalogFilter(PoiFilterCategory category) {
-    final source = category.serverQuery?.source?.trim().toLowerCase();
+    final source =
+        category.serverQuery?.sourceValue?.value.trim().toLowerCase();
     if (source == null || source.isEmpty) {
       return null;
     }
@@ -1177,24 +1188,24 @@ class MapScreenController implements Disposable {
   }
 
   Set<String> _typesForCatalogFilter(PoiFilterCategory category) {
-    return category.serverQuery?.types
-            .map((entry) => entry.trim().toLowerCase())
+    return category.serverQuery?.typeValues
+            .map((entry) => entry.value.trim().toLowerCase())
             .where((entry) => entry.isNotEmpty)
             .toSet() ??
         const <String>{};
   }
 
   Set<String> _tagsForCatalogFilter(PoiFilterCategory category) {
-    return category.serverQuery?.tags
-            .map((entry) => entry.trim().toLowerCase())
+    return category.serverQuery?.tagValues
+            .map((entry) => entry.value.trim().toLowerCase())
             .where((entry) => entry.isNotEmpty)
             .toSet() ??
         const <String>{};
   }
 
   Set<String> _taxonomyTokensForCatalogFilter(PoiFilterCategory category) {
-    return category.serverQuery?.taxonomy
-            .map((entry) => entry.trim().toLowerCase())
+    return category.serverQuery?.taxonomyTokenValues
+            .map((entry) => entry.value.trim().toLowerCase())
             .where((entry) => entry.isNotEmpty)
             .toSet() ??
         const <String>{};
@@ -1378,14 +1389,14 @@ class MapScreenController implements Disposable {
 
   void _logMapTelemetry(
     EventTrackerEvents event, {
-    required String eventName,
-    Map<String, dynamic>? properties,
+    required TelemetryRepositoryContractPrimString eventName,
+    Object? properties,
   }) {
     unawaited(
       _telemetryRepository.logEvent(
         event,
         eventName: eventName,
-        properties: properties,
+        properties: telemetryRepoMap(properties),
       ),
     );
   }
@@ -1393,10 +1404,10 @@ class MapScreenController implements Disposable {
   Future<void> _startPoiTimedEvent(CityPoiModel poi) async {
     _activePoiTimedEventFuture = _telemetryRepository.startTimedEvent(
       EventTrackerEvents.poiOpened,
-      eventName: 'poi_opened',
-      properties: {
+      eventName: telemetryRepoString('poi_opened'),
+      properties: telemetryRepoMap({
         'poi_id': poi.id,
-      },
+      }),
     );
     _activePoiId = poi.id;
   }

@@ -1,6 +1,7 @@
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminStaticAssetDTO {
   const TenantAdminStaticAssetDTO({
@@ -82,15 +83,16 @@ class TenantAdminStaticAssetDTO {
 
   TenantAdminStaticAsset toDomain() {
     final location = (locationLat != null && locationLng != null)
-        ? TenantAdminLocation(
+        ? tenantAdminLocationFromRaw(
             latitude: locationLat!,
             longitude: locationLng!,
           )
         : null;
-    final taxonomy = taxonomyTerms
-        .map((term) => term.toDomain())
-        .toList(growable: false);
-    return TenantAdminStaticAsset(
+    final taxonomy = TenantAdminTaxonomyTerms();
+    for (final taxonomyTerm in taxonomyTerms) {
+      taxonomy.add(taxonomyTerm.toDomain());
+    }
+    return tenantAdminStaticAssetFromRaw(
       id: id,
       profileType: profileType,
       displayName: displayName,

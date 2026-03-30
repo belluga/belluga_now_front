@@ -318,7 +318,7 @@ class DiscoveryScreenController implements Disposable {
       final thumb = c.coverUrl ?? c.avatarUrl ?? '';
       final typeLabel = 'Artigo';
       final title = c.tags.isNotEmpty
-          ? 'Novo ${c.tags.first} por ${c.name}'
+          ? 'Novo ${c.tags.first.value} por ${c.name}'
           : 'Conteúdo de ${c.name}';
       return CuratorContent(
         id: c.id,
@@ -348,8 +348,9 @@ class DiscoveryScreenController implements Disposable {
     final allowed = registry
         .enabledAccountProfileTypes()
         .where(
-          (type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)),
+          (type) => registry.isFavoritableFor(type),
         )
+        .map((type) => type.value)
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }

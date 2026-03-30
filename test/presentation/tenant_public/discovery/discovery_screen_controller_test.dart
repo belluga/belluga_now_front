@@ -28,7 +28,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('a'), type: 'artist', name: 'Artist'),
             _profile(id: _mongoId('b'), type: 'curator', name: 'Curator'),
@@ -52,7 +52,7 @@ void main() {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [artist],
           hasMore: false,
         ),
@@ -74,13 +74,13 @@ void main() {
   test('discovery loads additional pages with loadNextPage', () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('d'), type: 'artist', name: 'First'),
           ],
           hasMore: true,
         ),
-        2: PagedAccountProfilesResult(
+        2: pagedAccountProfilesResultFromRaw(
           profiles: [
             _profile(id: _mongoId('e'), type: 'artist', name: 'Second'),
           ],
@@ -108,7 +108,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [
             buildAccountProfileModelFromPrimitives(
               id: _mongoId('f'),
@@ -158,7 +158,7 @@ void main() {
 
   test('discovery still loads first page when repository init fails', () async {
     final repository = _InitFailingAccountProfilesRepository(
-      firstPage: PagedAccountProfilesResult(
+      firstPage: pagedAccountProfilesResultFromRaw(
         profiles: [
           _profile(id: _mongoId('h'), type: 'artist', name: 'Recovered'),
         ],
@@ -186,7 +186,7 @@ void main() {
     final artist = _profile(id: _mongoId('g'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
-        1: PagedAccountProfilesResult(
+        1: pagedAccountProfilesResultFromRaw(
           profiles: [artist],
           hasMore: false,
         ),
@@ -258,7 +258,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       ),
     );
     var result = pages[pageValue] ??
-        PagedAccountProfilesResult(
+        pagedAccountProfilesResultFromRaw(
           profiles: <AccountProfileModel>[],
           hasMore: false,
         );
@@ -277,12 +277,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         return profile.name.toLowerCase().contains(normalizedQuery) ||
             profile.slug.toLowerCase().contains(normalizedQuery) ||
             profile.tags.any(
-              (tag) => tag.toLowerCase().contains(normalizedQuery),
+              (tag) => tag.value.toLowerCase().contains(normalizedQuery),
             );
       }).toList(growable: false);
     }
 
-    result = PagedAccountProfilesResult(
+    result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
     );
@@ -310,7 +310,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       return profile.name.toLowerCase().contains(normalizedQuery) ||
           profile.slug.toLowerCase().contains(normalizedQuery) ||
           profile.tags
-              .any((tag) => tag.toLowerCase().contains(normalizedQuery));
+              .any((tag) => tag.value.toLowerCase().contains(normalizedQuery));
     }).toList(growable: false);
   }
 
@@ -450,7 +450,7 @@ class _InitFailingAccountProfilesRepository
   }) async {
     fetchPageCalls += 1;
     if (page.value != 1) {
-      return PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
@@ -505,7 +505,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => 'token';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -526,35 +526,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _PageRequest {

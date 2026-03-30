@@ -29,9 +29,10 @@ class MockAuthBackend extends AuthBackendContract {
     }
 
     throw BellugaAuthError.fromCode(
-      errorCode: const AuthErrorCodeValue(403),
-      message:
-          const AuthErrorMessageValue('As credenciais fornecidas estão incorretas.'),
+      errorCode: AuthErrorCodeValue(raw: 403),
+      message: AuthErrorMessageValue(
+        raw: 'As credenciais fornecidas estão incorretas.',
+      ),
     );
   }
 

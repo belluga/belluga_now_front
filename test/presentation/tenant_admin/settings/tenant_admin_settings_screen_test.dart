@@ -8,6 +8,7 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynam
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -84,6 +86,16 @@ TenantAdminOptionalTextValue _optionalText(String raw) {
   final value = TenantAdminOptionalTextValue();
   value.parse(raw);
   return value;
+}
+
+TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
+  Iterable<TenantAdminMapFilterCatalogItem> items,
+) {
+  final collection = TenantAdminMapFilterCatalogItems();
+  for (final item in items) {
+    collection.add(item);
+  }
+  return collection;
 }
 
 void main() {
@@ -483,20 +495,20 @@ void main() {
             lng: _lng(-40.4976),
             label: _optionalText('Centro'),
           ),
-          filters: [
+          filters: _mapFilterCatalogItems([
             TenantAdminMapFilterCatalogItem(
               keyValue: _token('events'),
               labelValue: _requiredText('Eventos'),
               imageUriValue:
                   _optionalUrl('https://tenant.test/legacy-events.png'),
-              overrideMarkerValue: const TenantAdminFlagValue(true),
+              overrideMarkerValue: TenantAdminFlagValue(true),
               markerOverride: TenantAdminMapFilterMarkerOverride.icon(
                 iconValue: _requiredText('music'),
                 colorValue: _hexColor('#C6141F'),
                 iconColorValue: _hexColor('#FFFFFF'),
               ),
             ),
-          ],
+          ]),
         ),
       );
       GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -552,15 +564,15 @@ void main() {
           TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
     );
     final catalog = TenantAdminMapFilterRuleCatalog(
-      typesBySource: {
+      typesBySource: TenantAdminMapFilterTypeOptionsBySourceValue({
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTypeOption(
             slugValue: _token('show'),
             labelValue: _requiredText('Show'),
           ),
         ],
-      },
-      taxonomyTermsBySource: {
+      }),
+      taxonomyTermsBySource: TenantAdminMapFilterTaxonomyOptionsBySourceValue({
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTaxonomyTermOption(
             tokenValue: _token('rock'),
@@ -569,7 +581,7 @@ void main() {
             taxonomyLabelValue: _requiredText('Gênero'),
           ),
         ],
-      },
+      }),
     );
 
     await tester.pumpWidget(
@@ -777,7 +789,7 @@ void main() {
       keyValue: _token('events'),
       labelValue: _requiredText('Eventos'),
       imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
-      overrideMarkerValue: const TenantAdminFlagValue(true),
+      overrideMarkerValue: TenantAdminFlagValue(true),
       markerOverride: TenantAdminMapFilterMarkerOverride.image(
         imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
       ),
@@ -1451,7 +1463,7 @@ void main() {
 
     controller.bindLocalPreferencesFlow();
     locationSelection.setInitialLocation(
-      TenantAdminLocation(
+      tenantAdminLocationFromRaw(
         latitude: -20.612345,
         longitude: -40.487654,
       ),
@@ -1504,13 +1516,13 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 1000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
   StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
@@ -1526,13 +1538,13 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadiusMetersStreamValue.addValue(meters);
   }
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 }
 
@@ -1547,11 +1559,17 @@ class _FakeTenantAdminSettingsRepository
           brightnessDefault: TenantAdminBrandingBrightness.light,
           primarySeedColor: _hexColor('#009688'),
           secondarySeedColor: _hexColor('#673AB7'),
-          lightLogoUrl: _optionalUrl('https://guarappari.test/storage/light-logo.png'),
-          darkLogoUrl: _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
-          lightIconUrl: _optionalUrl('https://guarappari.test/storage/light-icon.png'),
-          darkIconUrl: _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
-          pwaIconUrl: initialPwaIconUrl == null ? null : _optionalUrl(initialPwaIconUrl),
+          lightLogoUrl:
+              _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+          darkLogoUrl:
+              _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+          lightIconUrl:
+              _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+          darkIconUrl:
+              _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+          pwaIconUrl: initialPwaIconUrl == null
+              ? null
+              : _optionalUrl(initialPwaIconUrl),
         ) {
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
@@ -1581,7 +1599,7 @@ class _FakeTenantAdminSettingsRepository
       lng: _lng(-40.4976),
       label: _optionalText('Centro'),
     ),
-    filters: [],
+    filters: TenantAdminMapFilterCatalogItems(),
   );
   TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
@@ -1627,7 +1645,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
-    required String type,
+    required Object type,
   }) async {
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
@@ -1683,12 +1701,13 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<String> uploadMapFilterImage({
-    required String key,
+    required Object key,
     required TenantAdminMediaUpload upload,
   }) async {
-    uploadedMapFilterKey = key;
+    uploadedMapFilterKey =
+        key is String ? key : (key as dynamic).value as String;
     uploadedMapFilterPayload = upload;
-    return 'https://guarappari.test/api/v1/media/map-filters/$key?v=1';
+    return 'https://guarappari.test/api/v1/media/map-filters/$uploadedMapFilterKey?v=1';
   }
 
   @override
@@ -1726,10 +1745,14 @@ class _FakeTenantAdminSettingsRepository
       brightnessDefault: input.brightnessDefault,
       primarySeedColor: _hexColor(input.primarySeedColor),
       secondarySeedColor: _hexColor(input.secondarySeedColor),
-      lightLogoUrl: _optionalUrl('https://guarappari.test/storage/light-logo.png'),
-      darkLogoUrl: _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
-      lightIconUrl: _optionalUrl('https://guarappari.test/storage/light-icon.png'),
-      darkIconUrl: _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      lightLogoUrl:
+          _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+      darkLogoUrl:
+          _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+      lightIconUrl:
+          _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+      darkIconUrl:
+          _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
       pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
@@ -1741,7 +1764,7 @@ class _FakeTenantAdminExternalImageProxy
     implements TenantAdminExternalImageProxyContract {
   @override
   Future<Uint8List> fetchExternalImageBytes({
-    required String imageUrl,
+    required Object imageUrl,
   }) async {
     return Uint8List(0);
   }
@@ -1771,8 +1794,11 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

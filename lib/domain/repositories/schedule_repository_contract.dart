@@ -15,6 +15,8 @@ typedef ScheduleRepoBool = ScheduleRepositoryContractBoolValue;
 typedef ScheduleRepoDouble = ScheduleRepositoryContractDoubleValue;
 typedef ScheduleRepoDateTime = ScheduleRepositoryContractDateTimeValue;
 typedef ScheduleRepoTaxonomyEntry = ScheduleRepositoryContractTaxonomyEntry;
+typedef ScheduleRepoTaxonomyEntries =
+    ScheduleTaxonomyEntries;
 
 abstract class ScheduleRepositoryContract {
   static final ScheduleRepoInt _defaultPagedEventsPageSize =
@@ -88,7 +90,7 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -101,7 +103,7 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -133,13 +135,14 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (_pagedEventsState.isFetching.value || !_pagedEventsState.hasMore.value) {
+    if (_pagedEventsState.isFetching.value ||
+        !_pagedEventsState.hasMore.value) {
       return;
     }
     await _fetchPagedEvents(
@@ -173,7 +176,7 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -202,7 +205,7 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -259,7 +262,7 @@ abstract class ScheduleRepositoryContract {
       );
       if (page.value == 1) {
         pagedEventsStreamValue.addValue(
-            PagedEventsResult(events: <EventModel>[], hasMore: false));
+            pagedEventsResultFromRaw(events: <EventModel>[], hasMore: false));
         hasMorePagedEventsStreamValue.addValue(
           ScheduleRepoBool.fromRaw(
             false,
@@ -319,7 +322,7 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -329,11 +332,11 @@ abstract class ScheduleRepositoryContract {
   });
 
   Stream<void> watchEventsSignal({
-    required void Function(EventDeltaModel delta) onDelta,
+    required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,

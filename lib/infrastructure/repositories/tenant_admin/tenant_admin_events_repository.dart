@@ -141,7 +141,7 @@ class TenantAdminEventsRepository
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: _responseDecoder.decodeEventList(response.data),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,

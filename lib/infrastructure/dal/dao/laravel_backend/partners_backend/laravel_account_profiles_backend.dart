@@ -82,7 +82,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           ? currentPage < lastPage
           : raw['next_page_url'] != null;
 
-      return PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: _parseProfiles(data),
         hasMore: hasMore,
       );
@@ -173,7 +173,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           avatarValue: avatarValue,
           coverValue: coverValue,
           bioValue: bioValue,
-          tagsValue: AccountProfileTagsValue(tags),
+          tagValues: tags
+              .map(AccountProfileTagValue.new)
+              .toList(growable: false),
         ),
       );
     }

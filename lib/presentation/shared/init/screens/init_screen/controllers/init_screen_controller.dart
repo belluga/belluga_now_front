@@ -104,7 +104,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       return const LandlordHomeRoute();
     }
 
-    if (_invitesRepository.hasPendingInvites) {
+    if (_invitesRepository.hasPendingInvites.value) {
       return const InviteFlowRoute();
     }
 

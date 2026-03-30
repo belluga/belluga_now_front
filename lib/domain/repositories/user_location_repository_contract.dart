@@ -4,6 +4,8 @@ export 'location_resolution_phase.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/location_resolution_phase.dart';
 import 'package:belluga_now/domain/repositories/location_tracking_mode.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef UserLocationRepositoryContractPrimString = String;
@@ -27,7 +29,7 @@ abstract class UserLocationRepositoryContract {
 
   Future<void> ensureLoaded();
   Future<void> setLastKnownAddress(
-      UserLocationRepositoryContractPrimString? address);
+      UserLocationRepositoryContractTextValue? address);
 
   /// Best-effort: resolves location **without** triggering permission prompts.
   /// Returns `true` when a coordinate is available after the call.
@@ -37,8 +39,7 @@ abstract class UserLocationRepositoryContract {
   /// triggering permission prompts. Returns `true` when a coordinate is available
   /// after the call (either cached or refreshed).
   Future<UserLocationRepositoryContractPrimBool> refreshIfPermitted({
-    UserLocationRepositoryContractPrimDuration minInterval =
-        const Duration(seconds: 30),
+    UserLocationRepositoryContractDurationValue? minInterval,
   });
 
   /// Resolves location, requesting permission if needed (interactive).

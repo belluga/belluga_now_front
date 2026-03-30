@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
@@ -93,7 +94,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       typeFilter: typeFilter?.value,
     );
     final filtered = _filterByRegistry(result.profiles);
-    return PagedAccountProfilesResult(
+    return pagedAccountProfilesResultFromRaw(
       profiles: filtered,
       hasMore: result.hasMore,
     );
@@ -164,11 +165,11 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       }
       await _telemetryRepository.logEvent(
         EventTrackerEvents.favoriteArtistToggled,
-        eventName: 'favorite_artist_toggled',
-        properties: {
+        eventName: telemetryRepoString('favorite_artist_toggled'),
+        properties: telemetryRepoMap({
           'account_profile_id': normalizedProfileId,
           'is_favorite': !wasFavorite,
-        },
+        }),
       );
     } catch (error) {
       if (wasFavorite) {

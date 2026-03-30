@@ -1,3 +1,5 @@
+export 'value_objects/event_model_values.dart';
+
 import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
@@ -57,19 +59,24 @@ class EventModel {
   EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
   EventModelPrimString get slug => slugValue.value; // Added getter
   DateTime? get confirmedAt => confirmedAtValue.value;
-  List<EventModelPrimString> get tags =>
-      tagValues.map((tagValue) => tagValue.value).toList(growable: false);
-  List<EventModelPrimString> get taxonomyTags {
+  List<VenueEventTagValue> get tags =>
+      List<VenueEventTagValue>.unmodifiable(tagValues);
+  List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
-        tags.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet().toList();
-    if (cleaned.isNotEmpty) return cleaned;
+        tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
+    if (cleaned.isNotEmpty) {
+      return List<VenueEventTagValue>.unmodifiable(
+        cleaned.map(VenueEventTagValue.new),
+      );
+    }
 
     final artistGenres = artists
         .expand((artist) => artist.genres)
-        .map((g) => g.trim())
+        .map((genre) => genre.value.trim())
         .where((g) => g.isNotEmpty)
         .toSet()
-        .toList();
+        .map(VenueEventTagValue.new)
+        .toList(growable: false);
     return artistGenres;
   }
 
@@ -86,47 +93,13 @@ class EventModel {
     required this.dateTimeEnd,
     required this.artists,
     required this.coordinate,
-    required Object tags,
+    required List<VenueEventTagValue> tags,
     required this.isConfirmedValue,
-    Object? confirmedAt,
+    DomainOptionalDateTimeValue? confirmedAtValue,
     this.receivedInvites,
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  })  : tagValues = _parseTags(tags),
-        confirmedAtValue = _parseConfirmedAt(confirmedAt);
-
-  static List<VenueEventTagValue> _parseTags(Object raw) {
-    if (raw is List<VenueEventTagValue>) {
-      return List<VenueEventTagValue>.unmodifiable(raw);
-    }
-
-    if (raw is Iterable) {
-      return List<VenueEventTagValue>.unmodifiable(
-        raw.map((item) {
-          if (item is VenueEventTagValue) {
-            return item;
-          }
-          return VenueEventTagValue(item.toString());
-        }),
-      );
-    }
-
-    return List<VenueEventTagValue>.unmodifiable(
-      <VenueEventTagValue>[VenueEventTagValue(raw.toString())],
-    );
-  }
-
-  static DomainOptionalDateTimeValue _parseConfirmedAt(Object? raw) {
-    if (raw is DomainOptionalDateTimeValue) {
-      return raw;
-    }
-    final value = DomainOptionalDateTimeValue();
-    if (raw is DateTime) {
-      value.parse(raw.toIso8601String());
-      return value;
-    }
-    value.parse(raw?.toString());
-    return value;
-  }
+  })  : tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+        confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

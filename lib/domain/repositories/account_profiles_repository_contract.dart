@@ -200,7 +200,7 @@ abstract class AccountProfilesRepositoryContract {
       );
       if (page.value == 1) {
         pagedAccountProfilesStreamValue.addValue(
-          PagedAccountProfilesResult(
+          pagedAccountProfilesResultFromRaw(
             profiles: <AccountProfileModel>[],
             hasMore: false,
           ),

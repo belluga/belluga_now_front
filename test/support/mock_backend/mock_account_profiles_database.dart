@@ -473,7 +473,7 @@ class MockAccountProfilesDatabase {
       final lowerQuery = query.toLowerCase();
       results = results.where((p) {
         return p.name.toLowerCase().contains(lowerQuery) ||
-            p.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
+            p.tags.any((tag) => tag.value.toLowerCase().contains(lowerQuery));
       }).toList();
     }
 

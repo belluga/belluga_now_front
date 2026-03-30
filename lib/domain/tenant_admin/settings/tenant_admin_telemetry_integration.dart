@@ -9,39 +9,46 @@ class TenantAdminTelemetryIntegration {
   TenantAdminTelemetryIntegration({
     required TenantAdminLowercaseTokenValue type,
     required TenantAdminBooleanValue trackAll,
-    required TenantAdminTrimmedStringListValue events,
+    required List<TenantAdminLowercaseTokenValue> eventValues,
     TenantAdminOptionalTextValue? token,
     TenantAdminOptionalUrlValue? url,
-    TenantAdminDynamicMapValue? extra,
+    this.rawExtraValue,
   })  : typeValue = type,
         trackAllValue = trackAll,
-        eventValues = events,
+        eventValues = _eventListValue(eventValues),
         tokenValue = token,
-        urlValue = url,
-        extraValue = extra;
+        urlValue = url;
 
   final TenantAdminLowercaseTokenValue typeValue;
   final TenantAdminBooleanValue trackAllValue;
   final TenantAdminTrimmedStringListValue eventValues;
   final TenantAdminOptionalTextValue? tokenValue;
   final TenantAdminOptionalUrlValue? urlValue;
-  final TenantAdminDynamicMapValue? extraValue;
+  final TenantAdminDynamicMapValue? rawExtraValue;
 
   String get type => typeValue.value;
   bool get trackAll => trackAllValue.value;
-  List<String> get events => eventValues.value;
+  TenantAdminTrimmedStringListValue get events => eventValues;
   String? get token => tokenValue?.nullableValue;
   String? get url => urlValue?.nullableValue;
-  Map<String, dynamic>? get extra => extraValue?.value;
+  TenantAdminDynamicMapValue? get rawExtra => rawExtraValue;
 
-  Map<String, dynamic> toUpsertPayload() {
-    return {
+  TenantAdminDynamicMapValue toUpsertPayload() {
+    return TenantAdminDynamicMapValue({
       'type': type,
       'track_all': trackAll,
       'events': events,
       if (token != null) 'token': token,
       if (url != null) 'url': url,
-      if (extra != null) ...extra!,
-    };
+      if (rawExtra != null) ...rawExtra!.value,
+    });
+  }
+
+  static TenantAdminTrimmedStringListValue _eventListValue(
+    List<TenantAdminLowercaseTokenValue> rawValues,
+  ) {
+    return TenantAdminTrimmedStringListValue(
+      rawValues.map((entry) => entry.value),
+    );
   }
 }

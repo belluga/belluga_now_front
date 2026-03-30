@@ -1,16 +1,14 @@
+export 'value_objects/tenant_admin_taxonomy_values.dart';
+
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 
 class TenantAdminTaxonomyTermDefinition {
   TenantAdminTaxonomyTermDefinition({
-    required Object id,
-    required Object taxonomyId,
-    required Object slug,
-    required Object name,
-  })  : idValue = tenantAdminRequiredText(id),
-        taxonomyIdValue = tenantAdminRequiredText(taxonomyId),
-        slugValue = tenantAdminRequiredText(slug),
-        nameValue = tenantAdminRequiredText(name);
+    required this.idValue,
+    required this.taxonomyIdValue,
+    required this.slugValue,
+    required this.nameValue,
+  });
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue taxonomyIdValue;

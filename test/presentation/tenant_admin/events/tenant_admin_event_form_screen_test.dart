@@ -470,7 +470,7 @@ class _FakeEventsRepository
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
   }) async {
-    return TenantAdminPagedResult<TenantAdminEvent>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -488,19 +488,19 @@ class _FakeEventsRepository
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: [
-        TenantAdminAccountProfile(
+        tenantAdminAccountProfileFromRaw(
           id: 'venue-1',
           accountId: 'acc-venue',
           profileType: 'venue',
           displayName: 'Venue A',
-          location: TenantAdminLocation(
+          location: tenantAdminLocationFromRaw(
             latitude: -20.611121,
             longitude: -40.498617,
           ),
         ),
       ],
       artists: [
-        TenantAdminAccountProfile(
+        tenantAdminAccountProfileFromRaw(
           id: 'artist-1',
           accountId: 'acc-artist',
           profileType: 'artist',
@@ -574,7 +574,7 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
     return [
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-1',
         slug: 'music_genre',
         name: 'Music Genre',
@@ -592,7 +592,7 @@ class _FakeTaxonomiesRepository
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     final taxonomies = await fetchTaxonomies();
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: taxonomies,
       hasMore: false,
     );
@@ -603,7 +603,7 @@ class _FakeTaxonomiesRepository
     required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return [
-      TenantAdminTaxonomyTermDefinition(
+      tenantAdminTaxonomyTermDefinitionFromRaw(
         id: 'term-1',
         taxonomyId: 'tax-1',
         slug: 'rock',
@@ -620,7 +620,7 @@ class _FakeTaxonomiesRepository
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: terms,
       hasMore: false,
     );

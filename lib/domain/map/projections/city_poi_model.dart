@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
@@ -38,13 +39,15 @@ class CityPoiModel implements MapPoi {
     this.refPathValue,
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
-    List<CityPoiModel>? stackItems,
+    CityPoiStackItems? stackItems,
     PoiBooleanValue? isHappeningNowValue,
     this.updatedAtValue,
     this.distanceMetersValue,
     this.visual,
   })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
-        stackItems = List.unmodifiable(stackItems ?? const <CityPoiModel>[]),
+        stackItems = List.unmodifiable(
+          (stackItems ?? CityPoiStackItems()).value,
+        ),
         isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
         refTypeValue = refTypeValue ?? _defaultRefTypeValue(),
         refIdValue = refIdValue ?? _defaultRefIdValue(),
@@ -105,12 +108,7 @@ class CityPoiModel implements MapPoi {
       movementRadiusValue?.value ?? movementRadiusValue?.defaultValue;
 
   @override
-  List<String> get tags => tagValues
-      .map((tag) => tag.value)
-      .whereType<String>()
-      .map((tag) => tag.trim())
-      .where((tag) => tag.isNotEmpty)
-      .toList(growable: false);
+  List<PoiTagValue> get tags => List<PoiTagValue>.unmodifiable(tagValues);
 
   String get refType => refTypeValue.value;
   String get refId => refIdValue.value;
@@ -156,12 +154,19 @@ class CityPoiModel implements MapPoi {
     PoiReferencePathValue? refPathValue,
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
-    List<CityPoiModel>? stackItems,
+    CityPoiStackItems? stackItems,
     PoiBooleanValue? isHappeningNowValue,
     PoiUpdatedAtValue? updatedAtValue,
     DistanceInMetersValue? distanceMetersValue,
     CityPoiVisual? visual,
   }) {
+    final resolvedStackItems = stackItems ?? (() {
+      final collection = CityPoiStackItems();
+      for (final item in this.stackItems) {
+        collection.add(item);
+      }
+      return collection;
+    })();
     return CityPoiModel(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
@@ -180,7 +185,7 @@ class CityPoiModel implements MapPoi {
       refPathValue: refPathValue ?? this.refPathValue,
       stackKeyValue: stackKeyValue ?? this.stackKeyValue,
       stackCountValue: stackCountValue ?? this.stackCountValue,
-      stackItems: stackItems ?? this.stackItems,
+      stackItems: resolvedStackItems,
       isHappeningNowValue: isHappeningNowValue ?? this.isHappeningNowValue,
       updatedAtValue: updatedAtValue ?? this.updatedAtValue,
       distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,

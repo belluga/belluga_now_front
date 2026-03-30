@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_v
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
@@ -104,7 +105,7 @@ void main() {
   test('getPois bootstraps auth token when initially missing', () async {
     final authRepository =
         GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
-    authRepository.setUserToken('');
+    authRepository.setUserToken(authRepoString(''));
     authRepository.tokenAfterInit = 'refreshed-token';
 
     final adapter = _RecordingAdapter();
@@ -174,8 +175,8 @@ PoiFilterSourceValue? _buildSourceValue(String? raw) {
   return value;
 }
 
-Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
-  final values = <PoiFilterKeyValue>{};
+List<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -185,11 +186,11 @@ Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterKeyValue>.unmodifiable(values);
+  return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
-  final values = <PoiFilterTypeValue>{};
+List<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -199,11 +200,11 @@ Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTypeValue>.unmodifiable(values);
+  return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
-  final values = <PoiTagValue>{};
+List<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -213,13 +214,13 @@ Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiTagValue>.unmodifiable(values);
+  return List<PoiTagValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterTaxonomyTokenValue> _buildTaxonomyValues(
+List<PoiFilterTaxonomyTokenValue> _buildTaxonomyValues(
   Iterable<String> rawValues,
 ) {
-  final values = <PoiFilterTaxonomyTokenValue>{};
+  final values = <PoiFilterTaxonomyTokenValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -229,7 +230,9 @@ Set<PoiFilterTaxonomyTokenValue> _buildTaxonomyValues(
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+  return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+    values.toSet().toList(),
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -244,8 +247,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
@@ -274,33 +277,35 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

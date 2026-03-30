@@ -1,23 +1,15 @@
-import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+export 'package:belluga_now/domain/map/filters/main_filter_option_metadata_entries.dart';
+export 'package:belluga_now/domain/map/filters/main_filter_option_metadata_entry.dart';
 
-typedef MainFilterOptionMetadataRecord = ({
-  PoiFilterKeyValue keyValue,
-  Object? value,
-});
+import 'package:belluga_now/domain/map/filters/main_filter_option_metadata_entries.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_option_metadata_entry.dart';
 
 class MainFilterOptionMetadata {
   MainFilterOptionMetadata({
-    Iterable<MainFilterOptionMetadataRecord> records =
-        const <MainFilterOptionMetadataRecord>[],
-  }) : records = List<MainFilterOptionMetadataRecord>.unmodifiable(records);
+    MainFilterOptionMetadataEntries? entries,
+  }) : records = List<MainFilterOptionMetadataEntry>.unmodifiable(
+         entries?.value ?? <MainFilterOptionMetadataEntry>[],
+       );
 
-  final List<MainFilterOptionMetadataRecord> records;
-
-  Map<String, Object?> get values {
-    final payload = <String, Object?>{};
-    for (final record in records) {
-      payload[record.keyValue.value] = record.value;
-    }
-    return Map<String, Object?>.unmodifiable(payload);
-  }
+  final List<MainFilterOptionMetadataEntry> records;
 }

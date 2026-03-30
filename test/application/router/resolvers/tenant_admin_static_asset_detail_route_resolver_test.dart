@@ -27,7 +27,7 @@ class _FakeStaticAssetsRepository extends Fake
 void main() {
   group('TenantAdminStaticAssetDetailRouteResolver', () {
     test('loads static asset from route assetId', () async {
-      final expected = TenantAdminStaticAsset(
+      final expected = tenantAdminStaticAssetFromRaw(
         id: 'asset-1',
         profileType: 'poi',
         displayName: 'Asset',

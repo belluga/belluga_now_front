@@ -1,13 +1,8 @@
-class ProfileTypeKeyValue {
-  const ProfileTypeKeyValue(String raw) : value = raw;
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ProfileTypeKeyValue && other.value == value;
-
-  @override
-  int get hashCode => value.hashCode;
+class ProfileTypeKeyValue extends GenericStringValue {
+  ProfileTypeKeyValue([String raw = ''])
+    : super(defaultValue: '', isRequired: false) {
+    parse(raw.trim());
+  }
 }

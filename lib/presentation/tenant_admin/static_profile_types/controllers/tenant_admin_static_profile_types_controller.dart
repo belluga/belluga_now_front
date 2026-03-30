@@ -55,12 +55,12 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   static final TenantAdminStaticProfileTypeCapabilities _emptyCapabilities =
       TenantAdminStaticProfileTypeCapabilities(
-    isPoiEnabled: false,
-    hasBio: false,
-    hasTaxonomies: false,
-    hasAvatar: false,
-    hasCover: false,
-    hasContent: false,
+    isPoiEnabled: TenantAdminFlagValue(false),
+    hasBio: TenantAdminFlagValue(false),
+    hasTaxonomies: TenantAdminFlagValue(false),
+    hasAvatar: TenantAdminFlagValue(false),
+    hasCover: TenantAdminFlagValue(false),
+    hasContent: TenantAdminFlagValue(false),
   );
 
   final StreamValue<TenantAdminStaticProfileTypeCapabilities>
@@ -163,18 +163,18 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     final poiVisual = definition?.poiVisual;
     capabilitiesStreamValue.addValue(
       TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: capabilities.isPoiEnabled,
-        hasBio: capabilities.hasBio,
-        hasTaxonomies: capabilities.hasTaxonomies,
-        hasAvatar: capabilities.hasAvatar,
-        hasCover: capabilities.hasCover,
-        hasContent: capabilities.hasContent,
+        isPoiEnabled: TenantAdminFlagValue(capabilities.isPoiEnabled),
+        hasBio: TenantAdminFlagValue(capabilities.hasBio),
+        hasTaxonomies: TenantAdminFlagValue(capabilities.hasTaxonomies),
+        hasAvatar: TenantAdminFlagValue(capabilities.hasAvatar),
+        hasCover: TenantAdminFlagValue(capabilities.hasCover),
+        hasContent: TenantAdminFlagValue(capabilities.hasContent),
       ),
     );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
     selectedTaxonomiesStreamValue.addValue(
-      (definition?.allowedTaxonomies ?? const []).toSet(),
+      (definition?.allowedTaxonomies ?? const <String>[]).toSet(),
     );
     if (poiVisual == null || poiVisual.mode == TenantAdminPoiVisualMode.icon) {
       poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
@@ -267,12 +267,14 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     final current = currentCapabilities;
     capabilitiesStreamValue.addValue(
       TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: isPoiEnabled ?? current.isPoiEnabled,
-        hasBio: hasBio ?? current.hasBio,
-        hasTaxonomies: hasTaxonomies ?? current.hasTaxonomies,
-        hasAvatar: hasAvatar ?? current.hasAvatar,
-        hasCover: hasCover ?? current.hasCover,
-        hasContent: hasContent ?? current.hasContent,
+        isPoiEnabled:
+            TenantAdminFlagValue(isPoiEnabled ?? current.isPoiEnabled),
+        hasBio: TenantAdminFlagValue(hasBio ?? current.hasBio),
+        hasTaxonomies:
+            TenantAdminFlagValue(hasTaxonomies ?? current.hasTaxonomies),
+        hasAvatar: TenantAdminFlagValue(hasAvatar ?? current.hasAvatar),
+        hasCover: TenantAdminFlagValue(hasCover ?? current.hasCover),
+        hasContent: TenantAdminFlagValue(hasContent ?? current.hasContent),
       ),
     );
   }
@@ -345,7 +347,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
-          .where((taxonomy) => taxonomy.appliesToTarget('static_asset'))
+          .where((taxonomy) => taxonomy.appliesToStaticAsset())
           .toList(growable: false);
       if (_isDisposed) return;
       taxonomiesStreamValue.addValue(filtered);

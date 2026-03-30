@@ -91,21 +91,21 @@ abstract class TenantAdminOrganizationsRepositoryContract {
   }) async {
     final organizations = await fetchOrganizations();
     if (page.value <= 0 || pageSize.value <= 0) {
-      return TenantAdminPagedResult<TenantAdminOrganization>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
     final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= organizations.length) {
-      return TenantAdminPagedResult<TenantAdminOrganization>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
     final endIndex =
         math.min(startIndex + pageSize.value, organizations.length);
-    return TenantAdminPagedResult<TenantAdminOrganization>(
+    return tenantAdminPagedResultFromRaw(
       items: organizations.sublist(startIndex, endIndex),
       hasMore: endIndex < organizations.length,
     );

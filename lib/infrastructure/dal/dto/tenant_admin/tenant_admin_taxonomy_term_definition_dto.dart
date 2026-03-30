@@ -25,7 +25,7 @@ class TenantAdminTaxonomyTermDefinitionDTO {
   }
 
   TenantAdminTaxonomyTermDefinition toDomain() {
-    return TenantAdminTaxonomyTermDefinition(
+    return tenantAdminTaxonomyTermDefinitionFromRaw(
       id: id,
       taxonomyId: taxonomyId,
       slug: slug,

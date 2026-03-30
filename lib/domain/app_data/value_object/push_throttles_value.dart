@@ -1,12 +1,37 @@
-class PushThrottlesValue {
+import 'dart:convert';
+
+import 'package:value_object_pattern/value_object.dart';
+
+class PushThrottlesValue extends ValueObject<Map<String, dynamic>> {
   PushThrottlesValue([Map<String, dynamic>? rawMap])
-      : _value = Map<String, dynamic>.unmodifiable(
-          rawMap == null
-              ? const <String, dynamic>{}
-              : Map<String, dynamic>.from(rawMap),
+      : super(defaultValue: const <String, dynamic>{}, isRequired: false) {
+    parse(rawMap == null ? null : jsonEncode(rawMap));
+  }
+
+  @override
+  Map<String, dynamic> doParse(dynamic parseValue) {
+    if (parseValue is Map) {
+      return Map<String, dynamic>.unmodifiable(
+        Map<String, dynamic>.from(parseValue),
+      );
+    }
+
+    if (parseValue is String) {
+      final normalized = parseValue.trim();
+      if (normalized.isEmpty) {
+        return defaultValue;
+      }
+
+      final decoded = jsonDecode(normalized);
+      if (decoded is Map) {
+        return Map<String, dynamic>.unmodifiable(
+          Map<String, dynamic>.from(decoded),
         );
+      }
+    }
 
-  final Map<String, dynamic> _value;
+    return defaultValue;
+  }
 
-  Map<String, dynamic> get value => _value;
+  dynamic operator [](String key) => value[key];
 }

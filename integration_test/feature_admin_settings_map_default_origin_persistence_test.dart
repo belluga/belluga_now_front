@@ -3,6 +3,7 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
@@ -442,8 +443,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000));
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
 
@@ -454,15 +455,15 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(Object meters) async {
-    _maxRadiusMetersStreamValue.addValue(meters is num ? meters.toDouble() : (meters as dynamic).value as double);
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMetersStreamValue.addValue(meters);
   }
 
   @override
@@ -472,8 +473,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 }
 

@@ -205,7 +205,7 @@ class _FakeLandlordTenantsRepository
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
     return [
-      LandlordTenantOption(
+      landlordTenantOptionFromRaw(
         id: 'tenant-guarappari',
         name: 'Guarappari',
         mainDomain: 'guarappari.local.test',
@@ -319,14 +319,14 @@ class _FakeTenantAdminEventsRepository
       archived: archived?.value ?? false,
     );
     if (page.value <= 0 || pageSize.value <= 0) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
     final start = (page.value - 1) * pageSize.value;
     if (start >= filtered.length) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -334,7 +334,7 @@ class _FakeTenantAdminEventsRepository
     final end = (start + pageSize.value) > filtered.length
         ? filtered.length
         : (start + pageSize.value);
-    return TenantAdminPagedResult<TenantAdminEvent>(
+    return tenantAdminPagedResultFromRaw(
       items: filtered.sublist(start, end),
       hasMore: end < filtered.length,
     );
@@ -421,7 +421,7 @@ class _NoopTaxonomiesRepository
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -441,7 +441,7 @@ class _NoopTaxonomiesRepository
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

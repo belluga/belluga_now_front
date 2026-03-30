@@ -11,17 +11,19 @@ import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
@@ -55,6 +57,12 @@ import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'support/integration_test_bootstrap.dart';
+
+TenantAdminLowercaseTokenValue _tokenValue(String raw) {
+  final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
 
 void main() {
   developer.postEvent(
@@ -152,7 +160,9 @@ void main() {
       try {
         await adminAuthRepository.init();
         await adminAuthRepository.loginWithEmailPassword(
-            adminEmail, adminPassword);
+          landlordAuthRepoString(adminEmail),
+          landlordAuthRepoString(adminPassword),
+        );
         expect(adminAuthRepository.hasValidSession, isTrue);
 
         final tenantsRepository = LandlordTenantsRepository(
@@ -174,12 +184,12 @@ void main() {
             'IT Asset Type $uniqueSeed',
           ),
           capabilities: TenantAdminStaticProfileTypeCapabilities(
-            isPoiEnabled: true,
-            hasBio: false,
-            hasTaxonomies: false,
-            hasAvatar: true,
-            hasCover: true,
-            hasContent: false,
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(false),
           ),
         );
         createdStaticProfileType = true;
@@ -189,7 +199,7 @@ void main() {
           displayName: TenantAdminStaticAssetsRepoString.fromRaw(
             assetDisplayName,
           ),
-          location: TenantAdminLocation(
+          location: tenantAdminLocationFromRaw(
             latitude: -20.611121,
             longitude: -40.498617,
           ),
@@ -202,23 +212,27 @@ void main() {
         settingsController.updateMapFilterItemLabel(0, assetFilterLabel);
         settingsController.updateMapFilterItemRule(
           0,
-          settingsController.mapUiSettingsStreamValue.value.filters[0].copyWith(
-            query: TenantAdminMapFilterQuery(
-              source: TenantAdminMapFilterSource.staticAsset,
-              typeValues: TenantAdminLowercaseStringListValue([assetType]),
-            ),
-          ),
+          settingsController.mapUiSettingsStreamValue.value.filters
+              .elementAt(0)
+              .copyWith(
+                query: TenantAdminMapFilterQuery(
+                  source: TenantAdminMapFilterSource.staticAsset,
+                  typeValues: [_tokenValue(assetType)],
+                ),
+              ),
         );
         settingsController.addMapFilterItem();
         settingsController.updateMapFilterItemKey(1, eventFilterKey);
         settingsController.updateMapFilterItemLabel(1, eventFilterLabel);
         settingsController.updateMapFilterItemRule(
           1,
-          settingsController.mapUiSettingsStreamValue.value.filters[1].copyWith(
-            query: TenantAdminMapFilterQuery(
-              source: TenantAdminMapFilterSource.event,
-            ),
-          ),
+          settingsController.mapUiSettingsStreamValue.value.filters
+              .elementAt(1)
+              .copyWith(
+                query: TenantAdminMapFilterQuery(
+                  source: TenantAdminMapFilterSource.event,
+                ),
+              ),
         );
         await settingsController.saveMapFilters();
 
@@ -801,8 +815,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   final AppData _appData;
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 1000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
   AppData get appData => _appData;
@@ -817,19 +831,19 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadiusMetersStreamValue.addValue(meters);
   }
 }
@@ -846,7 +860,7 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
   String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'integration-device';
@@ -867,35 +881,37 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _StaticUserLocationRepository implements UserLocationRepositoryContract {
@@ -940,7 +956,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -948,7 +964,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> startTracking({
@@ -968,31 +984,36 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
-      true;
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       null;
 }

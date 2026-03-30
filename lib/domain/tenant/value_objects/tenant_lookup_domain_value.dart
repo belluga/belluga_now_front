@@ -11,4 +11,18 @@ class TenantLookupDomainValue extends GenericStringValue {
   String doParse(String? parseValue) {
     return (parseValue ?? '').trim().toLowerCase();
   }
+
+  factory TenantLookupDomainValue.fromRaw(
+    Object? raw, {
+    String defaultValue = '',
+    bool isRequired = true,
+  }) {
+    final value = TenantLookupDomainValue(
+      defaultValue: defaultValue,
+      isRequired: isRequired,
+      minLenght: 1,
+    );
+    value.parse(raw?.toString());
+    return value;
+  }
 }

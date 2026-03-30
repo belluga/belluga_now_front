@@ -26,7 +26,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_va
 import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
@@ -52,16 +52,31 @@ class InvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<List<InviteModel>> fetchInvites(
-      {int page = 1, int pageSize = 20}) async {
-    final response =
-        await _backend.fetchInvites(page: page, pageSize: pageSize);
+      {InvitesRepositoryContractPrimInt? page,
+      InvitesRepositoryContractPrimInt? pageSize}) async {
+    final resolvedPage = page ??
+        invitesRepoInt(
+          1,
+          defaultValue: 1,
+          isRequired: true,
+        );
+    final resolvedPageSize = pageSize ??
+        invitesRepoInt(
+          20,
+          defaultValue: 20,
+          isRequired: true,
+        );
+    final response = await _backend.fetchInvites(
+      page: resolvedPage.value,
+      pageSize: resolvedPageSize.value,
+    );
     final invitesRaw = response['invites'];
     final invites = _responseDecoder
         .decodeInviteDtos(invitesRaw)
         .map((dto) => dto.toDomain())
         .toList(growable: false);
 
-    if (page == 1) {
+    if (resolvedPage.value == 1) {
       pendingInvitesStreamValue.addValue(invites);
     }
 
@@ -72,19 +87,21 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<InviteRuntimeSettings> fetchSettings() async {
     final response = await _backend.fetchSettings();
     final settings = InviteRuntimeSettings(
-      tenantIdValue: _buildTenantIdValueOrNull(_stringOrNull(response['tenant_id'])),
+      tenantIdValue:
+          _buildTenantIdValueOrNull(_stringOrNull(response['tenant_id'])),
       limitValues: InviteRateLimitsValue(_parseIntMap(response['limits'])),
       cooldownValues: InviteCooldownsValue(_parseIntMap(response['cooldowns'])),
-      overQuotaMessageValue:
-          _buildInviteMessageValueOrNull(_stringOrNull(response['over_quota_message'])),
+      overQuotaMessageValue: _buildInviteMessageValueOrNull(
+          _stringOrNull(response['over_quota_message'])),
     );
     settingsStreamValue.addValue(settings);
     return settings;
   }
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
-    final response = await _backend.acceptInvite(inviteId);
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
+    final response = await _backend.acceptInvite(inviteId.value);
     await fetchInvites();
     return InviteAcceptResult(
       inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
@@ -109,21 +126,24 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async {
-    final response = await _backend.declineInvite(inviteId);
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
+    final response = await _backend.declineInvite(inviteId.value);
     await fetchInvites();
     return InviteDeclineResult(
       inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
       statusValue: InviteDeclineStatusValue(_stringOrEmpty(response['status'])),
-      groupHasOtherPendingValue:
-          InviteHasOtherPendingValue(response['group_has_other_pending'] == true),
-      declinedAtValue: InviteDeclinedAtValue(_parseDateTime(response['declined_at'])),
+      groupHasOtherPendingValue: InviteHasOtherPendingValue(
+          response['group_has_other_pending'] == true),
+      declinedAtValue:
+          InviteDeclinedAtValue(_parseDateTime(response['declined_at'])),
     );
   }
 
   @override
-  Future<InviteMaterializeResult> materializeShareCode(String code) async {
-    final response = await _backend.materializeShareCode(code);
+  Future<InviteMaterializeResult> materializeShareCode(
+      InvitesRepositoryContractPrimString code) async {
+    final response = await _backend.materializeShareCode(code.value);
     return InviteMaterializeResult(
       inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
       statusValue: _buildMaterializationStatusValue(
@@ -142,8 +162,9 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  Future<InviteModel?> previewShareCode(String code) async {
-    final response = await _backend.fetchShareCodePreview(code);
+  Future<InviteModel?> previewShareCode(
+      InvitesRepositoryContractPrimString code) async {
+    final response = await _backend.fetchShareCodePreview(code.value);
     final inviteRaw = response['invite'];
     final decoded = _responseDecoder.decodeRequiredInviteDto(
       inviteRaw,
@@ -154,9 +175,9 @@ class InvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async {
-    final importItems = _buildContactImportItems(contacts);
+    final importItems = _buildContactImportItems(contacts.items);
     if (importItems.isEmpty) {
       return const <InviteContactMatch>[];
     }
@@ -170,23 +191,26 @@ class InvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
+    final normalizedOccurrenceId = occurrenceId?.value.trim();
+    final normalizedAccountProfileId = accountProfileId?.value.trim();
     final response = await _backend.createShareCode({
       'target_ref': {
-        'event_id': eventId,
-        if (occurrenceId != null && occurrenceId.trim().isNotEmpty)
-          'occurrence_id': occurrenceId.trim(),
+        'event_id': eventId.value,
+        if (normalizedOccurrenceId != null && normalizedOccurrenceId.isNotEmpty)
+          'occurrence_id': normalizedOccurrenceId,
       },
-      if (accountProfileId != null && accountProfileId.trim().isNotEmpty)
-        'account_profile_id': accountProfileId.trim(),
+      if (normalizedAccountProfileId != null &&
+          normalizedAccountProfileId.isNotEmpty)
+        'account_profile_id': normalizedAccountProfileId,
     });
 
     final targetRef = _responseDecoder.decodeShareCodeTargetRef(
       response['target_ref'],
-      fallbackEventId: eventId,
+      fallbackEventId: eventId.value,
     );
 
     return InviteShareCodeResult(
@@ -199,26 +223,28 @@ class InvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<void> sendInvites(
-    String eventId,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
   }) async {
     if (recipients.isEmpty) {
       return;
     }
 
+    final normalizedOccurrenceId = occurrenceId?.value.trim();
+    final normalizedMessage = message?.value.trim();
     final response = await _backend.sendInvites({
       'target_ref': {
-        'event_id': eventId,
-        if (occurrenceId != null && occurrenceId.trim().isNotEmpty)
-          'occurrence_id': occurrenceId.trim(),
+        'event_id': eventId.value,
+        if (normalizedOccurrenceId != null && normalizedOccurrenceId.isNotEmpty)
+          'occurrence_id': normalizedOccurrenceId,
       },
-      'recipients': recipients
+      'recipients': recipients.items
           .map((recipient) => {'receiver_user_id': recipient.id})
           .toList(growable: false),
-      if (message != null && message.trim().isNotEmpty)
-        'message': message.trim(),
+      if (normalizedMessage != null && normalizedMessage.isNotEmpty)
+        'message': normalizedMessage,
     });
 
     final acknowledgedRecipientIds = <String>{
@@ -238,15 +264,14 @@ class InvitesRepository extends InvitesRepositoryContract
     };
     final now = DateTime.now();
 
-    for (final recipient in recipients) {
+    for (final recipient in recipients.items) {
       if (!acknowledgedRecipientIds.contains(recipient.id)) {
         continue;
       }
       existingByRecipient[recipient.id] = SentInviteStatus(
         friend: recipient,
         status: InviteStatus.pending,
-        sentAtValue:
-            existingByRecipient[recipient.id]?.sentAtValue ??
+        sentAtValue: existingByRecipient[recipient.id]?.sentAtValue ??
             (DateTimeValue()..parse(now.toIso8601String())),
         respondedAtValue: existingByRecipient[recipient.id]?.respondedAtValue,
       );
@@ -259,7 +284,8 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventId) async {
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      InvitesRepositoryContractPrimString eventId) async {
     return List<SentInviteStatus>.from(
       sentInvitesByEventStreamValue.value[eventId] ??
           const <SentInviteStatus>[],
@@ -278,13 +304,14 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   List<Map<String, String>> _buildContactImportItems(
-      List<ContactModel> contacts) {
+    List<ContactModel> contacts,
+  ) {
     final seen = <String>{};
     final items = <Map<String, String>>[];
 
     for (final contact in contacts) {
       for (final email in contact.emails) {
-        final normalized = email.trim().toLowerCase();
+        final normalized = email.value.trim().toLowerCase();
         if (normalized.isEmpty) {
           continue;
         }
@@ -297,7 +324,7 @@ class InvitesRepository extends InvitesRepositoryContract
       }
 
       for (final phone in contact.phones) {
-        final normalized = phone.replaceAll(RegExp(r'\D+'), '');
+        final normalized = phone.value.replaceAll(RegExp(r'\D+'), '');
         if (normalized.isEmpty) {
           continue;
         }

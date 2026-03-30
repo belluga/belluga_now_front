@@ -203,7 +203,7 @@ class _AccountProfileDetailScreenState
               runSpacing: 8,
               children: accountProfile.tags
                   .map((t) => Chip(
-                        label: Text(t),
+                        label: Text(t.value),
                         backgroundColor: colorScheme.secondaryContainer,
                       ))
                   .toList(),

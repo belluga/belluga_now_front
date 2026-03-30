@@ -11,12 +11,10 @@ typedef LandlordTenantOptionPrimDynamic = dynamic;
 
 class LandlordTenantOption {
   LandlordTenantOption({
-    required Object id,
-    required Object name,
-    required Object mainDomain,
-  })  : idValue = _parseId(id),
-        nameValue = _parseName(name),
-        mainDomainValue = _parseMainDomain(mainDomain);
+    required this.idValue,
+    required this.nameValue,
+    required this.mainDomainValue,
+  });
 
   final TenantIdValue idValue;
   final TenantNameValue nameValue;
@@ -25,44 +23,4 @@ class LandlordTenantOption {
   LandlordTenantOptionPrimString get id => idValue.value;
   LandlordTenantOptionPrimString get name => nameValue.value;
   LandlordTenantOptionPrimString get mainDomain => mainDomainValue.value;
-
-  @override
-  LandlordTenantOptionPrimBool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is LandlordTenantOption &&
-        other.idValue == idValue &&
-        other.nameValue == nameValue &&
-        other.mainDomainValue == mainDomainValue;
-  }
-
-  @override
-  LandlordTenantOptionPrimInt get hashCode =>
-      Object.hash(idValue, nameValue, mainDomainValue);
-
-  static TenantIdValue _parseId(Object raw) {
-    if (raw is TenantIdValue) {
-      return raw;
-    }
-    final value = TenantIdValue();
-    value.parse(raw.toString());
-    return value;
-  }
-
-  static TenantNameValue _parseName(Object raw) {
-    if (raw is TenantNameValue) {
-      return raw;
-    }
-    final value = TenantNameValue();
-    value.parse(raw.toString());
-    return value;
-  }
-
-  static AppDomainValue _parseMainDomain(Object raw) {
-    if (raw is AppDomainValue) {
-      return raw;
-    }
-    final value = AppDomainValue();
-    value.parse(raw.toString());
-    return value;
-  }
 }

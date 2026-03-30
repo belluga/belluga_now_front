@@ -7,38 +7,28 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 class PoiFilterServerQuery {
   PoiFilterServerQuery({
     this.sourceValue,
-    Set<PoiFilterTypeValue>? typeValues,
-    Set<PoiFilterKeyValue>? categoryKeyValues,
-    Set<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
-    Set<PoiTagValue>? tagValues,
-  })  : typeValues = Set<PoiFilterTypeValue>.unmodifiable(
-          typeValues ?? const <PoiFilterTypeValue>{},
+    List<PoiFilterTypeValue>? typeValues,
+    List<PoiFilterKeyValue>? categoryKeyValues,
+    List<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
+    List<PoiTagValue>? tagValues,
+  })  : typeValues = List<PoiFilterTypeValue>.unmodifiable(
+          typeValues ?? const <PoiFilterTypeValue>[],
         ),
-        categoryKeyValues = Set<PoiFilterKeyValue>.unmodifiable(
-          categoryKeyValues ?? const <PoiFilterKeyValue>{},
+        categoryKeyValues = List<PoiFilterKeyValue>.unmodifiable(
+          categoryKeyValues ?? const <PoiFilterKeyValue>[],
         ),
-        taxonomyTokenValues = Set<PoiFilterTaxonomyTokenValue>.unmodifiable(
-          taxonomyTokenValues ?? const <PoiFilterTaxonomyTokenValue>{},
+        taxonomyTokenValues = List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+          taxonomyTokenValues ?? const <PoiFilterTaxonomyTokenValue>[],
         ),
-        tagValues = Set<PoiTagValue>.unmodifiable(
-          tagValues ?? const <PoiTagValue>{},
+        tagValues = List<PoiTagValue>.unmodifiable(
+          tagValues ?? const <PoiTagValue>[],
         );
 
   final PoiFilterSourceValue? sourceValue;
-  final Set<PoiFilterTypeValue> typeValues;
-  final Set<PoiFilterKeyValue> categoryKeyValues;
-  final Set<PoiFilterTaxonomyTokenValue> taxonomyTokenValues;
-  final Set<PoiTagValue> tagValues;
-
-  String? get source => _readNullableValue(sourceValue);
-
-  Set<String> get types => _readTypeValues(typeValues);
-
-  Set<String> get categoryKeys => _readCategoryKeyValues(categoryKeyValues);
-
-  Set<String> get taxonomy => _readTaxonomyValues(taxonomyTokenValues);
-
-  Set<String> get tags => _readTagValues(tagValues);
+  final List<PoiFilterTypeValue> typeValues;
+  final List<PoiFilterKeyValue> categoryKeyValues;
+  final List<PoiFilterTaxonomyTokenValue> taxonomyTokenValues;
+  final List<PoiTagValue> tagValues;
 
   bool get isEmpty =>
       sourceValue == null &&
@@ -46,46 +36,4 @@ class PoiFilterServerQuery {
       categoryKeyValues.isEmpty &&
       taxonomyTokenValues.isEmpty &&
       tagValues.isEmpty;
-
-  static Set<String> _readTypeValues(Set<PoiFilterTypeValue> values) {
-    return Set<String>.unmodifiable(
-      values
-          .map((value) => value.value.trim().toLowerCase())
-          .where((value) => value.isNotEmpty),
-    );
-  }
-
-  static Set<String> _readCategoryKeyValues(Set<PoiFilterKeyValue> values) {
-    return Set<String>.unmodifiable(
-      values
-          .map((value) => value.value.trim().toLowerCase())
-          .where((value) => value.isNotEmpty),
-    );
-  }
-
-  static Set<String> _readTaxonomyValues(
-    Set<PoiFilterTaxonomyTokenValue> values,
-  ) {
-    return Set<String>.unmodifiable(
-      values
-          .map((value) => value.value.trim().toLowerCase())
-          .where((value) => value.isNotEmpty),
-    );
-  }
-
-  static Set<String> _readTagValues(Set<PoiTagValue> values) {
-    return Set<String>.unmodifiable(
-      values
-          .map((value) => value.value.trim().toLowerCase())
-          .where((value) => value.isNotEmpty),
-    );
-  }
-
-  static String? _readNullableValue(PoiFilterSourceValue? valueObject) {
-    final raw = valueObject?.value;
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
-    }
-    return raw;
-  }
 }

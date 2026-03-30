@@ -15,7 +15,6 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -28,13 +27,15 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
@@ -376,25 +377,32 @@ void _registerTenantBootstrapDependencies({
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
-    required this.hasPendingInvites,
+    required bool hasPendingInvites,
     this.previewInvite,
-  });
+  }) : _hasPendingInvites = hasPendingInvites;
 
   @override
-  final bool hasPendingInvites;
+  InvitesRepositoryContractPrimBool get hasPendingInvites =>
+      InvitesRepositoryContractPrimBool.fromRaw(
+        _hasPendingInvites,
+        defaultValue: false,
+        isRequired: true,
+      );
+  final bool _hasPendingInvites;
   final InviteModel? previewInvite;
 
   @override
   Future<void> init() async {
     pendingInvitesStreamValue.addValue(
-      hasPendingInvites ? [_buildInvite()] : const [],
+      _hasPendingInvites ? [_buildInvite()] : const [],
     );
   }
 
   @override
   Future<List<InviteModel>> fetchInvites(
-      {int page = 1, int pageSize = 20}) async {
-    return hasPendingInvites ? [_buildInvite()] : const [];
+      {InvitesRepositoryContractPrimInt? page,
+      InvitesRepositoryContractPrimInt? pageSize}) async {
+    return _hasPendingInvites ? [_buildInvite()] : const [];
   }
 
   @override
@@ -408,9 +416,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteAcceptResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -420,60 +429,60 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteDeclineResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'declined',
       groupHasOtherPending: false,
     );
   }
 
   @override
-  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+  Future<InviteMaterializeResult> materializeShareCode(
+      InvitesRepositoryContractPrimString code) async {
     return buildInviteMaterializeResult(
-      inviteId: hasPendingInvites ? _buildInvite().id : '',
-      status: hasPendingInvites ? 'pending' : 'expired',
+      inviteId: _hasPendingInvites ? _buildInvite().id : '',
+      status: _hasPendingInvites ? 'pending' : 'expired',
       creditedAcceptance: false,
       attendancePolicy: 'free_confirmation_only',
     );
   }
 
   @override
-  Future<InviteModel?> previewShareCode(String code) async {
+  Future<InviteModel?> previewShareCode(
+      InvitesRepositoryContractPrimString code) async {
     return previewInvite;
   }
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
     return buildInviteShareCodeResult(
       code: 'CODE123',
-      eventId: eventId,
-      occurrenceId: occurrenceId,
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value,
     );
   }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async =>
       const [];
 
   @override
-  Future<void> sendInvites(
-    String eventId,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
-  }) async {}
+  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
+      InviteRecipients recipients,
+      {InvitesRepositoryContractPrimString? occurrenceId,
+      InvitesRepositoryContractPrimString? message}) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
-    String eventId,
-  ) async =>
+          InvitesRepositoryContractPrimString eventId) async =>
       const [];
 }
 
@@ -483,7 +492,7 @@ class _FakeFriendsRepository implements FriendsRepositoryContract {
       StreamValue<List<InviteFriendResume>>(defaultValue: const []);
 
   @override
-  Future<void> fetchAndCacheFriends({bool forceRefresh = false}) async {}
+  Future<void> fetchAndCacheFriends({Object? forceRefresh}) async {}
 
   @override
   Future<List<Friend>> fetchFriends() async => const [];
@@ -491,11 +500,14 @@ class _FakeFriendsRepository implements FriendsRepositoryContract {
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: const {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+          defaultValue: const {});
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {}
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -504,47 +516,55 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  bool isEventConfirmed(String eventId) => false;
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+          UserEventsRepositoryContractPrimString eventId) =>
+      userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> refreshConfirmedEventIds() async {}
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {}
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
-      true;
+      telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       const EventTrackerTimedEventHandle('handle');
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
@@ -554,11 +574,11 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   final AppData appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   ThemeMode get themeMode => ThemeMode.light;
@@ -571,10 +591,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract {
@@ -586,7 +606,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Object get backend => Object();
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   String get userToken => authorized ? 'token' : '';
@@ -610,35 +630,37 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 InviteModel _buildInvite() {

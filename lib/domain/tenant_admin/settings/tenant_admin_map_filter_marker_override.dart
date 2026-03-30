@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -77,20 +78,20 @@ class TenantAdminMapFilterMarkerOverride {
     }
   }
 
-  Map<String, dynamic> toJson() {
+  TenantAdminDynamicMapValue toJson() {
     if (mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
-      return {
+      return TenantAdminDynamicMapValue({
         'mode': mode.apiValue,
         'icon': icon,
         'color': color,
         'icon_color': iconColor,
-      };
+      });
     }
 
-    return {
+    return TenantAdminDynamicMapValue({
       'mode': mode.apiValue,
       'image_uri': imageUri,
-    };
+    });
   }
 
   static TenantAdminHexColorValue _defaultIconColorValue() {

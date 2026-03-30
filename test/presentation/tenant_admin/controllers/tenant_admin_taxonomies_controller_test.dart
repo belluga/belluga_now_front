@@ -13,7 +13,7 @@ void main() {
     final repository = _FakeTaxonomiesRepository(
       taxonomies: List<TenantAdminTaxonomyDefinition>.generate(
         23,
-        (index) => TenantAdminTaxonomyDefinition(
+        (index) => tenantAdminTaxonomyDefinitionFromRaw(
           id: 'tax-$index',
           slug: 'slug-$index',
           name: 'Tax $index',
@@ -45,7 +45,7 @@ void main() {
       termsByTaxonomy: {
         'tax-a': List<TenantAdminTaxonomyTermDefinition>.generate(
           22,
-          (index) => TenantAdminTaxonomyTermDefinition(
+          (index) => tenantAdminTaxonomyTermDefinitionFromRaw(
             id: 'term-$index',
             taxonomyId: 'tax-a',
             slug: 'slug-$index',
@@ -74,7 +74,7 @@ void main() {
       () async {
     final repository = _FakeTaxonomiesRepository(
       taxonomies: [
-        TenantAdminTaxonomyDefinition(
+        tenantAdminTaxonomyDefinitionFromRaw(
           id: 'tax-a',
           slug: 'slug-a',
           name: 'Tax A',
@@ -85,7 +85,7 @@ void main() {
       ],
       termsByTaxonomy: {
         'tax-a': [
-          TenantAdminTaxonomyTermDefinition(
+          tenantAdminTaxonomyTermDefinitionFromRaw(
             id: 'term-a',
             taxonomyId: 'tax-a',
             slug: 'term-a',
@@ -104,7 +104,7 @@ void main() {
     expect(controller.taxonomiesStreamValue.value?.first.slug, 'slug-a');
 
     repository.taxonomies = [
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-b',
         slug: 'slug-b',
         name: 'Tax B',
@@ -125,7 +125,7 @@ void main() {
       taxonomies: [],
       termsByTaxonomy: {
         'tax-a': [
-          TenantAdminTaxonomyTermDefinition(
+          tenantAdminTaxonomyTermDefinitionFromRaw(
             id: 'term-a',
             taxonomyId: 'tax-a',
             slug: 'term-a',
@@ -145,7 +145,7 @@ void main() {
 
     repository.termsByTaxonomy = {
       'tax-a': [
-        TenantAdminTaxonomyTermDefinition(
+        tenantAdminTaxonomyTermDefinitionFromRaw(
           id: 'term-b',
           taxonomyId: 'tax-a',
           slug: 'term-b',
@@ -174,33 +174,33 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {
     throw UnimplementedError();
   }
@@ -212,20 +212,21 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final entries = await fetchTaxonomies();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= entries.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= entries.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < entries.length ? start + pageSize : entries.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    final end = start + pageSize.value < entries.length
+        ? start + pageSize.value
+        : entries.length;
+    return tenantAdminPagedResultFromRaw(
       items: entries.sublist(start, end),
       hasMore: end < entries.length,
     );
@@ -233,28 +234,29 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async =>
-      termsByTaxonomy[taxonomyId] ?? [];
+      termsByTaxonomy[taxonomyId.value] ?? [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= terms.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < terms.length ? start + pageSize : terms.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final end = start + pageSize.value < terms.length
+        ? start + pageSize.value
+        : terms.length;
+    return tenantAdminPagedResultFromRaw(
       items: terms.sublist(start, end),
       hasMore: end < terms.length,
     );
@@ -262,22 +264,22 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) {
     throw UnimplementedError();
   }
@@ -307,7 +309,10 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }

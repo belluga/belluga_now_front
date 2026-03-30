@@ -264,7 +264,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {
     _hasValidSession = true;
   }
 
@@ -279,7 +281,7 @@ class _FakeLandlordTenantsRepository
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
     return [
-      LandlordTenantOption(
+      landlordTenantOptionFromRaw(
         id: 'tenant-guarappari',
         name: 'Guarappari',
         mainDomain: 'guarappari.local.test',

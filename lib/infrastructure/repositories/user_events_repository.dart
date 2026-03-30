@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/user_events_backend/laravel_user_events_backend.dart';
@@ -55,25 +56,37 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   /// Stream of confirmed event IDs
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: const {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+    defaultValue: const <UserEventsRepositoryContractPrimString>{},
+  );
 
   /// In-memory storage for confirmed event IDs
   /// We use the stream value as the source of truth
-  Set<String> get _confirmedEventIds => confirmedEventIdsStream.value;
+  Set<UserEventsRepositoryContractPrimString> get _confirmedEventIds =>
+      confirmedEventIdsStream.value;
 
   @override
   Future<void> refreshConfirmedEventIds() async {
     final response = await _backend.fetchConfirmedEventIds();
     final eventIdsRaw = response['confirmed_event_ids'];
     if (eventIdsRaw is! List) {
-      confirmedEventIdsStream.addValue(const {});
+      confirmedEventIdsStream.addValue(
+        const <UserEventsRepositoryContractPrimString>{},
+      );
       return;
     }
 
     final next = eventIdsRaw
-        .map((item) => item?.toString().trim() ?? '')
-        .where((value) => value.isNotEmpty)
+        .map(
+          (item) => userEventsRepoString(
+            item,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        )
+        .where((value) => value.value.isNotEmpty)
         .toSet();
     confirmedEventIdsStream.addValue(next);
   }
@@ -127,19 +140,33 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {
-    await _backend.confirmAttendance(eventId: eventId);
+  Future<void> confirmEventAttendance(
+    UserEventsRepositoryContractPrimString eventId,
+  ) async {
+    await _backend.confirmAttendance(eventId: eventId.value);
     await refreshConfirmedEventIds();
   }
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {
-    await _backend.unconfirmAttendance(eventId: eventId);
+  Future<void> unconfirmEventAttendance(
+    UserEventsRepositoryContractPrimString eventId,
+  ) async {
+    await _backend.unconfirmAttendance(eventId: eventId.value);
     await refreshConfirmedEventIds();
   }
 
   @override
-  bool isEventConfirmed(String eventId) {
-    return _confirmedEventIds.contains(eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+    UserEventsRepositoryContractPrimString eventId,
+  ) {
+    final normalized = eventId.value;
+    final isConfirmed = _confirmedEventIds.any(
+      (confirmed) => confirmed.value == normalized,
+    );
+    return userEventsRepoBool(
+      isConfirmed,
+      defaultValue: false,
+      isRequired: true,
+    );
   }
 }

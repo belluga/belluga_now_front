@@ -2,7 +2,9 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_terms.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -96,10 +98,14 @@ class CityMapRepository extends CityMapRepositoryContract {
           ),
         )
         .toList(growable: false);
+    final stackItems = CityPoiStackItems();
+    for (final item in seeded) {
+      stackItems.add(item);
+    }
     return seeded
         .map(
           (item) => item.copyWith(
-            stackItems: seeded,
+            stackItems: stackItems,
           ),
         )
         .toList(growable: false);
@@ -185,10 +191,14 @@ class CityMapRepository extends CityMapRepositoryContract {
     final taxonomyGroups = groupedTaxonomy.entries.map((entry) {
       final terms = List<PoiFilterTaxonomyTerm>.from(entry.value)
         ..sort((left, right) => left.label.compareTo(right.label));
+      final taxonomyTerms = PoiFilterTaxonomyTerms();
+      for (final term in terms) {
+        taxonomyTerms.add(term);
+      }
       return PoiFilterTaxonomyGroup(
         typeValue: _parseTaxonomyTypeValue(entry.key),
         labelValue: _parseLabelValue(_humanizeTaxonomyType(entry.key)),
-        terms: terms,
+        terms: taxonomyTerms,
       );
     }).toList(growable: false)
       ..sort((left, right) => left.label.compareTo(right.label));
@@ -288,8 +298,8 @@ class CityMapRepository extends CityMapRepositoryContract {
     return value;
   }
 
-  Set<PoiTagValue> _parseTagValues(Iterable<String> rawValues) {
-    final values = <PoiTagValue>{};
+  List<PoiTagValue> _parseTagValues(Iterable<String> rawValues) {
+    final values = <PoiTagValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -299,11 +309,11 @@ class CityMapRepository extends CityMapRepositoryContract {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiTagValue>.unmodifiable(values);
+    return List<PoiTagValue>.unmodifiable(values.toSet().toList());
   }
 
-  Set<PoiFilterTypeValue> _parseTypeValues(Iterable<String> rawValues) {
-    final values = <PoiFilterTypeValue>{};
+  List<PoiFilterTypeValue> _parseTypeValues(Iterable<String> rawValues) {
+    final values = <PoiFilterTypeValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -313,11 +323,11 @@ class CityMapRepository extends CityMapRepositoryContract {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterTypeValue>.unmodifiable(values);
+    return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
   }
 
-  Set<PoiFilterKeyValue> _parseCategoryKeyValues(Iterable<String> rawValues) {
-    final values = <PoiFilterKeyValue>{};
+  List<PoiFilterKeyValue> _parseCategoryKeyValues(Iterable<String> rawValues) {
+    final values = <PoiFilterKeyValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -327,13 +337,13 @@ class CityMapRepository extends CityMapRepositoryContract {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterKeyValue>.unmodifiable(values);
+    return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
   }
 
-  Set<PoiFilterTaxonomyTokenValue> _parseTaxonomyValues(
+  List<PoiFilterTaxonomyTokenValue> _parseTaxonomyValues(
     Iterable<String> rawValues,
   ) {
-    final values = <PoiFilterTaxonomyTokenValue>{};
+    final values = <PoiFilterTaxonomyTokenValue>[];
     for (final entry in rawValues) {
       final normalized = entry.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -343,7 +353,9 @@ class CityMapRepository extends CityMapRepositoryContract {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+    return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+      values.toSet().toList(),
+    );
   }
 
   PoiFilterTaxonomyTypeValue _parseTaxonomyTypeValue(String raw) {

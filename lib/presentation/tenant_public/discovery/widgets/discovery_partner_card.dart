@@ -331,7 +331,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        tag,
+                        tag.value,
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.white,

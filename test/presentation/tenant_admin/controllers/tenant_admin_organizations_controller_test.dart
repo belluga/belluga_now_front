@@ -9,7 +9,7 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   test('reloads organizations when tenant scope changes', () async {
     final repository = _FakeOrganizationsRepository([
-      TenantAdminOrganization(id: 'org-1', name: 'Tenant A'),
+      tenantAdminOrganizationFromRaw(id: 'org-1', name: 'Tenant A'),
     ]);
     final tenantScope = _FakeTenantScope('tenant-a.test');
     final controller = TenantAdminOrganizationsController(
@@ -21,7 +21,7 @@ void main() {
     expect(controller.organizationsStreamValue.value?.first.name, 'Tenant A');
 
     repository.organizations = [
-      TenantAdminOrganization(id: 'org-2', name: 'Tenant B'),
+      tenantAdminOrganizationFromRaw(id: 'org-2', name: 'Tenant B'),
     ];
     tenantScope.selectTenantDomain('tenant-b.test');
     await Future<void>.delayed(Duration.zero);
@@ -66,7 +66,7 @@ class _FakeOrganizationsRepository
     final all = await fetchOrganizations();
     final start = (page.value - 1) * pageSize.value;
     if (page.value <= 0 || pageSize.value <= 0 || start >= all.length) {
-      return TenantAdminPagedResult<TenantAdminOrganization>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
@@ -74,7 +74,7 @@ class _FakeOrganizationsRepository
     final end = start + pageSize.value < all.length
         ? start + pageSize.value
         : all.length;
-    return TenantAdminPagedResult<TenantAdminOrganization>(
+    return tenantAdminPagedResultFromRaw(
       items: all.sublist(start, end),
       hasMore: end < all.length,
     );
@@ -137,7 +137,10 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }

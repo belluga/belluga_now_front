@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_query.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -14,7 +15,7 @@ class TenantAdminMapFilterCatalogItem {
     this.markerOverride,
     TenantAdminMapFilterQuery? query,
   })  : overrideMarkerValue =
-            overrideMarkerValue ?? const TenantAdminFlagValue(false),
+            overrideMarkerValue ?? TenantAdminFlagValue(false),
         query = query ?? TenantAdminMapFilterQuery();
 
   final TenantAdminLowercaseTokenValue keyValue;
@@ -53,15 +54,15 @@ class TenantAdminMapFilterCatalogItem {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
+  TenantAdminDynamicMapValue toJson() {
+    return TenantAdminDynamicMapValue({
       'key': key,
       'label': label,
       if (imageUri != null) 'image_uri': imageUri,
       'override_marker': overrideMarker,
       if (overrideMarker && markerOverride?.isValid == true)
-        'marker_override': markerOverride!.toJson(),
-      if (!query.isEmpty) 'query': query.toJson(),
-    };
+        'marker_override': markerOverride!.toJson().value,
+      if (!query.isEmpty) 'query': query.toJson().value,
+    });
   }
 }

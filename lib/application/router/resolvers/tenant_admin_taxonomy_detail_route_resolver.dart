@@ -27,6 +27,12 @@ class TenantAdminTaxonomyDetailRouteResolver
       );
     }
 
-    return _taxonomiesRepository.fetchTaxonomy(taxonomyId.trim());
+    return _taxonomiesRepository.fetchTaxonomy(
+      tenantAdminTaxRepoString(
+        taxonomyId.trim(),
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 }

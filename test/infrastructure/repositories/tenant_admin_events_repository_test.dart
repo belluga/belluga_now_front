@@ -15,6 +15,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 void main() {
   TenantAdminEventsRepoString _repoText(String value) {
@@ -80,10 +81,19 @@ void main() {
 
     final created = await repository.createEvent(
       draft: _buildDraft(
-        taxonomyTerms: [
-          TenantAdminTaxonomyTerm(type: 'music_genre', value: 'rock'),
-          TenantAdminTaxonomyTerm(type: 'audience', value: 'families'),
-        ],
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          terms.add(
+            tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+          );
+          terms.add(
+            tenantAdminTaxonomyTermFromRaw(
+              type: 'audience',
+              value: 'families',
+            ),
+          );
+          return terms;
+        })(),
       ),
     );
 
@@ -162,7 +172,6 @@ void main() {
         placeRef: TenantAdminEventPlaceRef(
           typeValue: tenantAdminRequiredText('account_profile'),
           idValue: tenantAdminRequiredText('profile-1'),
-          metadataValue: tenantAdminDynamicMap({'display_name': 'Main Host'}),
         ),
       ),
     );
@@ -211,7 +220,7 @@ void main() {
 
     await repository.createEvent(
       draft: _buildDraft(
-        coverUpload: TenantAdminMediaUpload(
+        coverUpload: tenantAdminMediaUploadFromRaw(
           bytes: Uint8List.fromList([1, 2, 3, 4]),
           fileName: 'event-cover.png',
           mimeType: 'image/png',
@@ -579,7 +588,8 @@ void main() {
 }
 
 TenantAdminEventDraft _buildDraft({
-  List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+  TenantAdminTaxonomyTerms taxonomyTerms =
+      const TenantAdminTaxonomyTerms.empty(),
   TenantAdminEventLocation? location,
   TenantAdminEventPlaceRef? placeRef,
   TenantAdminMediaUpload? coverUpload,
@@ -701,7 +711,7 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(
-      Map<AuthRepositoryContractParamString, Object?> data) async {}
+      UserCustomData data) async {}
 }
 
 class _MutableTenantScope implements TenantAdminTenantScopeContract {
@@ -729,7 +739,10 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String ? tenantDomain : (tenantDomain as dynamic).value as String).trim());
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 
 typedef TenantAdminTenantScopeContractPrimString = String;
 typedef TenantAdminTenantScopeContractPrimInt = int;
@@ -14,7 +15,6 @@ abstract class TenantAdminTenantScopeContract {
   TenantAdminTenantScopeContractPrimString? get selectedTenantDomain;
   TenantAdminTenantScopeContractPrimString get selectedTenantAdminBaseUrl;
 
-  void selectTenantDomain(
-      TenantAdminTenantScopeContractPrimString tenantDomain);
+  void selectTenantDomain(TenantLookupDomainValue tenantDomain);
   void clearSelectedTenantDomain();
 }

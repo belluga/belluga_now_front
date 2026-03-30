@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -200,6 +201,13 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
+  Map<String, String> _encodeTaxonomyEntry(ScheduleRepoTaxonomyEntry entry) {
+    return <String, String>{
+      'type': entry.type.value,
+      'term': entry.term.value,
+    };
+  }
+
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
@@ -214,7 +222,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -231,7 +239,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       tags: tags?.map((entry) => entry.value).toList(
             growable: false,
           ),
-      taxonomy: taxonomy?.map((entry) => entry.toBackendMap()).toList(
+      taxonomy: taxonomy?.map(_encodeTaxonomyEntry).toList(
             growable: false,
           ),
       confirmedOnly: confirmedOnly?.value ?? false,
@@ -243,7 +251,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     final events =
         pageDto.events.map((event) => event.toDomain()).toList(growable: false);
 
-    return PagedEventsResult(
+    return pagedEventsResultFromRaw(
       events: events,
       hasMore: pageDto.hasMore,
     );
@@ -324,7 +332,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -341,7 +349,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
           tags: tags?.map((entry) => entry.value).toList(
                 growable: false,
               ),
-          taxonomy: taxonomy?.map((entry) => entry.toBackendMap()).toList(
+          taxonomy: taxonomy?.map(_encodeTaxonomyEntry).toList(
                 growable: false,
               ),
           confirmedOnly: confirmedOnly?.value ?? false,
@@ -356,11 +364,11 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Stream<void> watchEventsSignal({
-    required void Function(EventDeltaModel delta) onDelta,
+    required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,

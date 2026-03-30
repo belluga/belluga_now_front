@@ -110,7 +110,7 @@ class _NoopEventsRepository
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
   }) async {
-    return TenantAdminPagedResult<TenantAdminEvent>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -179,7 +179,7 @@ class _NoopTaxonomiesRepository
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -199,7 +199,7 @@ class _NoopTaxonomiesRepository
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

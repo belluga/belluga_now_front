@@ -5,6 +5,7 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
@@ -17,6 +18,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+LandlordTenantOption _tenantOption({
+  required String id,
+  required String name,
+  required String mainDomain,
+}) {
+  return landlordTenantOptionFromRaw(
+    id: id,
+    name: name,
+    mainDomain: mainDomain,
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -102,7 +115,7 @@ void main() {
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _FixedLandlordTenantsRepository(
         [
-          LandlordTenantOption(
+          _tenantOption(
             id: 'tenant-guarappari',
             name: 'Guarappari',
             mainDomain: 'https://guarappari.belluga.space',
@@ -244,11 +257,11 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   ThemeMode get themeMode => ThemeMode.light;
@@ -261,10 +274,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _PendingLandlordTenantsRepository
@@ -299,7 +312,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -370,13 +385,23 @@ class _FakeSelectedTenantRepository
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainValue = tenantDomain.trim();
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainValue = (tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim();
     _selectedTenantValue = availableTenants.where((tenant) {
-      return tenant.mainDomain.trim() == tenantDomain.trim();
+      return tenant.mainDomain.trim() ==
+          (tenantDomain is String
+                  ? tenantDomain
+                  : (tenantDomain as dynamic).value as String)
+              .trim();
     }).firstOrNull;
     if (!suppressSelectionStreamUpdates) {
-      _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+      _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim());
       _selectedTenantStreamValue.addValue(
         _selectedTenantValue,
       );

@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
+import 'package:belluga_now/domain/map/value_objects/main_filter_option_metadata_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
@@ -1993,7 +1994,8 @@ class MockPoiDatabase {
   String eventFallbackImage() => _eventFallbackImage;
   List<CityPoiDTO> findPois({PoiQuery? query}) {
     final resolvedQuery = query ?? PoiQuery();
-    final searchTerm = resolvedQuery.searchTerm?.trim().toLowerCase();
+    final searchTerm =
+        resolvedQuery.searchTermValue?.value.trim().toLowerCase();
     return _catalog.where((poi) {
       if (searchTerm != null && searchTerm.isNotEmpty) {
         final matchesText = poi.name.toLowerCase().contains(searchTerm) ||
@@ -2057,7 +2059,6 @@ class MockPoiDatabase {
         iconNameValue: _buildMainFilterIconValue('local_offer'),
         type: MainFilterType.promotions,
         behavior: MainFilterBehavior.quickApply,
-        categories: <CityPoiCategory>{CityPoiCategory.sponsor},
       ),
       MainFilterOption(
         idValue: _buildMainFilterIdValue('main_filter_events'),
@@ -2073,9 +2074,12 @@ class MockPoiDatabase {
         type: MainFilterType.music,
         behavior: MainFilterBehavior.opensPanel,
         metadataValue: MainFilterOptionMetadata(
-          records: <MainFilterOptionMetadataRecord>[
-            (keyValue: _buildMetadataKeyValue('eventSlug'), value: 'show'),
-          ],
+          entries: _buildMetadataEntries([
+            MainFilterOptionMetadataEntry(
+              keyValue: _buildMetadataKeyValue('eventSlug'),
+              valueValue: _buildMetadataValue('show'),
+            ),
+          ]),
         ),
       ),
       MainFilterOption(
@@ -2092,12 +2096,12 @@ class MockPoiDatabase {
         type: MainFilterType.cuisines,
         behavior: MainFilterBehavior.opensPanel,
         metadataValue: MainFilterOptionMetadata(
-          records: <MainFilterOptionMetadataRecord>[
-            (
+          entries: _buildMetadataEntries([
+            MainFilterOptionMetadataEntry(
               keyValue: _buildMetadataKeyValue('highlightCategory'),
-              value: CityPoiCategory.restaurant,
+              valueValue: _buildMetadataValue(CityPoiCategory.restaurant.name),
             ),
-          ],
+          ]),
         ),
       ),
     ];
@@ -2107,6 +2111,22 @@ class MockPoiDatabase {
     final value = PoiFilterKeyValue();
     value.parse(category.name.trim().toLowerCase());
     return value;
+  }
+
+  static MainFilterOptionMetadataValue _buildMetadataValue(String raw) {
+    final value = MainFilterOptionMetadataValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  static MainFilterOptionMetadataEntries _buildMetadataEntries(
+    List<MainFilterOptionMetadataEntry> entries,
+  ) {
+    final collection = MainFilterOptionMetadataEntries();
+    for (final entry in entries) {
+      collection.add(entry);
+    }
+    return collection;
   }
 
   static PoiFilterLabelValue _buildFilterLabelValue(CityPoiCategory category) {
@@ -2121,8 +2141,8 @@ class MockPoiDatabase {
     return value;
   }
 
-  static Set<PoiTagValue> _buildTagValues(Iterable<String> tags) {
-    final values = <PoiTagValue>{};
+  static List<PoiTagValue> _buildTagValues(Iterable<String> tags) {
+    final values = <PoiTagValue>[];
     for (final tag in tags) {
       final normalized = tag.trim().toLowerCase();
       if (normalized.isEmpty) {
@@ -2132,7 +2152,7 @@ class MockPoiDatabase {
       value.parse(normalized);
       values.add(value);
     }
-    return Set<PoiTagValue>.unmodifiable(values);
+    return List<PoiTagValue>.unmodifiable(values.toSet().toList());
   }
 
   static PoiFilterKeyValue _buildMainFilterIdValue(String raw) {

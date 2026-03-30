@@ -55,12 +55,12 @@ void main() {
       type: _staticText('poi/type'),
       label: _staticText('POI Type'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: true,
-        hasBio: true,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: false,
-        hasContent: false,
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
       ),
     );
 
@@ -119,12 +119,12 @@ void main() {
       label: _staticText('Beach'),
       allowedTaxonomies: _staticTextList(const ['region']),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: true,
-        hasBio: true,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: true,
-        hasContent: true,
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
       ),
       poiVisual: TenantAdminPoiVisual.image(
         imageSource: TenantAdminPoiVisualImageSource.cover,
@@ -147,12 +147,12 @@ void main() {
     await repository.updateStaticProfileTypeWithPoiVisual(
       type: _staticText('beach'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: false,
-        hasBio: true,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: true,
-        hasContent: true,
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
       ),
       poiVisual: null,
     );
@@ -298,12 +298,12 @@ void main() {
     await repository.createStaticAsset(
       profileType: _staticText('poi'),
       displayName: _staticText('Asset Name'),
-      avatarUpload: TenantAdminMediaUpload(
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3]),
         fileName: 'avatar.jpg',
         mimeType: 'image/jpeg',
       ),
-      coverUpload: TenantAdminMediaUpload(
+      coverUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([4, 5, 6]),
         fileName: 'cover.jpg',
         mimeType: 'image/jpeg',
@@ -326,7 +326,7 @@ void main() {
     await repository.updateStaticAsset(
       assetId: _staticText('asset-1'),
       displayName: _staticText('Updated Name'),
-      avatarUpload: TenantAdminMediaUpload(
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([7, 8, 9]),
         fileName: 'avatar.jpg',
         mimeType: 'image/jpeg',
@@ -526,7 +526,8 @@ void main() {
       readItems: () => repository.staticProfileTypesStreamValue.value,
       readHasMore: () =>
           repository.hasMoreStaticProfileTypesStreamValue.value.value,
-      readError: () => repository.staticProfileTypesErrorStreamValue.value?.value,
+      readError: () =>
+          repository.staticProfileTypesErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
@@ -544,7 +545,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -572,8 +575,10 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomain = tenantDomain;
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomain = tenantDomain is String
+        ? tenantDomain
+        : (tenantDomain as dynamic).value as String;
   }
 }
 

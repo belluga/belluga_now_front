@@ -7,8 +7,12 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+
+export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_static_assets_repository_contract_values.dart';
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 
 typedef TenantAdminStaticAssetsRepoString
     = TenantAdminStaticAssetsRepositoryContractTextValue;
@@ -89,20 +93,20 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }) async {
     final assets = await fetchStaticAssets();
     if (page.value <= 0 || pageSize.value <= 0) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
     final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= assets.length) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
     final endIndex = math.min(startIndex + pageSize.value, assets.length);
-    return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    return tenantAdminPagedResultFromRaw(
       items: assets.sublist(startIndex, endIndex),
       hasMore: endIndex < assets.length,
     );
@@ -115,7 +119,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoString profileType,
     required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -130,7 +135,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     TenantAdminStaticAssetsRepoString? displayName,
     TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -223,20 +228,20 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
     if (page.value <= 0 || pageSize.value <= 0) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= profileTypes.length) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final endIndex = math.min(startIndex + pageSize.value, profileTypes.length);
-    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: profileTypes.sublist(startIndex, endIndex),
       hasMore: endIndex < profileTypes.length,
     );

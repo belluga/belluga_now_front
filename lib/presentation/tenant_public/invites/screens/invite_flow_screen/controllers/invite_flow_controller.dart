@@ -11,6 +11,8 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_decision_result.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -130,7 +132,13 @@ class InviteFlowScreenController with Disposable {
   Future<InviteMaterializeResult?> _materializeShareCode(
       String shareCode) async {
     try {
-      return await _repository.materializeShareCode(shareCode);
+      return await _repository.materializeShareCode(
+        invitesRepoString(
+          shareCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
     } catch (_) {
       return null;
     }
@@ -154,7 +162,13 @@ class InviteFlowScreenController with Disposable {
     }
 
     try {
-      await _repository.loadShareCodePreview(normalizedCode);
+      await _repository.loadShareCodePreview(
+        invitesRepoString(
+          normalizedCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       final preview = _repository.shareCodePreviewInviteStreamValue.value;
       if (preview == null) {
         return const <InviteModel>[];
@@ -286,7 +300,8 @@ class InviteFlowScreenController with Disposable {
     if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
         materializedInviteId.isNotEmpty &&
         (current.id == materializedInviteId ||
-            current.containsInviteId(InviteIdValue()..parse(materializedInviteId)))) {
+            current.containsInviteId(
+                InviteIdValue()..parse(materializedInviteId)))) {
       resolvedInviteId = materializedInviteId;
     }
 
@@ -299,7 +314,13 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      final result = await _repository.acceptInvite(resolvedInviteId);
+      final result = await _repository.acceptInvite(
+        invitesRepoString(
+          resolvedInviteId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       _syncDisplayInvitesWithPending();
       final resolvedInviteIdValue = InviteIdValue()..parse(resolvedInviteId);
       return InviteDecisionResult(
@@ -309,7 +330,13 @@ class InviteFlowScreenController with Disposable {
       );
     }
 
-    await _repository.declineInvite(resolvedInviteId);
+    await _repository.declineInvite(
+      invitesRepoString(
+        resolvedInviteId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     _syncDisplayInvitesWithPending();
     return const InviteDecisionResult(invite: null, queued: false);
   }
@@ -458,8 +485,8 @@ class InviteFlowScreenController with Disposable {
     if (_openedInviteIds.add(current.id)) {
       _activeInviteTimedEventFuture = _telemetryRepository.startTimedEvent(
         EventTrackerEvents.inviteOpened,
-        eventName: 'invite_opened',
-        properties: _buildInviteTelemetryProperties(current),
+        eventName: telemetryRepoString('invite_opened'),
+        properties: telemetryRepoMap(_buildInviteTelemetryProperties(current)),
       );
       _activeInviteId = current.id;
     }

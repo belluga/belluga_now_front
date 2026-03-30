@@ -27,7 +27,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
         _database.searchAccountProfiles(query: query, typeFilter: typeFilter);
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || startIndex < 0) {
-      return PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
@@ -35,7 +35,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
 
     final endIndex = (startIndex + pageSize).clamp(0, filtered.length);
     final pageItems = filtered.sublist(startIndex, endIndex);
-    return PagedAccountProfilesResult(
+    return pagedAccountProfilesResultFromRaw(
       profiles: pageItems,
       hasMore: endIndex < filtered.length,
     );

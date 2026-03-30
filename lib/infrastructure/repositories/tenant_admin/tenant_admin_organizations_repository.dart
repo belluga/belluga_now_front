@@ -80,7 +80,7 @@ class TenantAdminOrganizationsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeOrganizationList(response.data);
-      return TenantAdminPagedResult<TenantAdminOrganization>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,

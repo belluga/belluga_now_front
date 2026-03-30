@@ -4,9 +4,12 @@ import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_s
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/user/user_custom_data.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,7 +34,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device';
@@ -52,35 +55,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
@@ -92,12 +97,12 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
         themeModeStreamValue =
             StreamValue<ThemeMode?>(defaultValue: initialThemeMode),
         maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: initialMaxRadiusMeters);
+            StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(initialMaxRadiusMeters, defaultValue: initialMaxRadiusMeters));
 
   @override
   final StreamValue<ThemeMode?> themeModeStreamValue;
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue;
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
   final AppData _appData = _FakeAppData();
   ThemeMode _themeMode;
   double _maxRadiusMeters;
@@ -109,20 +114,20 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeMode;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMeters;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(_maxRadiusMeters, defaultValue: _maxRadiusMeters);
 
   @override
   Future<void> init() async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeMode = mode;
-    themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeMode = mode.value;
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
-    _maxRadiusMeters = meters;
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMeters = meters.value;
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }
@@ -131,11 +136,12 @@ class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
   String? _path;
 
   @override
-  Future<String?> readAvatarPath() async => _path;
+  Future<ProfileAvatarPathValue?> readAvatarPath() async =>
+      _path == null ? null : ProfileAvatarPathValue.fromRaw(_path);
 
   @override
-  Future<void> writeAvatarPath(String path) async {
-    _path = path;
+  Future<void> writeAvatarPath(ProfileAvatarPathValue path) async {
+    _path = path.value;
   }
 
   @override
@@ -157,10 +163,10 @@ class _FakeUser implements UserContract {
   final UserProfileContract profile;
 
   @override
-  Map<String, Object?>? customData;
+  UserCustomData? customData;
 
   @override
-  Future<void> updateCustomData(Map<String, Object?> newCustomData) async {
+  Future<void> updateCustomData(UserCustomData newCustomData) async {
     customData = newCustomData;
   }
 }

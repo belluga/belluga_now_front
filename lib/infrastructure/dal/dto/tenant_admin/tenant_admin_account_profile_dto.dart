@@ -2,6 +2,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_tax
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfileDTO {
   const TenantAdminAccountProfileDTO({
@@ -76,15 +77,16 @@ class TenantAdminAccountProfileDTO {
 
   TenantAdminAccountProfile toDomain() {
     final location = (locationLat != null && locationLng != null)
-        ? TenantAdminLocation(
+        ? tenantAdminLocationFromRaw(
             latitude: locationLat!,
             longitude: locationLng!,
           )
         : null;
-    final taxonomy = taxonomyTerms
-        .map((term) => term.toDomain())
-        .toList(growable: false);
-    return TenantAdminAccountProfile(
+    final taxonomy = TenantAdminTaxonomyTerms();
+    for (final taxonomyTerm in taxonomyTerms) {
+      taxonomy.add(taxonomyTerm.toDomain());
+    }
+    return tenantAdminAccountProfileFromRaw(
       id: id,
       accountId: accountId,
       profileType: profileType,
@@ -98,7 +100,7 @@ class TenantAdminAccountProfileDTO {
       taxonomyTerms: taxonomy,
       ownershipState: ownershipState == null
           ? null
-          : TenantAdminOwnershipState.fromApiValue(ownershipState),
+          : tenantAdminOwnershipStateFromRaw(ownershipState),
     );
   }
 }

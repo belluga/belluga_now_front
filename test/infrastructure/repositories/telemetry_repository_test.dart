@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -155,14 +156,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -207,7 +208,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => _deviceId;
@@ -228,35 +229,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _NoopBackend extends BackendContract {
@@ -565,11 +568,11 @@ void main() {
       queue: TelemetryQueue(retryDelays: const [Duration.zero]),
       handler: handler,
     );
-    repository.setScreenContext({
+    repository.setScreenContext(telemetryRepoMap({
       'route_name': '/home',
       'route_type': 'TestRoute',
       'is_overlay': false,
-    });
+    }));
 
     GetIt.I.registerSingleton<UserLocationRepositoryContract>(
       _FakeUserLocationRepository(
@@ -581,9 +584,9 @@ void main() {
 
     final ok = await repository.logEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'screen_view',
+      eventName: telemetryRepoString('screen_view'),
     );
-    expect(ok, isTrue);
+    expect(ok.value, isTrue);
     expect(handler.events, hasLength(1));
 
     final customData = handler.events.single.data?.customData;
@@ -619,9 +622,9 @@ void main() {
 
     final ok = await repository.logEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'screen_view',
+      eventName: telemetryRepoString('screen_view'),
     );
-    expect(ok, isTrue);
+    expect(ok.value, isTrue);
     final customData = handler.events.single.data?.customData;
     expect(customData?['location_context'], isNull);
   });
@@ -638,10 +641,10 @@ void main() {
 
     final ok = await repository.logEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'screen_view',
+      eventName: telemetryRepoString('screen_view'),
     );
 
-    expect(ok, isFalse);
+    expect(ok.value, isFalse);
     expect(handler.events, isEmpty);
   });
 
@@ -658,10 +661,10 @@ void main() {
 
     final handle = await repository.startTimedEvent(
       EventTrackerEvents.poiOpened,
-      eventName: 'poi_opened',
-      properties: const {
+      eventName: telemetryRepoString('poi_opened'),
+      properties: telemetryRepoMap(const {
         'poi_id': 'poi-123',
-      },
+      }),
     );
 
     expect(handle, isNotNull);
@@ -670,7 +673,7 @@ void main() {
     expect(handler.timedEvents.first.$2, 'poi_opened');
 
     final finishOk = await repository.finishTimedEvent(handle!);
-    expect(finishOk, isTrue);
+    expect(finishOk.value, isTrue);
     await _drainMicrotasks();
 
     expect(handler.events, hasLength(1));
@@ -695,15 +698,15 @@ void main() {
 
     await repository.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'first',
+      eventName: telemetryRepoString('first'),
     );
     await repository.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'second',
+      eventName: telemetryRepoString('second'),
     );
 
     final flushed = await repository.flushTimedEvents();
-    expect(flushed, isTrue);
+    expect(flushed.value, isTrue);
     await _drainMicrotasks();
 
     expect(handler.events, hasLength(2));
@@ -737,7 +740,7 @@ void main() {
 
     final handle = await repository.startTimedEvent(
       EventTrackerEvents.viewContent,
-      eventName: 'disabled',
+      eventName: telemetryRepoString('disabled'),
     );
     final finish = await repository.finishTimedEvent(
       const EventTrackerTimedEventHandle('handle'),
@@ -746,8 +749,8 @@ void main() {
     final observer = repository.buildLifecycleObserver();
 
     expect(handle, isNull);
-    expect(finish, isFalse);
-    expect(flush, isFalse);
+    expect(finish.value, isFalse);
+    expect(flush.value, isFalse);
     expect(observer, isNull);
   });
 
@@ -758,11 +761,15 @@ void main() {
       handler: _FakeEventTrackerHandler(),
     );
 
-    final emptyPrevious = await repository.mergeIdentity(previousUserId: '');
-    expect(emptyPrevious, isFalse);
+    final emptyPrevious = await repository.mergeIdentity(
+      previousUserId: telemetryRepoString(''),
+    );
+    expect(emptyPrevious.value, isFalse);
 
-    final noUser = await repository.mergeIdentity(previousUserId: 'anon-1');
-    expect(noUser, isFalse);
+    final noUser = await repository.mergeIdentity(
+      previousUserId: telemetryRepoString('anon-1'),
+    );
+    expect(noUser.value, isFalse);
   });
 
   test('mergeIdentity sends once and deduplicates by source user id', () async {
@@ -776,11 +783,15 @@ void main() {
     final auth = GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
     auth.setAuthenticatedUser(_buildAuthenticatedUser());
 
-    final first = await repository.mergeIdentity(previousUserId: 'anon-123');
-    final second = await repository.mergeIdentity(previousUserId: 'anon-123');
+    final first = await repository.mergeIdentity(
+      previousUserId: telemetryRepoString('anon-123'),
+    );
+    final second = await repository.mergeIdentity(
+      previousUserId: telemetryRepoString('anon-123'),
+    );
 
-    expect(first, isTrue);
-    expect(second, isTrue);
+    expect(first.value, isTrue);
+    expect(second.value, isTrue);
     expect(handler.mergedIdentities, hasLength(1));
     expect(handler.mergedIdentities.single.$1, 'anon-123');
     expect(

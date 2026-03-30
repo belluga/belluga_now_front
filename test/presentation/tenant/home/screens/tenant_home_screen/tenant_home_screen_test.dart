@@ -15,6 +15,7 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
@@ -113,7 +114,12 @@ void main() {
         MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
     mockito
         .when(mockAppDataRepository.maxRadiusMetersStreamValue)
-        .thenReturn(StreamValue<double>(defaultValue: 5000));
+        .thenReturn(
+          StreamValue<DistanceInMetersValue>(
+            defaultValue:
+                DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+          ),
+        );
 
     // Stub Home Controller
     mockito

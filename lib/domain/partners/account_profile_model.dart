@@ -14,8 +14,8 @@ class AccountProfileModel {
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
-  final AccountProfileTagsValue tagsValue;
-  final AccountProfileUpcomingEventIdsValue upcomingEventIdsValue;
+  final List<AccountProfileTagValue> tagValues;
+  final List<AccountProfileUpcomingEventIdValue> upcomingEventIdValues;
   final AccountProfileIsVerifiedValue isVerifiedValue;
   final EngagementData? engagementData;
   final AccountProfileAcceptedInvitesValue acceptedInvitesValue;
@@ -29,15 +29,20 @@ class AccountProfileModel {
     this.avatarValue,
     this.coverValue,
     this.bioValue,
-    AccountProfileTagsValue? tagsValue,
-    AccountProfileUpcomingEventIdsValue? upcomingEventIdsValue,
+    List<AccountProfileTagValue>? tagValues,
+    List<AccountProfileUpcomingEventIdValue>? upcomingEventIdValues,
     AccountProfileIsVerifiedValue? isVerifiedValue,
     this.engagementData,
     AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
     AccountProfileDistanceMetersValue? distanceMetersValue,
-  })  : tagsValue = tagsValue ?? AccountProfileTagsValue(),
-        upcomingEventIdsValue =
-            upcomingEventIdsValue ?? AccountProfileUpcomingEventIdsValue(),
+  })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
+         tagValues ?? const <AccountProfileTagValue>[],
+       ),
+        upcomingEventIdValues =
+            List<AccountProfileUpcomingEventIdValue>.unmodifiable(
+              upcomingEventIdValues ??
+                  const <AccountProfileUpcomingEventIdValue>[],
+            ),
         isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
         acceptedInvitesValue =
             acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
@@ -54,8 +59,12 @@ class AccountProfileModel {
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
-  List<String> get tags => tagsValue.value;
-  List<String> get upcomingEventIds => upcomingEventIdsValue.value;
+  List<AccountProfileTagValue> get tags =>
+      List<AccountProfileTagValue>.unmodifiable(tagValues);
+  List<AccountProfileUpcomingEventIdValue> get upcomingEventIds =>
+      List<AccountProfileUpcomingEventIdValue>.unmodifiable(
+        upcomingEventIdValues,
+      );
   bool get isVerified => isVerifiedValue.value;
   int get acceptedInvites => acceptedInvitesValue.value;
   double? get distanceMeters => distanceMetersValue.value;
@@ -68,8 +77,8 @@ class AccountProfileModel {
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
-    AccountProfileTagsValue? tagsValue,
-    AccountProfileUpcomingEventIdsValue? upcomingEventIdsValue,
+    List<AccountProfileTagValue>? tagValues,
+    List<AccountProfileUpcomingEventIdValue>? upcomingEventIdValues,
     AccountProfileIsVerifiedValue? isVerifiedValue,
     EngagementData? engagementData,
     AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
@@ -83,9 +92,9 @@ class AccountProfileModel {
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
-      tagsValue: tagsValue ?? this.tagsValue,
-      upcomingEventIdsValue:
-          upcomingEventIdsValue ?? this.upcomingEventIdsValue,
+      tagValues: tagValues ?? this.tagValues,
+      upcomingEventIdValues:
+          upcomingEventIdValues ?? this.upcomingEventIdValues,
       isVerifiedValue: isVerifiedValue ?? this.isVerifiedValue,
       engagementData: engagementData ?? this.engagementData,
       acceptedInvitesValue: acceptedInvitesValue ?? this.acceptedInvitesValue,

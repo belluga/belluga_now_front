@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -60,14 +62,21 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> warmUpIfPermitted() async {
     await ensureLoaded();
-    return refreshIfPermitted(minInterval: Duration.zero);
+    return refreshIfPermitted(
+      minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
+        Duration.zero,
+        defaultValue: Duration.zero,
+      ),
+    );
   }
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    UserLocationRepositoryContractDurationValue? minInterval,
   }) async {
     await ensureLoaded();
+    final effectiveMinInterval =
+        minInterval?.value ?? const Duration(seconds: 30);
     locationResolutionPhaseStreamValue
         .addValue(LocationResolutionPhase.resolving);
 
@@ -75,9 +84,10 @@ class UserLocationRepository implements UserLocationRepositoryContract {
         lastKnownLocationStreamValue.value != null;
 
     if (_hasLiveFix &&
-        minInterval > Duration.zero &&
+        effectiveMinInterval > Duration.zero &&
         _lastTrackingUpdateAt != null &&
-        DateTime.now().difference(_lastTrackingUpdateAt!) < minInterval) {
+        DateTime.now().difference(_lastTrackingUpdateAt!) <
+            effectiveMinInterval) {
       return true;
     }
 
@@ -120,15 +130,17 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    if (address == null || address.trim().isEmpty) {
+  Future<void> setLastKnownAddress(
+    UserLocationRepositoryContractTextValue? address,
+  ) async {
+    final normalizedAddress = address?.value.trim();
+    if (normalizedAddress == null || normalizedAddress.isEmpty) {
       lastKnownAddressStreamValue.addValue(null);
       await _storage.delete(key: _keyAddress);
       return;
     }
-    final normalized = address.trim();
-    lastKnownAddressStreamValue.addValue(normalized);
-    await _storage.write(key: _keyAddress, value: normalized);
+    lastKnownAddressStreamValue.addValue(normalizedAddress);
+    await _storage.write(key: _keyAddress, value: normalizedAddress);
   }
 
   @override

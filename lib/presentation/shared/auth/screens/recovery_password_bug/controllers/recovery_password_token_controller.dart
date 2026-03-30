@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_text_value.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/form_field_controller_email.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/recovery_password_token_controller_contract.dart';
 import 'package:flutter/material.dart';
@@ -43,8 +44,8 @@ class AuthRecoveryPasswordController
     try {
       if (validate()) {
         await _authRepository.sendTokenRecoveryPassword(
-          emailController.value,
-          codigoEnviado!,
+          _authTextValue(emailController.value),
+          _authTextValue(codigoEnviado!),
         );
         // Simulate a successful response
       }
@@ -72,5 +73,9 @@ class AuthRecoveryPasswordController
     for (final controller in tokenControllers) {
       controller.dispose();
     }
+  }
+
+  AuthRepositoryContractTextValue _authTextValue(String raw) {
+    return AuthRepositoryContractTextValue.fromRaw(raw);
   }
 }

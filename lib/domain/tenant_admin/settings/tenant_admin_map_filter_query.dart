@@ -1,30 +1,36 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 
 class TenantAdminMapFilterQuery {
   TenantAdminMapFilterQuery({
     this.source,
-    TenantAdminLowercaseStringListValue? typeValues,
-    TenantAdminLowercaseStringListValue? taxonomyValues,
-  })  : typeValues = typeValues ?? TenantAdminLowercaseStringListValue(),
-        taxonomyValues =
-            taxonomyValues ?? TenantAdminLowercaseStringListValue();
+    List<TenantAdminLowercaseTokenValue>? typeValues,
+    List<TenantAdminLowercaseTokenValue>? taxonomyValues,
+  })  : typeValues = List<TenantAdminLowercaseTokenValue>.unmodifiable(
+          _normalizeTokens(typeValues),
+        ),
+        taxonomyValues = List<TenantAdminLowercaseTokenValue>.unmodifiable(
+          _normalizeTokens(taxonomyValues),
+        );
 
   final TenantAdminMapFilterSource? source;
-  final TenantAdminLowercaseStringListValue typeValues;
-  final TenantAdminLowercaseStringListValue taxonomyValues;
+  final List<TenantAdminLowercaseTokenValue> typeValues;
+  final List<TenantAdminLowercaseTokenValue> taxonomyValues;
 
-  List<String> get types => typeValues.value;
-  List<String> get taxonomy => taxonomyValues.value;
+  List<TenantAdminLowercaseTokenValue> get types =>
+      List<TenantAdminLowercaseTokenValue>.unmodifiable(typeValues);
+  List<TenantAdminLowercaseTokenValue> get taxonomy =>
+      List<TenantAdminLowercaseTokenValue>.unmodifiable(taxonomyValues);
 
   bool get isEmpty =>
       source == null && typeValues.isEmpty && taxonomyValues.isEmpty;
 
   TenantAdminMapFilterQuery copyWith({
     TenantAdminMapFilterSource? source,
-    TenantAdminLowercaseStringListValue? typeValues,
-    TenantAdminLowercaseStringListValue? taxonomyValues,
+    List<TenantAdminLowercaseTokenValue>? typeValues,
+    List<TenantAdminLowercaseTokenValue>? taxonomyValues,
     TenantAdminFlagValue? clearSourceValue,
   }) {
     final clearSource = clearSourceValue?.value ?? false;
@@ -35,11 +41,33 @@ class TenantAdminMapFilterQuery {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
+  TenantAdminDynamicMapValue toJson() {
+    return TenantAdminDynamicMapValue({
       if (source != null) 'source': source!.apiValue,
-      if (types.isNotEmpty) 'types': types,
-      if (taxonomy.isNotEmpty) 'taxonomy': taxonomy,
-    };
+      if (types.isNotEmpty)
+        'types': types.map((entry) => entry.value).toList(growable: false),
+      if (taxonomy.isNotEmpty)
+        'taxonomy':
+            taxonomy.map((entry) => entry.value).toList(growable: false),
+    });
+  }
+
+  static List<TenantAdminLowercaseTokenValue> _normalizeTokens(
+    List<TenantAdminLowercaseTokenValue>? rawValues,
+  ) {
+    if (rawValues == null) {
+      return const <TenantAdminLowercaseTokenValue>[];
+    }
+
+    final normalized = <TenantAdminLowercaseTokenValue>[];
+    final seen = <String>{};
+    for (final raw in rawValues) {
+      final value = raw.value.trim().toLowerCase();
+      if (value.isEmpty || !seen.add(value)) {
+        continue;
+      }
+      normalized.add(TenantAdminLowercaseTokenValue.fromRaw(value));
+    }
+    return normalized;
   }
 }

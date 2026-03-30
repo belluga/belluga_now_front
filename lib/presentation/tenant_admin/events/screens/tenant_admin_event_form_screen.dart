@@ -1313,9 +1313,6 @@ class _TenantAdminEventFormScreenState
           ? TenantAdminEventPlaceRef(
               typeValue: tenantAdminRequiredText('account_profile'),
               idValue: tenantAdminRequiredText(selectedVenue.id),
-              metadataValue: tenantAdminDynamicMap({
-                'display_name': selectedVenue.displayName,
-              }),
             )
           : null;
 
@@ -1353,7 +1350,13 @@ class _TenantAdminEventFormScreenState
         artistIdValues: formState.selectedArtistIds
             .map(TenantAdminArtistIdValue.new)
             .toList(growable: false),
-        taxonomyTerms: TenantAdminTaxonomyTerms(taxonomyTerms),
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          for (final taxonomyTerm in taxonomyTerms) {
+            terms.add(taxonomyTerm);
+          }
+          return terms;
+        })(),
       );
 
       final result = await (_isEditing

@@ -5,9 +5,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef TenantAdminEventsRepoString = TenantAdminEventsRepositoryContractTextValue;
+typedef TenantAdminEventsRepoString
+    = TenantAdminEventsRepositoryContractTextValue;
 typedef TenantAdminEventsRepoInt = TenantAdminEventsRepositoryContractIntValue;
-typedef TenantAdminEventsRepoBool = TenantAdminEventsRepositoryContractBoolValue;
+typedef TenantAdminEventsRepoBool
+    = TenantAdminEventsRepositoryContractBoolValue;
 
 abstract class TenantAdminEventsRepositoryContract {
   static final TenantAdminEventsRepoInt _defaultPageSize =
@@ -99,7 +101,7 @@ abstract class TenantAdminEventsRepositoryContract {
     );
 
     if (page.value <= 0 || pageSize.value <= 0) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -107,14 +109,14 @@ abstract class TenantAdminEventsRepositoryContract {
 
     final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= events.length) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
 
     final endIndex = math.min(startIndex + pageSize.value, events.length);
-    return TenantAdminPagedResult<TenantAdminEvent>(
+    return tenantAdminPagedResultFromRaw(
       items: events.sublist(startIndex, endIndex),
       hasMore: endIndex < events.length,
     );
@@ -188,9 +190,11 @@ abstract class TenantAdminEventsRepositoryContract {
       return;
     }
 
-    _eventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _eventsPaginationState.isFetchingEventsPage =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
     if (page.value > 1) {
-      isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+      isEventsPageLoadingStreamValue.addValue(
+          TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
     }
 
     try {
@@ -211,8 +215,9 @@ abstract class TenantAdminEventsRepositoryContract {
       }
 
       _eventsPaginationState.currentEventsPage = page;
-      _eventsPaginationState.hasMoreEvents =
-          TenantAdminEventsRepoBool.fromRaw(result.hasMore, defaultValue: result.hasMore);
+      _eventsPaginationState.hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(
+          result.hasMore,
+          defaultValue: result.hasMore);
       hasMoreEventsStreamValue.addValue(_eventsPaginationState.hasMoreEvents);
       eventsStreamValue.addValue(
         List<TenantAdminEvent>.unmodifiable(
@@ -228,18 +233,25 @@ abstract class TenantAdminEventsRepositoryContract {
         eventsStreamValue.addValue(const <TenantAdminEvent>[]);
       }
     } finally {
-      _eventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-      isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+      _eventsPaginationState.isFetchingEventsPage =
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+      isEventsPageLoadingStreamValue.addValue(
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
     }
   }
 
   void _resetEventsPagination() {
     _eventsPaginationState.cachedEvents.clear();
-    _eventsPaginationState.currentEventsPage = TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
-    _eventsPaginationState.hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
-    _eventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-    hasMoreEventsStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
-    isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+    _eventsPaginationState.currentEventsPage =
+        TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+    _eventsPaginationState.hasMoreEvents =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _eventsPaginationState.isFetchingEventsPage =
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+    hasMoreEventsStreamValue
+        .addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+    isEventsPageLoadingStreamValue.addValue(
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
   }
 }
 
@@ -368,9 +380,11 @@ mixin TenantAdminEventsPaginationMixin
       return;
     }
 
-    _mixinEventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _mixinEventsPaginationState.isFetchingEventsPage =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
     if (page.value > 1) {
-      isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+      isEventsPageLoadingStreamValue.addValue(
+          TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
     }
 
     try {
@@ -390,8 +404,10 @@ mixin TenantAdminEventsPaginationMixin
       }
       _mixinEventsPaginationState.currentEventsPage = page;
       _mixinEventsPaginationState.hasMoreEvents =
-          TenantAdminEventsRepoBool.fromRaw(result.hasMore, defaultValue: result.hasMore);
-      hasMoreEventsStreamValue.addValue(_mixinEventsPaginationState.hasMoreEvents);
+          TenantAdminEventsRepoBool.fromRaw(result.hasMore,
+              defaultValue: result.hasMore);
+      hasMoreEventsStreamValue
+          .addValue(_mixinEventsPaginationState.hasMoreEvents);
       eventsStreamValue.addValue(
         List<TenantAdminEvent>.unmodifiable(
           _mixinEventsPaginationState.cachedEvents,
@@ -406,18 +422,25 @@ mixin TenantAdminEventsPaginationMixin
         eventsStreamValue.addValue(const <TenantAdminEvent>[]);
       }
     } finally {
-      _mixinEventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-      isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+      _mixinEventsPaginationState.isFetchingEventsPage =
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+      isEventsPageLoadingStreamValue.addValue(
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
     }
   }
 
   void _resetEventsPaginationMixin() {
     _mixinEventsPaginationState.cachedEvents.clear();
-    _mixinEventsPaginationState.currentEventsPage = TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
-    _mixinEventsPaginationState.hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
-    _mixinEventsPaginationState.isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-    hasMoreEventsStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
-    isEventsPageLoadingStreamValue.addValue(TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+    _mixinEventsPaginationState.currentEventsPage =
+        TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+    _mixinEventsPaginationState.hasMoreEvents =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _mixinEventsPaginationState.isFetchingEventsPage =
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+    hasMoreEventsStreamValue
+        .addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+    isEventsPageLoadingStreamValue.addValue(
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
   }
 }
 
@@ -435,7 +458,10 @@ class _TenantAdminEventsPaginationState {
   );
   final StreamValue<TenantAdminEventsRepoString?> eventsErrorStreamValue =
       StreamValue<TenantAdminEventsRepoString?>();
-  TenantAdminEventsRepoBool isFetchingEventsPage = TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-  TenantAdminEventsRepoBool hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
-  TenantAdminEventsRepoInt currentEventsPage = TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+  TenantAdminEventsRepoBool isFetchingEventsPage =
+      TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+  TenantAdminEventsRepoBool hasMoreEvents =
+      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+  TenantAdminEventsRepoInt currentEventsPage =
+      TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
 }

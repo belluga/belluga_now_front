@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
@@ -8,13 +9,12 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 
@@ -71,7 +71,8 @@ class TenantAdminSettingsResponseDecoder {
     TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
     final iosBundleId = _normalizeOptionalText(appDomains['ios']);
     if (iosBundleId != null && iosBundleId.isNotEmpty) {
-      iosBundleIdValue = TenantAdminIosBundleIdentifierValue()..parse(iosBundleId);
+      iosBundleIdValue = TenantAdminIosBundleIdentifierValue()
+        ..parse(iosBundleId);
     }
     return TenantAdminAppDomainIdentifiers(
       androidAppIdentifierValue: androidAppIdentifierValue,
@@ -174,14 +175,14 @@ class TenantAdminSettingsResponseDecoder {
       brightnessDefault: brightnessDefault,
       primarySeedColor: _hexColorValue(primarySeedColor),
       secondarySeedColor: _hexColorValue(secondarySeedColor),
-      lightLogoUrl:
-          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'logo-light.png')),
-      darkLogoUrl:
-          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'logo-dark.png')),
-      lightIconUrl:
-          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'icon-light.png')),
-      darkIconUrl:
-          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'icon-dark.png')),
+      lightLogoUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'logo-light.png')),
+      darkLogoUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png')),
+      lightIconUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'icon-light.png')),
+      darkIconUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png')),
       faviconUrl:
           _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'favicon.ico')),
       pwaIconUrl: (() {
@@ -286,12 +287,18 @@ class TenantAdminSettingsResponseDecoder {
         Map<String, dynamic>.unmodifiable(appLinks),
       ),
       androidAppIdentifierValue: androidAppIdentifierValue,
-      androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
-        androidFingerprintValues,
-      ),
+      androidSha256CertFingerprintValues: androidFingerprintValues
+          .map(
+            (entry) => TenantAdminSha256FingerprintValue()..parse(entry),
+          )
+          .toList(growable: false),
       iosTeamIdValue: iosTeamIdValue,
       iosBundleIdValue: iosBundleIdValue,
-      iosPathsValue: TenantAdminTrimmedStringListValue(iosPaths),
+      iosPathValues: iosPaths
+          .map(
+            (entry) => TenantAdminAppLinkPathValue()..parse(entry),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -330,7 +337,7 @@ class TenantAdminSettingsResponseDecoder {
       }
     }
 
-    final filters = <TenantAdminMapFilterCatalogItem>[];
+    final filters = TenantAdminMapFilterCatalogItems();
     final rawFilters = mapUi['filters'];
     if (rawFilters is List) {
       for (final entry in rawFilters) {
@@ -382,7 +389,7 @@ class TenantAdminSettingsResponseDecoder {
         Map<String, dynamic>.unmodifiable(mapUi),
       ),
       defaultOrigin: defaultOrigin,
-      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
+      filters: filters,
     );
   }
 
@@ -407,10 +414,8 @@ class TenantAdminSettingsResponseDecoder {
         TenantAdminLowercaseTokenValue(isRequired: false)
           ..parse(json['source']?.toString()),
       ),
-      typeValues:
-          TenantAdminLowercaseStringListValue(asStringList(json['types'])),
-      taxonomyValues:
-          TenantAdminLowercaseStringListValue(asStringList(json['taxonomy'])),
+      typeValues: asStringList(json['types']).map(_tokenValue).toList(),
+      taxonomyValues: asStringList(json['taxonomy']).map(_tokenValue).toList(),
     );
   }
 
@@ -539,11 +544,12 @@ class TenantAdminSettingsResponseDecoder {
     return TenantAdminTelemetryIntegration(
       type: _tokenValue(type),
       trackAll: _booleanValue(trackAll),
-      events: TenantAdminTrimmedStringListValue(events),
+      eventValues: events.map(_tokenValue).toList(growable: false),
       token: token == null || token.isEmpty ? null : _optionalTextValue(token),
       url: url == null || url.isEmpty ? null : _optionalUrlValue(url),
-      extra:
-          extra.isEmpty ? null : TenantAdminDynamicMapValue(Map<String, dynamic>.from(extra)),
+      rawExtraValue: extra.isEmpty
+          ? null
+          : TenantAdminDynamicMapValue(Map<String, dynamic>.from(extra)),
     );
   }
 

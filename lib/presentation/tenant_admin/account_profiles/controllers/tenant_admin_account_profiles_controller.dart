@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminAccountProfilesController({
@@ -133,7 +134,13 @@ class TenantAdminAccountProfilesController implements Disposable {
       _accountDetailStreamValue;
 
   Future<TenantAdminAccount> resolveAccountBySlug(String slug) async {
-    return _accountsRepository.fetchAccountBySlug(slug);
+    return _accountsRepository.fetchAccountBySlug(
+      TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+        slug,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 
   void _bindLocationSelection() {
@@ -193,14 +200,25 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   Future<TenantAdminAccountProfile> fetchProfile(
       String accountProfileId) async {
-    return _profilesRepository.fetchAccountProfile(accountProfileId);
+    return _profilesRepository.fetchAccountProfile(
+      tenantAdminAccountProfilesRepoString(
+        accountProfileId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 
   Future<TenantAdminAccountProfile?> fetchProfileForAccount(
     String accountId,
   ) async {
-    final profiles =
-        await _profilesRepository.fetchAccountProfiles(accountId: accountId);
+    final profiles = await _profilesRepository.fetchAccountProfiles(
+      accountId: tenantAdminAccountProfilesRepoString(
+        accountId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     if (profiles.isEmpty) {
       return null;
     }
@@ -210,8 +228,13 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<void> loadProfiles(String accountId) async {
     isLoadingStreamValue.addValue(true);
     try {
-      final profiles =
-          await _profilesRepository.fetchAccountProfiles(accountId: accountId);
+      final profiles = await _profilesRepository.fetchAccountProfiles(
+        accountId: tenantAdminAccountProfilesRepoString(
+          accountId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       if (_isDisposed) return;
       profilesStreamValue.addValue(profiles);
       errorStreamValue.addValue(null);
@@ -273,7 +296,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     for (final slug in taxonomySlugs) {
       final taxonomy = registry.firstWhere(
         (entry) => entry.slug == slug,
-        orElse: () => TenantAdminTaxonomyDefinition(
+        orElse: () => tenantAdminTaxonomyDefinitionFromRaw(
           id: '',
           slug: '',
           name: '',
@@ -284,7 +307,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       );
       if (taxonomy.id.isEmpty) continue;
       try {
-        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        await _taxonomiesRepository.loadAllTerms(
+            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
+                defaultValue: '', isRequired: true));
         final terms = _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         map[slug] = terms;
@@ -363,9 +388,23 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountUpdatingStreamValue.addValue(true);
     try {
       final updated = await _accountsRepository.updateAccount(
-        accountSlug: accountSlug,
-        name: name,
-        slug: slug,
+        accountSlug: TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+          accountSlug,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        name: name == null
+            ? null
+            : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+                name,
+                defaultValue: '',
+              ),
+        slug: slug == null
+            ? null
+            : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+                slug,
+                defaultValue: '',
+              ),
         ownershipState: ownershipState,
       );
       if (_isDisposed) {
@@ -395,7 +434,13 @@ class TenantAdminAccountProfilesController implements Disposable {
   }) async {
     accountDeletingStreamValue.addValue(true);
     try {
-      await _accountsRepository.deleteAccount(accountSlug);
+      await _accountsRepository.deleteAccount(
+        TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+          accountSlug,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       if (_isDisposed) {
         return false;
       }
@@ -573,7 +618,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminLocation? location,
     required String? bio,
     required String? content,
-    required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+    required TenantAdminTaxonomyTerms taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
@@ -667,7 +712,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminLocation? location,
     required String? bio,
     required String? content,
-    required List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    required TenantAdminTaxonomyTerms? taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
@@ -754,7 +799,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<bool> submitTaxonomySelectionUpdate({
     required String accountProfileId,
     required String? profileType,
-    required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+    required TenantAdminTaxonomyTerms taxonomyTerms,
     String? bio,
     String? content,
   }) async {
@@ -913,7 +958,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     taxonomySelectionStreamValue.addValue(next);
   }
 
-  void setTaxonomySelectionFromTerms(List<TenantAdminTaxonomyTerm> terms) {
+  void setTaxonomySelectionFromTerms(TenantAdminTaxonomyTerms terms) {
     final next = <String, Set<String>>{};
     for (final term in terms) {
       next.putIfAbsent(term.type, () => <String>{}).add(term.value);
@@ -987,8 +1032,16 @@ class TenantAdminAccountProfilesController implements Disposable {
     _watchedAccountId = normalizedId;
     _watchedAccountSlug = normalizedSlug;
     _accountWatch = _accountsRepository.watchLoadedAccount(
-      accountId: normalizedId,
-      accountSlug: normalizedSlug,
+      accountId: normalizedId == null
+          ? null
+          : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+              normalizedId,
+            ),
+      accountSlug: normalizedSlug == null
+          ? null
+          : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+              normalizedSlug,
+            ),
     );
     _accountDetailStreamValue.addValue(_accountWatch!.streamValue.value);
     _accountWatchSubscription = _accountWatch!.streamValue.stream.listen(
@@ -1016,7 +1069,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     String? bio,
     String? content,
     String? avatarUrl,
@@ -1036,15 +1090,35 @@ class TenantAdminAccountProfilesController implements Disposable {
       coverUpload: coverUpload,
     );
     final profile = await _profilesRepository.createAccountProfile(
-      accountId: accountId,
-      profileType: profileType,
-      displayName: displayName,
+      accountId: tenantAdminAccountProfilesRepoString(
+        accountId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      profileType: tenantAdminAccountProfilesRepoString(
+        profileType,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      displayName: tenantAdminAccountProfilesRepoString(
+        displayName,
+        defaultValue: '',
+        isRequired: true,
+      ),
       location: filtered.location,
       taxonomyTerms: filtered.taxonomyTerms,
-      bio: filtered.bio,
-      content: filtered.content,
-      avatarUrl: filtered.avatarUrl,
-      coverUrl: filtered.coverUrl,
+      bio: filtered.bio == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.bio),
+      content: filtered.content == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.content),
+      avatarUrl: filtered.avatarUrl == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.avatarUrl),
+      coverUrl: filtered.coverUrl == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.coverUrl),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );
@@ -1061,7 +1135,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? displayName,
     String? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? content,
     String? avatarUrl,
@@ -1074,7 +1148,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     final filtered = profileType == null
         ? _CapabilityFilter(
             location: location,
-            taxonomyTerms: taxonomyTerms ?? const [],
+            taxonomyTerms:
+                taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
             bio: bio,
             content: content,
             avatarUrl: avatarUrl,
@@ -1085,7 +1160,8 @@ class TenantAdminAccountProfilesController implements Disposable {
         : _filterCapabilities(
             profileType: profileType,
             location: location,
-            taxonomyTerms: taxonomyTerms ?? const [],
+            taxonomyTerms:
+                taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
             bio: bio,
             content: content,
             avatarUrl: avatarUrl,
@@ -1094,18 +1170,38 @@ class TenantAdminAccountProfilesController implements Disposable {
             coverUpload: coverUpload,
           );
     final profile = await _profilesRepository.updateAccountProfile(
-      accountProfileId: accountProfileId,
-      profileType: profileType,
-      displayName: displayName,
-      slug: slug,
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        accountProfileId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      profileType: profileType == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(profileType),
+      displayName: displayName == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(displayName),
+      slug: slug == null ? null : tenantAdminAccountProfilesRepoString(slug),
       location: filtered.location,
       taxonomyTerms: taxonomyTerms == null ? null : filtered.taxonomyTerms,
-      bio: filtered.bio,
-      content: filtered.content,
-      avatarUrl: filtered.avatarUrl,
-      coverUrl: filtered.coverUrl,
-      removeAvatar: removeAvatar,
-      removeCover: removeCover,
+      bio: filtered.bio == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.bio),
+      content: filtered.content == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.content),
+      avatarUrl: filtered.avatarUrl == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.avatarUrl),
+      coverUrl: filtered.coverUrl == null
+          ? null
+          : tenantAdminAccountProfilesRepoString(filtered.coverUrl),
+      removeAvatar: removeAvatar == null
+          ? null
+          : tenantAdminAccountProfilesRepoBool(removeAvatar),
+      removeCover: removeCover == null
+          ? null
+          : tenantAdminAccountProfilesRepoBool(removeCover),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );
@@ -1127,7 +1223,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   _CapabilityFilter _filterCapabilities({
     required String profileType,
     required TenantAdminLocation? location,
-    required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+    required TenantAdminTaxonomyTerms taxonomyTerms,
     required String? bio,
     required String? content,
     required String? avatarUrl,
@@ -1151,10 +1247,16 @@ class TenantAdminAccountProfilesController implements Disposable {
     final capabilities = definition.capabilities;
     final allowedTaxonomies = definition.allowedTaxonomies.toSet();
     final filteredTerms = capabilities.hasTaxonomies
-        ? taxonomyTerms
-            .where((term) => allowedTaxonomies.contains(term.type))
-            .toList(growable: false)
-        : const <TenantAdminTaxonomyTerm>[];
+        ? (() {
+            final terms = TenantAdminTaxonomyTerms();
+            for (final taxonomyTerm in taxonomyTerms) {
+              if (allowedTaxonomies.contains(taxonomyTerm.type)) {
+                terms.add(taxonomyTerm);
+              }
+            }
+            return terms;
+          })()
+        : const TenantAdminTaxonomyTerms.empty();
     return _CapabilityFilter(
       location: capabilities.isPoiEnabled ? location : null,
       taxonomyTerms: filteredTerms,
@@ -1222,7 +1324,7 @@ class _CapabilityFilter {
   });
 
   final TenantAdminLocation? location;
-  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
   final String? bio;
   final String? content;
   final String? avatarUrl;

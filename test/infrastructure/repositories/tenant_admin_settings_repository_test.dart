@@ -11,13 +11,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -102,9 +100,14 @@ void main() {
       settings.filters.first.query.source,
       TenantAdminMapFilterSource.event,
     );
-    expect(settings.filters.first.query.types, equals(['show']));
     expect(
-      settings.filters.first.query.taxonomy,
+      settings.filters.first.query.types.map((entry) => entry.value).toList(),
+      equals(['show']),
+    );
+    expect(
+      settings.filters.first.query.taxonomy
+          .map((entry) => entry.value)
+          .toList(),
       equals(['music_genre:rock']),
     );
     final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
@@ -209,7 +212,7 @@ void main() {
         lng: _longitudeValue(-40.422222),
         label: _optionalTextValue('Praia do Morro'),
       ),
-      filters: [
+      filters: _mapFilterCatalogItems([
         TenantAdminMapFilterCatalogItem(
           keyValue: TenantAdminLowercaseTokenValue()..parse('events'),
           labelValue: TenantAdminRequiredTextValue()..parse('Eventos'),
@@ -218,12 +221,11 @@ void main() {
                 'https://tenant-a.test/map-filters/events/image?v=1710000000'),
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
-            typeValues: TenantAdminLowercaseStringListValue(['show']),
-            taxonomyValues:
-                TenantAdminLowercaseStringListValue(['music_genre:rock']),
+            typeValues: [_tokenValue('show')],
+            taxonomyValues: [_tokenValue('music_genre:rock')],
           ),
         ),
-      ],
+      ]),
     );
 
     final updated = await repository.updateMapUiSettings(settings: mapUi);
@@ -259,9 +261,12 @@ void main() {
     );
     expect(
         updated.filters.first.query.source, TenantAdminMapFilterSource.event);
-    expect(updated.filters.first.query.types, equals(['show']));
     expect(
-      updated.filters.first.query.taxonomy,
+      updated.filters.first.query.types.map((entry) => entry.value).toList(),
+      equals(['show']),
+    );
+    expect(
+      updated.filters.first.query.taxonomy.map((entry) => entry.value).toList(),
       equals(['music_genre:rock']),
     );
   });
@@ -480,8 +485,8 @@ void main() {
     );
 
     final imageUri = await repository.uploadMapFilterImage(
-      key: 'events',
-      upload: TenantAdminMediaUpload(
+      key: _tokenValue('events'),
+      upload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3, 4]),
         fileName: 'events.png',
         mimeType: 'image/png',
@@ -574,7 +579,7 @@ void main() {
       integration: TenantAdminTelemetryIntegration(
         type: _tokenValue('mixpanel'),
         trackAll: _booleanValue(false),
-        events: TenantAdminTrimmedStringListValue(['app_opened']),
+        eventValues: [_tokenValue('app_opened')],
         token: _optionalTextValue('token-a'),
       ),
     );
@@ -617,7 +622,7 @@ void main() {
         brightnessDefault: TenantAdminBrandingBrightness.dark,
         primarySeedColor: _hexColorValue('#112233'),
         secondarySeedColor: _hexColorValue('#445566'),
-        lightLogoUpload: TenantAdminMediaUpload(
+        lightLogoUpload: tenantAdminMediaUploadFromRaw(
           bytes: Uint8List.fromList([1, 2, 3]),
           fileName: 'light_logo.png',
           mimeType: 'image/png',
@@ -681,12 +686,12 @@ void main() {
           brightnessDefault: TenantAdminBrandingBrightness.dark,
           primarySeedColor: _hexColorValue('#112233'),
           secondarySeedColor: _hexColorValue('#445566'),
-          lightLogoUpload: TenantAdminMediaUpload(
+          lightLogoUpload: tenantAdminMediaUploadFromRaw(
             bytes: Uint8List.fromList([1, 2, 3]),
             fileName: 'light_logo.png',
             mimeType: 'image/png',
           ),
-          pwaIconUpload: TenantAdminMediaUpload(
+          pwaIconUpload: tenantAdminMediaUploadFromRaw(
             bytes: Uint8List.fromList([4, 5, 6]),
             fileName: 'pwa_icon.png',
             mimeType: 'image/png',
@@ -971,6 +976,16 @@ TenantAdminRequiredTextValue _requiredTextValue(String raw) {
   return value;
 }
 
+TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
+  Iterable<TenantAdminMapFilterCatalogItem> items,
+) {
+  final collection = TenantAdminMapFilterCatalogItems();
+  for (final item in items) {
+    collection.add(item);
+  }
+  return collection;
+}
+
 TenantAdminHexColorValue _hexColorValue(String raw) {
   final value = TenantAdminHexColorValue();
   value.parse(raw);
@@ -988,7 +1003,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -1019,8 +1036,11 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 
@@ -1053,8 +1073,11 @@ class _FixedTenantScopeForOriginRead implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 
@@ -1079,8 +1102,11 @@ class _NoTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

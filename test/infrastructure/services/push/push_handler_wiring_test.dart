@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -251,7 +252,6 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>(defaultValue: null);
 
   @override
-  @override
   final StreamValue<LocationResolutionPhase>
       locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
@@ -261,17 +261,15 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted(
-          {Duration minInterval = const Duration(seconds: 30)}) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation() async => null;
@@ -325,7 +323,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => userTokenValue;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => deviceId;
@@ -346,75 +344,83 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() => throw UnimplementedError();
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) =>
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+          AuthRepositoryContractParamString password) =>
       throw UnimplementedError();
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) =>
       throw UnimplementedError();
 
   @override
-  Future<void> sendTokenRecoveryPassword(String email, String codigoEnviado) =>
+  Future<void> sendTokenRecoveryPassword(
+          AuthRepositoryContractParamString email,
+          AuthRepositoryContractParamString codigoEnviado) =>
       throw UnimplementedError();
 
   @override
   Future<void> logout() => throw UnimplementedError();
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) =>
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+          AuthRepositoryContractParamString confirmPassword) =>
       throw UnimplementedError();
 
   @override
-  Future<void> sendPasswordResetEmail(String email) =>
+  Future<void> sendPasswordResetEmail(
+          AuthRepositoryContractParamString email) =>
       throw UnimplementedError();
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) =>
+  Future<void> updateUser(
+          UserCustomData data) =>
       throw UnimplementedError();
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     return null;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle) async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+    return telemetryRepoBool(true);
   }
 }
 

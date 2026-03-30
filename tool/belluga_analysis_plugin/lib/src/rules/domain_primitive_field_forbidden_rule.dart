@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
   DomainPrimitiveFieldForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'domain_primitive_field_forbidden',
-            problemMessage:
-                'Domain fields cannot use primitive transport-oriented types directly.',
-            correctionMessage:
-                'Treatments: the ONLY acceptable solution is ValueObject. Use dedicated *Value classes extending ValueObject<T> (or approved bases like GenericStringValue/IntValue/DecimalValue/DateTimeValue/URIValue), keep validation inside ValueObjects, create a new ValueObject type whenever no existing base matches, use List/Set/Iterable of ValueObjects/domain-owned types only, and replace Map signatures with auxiliary domain models composed by ValueObjects. Typedef aliases are forbidden.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.WARNING,
+          name: 'domain_primitive_field_forbidden',
+          problemMessage:
+              'Domain fields cannot use primitive transport-oriented types directly.',
+          correctionMessage:
+              'Domain parameters must be only domain-owned types, ValueObject<T>, or List/Set/Iterable whose element type is a domain-owned type or ValueObject<T>. Any other parameter type is forbidden. Types declared under domain/**/value_objects/** must extend ValueObject<T>. ValueObject<T> cannot use Map/List/Set/Iterable/Collection as T. Domain fields and collection/map return signatures must avoid primitive/transport types. For grouped data, create an auxiliary domain model composed by ValueObjects. Typedef aliases do not remediate primitive usage. Validation belongs inside ValueObjects.',
+        ),
+      );
 
   @override
   void run(
@@ -55,10 +55,15 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
     });
 
     context.registry.addMethodDeclaration((node) {
+      if (node.isOperator && node.name.lexeme == '==') {
+        return;
+      }
+      _reportForbiddenCollectionLikeReturnType(node.returnType, reporter);
       _reportForbiddenParameterTypes(node.parameters, reporter);
     });
 
     context.registry.addFunctionDeclaration((node) {
+      _reportForbiddenCollectionLikeReturnType(node.returnType, reporter);
       _reportForbiddenParameterTypes(
         node.functionExpression.parameters,
         reporter,
@@ -76,7 +81,7 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
 
     for (final parameter in parameters.parameters) {
       final type = formalParameterType(parameter);
-      if (!containsForbiddenDomainPrimitiveType(type) || type == null) {
+      if (type == null || isAllowedDomainParameterType(type)) {
         continue;
       }
 
@@ -86,5 +91,40 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
         length: type.length,
       );
     }
+  }
+
+  void _reportForbiddenCollectionLikeReturnType(
+    TypeAnnotation? returnType,
+    ErrorReporter reporter,
+  ) {
+    if (returnType == null) {
+      return;
+    }
+
+    if (!_isForbiddenDomainCollectionLikeType(returnType)) {
+      return;
+    }
+
+    reporter.atOffset(
+      errorCode: code,
+      offset: returnType.offset,
+      length: returnType.length,
+    );
+  }
+
+  bool _isForbiddenDomainCollectionLikeType(TypeAnnotation type) {
+    final typeName = topLevelTypeName(type);
+    if (typeName == null) {
+      return false;
+    }
+
+    if (typeName != 'Map' &&
+        typeName != 'List' &&
+        typeName != 'Set' &&
+        typeName != 'Iterable') {
+      return false;
+    }
+
+    return containsForbiddenDomainPrimitiveType(type);
   }
 }

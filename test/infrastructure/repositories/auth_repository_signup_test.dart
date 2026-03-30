@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -55,9 +57,9 @@ void main() {
 
     final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
     await repository.signUpWithEmailPassword(
-      'User Name',
-      'user@example.com',
-      'Secret!234',
+      authRepoString('User Name'),
+      authRepoString('user@example.com'),
+      authRepoString('Secret!234'),
     );
 
     expect(authBackend.registerCalls, 1);
@@ -99,8 +101,8 @@ void main() {
 
     final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
     await repository.loginWithEmailPassword(
-      'user@example.com',
-      'Secret!234',
+      authRepoString('user@example.com'),
+      authRepoString('Secret!234'),
     );
 
     expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
@@ -117,43 +119,45 @@ class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
   final List<String> mergeCalls = <String>[];
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     return null;
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle) async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async {
-    mergeCalls.add(previousUserId);
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+    mergeCalls.add(previousUserId.value);
+    return telemetryRepoBool(true);
   }
 }
 

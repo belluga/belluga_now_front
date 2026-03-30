@@ -9,7 +9,6 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -19,6 +18,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -31,7 +31,6 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
@@ -484,8 +483,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   final AppData _appData;
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 1000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
   AppData get appData => _appData;
@@ -505,22 +504,20 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(Object meters) async {
-    _maxRadiusMetersStreamValue.addValue(meters is num
-        ? meters.toDouble()
-        : (meters as dynamic).value as double);
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMetersStreamValue.addValue(meters);
   }
 }
 
@@ -583,13 +580,13 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    return PagedEventsResult(events: [_event], hasMore: false);
+    return pagedEventsResultFromRaw(events: [_event], hasMore: false);
   }
 
   @override
@@ -612,7 +609,9 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     return [
       VenueEventResume.fromScheduleEvent(
         _event,
-        Uri.parse('https://example.com/event.png'),
+        ThumbUriValue(
+          defaultValue: Uri.parse('https://example.com/event.png'),
+        ),
       ),
     ];
   }
@@ -622,7 +621,9 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     return [
       VenueEventResume.fromScheduleEvent(
         _event,
-        Uri.parse('https://example.com/event.png'),
+        ThumbUriValue(
+          defaultValue: Uri.parse('https://example.com/event.png'),
+        ),
       ),
     ];
   }
@@ -632,7 +633,7 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<ScheduleRepoTaxonomyEntry>? taxonomy,
+    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
@@ -848,14 +849,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async {
     return const <InviteContactMatch>[];
   }
 
   @override
   Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
-      List<EventFriendResume> recipients,
+      InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
 }
@@ -929,7 +930,7 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(
-      Map<AuthRepositoryContractParamString, Object?> data) async {}
+      UserCustomData data) async {}
 
   @override
   String get userToken => _token;
@@ -1016,7 +1017,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 }
 
 EventModel _buildEvent({required String slug}) {
-  return EventModel(
+  return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse(slug),
     type: EventTypeModel(

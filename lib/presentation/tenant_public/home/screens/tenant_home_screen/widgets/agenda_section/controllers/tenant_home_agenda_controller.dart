@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -88,10 +89,12 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final radiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  final StreamValue<double> _maxRadiusMetersStreamValue =
+      StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
-      _appDataRepository.maxRadiusMetersStreamValue;
+      _maxRadiusMetersStreamValue;
 
   @override
   double get minRadiusMeters => _resolveMinRadiusMeters();
@@ -444,7 +447,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         .map((invite) => invite.eventId)
         .toSet();
 
-    bool isConfirmed(String id) => confirmedIds.contains(id);
+    bool isConfirmed(String id) =>
+        confirmedIds.any((confirmed) => confirmed.value == id);
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
@@ -538,8 +542,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     );
   }
 
-  bool isEventConfirmed(String eventId) =>
-      _userEventsRepository.isEventConfirmed(eventId);
+  bool isEventConfirmed(String eventId) => _userEventsRepository
+      .isEventConfirmed(
+        userEventsRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      )
+      .value;
 
   int pendingInviteCount(String eventId) =>
       _invitesRepository.pendingInvitesStreamValue.value
@@ -593,8 +604,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
+    _setValue(_maxRadiusMetersStreamValue, _currentMaxRadiusMeters());
     _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((_) {
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
+      _setValue(_maxRadiusMetersStreamValue, value.value);
       final current = radiusMetersStreamValue.value;
       final clamped = _clampRadiusMeters(current);
       _setValue(radiusMetersStreamValue, clamped);
@@ -782,7 +795,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     if (configured > 0) {
       return _clampRadiusMeters(configured);
     }
-    return _clampRadiusMeters(_appDataRepository.maxRadiusMeters);
+    return _clampRadiusMeters(_currentMaxRadiusMeters());
   }
 
   double _configuredMinRadiusMeters() {
@@ -797,13 +810,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       return _appDataRepository.appData.mapRadiusDefaultMeters;
     } on Object {
-      return _appDataRepository.maxRadiusMeters;
+      return _currentMaxRadiusMeters();
     }
   }
 
+  double _currentMaxRadiusMeters() => _appDataRepository.maxRadiusMeters.value;
+
   double _clampRadiusMeters(double meters) {
     final min = _resolveMinRadiusMeters();
-    final max = _appDataRepository.maxRadiusMeters;
+    final max = _currentMaxRadiusMeters();
     final effectiveMax = max < min ? min : max;
     return meters.clamp(min, effectiveMax).toDouble();
   }
@@ -824,6 +839,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
+    _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();
   }

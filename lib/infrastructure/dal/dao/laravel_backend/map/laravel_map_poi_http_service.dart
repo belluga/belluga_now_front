@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -165,48 +164,49 @@ class LaravelMapPoiHttpService {
           (query.northEast!.longitude + query.southWest!.longitude) / 2;
     }
 
-    if (query.maxDistanceMeters != null && query.maxDistanceMeters! > 0) {
-      params['max_distance_meters'] = query.maxDistanceMeters;
+    final maxDistanceMeters = query.maxDistanceMetersValue?.value;
+    if (maxDistanceMeters != null && maxDistanceMeters > 0) {
+      params['max_distance_meters'] = maxDistanceMeters;
     }
 
-    final categoryKeys = query.categoryKeys;
+    final categoryKeys = query.categoryKeyValues
+        ?.map((value) => value.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet();
     if (categoryKeys != null && categoryKeys.isNotEmpty) {
       params['categories'] = categoryKeys.toList(growable: false);
-    } else {
-      final categories = query.categories;
-      if (categories != null && categories.isNotEmpty) {
-        final categoryTokens = categories
-            .map(_mapCategoryToken)
-            .whereType<String>()
-            .toSet()
-            .toList(growable: false);
-        if (categoryTokens.isNotEmpty) {
-          params['categories'] = categoryTokens;
-        }
-      }
     }
 
-    final source = query.source?.trim();
+    final source = query.sourceValue?.value.trim();
     if (source != null && source.isNotEmpty) {
       params['source'] = source;
     }
 
-    final types = query.types;
+    final types = query.typeValues
+        ?.map((value) => value.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet();
     if (types != null && types.isNotEmpty) {
       params['types'] = types.toList(growable: false);
     }
 
-    final tags = query.tags;
+    final tags = query.tagValues
+        ?.map((value) => value.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet();
     if (tags != null && tags.isNotEmpty) {
       params['tags'] = tags.toList(growable: false);
     }
 
-    final taxonomy = query.taxonomy;
+    final taxonomy = query.taxonomyTokenValues
+        ?.map((value) => value.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet();
     if (taxonomy != null && taxonomy.isNotEmpty) {
       params['taxonomy'] = taxonomy.toList(growable: false);
     }
 
-    final search = query.searchTerm;
+    final search = query.searchTermValue?.value;
     if (search != null && search.trim().isNotEmpty) {
       params['search'] = search.trim();
     }
@@ -217,27 +217,6 @@ class LaravelMapPoiHttpService {
     }
 
     return params;
-  }
-
-  String? _mapCategoryToken(CityPoiCategory category) {
-    switch (category) {
-      case CityPoiCategory.restaurant:
-        return 'restaurant';
-      case CityPoiCategory.beach:
-        return 'beach';
-      case CityPoiCategory.nature:
-        return 'nature';
-      case CityPoiCategory.culture:
-        return 'culture';
-      case CityPoiCategory.monument:
-      case CityPoiCategory.church:
-        return 'historic';
-      case CityPoiCategory.health:
-      case CityPoiCategory.lodging:
-      case CityPoiCategory.attraction:
-      case CityPoiCategory.sponsor:
-        return null;
-    }
   }
 
   Future<Map<String, String>> _buildHeaders() {

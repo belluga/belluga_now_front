@@ -84,11 +84,11 @@ class InviteModel {
   }
 
   String? get inviterAvatarUrl => inviterAvatarUri?.toString();
-  List<String> get tags =>
-      tagValues.map((tag) => tag.value).toList(growable: false);
-  List<String> get additionalInviters => additionalInviterValues
-      .map((additional) => additional.value)
-      .toList(growable: false);
+  List<InviteTagValue> get tags => List<InviteTagValue>.unmodifiable(tagValues);
+  List<InviteAdditionalInviterNameValue> get additionalInviters =>
+      List<InviteAdditionalInviterNameValue>.unmodifiable(
+        additionalInviterValues,
+      );
   InviteInviter? get primaryInviter => inviters.isEmpty ? null : inviters.first;
   List<InviteInviter> get secondaryInviters =>
       inviters.length <= 1 ? const [] : inviters.sublist(1);
@@ -106,8 +106,8 @@ class InviteModel {
       return this;
     }
 
-    final index =
-        inviters.indexWhere((inviter) => inviter.inviteId == inviteIdValue.value);
+    final index = inviters
+        .indexWhere((inviter) => inviter.inviteId == inviteIdValue.value);
     if (index <= 0) {
       return this;
     }

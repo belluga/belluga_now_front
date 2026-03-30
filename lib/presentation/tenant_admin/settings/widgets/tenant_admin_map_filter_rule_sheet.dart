@@ -4,7 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_rule_catalog.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_taxonomy_term_option.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:flutter/material.dart';
 
 Future<TenantAdminMapFilterCatalogItem?> showTenantAdminMapFilterRuleSheet({
@@ -49,8 +49,10 @@ class _TenantAdminMapFilterRuleSheetState
   void initState() {
     super.initState();
     _source = widget.filter.query.source ?? TenantAdminMapFilterSource.event;
-    _selectedTypes = Set<String>.from(widget.filter.query.types);
-    _selectedTaxonomy = Set<String>.from(widget.filter.query.taxonomy);
+    _selectedTypes =
+        widget.filter.query.types.map((entry) => entry.value).toSet();
+    _selectedTaxonomy =
+        widget.filter.query.taxonomy.map((entry) => entry.value).toSet();
     _sanitizeBySource();
   }
 
@@ -72,11 +74,16 @@ class _TenantAdminMapFilterRuleSheetState
     return widget.filter.copyWith(
       query: TenantAdminMapFilterQuery(
         source: _source,
-        typeValues: TenantAdminLowercaseStringListValue(
-            _selectedTypes.toList(growable: false)),
-        taxonomyValues: TenantAdminLowercaseStringListValue(
-          _selectedTaxonomy.toList(growable: false),
-        ),
+        typeValues: _selectedTypes
+            .map<TenantAdminLowercaseTokenValue>(
+              TenantAdminLowercaseTokenValue.fromRaw,
+            )
+            .toList(),
+        taxonomyValues: _selectedTaxonomy
+            .map<TenantAdminLowercaseTokenValue>(
+              TenantAdminLowercaseTokenValue.fromRaw,
+            )
+            .toList(),
       ),
     );
   }

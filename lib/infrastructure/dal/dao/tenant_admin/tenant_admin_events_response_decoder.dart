@@ -150,7 +150,6 @@ class TenantAdminEventsResponseDecoder {
               _asString(party['party_ref_id']) ?? '',
             ),
             canEditValue: tenantAdminFlag(canEdit),
-            metadataValue: tenantAdminDynamicMap(_asMap(party['metadata'])),
           );
         })
         .where((party) =>
@@ -194,8 +193,6 @@ class TenantAdminEventsResponseDecoder {
             idValue: tenantAdminRequiredText(
               _asString(placeRefRow['id']) ?? '',
             ),
-            metadataValue:
-                tenantAdminDynamicMap(_asMap(placeRefRow['metadata'])),
           );
 
     final dateTimeStart = _parseDate(row['date_time_start']);
@@ -235,7 +232,13 @@ class TenantAdminEventsResponseDecoder {
         ),
         artistIdValues: artistIds,
         eventParties: eventParties,
-        taxonomyTerms: TenantAdminTaxonomyTerms(taxonomyTerms),
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          for (final taxonomyTerm in taxonomyTerms) {
+            terms.add(taxonomyTerm);
+          }
+          return terms;
+        })(),
         createdAtValue:
             tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
         updatedAtValue:
@@ -273,7 +276,13 @@ class TenantAdminEventsResponseDecoder {
       ),
       artistIdValues: artistIds,
       eventParties: eventParties,
-      taxonomyTerms: TenantAdminTaxonomyTerms(taxonomyTerms),
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        for (final taxonomyTerm in taxonomyTerms) {
+          terms.add(taxonomyTerm);
+        }
+        return terms;
+      })(),
       createdAtValue:
           tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
       updatedAtValue:
@@ -322,7 +331,13 @@ class TenantAdminEventsResponseDecoder {
       location: lat != null && lng != null
           ? tenantAdminLocationFromRaw(latitude: lat, longitude: lng)
           : null,
-      taxonomyTerms: TenantAdminTaxonomyTerms(taxonomyTerms),
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        for (final taxonomyTerm in taxonomyTerms) {
+          terms.add(taxonomyTerm);
+        }
+        return terms;
+      })(),
     );
   }
 

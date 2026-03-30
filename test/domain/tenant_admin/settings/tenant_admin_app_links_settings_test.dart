@@ -1,9 +1,9 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_links_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
@@ -88,12 +88,17 @@ void main() {
 
     final updated = current.applyValues(
       androidAppIdentifier: _androidAppIdentifier('com.guarappari.app'),
-      androidSha256CertFingerprints: TenantAdminSha256FingerprintListValue([
-        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
-      ]),
+      androidSha256CertFingerprintValues: [
+        _sha256Fingerprint(
+          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
+        ),
+      ],
       iosTeamId: _iosTeamId('ABCDE12345'),
       iosBundleId: _iosBundleId('com.guarappari.app'),
-      iosPaths: TenantAdminTrimmedStringListValue(const ['/invite*', '/convites*']),
+      iosPathValues: [
+        _appLinkPath('/invite*'),
+        _appLinkPath('/convites*'),
+      ],
     );
 
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
@@ -128,6 +133,18 @@ TenantAdminIosBundleIdentifierValue _iosBundleId(String raw) {
 
 TenantAdminIosTeamIdValue _iosTeamId(String raw) {
   final value = TenantAdminIosTeamIdValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminSha256FingerprintValue _sha256Fingerprint(String raw) {
+  final value = TenantAdminSha256FingerprintValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminAppLinkPathValue _appLinkPath(String raw) {
+  final value = TenantAdminAppLinkPathValue();
   value.parse(raw);
   return value;
 }

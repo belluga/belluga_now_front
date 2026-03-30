@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
@@ -242,6 +243,10 @@ class CityPoiDTO {
         tags.map((tag) => PoiTagValue()..parse(tag)).toList(growable: false);
     final stackItems =
         items.map((item) => item.toDomain()).toList(growable: false);
+    final stackItemCollection = CityPoiStackItems();
+    for (final item in stackItems) {
+      stackItemCollection.add(item);
+    }
     final resolvedStackKey =
         stackKey.trim().isNotEmpty ? stackKey.trim() : '$refType:$refId';
     final isDynamicValue = PoiBooleanValue()..parse(isDynamic.toString());
@@ -289,7 +294,7 @@ class CityPoiDTO {
       refPathValue: refPathValue,
       stackKeyValue: stackKeyValue,
       stackCountValue: stackCountValue,
-      stackItems: stackItems,
+      stackItems: stackItemCollection,
       isHappeningNowValue: isHappeningNowValue,
       updatedAtValue: updatedAtValue,
       distanceMetersValue: distanceMetersValue,

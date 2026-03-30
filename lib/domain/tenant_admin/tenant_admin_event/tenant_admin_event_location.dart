@@ -6,9 +6,8 @@ class TenantAdminEventLocation {
     TenantAdminOptionalDoubleValue? latitudeValue,
     TenantAdminOptionalDoubleValue? longitudeValue,
     this.online,
-  })  : latitudeValue = latitudeValue ?? const TenantAdminOptionalDoubleValue(null),
-        longitudeValue =
-            longitudeValue ?? const TenantAdminOptionalDoubleValue(null);
+  })  : latitudeValue = latitudeValue ?? TenantAdminOptionalDoubleValue(null),
+        longitudeValue = longitudeValue ?? TenantAdminOptionalDoubleValue(null);
 
   final TenantAdminRequiredTextValue modeValue;
   final TenantAdminOptionalDoubleValue latitudeValue;

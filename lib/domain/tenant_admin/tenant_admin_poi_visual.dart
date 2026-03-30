@@ -1,4 +1,7 @@
+export 'value_objects/tenant_admin_poi_visual_values.dart';
+
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
@@ -106,71 +109,20 @@ class TenantAdminPoiVisual {
     }
   }
 
-  Map<String, dynamic> toJson() {
+  TenantAdminDynamicMapValue toJson() {
     if (mode == TenantAdminPoiVisualMode.icon) {
-      return {
+      return TenantAdminDynamicMapValue({
         'mode': mode.apiValue,
         'icon': icon,
         'color': color,
         'icon_color': iconColor,
-      };
+      });
     }
 
-    return {
+    return TenantAdminDynamicMapValue({
       'mode': mode.apiValue,
       'image_source': imageSource?.apiValue,
-    };
-  }
-
-  static TenantAdminPoiVisual? tryFromJson(Object? raw) {
-    if (raw is! Map) {
-      return null;
-    }
-    final json = Map<String, dynamic>.from(raw);
-
-    final modeTokenValue = TenantAdminLowercaseTokenValue();
-    try {
-      modeTokenValue.parse((json['mode'] ?? '').toString());
-    } on Object {
-      return null;
-    }
-    final mode = tenantAdminPoiVisualModeFromValue(modeTokenValue);
-    if (mode == null) {
-      return null;
-    }
-
-    if (mode == TenantAdminPoiVisualMode.icon) {
-      final iconValue = TenantAdminRequiredTextValue();
-      final colorValue = TenantAdminHexColorValue();
-      final iconColorValue = TenantAdminHexColorValue();
-      try {
-        iconValue.parse((json['icon'] ?? '').toString());
-        colorValue.parse((json['color'] ?? '').toString());
-        iconColorValue.parse((json['icon_color'] ?? '#FFFFFF').toString());
-      } on Object {
-        return null;
-      }
-      return TenantAdminPoiVisual.icon(
-        iconValue: iconValue,
-        colorValue: colorValue,
-        iconColorValue: iconColorValue,
-      );
-    }
-
-    final imageSourceTokenValue = TenantAdminLowercaseTokenValue();
-    try {
-      imageSourceTokenValue.parse((json['image_source'] ?? '').toString());
-    } on Object {
-      return null;
-    }
-    final imageSource =
-        tenantAdminPoiVisualImageSourceFromValue(imageSourceTokenValue);
-    if (imageSource == null) {
-      return null;
-    }
-    return TenantAdminPoiVisual.image(
-      imageSource: imageSource,
-    );
+    });
   }
 
   static TenantAdminHexColorValue _defaultIconColorValue() {

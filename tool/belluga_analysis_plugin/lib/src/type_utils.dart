@@ -1,6 +1,27 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:belluga_analysis_plugin/src/path_utils.dart';
+
+const _domainPrimitiveTypeNames = {
+  'String',
+  'int',
+  'double',
+  'bool',
+  'num',
+  'DateTime',
+  'Duration',
+  'Uri',
+  'dynamic',
+};
+
+const _domainForbiddenCollectionTypeNames = {
+  'Map',
+  'List',
+  'Set',
+  'Iterable',
+  'Collection',
+};
 
 String normalizeTypeName(String raw) {
   final withoutNullability = raw.replaceAll('?', '');
@@ -114,18 +135,6 @@ bool containsForbiddenDomainPrimitiveType(TypeAnnotation? type) {
     return false;
   }
 
-  const primitiveTypeNames = {
-    'String',
-    'int',
-    'double',
-    'bool',
-    'num',
-    'DateTime',
-    'Duration',
-    'Uri',
-    'dynamic',
-  };
-
   final typeName = topLevelTypeName(type);
   if (typeName == null || typeName.isEmpty) {
     return false;
@@ -149,7 +158,7 @@ bool containsForbiddenDomainPrimitiveType(TypeAnnotation? type) {
     return args.any(containsForbiddenDomainPrimitiveType);
   }
 
-  if (primitiveTypeNames.contains(typeName)) {
+  if (_domainPrimitiveTypeNames.contains(typeName)) {
     return true;
   }
 
@@ -165,6 +174,74 @@ bool containsForbiddenDomainPrimitiveType(TypeAnnotation? type) {
   return false;
 }
 
+bool containsForbiddenDomainValueObjectCollectionPayload(TypeAnnotation? type) {
+  if (type == null || type is GenericFunctionType || type is! NamedType) {
+    return false;
+  }
+
+  return _containsForbiddenDomainValueObjectCollectionPayloadType(type.type);
+}
+
+bool isAllowedDomainParameterType(TypeAnnotation? type) {
+  if (type == null || type is GenericFunctionType || type is! NamedType) {
+    return false;
+  }
+
+  if (_isAllowedDomainCollectionParameterType(type)) {
+    return true;
+  }
+
+  final dartType = type.type;
+  if (dartType is! InterfaceType) {
+    return false;
+  }
+
+  if (_isValueObjectType(dartType)) {
+    return !containsForbiddenDomainValueObjectCollectionPayload(type);
+  }
+
+  // Anything declared under `domain/**/value_objects/**` must actually be a
+  // ValueObject subtype. Plain classes in that folder are treated as
+  // workaround-shaped and are forbidden in domain signatures.
+  if (_isDomainValueObjectsFolderType(dartType)) {
+    return false;
+  }
+
+  return _isDomainOwnedType(dartType);
+}
+
+bool _isAllowedDomainCollectionParameterType(NamedType type) {
+  final typeName = topLevelTypeName(type);
+  if (typeName != 'List' && typeName != 'Set' && typeName != 'Iterable') {
+    return false;
+  }
+
+  final typeArguments = type.typeArguments?.arguments;
+  if (typeArguments == null || typeArguments.length != 1) {
+    return false;
+  }
+
+  final elementType = typeArguments.first;
+  if (elementType is! NamedType) {
+    return false;
+  }
+
+  final elementDartType = elementType.type;
+  if (elementDartType is! InterfaceType) {
+    return false;
+  }
+
+  if (_isValueObjectType(elementDartType)) {
+    return !containsForbiddenDomainValueObjectCollectionPayload(elementType);
+  }
+
+  if (_isDomainValueObjectsFolderType(elementDartType)) {
+    return false;
+  }
+
+  return _isDomainOwnedType(elementDartType);
+}
+
 bool containsForbiddenDomainPrimitiveDartType(
   DartType? type, [
   Set<Element>? visitedAliasElements,
@@ -174,18 +251,6 @@ bool containsForbiddenDomainPrimitiveDartType(
   }
   final visited = visitedAliasElements ?? <Element>{};
 
-  const primitiveTypeNames = {
-    'String',
-    'int',
-    'double',
-    'bool',
-    'num',
-    'DateTime',
-    'Duration',
-    'Uri',
-    'dynamic',
-  };
-
   if (type is DynamicType) {
     return true;
   }
@@ -193,7 +258,7 @@ bool containsForbiddenDomainPrimitiveDartType(
   final typeName = normalizeTypeName(
     type.getDisplayString(withNullability: false),
   );
-  if (primitiveTypeNames.contains(typeName)) {
+  if (_domainPrimitiveTypeNames.contains(typeName)) {
     return true;
   }
 
@@ -228,6 +293,119 @@ bool containsForbiddenDomainPrimitiveDartType(
   }
 
   return false;
+}
+
+bool _containsForbiddenDomainValueObjectCollectionPayloadType(
+  DartType? type, [
+  Set<Element>? visitedAliasElements,
+]) {
+  if (type == null) {
+    return false;
+  }
+  final visited = visitedAliasElements ?? <Element>{};
+
+  final alias = type.alias;
+  if (alias != null) {
+    final aliasElement = alias.element;
+    if (visited.add(aliasElement) &&
+        _containsForbiddenDomainValueObjectCollectionPayloadType(
+          aliasElement.aliasedType,
+          visited,
+        )) {
+      return true;
+    }
+  }
+
+  if (type is! InterfaceType) {
+    return false;
+  }
+
+  final valueObjectSupertype = _resolveValueObjectSupertype(type);
+  if (valueObjectSupertype == null ||
+      valueObjectSupertype.typeArguments.isEmpty) {
+    return false;
+  }
+
+  final payloadType = valueObjectSupertype.typeArguments.first;
+  return _isForbiddenDomainValueObjectPayloadType(payloadType, visited);
+}
+
+bool _isForbiddenDomainValueObjectPayloadType(
+  DartType type, [
+  Set<Element>? visitedAliasElements,
+]) {
+  final visited = visitedAliasElements ?? <Element>{};
+
+  if (type is DynamicType) {
+    return false;
+  }
+
+  final alias = type.alias;
+  if (alias != null) {
+    final aliasElement = alias.element;
+    if (visited.add(aliasElement) &&
+        _isForbiddenDomainValueObjectPayloadType(
+          aliasElement.aliasedType,
+          visited,
+        )) {
+      return true;
+    }
+  }
+
+  final typeName = normalizeTypeName(
+    type.getDisplayString(withNullability: false),
+  );
+  if (_domainForbiddenCollectionTypeNames.contains(typeName)) {
+    return true;
+  }
+
+  if (type is! InterfaceType) {
+    return false;
+  }
+
+  final elementName = normalizeTypeName(type.element.name ?? '');
+  return _domainForbiddenCollectionTypeNames.contains(elementName);
+}
+
+InterfaceType? _resolveValueObjectSupertype(InterfaceType type) {
+  if (normalizeTypeName(type.element.name ?? '') == 'ValueObject') {
+    return type;
+  }
+
+  for (final supertype in type.allSupertypes) {
+    if (normalizeTypeName(supertype.element.name ?? '') == 'ValueObject') {
+      return supertype;
+    }
+  }
+
+  return null;
+}
+
+bool _isValueObjectType(InterfaceType type) {
+  return _resolveValueObjectSupertype(type) != null;
+}
+
+bool _isDomainOwnedType(InterfaceType type) {
+  final sourcePath = _sourcePathOf(type);
+  if (sourcePath == null) {
+    return false;
+  }
+  return isDomainFilePath(sourcePath);
+}
+
+bool _isDomainValueObjectsFolderType(InterfaceType type) {
+  final sourcePath = _sourcePathOf(type);
+  if (sourcePath == null) {
+    return false;
+  }
+  return isDomainValueObjectFilePath(sourcePath);
+}
+
+String? _sourcePathOf(InterfaceType type) {
+  final source =
+      type.element.firstFragment.libraryFragment?.source ??
+      type.element.library.firstFragment.source;
+  return normalizePath(source.fullName);
 }
 
 bool hasMeaningfulPayloadType(TypeAnnotation? type) {
@@ -393,8 +571,9 @@ bool containsRepositoryRawPayloadMapType(TypeAnnotation? type) {
 }
 
 TypeAnnotation? formalParameterType(FormalParameter parameter) {
-  final normalized =
-      parameter is DefaultFormalParameter ? parameter.parameter : parameter;
+  final normalized = parameter is DefaultFormalParameter
+      ? parameter.parameter
+      : parameter;
 
   if (normalized is SimpleFormalParameter) {
     return normalized.type;

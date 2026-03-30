@@ -1,5 +1,17 @@
-class TenantAdminOptionalDoubleValue {
-  const TenantAdminOptionalDoubleValue(this.value);
+import 'package:value_object_pattern/value_object.dart';
 
-  final double? value;
+class TenantAdminOptionalDoubleValue extends ValueObject<double?> {
+  TenantAdminOptionalDoubleValue([double? raw])
+      : super(defaultValue: raw, isRequired: false) {
+    set(raw);
+  }
+
+  @override
+  double? doParse(String? parseValue) {
+    final normalized = (parseValue ?? '').trim().replaceAll(',', '.');
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return double.tryParse(normalized);
+  }
 }

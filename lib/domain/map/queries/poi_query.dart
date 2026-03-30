@@ -14,63 +14,44 @@ class PoiQuery {
     this.southWest,
     this.origin,
     this.maxDistanceMetersValue,
-    Set<CityPoiCategory>? categories,
-    Set<PoiFilterKeyValue>? categoryKeyValues,
+    List<PoiFilterKeyValue>? categoryKeyValues,
     this.sourceValue,
-    Set<PoiFilterTypeValue>? typeValues,
-    Set<PoiTagValue>? tagValues,
-    Set<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
+    List<PoiFilterTypeValue>? typeValues,
+    List<PoiTagValue>? tagValues,
+    List<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
     this.searchTermValue,
-  })  : categories = _toUnmodifiableSet(categories),
-        categoryKeyValues = _toUnmodifiableSet(categoryKeyValues),
-        typeValues = _toUnmodifiableSet(typeValues),
-        tagValues = _toUnmodifiableSet(tagValues),
-        taxonomyTokenValues = _toUnmodifiableSet(taxonomyTokenValues);
+  })  : categoryKeyValues = _normalizeCategoryKeyValues(categoryKeyValues),
+        typeValues = _normalizeTypeValues(typeValues),
+        tagValues = _normalizeTagValues(tagValues),
+        taxonomyTokenValues =
+            _normalizeTaxonomyTokenValues(taxonomyTokenValues);
 
   final CityCoordinate? northEast;
   final CityCoordinate? southWest;
   final CityCoordinate? origin;
   final DistanceInMetersValue? maxDistanceMetersValue;
-  final Set<CityPoiCategory>? categories;
-  final Set<PoiFilterKeyValue>? categoryKeyValues;
+  final List<PoiFilterKeyValue>? categoryKeyValues;
   final PoiFilterSourceValue? sourceValue;
-  final Set<PoiFilterTypeValue>? typeValues;
-  final Set<PoiTagValue>? tagValues;
-  final Set<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues;
+  final List<PoiFilterTypeValue>? typeValues;
+  final List<PoiTagValue>? tagValues;
+  final List<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues;
   final PoiFilterSearchTermValue? searchTermValue;
-
-  double? get maxDistanceMeters => maxDistanceMetersValue?.value;
-  Set<String>? get categoryKeys => _readValueSet(categoryKeyValues);
-  String? get source {
-    final raw = sourceValue?.value;
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
-    }
-    return raw;
-  }
-
-  Set<String>? get types => _readValueSet(typeValues);
-  Set<String>? get tags => _readValueSet(tagValues);
-  Set<String>? get taxonomy => _readValueSet(taxonomyTokenValues);
-  String? get searchTerm {
-    final raw = searchTermValue?.value;
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
-    }
-    return raw;
-  }
 
   bool get hasBounds => northEast != null && southWest != null;
 
   bool matchesCategory(CityPoiCategory category) {
-    final set = categories;
-    if (set == null || set.isEmpty) {
+    final keys = categoryKeyValues;
+    if (keys == null || keys.isEmpty) {
       return true;
     }
-    return set.contains(category);
+    final normalizedCategory = category.name.trim().toLowerCase();
+    return keys
+        .map((value) => value.value.trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .contains(normalizedCategory);
   }
 
-  bool matchesTags(Iterable<PoiTagValue> poiTagValues) {
+  bool matchesTags(List<PoiTagValue> poiTagValues) {
     final set = tagValues;
     if (set == null || set.isEmpty) {
       return true;
@@ -113,12 +94,11 @@ class PoiQuery {
     CityCoordinate? southWest,
     CityCoordinate? origin,
     DistanceInMetersValue? maxDistanceMetersValue,
-    Iterable<CityPoiCategory>? categories,
-    Iterable<PoiFilterKeyValue>? categoryKeyValues,
+    List<PoiFilterKeyValue>? categoryKeyValues,
     PoiFilterSourceValue? sourceValue,
-    Iterable<PoiFilterTypeValue>? typeValues,
-    Iterable<PoiTagValue>? tagValues,
-    Iterable<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
+    List<PoiFilterTypeValue>? typeValues,
+    List<PoiTagValue>? tagValues,
+    List<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues,
     PoiFilterSearchTermValue? searchTermValue,
   }) {
     return PoiQuery(
@@ -127,24 +107,20 @@ class PoiQuery {
       origin: origin ?? currentQuery.origin,
       maxDistanceMetersValue:
           maxDistanceMetersValue ?? currentQuery.maxDistanceMetersValue,
-      categories: _resolveSet(
-        incoming: categories,
-        fallback: currentQuery.categories,
-      ),
-      categoryKeyValues: _resolveSet(
+      categoryKeyValues: _resolveCategoryKeyValues(
         incoming: categoryKeyValues,
         fallback: currentQuery.categoryKeyValues,
       ),
       sourceValue: sourceValue,
-      typeValues: _resolveSet(
+      typeValues: _resolveTypeValues(
         incoming: typeValues,
         fallback: currentQuery.typeValues,
       ),
-      tagValues: _resolveSet(
+      tagValues: _resolveTagValues(
         incoming: tagValues,
         fallback: currentQuery.tagValues,
       ),
-      taxonomyTokenValues: _resolveSet(
+      taxonomyTokenValues: _resolveTaxonomyTokenValues(
         incoming: taxonomyTokenValues,
         fallback: currentQuery.taxonomyTokenValues,
       ),
@@ -152,50 +128,93 @@ class PoiQuery {
     );
   }
 
-  static Set<T>? _toUnmodifiableSet<T>(Set<T>? values) {
+  static List<PoiFilterKeyValue>? _normalizeCategoryKeyValues(
+    List<PoiFilterKeyValue>? values,
+  ) {
     if (values == null) {
       return null;
     }
-    return Set<T>.unmodifiable(values);
+    final normalized = values.toSet().toList(growable: false);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return List<PoiFilterKeyValue>.unmodifiable(normalized);
   }
 
-  static Set<T>? _resolveSet<T>({
-    required Iterable<T>? incoming,
-    required Set<T>? fallback,
+  static List<PoiFilterTypeValue>? _normalizeTypeValues(
+    List<PoiFilterTypeValue>? values,
+  ) {
+    if (values == null) {
+      return null;
+    }
+    final normalized = values.toSet().toList(growable: false);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return List<PoiFilterTypeValue>.unmodifiable(normalized);
+  }
+
+  static List<PoiTagValue>? _normalizeTagValues(List<PoiTagValue>? values) {
+    if (values == null) {
+      return null;
+    }
+    final normalized = values.toSet().toList(growable: false);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return List<PoiTagValue>.unmodifiable(normalized);
+  }
+
+  static List<PoiFilterTaxonomyTokenValue>? _normalizeTaxonomyTokenValues(
+    List<PoiFilterTaxonomyTokenValue>? values,
+  ) {
+    if (values == null) {
+      return null;
+    }
+    final normalized = values.toSet().toList(growable: false);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return List<PoiFilterTaxonomyTokenValue>.unmodifiable(normalized);
+  }
+
+  static List<PoiFilterKeyValue>? _resolveCategoryKeyValues({
+    required List<PoiFilterKeyValue>? incoming,
+    required List<PoiFilterKeyValue>? fallback,
   }) {
     if (incoming == null) {
       return fallback;
     }
-    final normalized = incoming.toSet();
-    if (normalized.isEmpty) {
-      return null;
-    }
-    return Set<T>.unmodifiable(normalized);
+    return _normalizeCategoryKeyValues(incoming);
   }
 
-  static Set<String>? _readValueSet<T>(Iterable<T>? values) {
-    if (values == null) {
-      return null;
+  static List<PoiFilterTypeValue>? _resolveTypeValues({
+    required List<PoiFilterTypeValue>? incoming,
+    required List<PoiFilterTypeValue>? fallback,
+  }) {
+    if (incoming == null) {
+      return fallback;
     }
-    final normalized = values
-        .map((value) {
-          if (value is PoiFilterKeyValue) {
-            return value.value;
-          }
-          if (value is PoiFilterTypeValue) {
-            return value.value;
-          }
-          if (value is PoiTagValue) {
-            return value.value;
-          }
-          if (value is PoiFilterTaxonomyTokenValue) {
-            return value.value;
-          }
-          return '';
-        })
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toSet();
-    return Set<String>.unmodifiable(normalized);
+    return _normalizeTypeValues(incoming);
+  }
+
+  static List<PoiTagValue>? _resolveTagValues({
+    required List<PoiTagValue>? incoming,
+    required List<PoiTagValue>? fallback,
+  }) {
+    if (incoming == null) {
+      return fallback;
+    }
+    return _normalizeTagValues(incoming);
+  }
+
+  static List<PoiFilterTaxonomyTokenValue>? _resolveTaxonomyTokenValues({
+    required List<PoiFilterTaxonomyTokenValue>? incoming,
+    required List<PoiFilterTaxonomyTokenValue>? fallback,
+  }) {
+    if (incoming == null) {
+      return fallback;
+    }
+    return _normalizeTaxonomyTokenValues(incoming);
   }
 }

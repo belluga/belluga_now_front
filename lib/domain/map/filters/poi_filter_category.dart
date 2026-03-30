@@ -12,7 +12,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 class PoiFilterCategory {
   PoiFilterCategory({
     this.category,
-    required Set<PoiTagValue> tagValues,
+    required List<PoiTagValue> tagValues,
     required this.keyValue,
     required this.labelValue,
     required this.countValue,
@@ -20,7 +20,7 @@ class PoiFilterCategory {
     PoiBooleanValue? overrideMarkerValue,
     this.markerOverride,
     this.serverQuery,
-  })  : tagValues = Set<PoiTagValue>.unmodifiable(tagValues),
+  })  : tagValues = List<PoiTagValue>.unmodifiable(tagValues),
         overrideMarkerValue =
             overrideMarkerValue ?? _buildDefaultOverrideMarkerValue();
 
@@ -29,7 +29,7 @@ class PoiFilterCategory {
   final PoiFilterImageUriValue? imageUriValue;
   final PoiFilterCountValue countValue;
   final CityPoiCategory? category;
-  final Set<PoiTagValue> tagValues;
+  final List<PoiTagValue> tagValues;
   final PoiBooleanValue overrideMarkerValue;
   final PoiFilterMarkerOverride? markerOverride;
   final PoiFilterServerQuery? serverQuery;
@@ -48,12 +48,8 @@ class PoiFilterCategory {
     return markerOverride?.toPoiVisual();
   }
 
-  Set<String> get tags => Set<String>.unmodifiable(
-        tagValues
-            .map((tag) => tag.value)
-            .whereType<String>()
-            .map((tag) => tag.trim())
-            .where((tag) => tag.isNotEmpty),
+  List<PoiTagValue> get tags => List<PoiTagValue>.unmodifiable(
+        tagValues.where((tag) => tag.value.trim().isNotEmpty),
       );
 
   static PoiBooleanValue _buildDefaultOverrideMarkerValue() {

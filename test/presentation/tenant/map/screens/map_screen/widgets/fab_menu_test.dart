@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
@@ -157,7 +158,6 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>();
 
   @override
-  @override
   final StreamValue<LocationResolutionPhase>
       locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
@@ -168,7 +168,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -176,7 +176,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> startTracking({
@@ -204,31 +204,36 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
-      true;
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       null;
 }
@@ -327,8 +332,8 @@ PoiFilterSourceValue? _buildFilterSourceValue(String? raw) {
   return value;
 }
 
-Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
-  final values = <PoiFilterTypeValue>{};
+List<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -338,11 +343,11 @@ Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTypeValue>.unmodifiable(values);
+  return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
-  final values = <PoiFilterKeyValue>{};
+List<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -352,13 +357,13 @@ Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterKeyValue>.unmodifiable(values);
+  return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
 }
 
-Set<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
+List<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
   Iterable<String> rawValues,
 ) {
-  final values = <PoiFilterTaxonomyTokenValue>{};
+  final values = <PoiFilterTaxonomyTokenValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -368,11 +373,13 @@ Set<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+  return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+    values.toSet().toList(),
+  );
 }
 
-Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
-  final values = <PoiTagValue>{};
+List<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>[];
   for (final entry in rawValues) {
     final normalized = entry.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -382,7 +389,7 @@ Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
     value.parse(normalized);
     values.add(value);
   }
-  return Set<PoiTagValue>.unmodifiable(values);
+  return List<PoiTagValue>.unmodifiable(values.toSet().toList());
 }
 
 PoiIconSymbolValue _buildIconSymbolValue(String raw) {

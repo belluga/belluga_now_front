@@ -2,8 +2,9 @@ import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_avatar_bytes_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_display_name_value.dart';
+import 'package:belluga_now/domain/contacts/value_objects/contact_email_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_id_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_string_list_value.dart';
+import 'package:belluga_now/domain/contacts/value_objects/contact_phone_value.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
@@ -95,8 +96,12 @@ ContactModel buildContactModel({
   return ContactModel(
     idValue: ContactIdValue(id),
     displayNameValue: ContactDisplayNameValue(displayName),
-    phoneValues: ContactStringListValue(phones),
-    emailValues: ContactStringListValue(emails),
+    phoneValues: phones
+        .map((phone) => ContactPhoneValue(raw: phone))
+        .toList(growable: false),
+    emailValues: emails
+        .map((email) => ContactEmailValue(raw: email))
+        .toList(growable: false),
     avatarValue: ContactAvatarBytesValue(avatar),
   );
 }
@@ -134,9 +139,8 @@ VenueEventResume buildVenueEventResume({
     startDateTimeValue: startValue,
     locationValue: locationValue,
     artists: List<ArtistResume>.unmodifiable(artists),
-    tagValues: tags
-        .map((tag) => VenueEventTagValue(tag))
-        .toList(growable: false),
+    tagValues:
+        tags.map((tag) => VenueEventTagValue(tag)).toList(growable: false),
     coordinate: coordinate,
   );
 }

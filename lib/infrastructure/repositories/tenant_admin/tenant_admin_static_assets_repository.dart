@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_static_assets_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
@@ -16,6 +15,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminStaticAssetsRepository
     with TenantAdminStaticAssetsPaginationMixin
@@ -83,7 +83,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticAssetList(response.data);
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos
             .map(
               (dto) => _normalizeStaticAssetMediaUrls(dto).toDomain(),
@@ -120,7 +120,8 @@ class TenantAdminStaticAssetsRepository
     required TenantAdminStaticAssetsRepoString profileType,
     required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -163,7 +164,7 @@ class TenantAdminStaticAssetsRepository
     TenantAdminStaticAssetsRepoString? displayName,
     TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -215,7 +216,8 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<void> deleteStaticAsset(TenantAdminStaticAssetsRepoString assetId) async {
+  Future<void> deleteStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId) async {
     try {
       await _dio.delete(
         '$_apiBaseUrl/v1/static_assets/${assetId.value}',
@@ -294,7 +296,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,

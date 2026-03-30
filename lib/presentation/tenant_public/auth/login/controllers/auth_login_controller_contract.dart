@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/form_field_controller_email.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/form_field_controller_password_login.dart';
@@ -119,8 +120,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     try {
       if (validate()) {
         await _authRepository.loginWithEmailPassword(
-          authEmailFieldController.value,
-          passwordController.value,
+          _authTextValue(authEmailFieldController.value),
+          _authTextValue(passwordController.value),
         );
       }
       loginResultStreamValue.addValue(_authRepository.isAuthorized);
@@ -155,7 +156,11 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     _cleanAllErrors();
 
     try {
-      await _authRepository.signUpWithEmailPassword(name, email, password);
+      await _authRepository.signUpWithEmailPassword(
+        _authTextValue(name),
+        _authTextValue(email),
+        _authTextValue(password),
+      );
       final authorized = _authRepository.isAuthorized;
       if (!authorized) {
         generalErrorStreamValue.addValue(
@@ -212,6 +217,10 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
       return uri.host.trim();
     }
     return trimmed;
+  }
+
+  AuthRepositoryContractTextValue _authTextValue(String raw) {
+    return AuthRepositoryContractTextValue.fromRaw(raw);
   }
 
   @override

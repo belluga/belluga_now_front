@@ -47,11 +47,25 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     avatarValue: avatarValue,
     coverValue: coverValue,
     bioValue: bioValue,
-    tagsValue: AccountProfileTagsValue(tags),
-    upcomingEventIdsValue: AccountProfileUpcomingEventIdsValue(upcomingEventIds),
+    tagValues: _buildTagValues(tags),
+    upcomingEventIdValues: _buildUpcomingEventIdValues(upcomingEventIds),
     isVerifiedValue: AccountProfileIsVerifiedValue(isVerified),
     engagementData: engagementData,
     acceptedInvitesValue: AccountProfileAcceptedInvitesValue(acceptedInvites),
     distanceMetersValue: AccountProfileDistanceMetersValue(distanceMeters),
   );
+}
+
+List<AccountProfileTagValue> _buildTagValues(List<String>? tags) {
+  return (tags ?? const <String>[])
+      .map(AccountProfileTagValue.new)
+      .toList(growable: false);
+}
+
+List<AccountProfileUpcomingEventIdValue> _buildUpcomingEventIdValues(
+  List<String>? ids,
+) {
+  return (ids ?? const <String>[])
+      .map(AccountProfileUpcomingEventIdValue.new)
+      .toList(growable: false);
 }

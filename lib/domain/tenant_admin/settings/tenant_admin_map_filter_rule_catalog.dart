@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_taxonomy_term_option.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_type_option.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 
 class TenantAdminMapFilterRuleCatalog {
   const TenantAdminMapFilterRuleCatalog({
@@ -9,28 +10,25 @@ class TenantAdminMapFilterRuleCatalog {
   });
 
   const TenantAdminMapFilterRuleCatalog.empty()
-      : typesBySource = const <TenantAdminMapFilterSource,
-            List<TenantAdminMapFilterTypeOption>>{},
-        taxonomyTermsBySource = const <TenantAdminMapFilterSource,
-            List<TenantAdminMapFilterTaxonomyTermOption>>{};
+      : typesBySource =
+            const TenantAdminMapFilterTypeOptionsBySourceValue.empty(),
+        taxonomyTermsBySource =
+            const TenantAdminMapFilterTaxonomyOptionsBySourceValue.empty();
 
-  final Map<TenantAdminMapFilterSource, List<TenantAdminMapFilterTypeOption>>
-      typesBySource;
-  final Map<TenantAdminMapFilterSource,
-      List<TenantAdminMapFilterTaxonomyTermOption>> taxonomyTermsBySource;
+  final TenantAdminMapFilterTypeOptionsBySourceValue typesBySource;
+  final TenantAdminMapFilterTaxonomyOptionsBySourceValue taxonomyTermsBySource;
 
   bool get isEmpty => typesBySource.isEmpty && taxonomyTermsBySource.isEmpty;
 
   List<TenantAdminMapFilterTypeOption> typesForSource(
     TenantAdminMapFilterSource source,
   ) {
-    return typesBySource[source] ?? const <TenantAdminMapFilterTypeOption>[];
+    return typesBySource.optionsFor(source);
   }
 
   List<TenantAdminMapFilterTaxonomyTermOption> taxonomyForSource(
     TenantAdminMapFilterSource source,
   ) {
-    return taxonomyTermsBySource[source] ??
-        const <TenantAdminMapFilterTaxonomyTermOption>[];
+    return taxonomyTermsBySource.optionsFor(source);
   }
 }
