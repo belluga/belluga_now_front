@@ -207,11 +207,11 @@ class TenantHomeController implements Disposable {
     final now = DateTime.now();
     return events.where((event) {
       final start = event.startDateTime;
-      if (!start.isAfter(now)) {
-        final end = start.add(_assumedEventDuration);
-        return now.isBefore(end);
+      if (start.isAfter(now)) {
+        return true;
       }
-      return true;
+      final end = event.endDateTime ?? start.add(_assumedEventDuration);
+      return now.isBefore(end) || now.isAtSameMomentAs(end);
     }).toList();
   }
 

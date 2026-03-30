@@ -25,6 +25,7 @@ class VenueEventResume {
     required this.titleValue,
     required this.imageUriValue,
     required this.startDateTimeValue,
+    this.endDateTimeValue,
     required this.locationValue,
     required this.artists,
     required this.tagValues,
@@ -37,6 +38,7 @@ class VenueEventResume {
   final TitleValue titleValue;
   final ThumbUriValue imageUriValue;
   final DateTimeValue startDateTimeValue;
+  final DateTimeValue? endDateTimeValue;
   final DescriptionValue locationValue;
   final List<ArtistResume> artists;
   final List<VenueEventTagValue> tagValues;
@@ -53,6 +55,14 @@ class VenueEventResume {
     final date = startDateTimeValue.value;
     if (date == null) {
       throw StateError('startDateTime should not be null');
+    }
+    return TimezoneConverter.utcToLocal(date);
+  }
+
+  VenueEventResumePrimDateTime? get endDateTime {
+    final date = endDateTimeValue?.value;
+    if (date == null) {
+      return null;
     }
     return TimezoneConverter.utcToLocal(date);
   }
@@ -129,6 +139,11 @@ class VenueEventResume {
 
     final startValue = DateTimeValue(isRequired: true)
       ..parse(startDateTime.toIso8601String());
+    final endDateTime = event.dateTimeEnd?.value;
+    final endValue = endDateTime == null
+        ? null
+        : (DateTimeValue(isRequired: true)
+          ..parse(endDateTime.toIso8601String()));
 
     return VenueEventResume(
       idValue: event.id,
@@ -136,6 +151,7 @@ class VenueEventResume {
       titleValue: event.title,
       imageUriValue: thumb,
       startDateTimeValue: startValue,
+      endDateTimeValue: endValue,
       locationValue: event.location,
       artists: event.artists,
       tagValues: event.taxonomyTags,

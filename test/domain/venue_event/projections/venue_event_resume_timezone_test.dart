@@ -57,6 +57,9 @@ void main() {
 
     expect(projection.startDateTime.hour, 20);
     expect(projection.startDateTime.day, 29);
+    expect(projection.endDateTime, isNotNull);
+    expect(projection.endDateTime!.hour, 22);
+    expect(projection.endDateTime!.day, 29);
   });
 }
 

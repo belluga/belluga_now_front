@@ -112,6 +112,7 @@ VenueEventResume buildVenueEventResume({
   required String title,
   required Uri imageUri,
   required DateTime startDateTime,
+  DateTime? endDateTime,
   required String location,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<String> tags = const <String>[],
@@ -129,6 +130,10 @@ VenueEventResume buildVenueEventResume({
     ..parse(imageUri.toString());
   final startValue = DateTimeValue(isRequired: true)
     ..parse(startDateTime.toIso8601String());
+  final endValue = endDateTime == null
+      ? null
+      : (DateTimeValue(isRequired: true)
+        ..parse(endDateTime.toIso8601String()));
   final locationValue = DescriptionValue(minLenght: 1)..parse(location);
 
   return VenueEventResume(
@@ -137,6 +142,7 @@ VenueEventResume buildVenueEventResume({
     titleValue: titleValue,
     imageUriValue: imageValue,
     startDateTimeValue: startValue,
+    endDateTimeValue: endValue,
     locationValue: locationValue,
     artists: List<ArtistResume>.unmodifiable(artists),
     tagValues:

@@ -75,6 +75,28 @@ void main() {
     );
   });
 
+  test('keeps ongoing events when explicit end date is in the future', () async {
+    final now = DateTime.now();
+    const ongoingId = '507f1f77bcf86cd799439013';
+    final ongoingLongEvent = buildVenueEventResume(
+      id: ongoingId,
+      slug: 'ongoing-long-event',
+      title: 'Ongoing Long Event Title',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.subtract(const Duration(hours: 18)),
+      endDateTime: now.add(const Duration(hours: 8)),
+      location: 'Valid Ongoing Location Name',
+    );
+
+    userEventsRepository.setEvents([ongoingLongEvent]);
+    await controller.init();
+
+    expect(
+      controller.myEventsFilteredStreamValue.value.map((e) => e.id),
+      contains(ongoingId),
+    );
+  });
+
   test('init does not hang when location warm-up stalls', () async {
     controller.onDispose();
     userLocationRepository.neverCompleteWarmUp = true;

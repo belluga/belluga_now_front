@@ -248,6 +248,43 @@ void main() {
     expect(backend.requests.first.liveNowOnly, isTrue);
   });
 
+  test('getEventsPage keeps standard upcoming request as single backend call',
+      () async {
+    const upcomingId = '507f1f77bcf86cd799439061';
+    const upcomingOccurrenceId = '507f1f77bcf86cd799439062';
+
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: upcomingId,
+              occurrenceId: upcomingOccurrenceId,
+              startsAtIso: '2099-01-01T22:00:00+00:00',
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+    );
+
+    final ids = result.events.map((event) => event.id.value).toList();
+    expect(ids, [upcomingId]);
+    expect(backend.requests, hasLength(1));
+    expect(backend.requests.single.liveNowOnly, isFalse);
+  });
+
   test('getEventsPage maps events when event content is null', () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -583,13 +620,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue =
-            StreamValue<DistanceInMetersValue>(
-              defaultValue: DistanceInMetersValue.fromRaw(
-                _appData.mapRadiusMaxMeters,
-                defaultValue: _appData.mapRadiusMaxMeters,
-              ),
-            );
+      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(
+            _appData.mapRadiusMaxMeters,
+            defaultValue: _appData.mapRadiusMaxMeters,
+          ),
+        );
 
   final AppData _appData;
 
