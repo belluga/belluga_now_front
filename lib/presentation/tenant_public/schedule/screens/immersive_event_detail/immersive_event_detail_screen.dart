@@ -19,7 +19,6 @@ import 'package:belluga_now/domain/invites/value_objects/invite_message_value.da
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';

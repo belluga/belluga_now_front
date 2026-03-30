@@ -1334,8 +1334,15 @@ class MapScreenController implements Disposable {
   @override
   FutureOr onDispose() async {
     _finishPoiTimedEvent();
+    _zoomThrottle?.cancel();
     await _mapEventSubscription?.cancel();
     await _filteredPoisSubscription?.cancel();
+    statusMessageStreamValue.dispose();
+    mapStatusStreamValue.dispose();
+    isLoading.dispose();
+    errorMessage.dispose();
+    searchTermStreamValue.dispose();
+    zoomStreamValue.dispose();
     activeCategoryKeysStreamValue.dispose();
     activeTaxonomyTokensStreamValue.dispose();
     activeCatalogFilterKeyStreamValue.dispose();

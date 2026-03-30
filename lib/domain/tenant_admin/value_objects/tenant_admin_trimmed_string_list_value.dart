@@ -8,6 +8,7 @@ class TenantAdminTrimmedStringListValue extends ListBase<String> {
 
   List<String> get value => _value;
 
+  @override
   bool get isEmpty => _value.isEmpty;
 
   @override

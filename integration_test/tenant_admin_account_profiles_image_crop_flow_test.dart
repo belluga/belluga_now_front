@@ -27,7 +27,6 @@ import 'package:get_it/get_it.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 
 import 'support/tenant_admin_image_crop_harness.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

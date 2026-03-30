@@ -4,7 +4,6 @@ import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_s
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/user/user_custom_data.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';

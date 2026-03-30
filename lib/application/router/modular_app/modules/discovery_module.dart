@@ -12,7 +12,7 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class DiscoveryModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
-    registerLazySingleton(() => DiscoveryScreenController());
+    registerFactory(() => DiscoveryScreenController());
     registerLazySingleton<PartnerProfileConfigBuilder>(
       () => PartnerProfileConfigBuilder(),
     );

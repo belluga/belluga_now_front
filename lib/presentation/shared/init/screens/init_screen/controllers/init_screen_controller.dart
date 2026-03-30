@@ -189,6 +189,12 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     uiStateStreamValue.addValue(state);
   }
 
+  @override
+  void onDispose() {
+    loadingStatusStreamValue.dispose();
+    uiStateStreamValue.dispose();
+  }
+
   // _initializeBehavior() async {
   //   await _behaviorController.init();
   // }

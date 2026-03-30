@@ -423,7 +423,8 @@ class DiscoveryScreenController implements Disposable {
 
     _isFetchingNearby = true;
     try {
-      final nearby = await _accountProfilesRepository.fetchNearbyAccountProfiles();
+      final nearby =
+          await _accountProfilesRepository.fetchNearbyAccountProfiles();
       nearbyStreamValue.addValue(nearby);
     } catch (error) {
       debugPrint(
@@ -602,7 +603,6 @@ class DiscoveryScreenController implements Disposable {
     hasMoreStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();
-    liveNowEventsStreamValue.dispose();
     curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();

@@ -2,6 +2,8 @@ import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_direct_navigation_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_dispose_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_owned_streamvalue_dispose_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_async_model_fetch_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_pagination_arguments_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_streamvalue_model_ownership_forbidden_rule.dart';
@@ -101,6 +103,12 @@ class BellugaAnalysisPlugin extends Plugin {
     );
     registry.registerWarningRule(
       ControllerRepositoryPaginationArgumentsForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerDelegatedStreamValueDisposeForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerOwnedStreamValueDisposeRequiredRule(),
     );
     registry.registerWarningRule(
       ControllerStreamValueModelOwnershipForbiddenRule(),

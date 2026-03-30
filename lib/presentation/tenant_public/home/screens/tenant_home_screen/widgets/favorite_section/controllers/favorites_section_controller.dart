@@ -96,7 +96,6 @@ class FavoritesSectionController implements Disposable {
 
   @override
   void onDispose() {
-    favoritesStreamValue.dispose();
     navigationTargetStreamValue.dispose();
   }
 }

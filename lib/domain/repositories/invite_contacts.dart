@@ -14,8 +14,11 @@ class InviteContacts extends IterableBase<ContactModel> {
   }
 
   List<ContactModel> get items => List<ContactModel>.unmodifiable(_items);
+  @override
   bool get isEmpty => _items.isEmpty;
+  @override
   bool get isNotEmpty => _items.isNotEmpty;
+  @override
   int get length => _items.length;
 
   @override

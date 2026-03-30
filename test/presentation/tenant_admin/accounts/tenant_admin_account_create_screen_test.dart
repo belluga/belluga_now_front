@@ -34,7 +34,6 @@ import 'package:get_it/get_it.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin

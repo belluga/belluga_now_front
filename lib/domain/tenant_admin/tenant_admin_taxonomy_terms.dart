@@ -16,8 +16,11 @@ class TenantAdminTaxonomyTerms extends IterableBase<TenantAdminTaxonomyTerm> {
 
   List<TenantAdminTaxonomyTerm> get items =>
       List<TenantAdminTaxonomyTerm>.unmodifiable(_items);
+  @override
   bool get isEmpty => _items.isEmpty;
+  @override
   bool get isNotEmpty => _items.isNotEmpty;
+  @override
   int get length => _items.length;
 
   @override

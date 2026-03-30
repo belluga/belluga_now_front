@@ -15,8 +15,11 @@ class InviteRecipients extends IterableBase<EventFriendResume> {
 
   List<EventFriendResume> get items =>
       List<EventFriendResume>.unmodifiable(_items);
+  @override
   bool get isEmpty => _items.isEmpty;
+  @override
   bool get isNotEmpty => _items.isNotEmpty;
+  @override
   int get length => _items.length;
 
   @override

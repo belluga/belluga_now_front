@@ -126,6 +126,59 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'discovery re-entry keeps shared schedule stream alive and pagination healthy',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('re1'), type: 'artist', name: 'First'),
+          ],
+          hasMore: true,
+        ),
+        2: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('re2'), type: 'artist', name: 'Second'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final scheduleRepository = _FakeDiscoveryScheduleRepository(
+      liveNowEvents: [
+        _event(
+          id: _mongoId('re-live'),
+          slug: 're-live',
+          title: 'Reentry Live',
+          artistName: 'Reentry Artist',
+        ),
+      ],
+    );
+
+    final firstController = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      scheduleRepository: scheduleRepository,
+    );
+    await firstController.init();
+    firstController.onDispose();
+
+    final secondController = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      scheduleRepository: scheduleRepository,
+    );
+    await secondController.init();
+    expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
+
+    await secondController.loadNextPage();
+
+    expect(secondController.filteredPartnersStreamValue.value, hasLength(2));
+    expect(secondController.isPageLoadingStreamValue.value, isFalse);
+    secondController.onDispose();
+  });
+
   test('discovery nearby section loads from independent repository request',
       () async {
     final repository = _FakeAccountProfilesRepository(
@@ -722,9 +775,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     final source = nearbyProfiles.isEmpty
         ? await fetchAllAccountProfiles()
         : nearbyProfiles;
-    return source
-        .take(pageSize?.value ?? 10)
-        .toList(growable: false);
+    return source.take(pageSize?.value ?? 10).toList(growable: false);
   }
 
   @override
@@ -1254,8 +1305,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-        defaultValue: DistanceInMetersValue.fromRaw(0, defaultValue: 0),
-      );
+    defaultValue: DistanceInMetersValue.fromRaw(0, defaultValue: 0),
+  );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(

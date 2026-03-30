@@ -82,4 +82,13 @@ abstract class CreatePasswordControllerContract extends Disposable {
   AuthRepositoryContractTextValue _authTextValue(String raw) {
     return AuthRepositoryContractTextValue.fromRaw(raw);
   }
+
+  @override
+  void onDispose() {
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+    buttonLoadingValue.dispose();
+    fieldEnabled.dispose();
+    generalErrorStreamValue.dispose();
+  }
 }

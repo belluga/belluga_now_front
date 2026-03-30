@@ -14,7 +14,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
@@ -24,7 +23,6 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminAccountProfilesController({
@@ -1291,6 +1289,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountDetailLoadingStreamValue.dispose();
     accountDetailErrorStreamValue.dispose();
     accountUpdatingStreamValue.dispose();
+    accountDeletingStreamValue.dispose();
+    accountDeletedStreamValue.dispose();
     editStateStreamValue.dispose();
     editLoadingStreamValue.dispose();
     editLoadErrorStreamValue.dispose();

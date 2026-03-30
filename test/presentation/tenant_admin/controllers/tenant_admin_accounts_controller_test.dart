@@ -27,7 +27,6 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin

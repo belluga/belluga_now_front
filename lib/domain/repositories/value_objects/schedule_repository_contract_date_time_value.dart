@@ -2,9 +2,9 @@ import 'package:value_object_pattern/value_object.dart';
 
 class ScheduleRepositoryContractDateTimeValue extends ValueObject<DateTime> {
   ScheduleRepositoryContractDateTimeValue({
-    required DateTime defaultValue,
+    required super.defaultValue,
     super.isRequired = true,
-  }) : super(defaultValue: defaultValue);
+  });
 
   factory ScheduleRepositoryContractDateTimeValue.fromRaw(
     Object? raw, {

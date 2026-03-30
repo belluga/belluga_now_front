@@ -16,7 +16,6 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin

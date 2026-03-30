@@ -12,6 +12,7 @@ class TenantAdminDynamicMapValue extends MapBase<String, dynamic> {
 
   Map<String, dynamic> get value => _value;
 
+  @override
   bool get isEmpty => _value.isEmpty;
 
   @override

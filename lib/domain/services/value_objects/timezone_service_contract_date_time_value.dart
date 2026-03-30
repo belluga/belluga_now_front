@@ -2,9 +2,9 @@ import 'package:value_object_pattern/value_object.dart';
 
 class TimezoneServiceContractDateTimeValue extends ValueObject<DateTime> {
   TimezoneServiceContractDateTimeValue({
-    required DateTime defaultValue,
+    required super.defaultValue,
     super.isRequired = true,
-  }) : super(defaultValue: defaultValue);
+  });
 
   factory TimezoneServiceContractDateTimeValue.fromRaw(
     Object? raw, {

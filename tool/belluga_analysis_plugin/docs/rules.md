@@ -73,3 +73,25 @@ Repositories cannot own raw payload map typing/parsing/building (`Map<String, Ob
 1. Move raw payload parsing to DAO/DTO decoder layer.
 2. Make repository consume typed DTO/decoder output only.
 3. Keep transport map assembly/parsing out of repositories.
+
+## `controller_delegated_streamvalue_dispose_forbidden`
+
+### Rule intent
+Controllers must not dispose delegated `StreamValue` sources.
+
+### Delegated semantics
+- External stream target (for example `repository.streamValue.dispose()`).
+- Explicit controller getter returning `StreamValue` (for example `get feedStreamValue => ...`).
+
+### Remediation playbook
+1. Remove `.dispose()` calls on delegated/external/getter-based `StreamValue`.
+2. Keep disposal only for controller-owned `StreamValue` fields.
+
+## `controller_owned_streamvalue_dispose_required`
+
+### Rule intent
+Controller-owned `StreamValue` fields must be disposed in `onDispose()` or `dispose()`.
+
+### Remediation playbook
+1. For each owned `StreamValue` field, add `<field>.dispose()` in `onDispose()`/`dispose()`.
+2. Keep delegated stream disposal forbidden (see previous rule).

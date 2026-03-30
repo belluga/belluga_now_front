@@ -16,8 +16,11 @@ class ScheduleTaxonomyEntries
     _items.add(item);
   }
 
+  @override
   bool get isEmpty => _items.isEmpty;
+  @override
   bool get isNotEmpty => _items.isNotEmpty;
+  @override
   int get length => _items.length;
 
   @override

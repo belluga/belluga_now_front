@@ -232,6 +232,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signupPasswordController.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();
+    fieldEnabled.dispose();
     loginResultStreamValue.dispose();
     signUpResultStreamValue.dispose();
     sliverAppBarController.dispose();
