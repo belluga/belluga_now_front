@@ -746,6 +746,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async {
+    return buildInviteAcceptResult(
+      inviteId: 'mock-$code',
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  }
+
+  @override
   Future<InviteShareCodeResult> createShareCode({
     required String eventId,
     String? occurrenceId,

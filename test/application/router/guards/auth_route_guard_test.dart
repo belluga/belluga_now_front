@@ -1,6 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -10,10 +13,12 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
+    AuthWallTelemetry.resetForTesting();
   });
 
   tearDown(() async {
     await GetIt.I.reset();
+    AuthWallTelemetry.resetForTesting();
   });
 
   test('allows navigation when user is authorized', () {
@@ -77,6 +82,98 @@ void main() {
       '/auth/login?redirect=%2Fconvites%3Fcode%3DABC123',
     );
   });
+
+  test('tracks auth wall telemetry for send-invite guard interception',
+      () async {
+    GetIt.I.registerSingleton<AuthRepositoryContract>(
+      _FakeAuthRepository(authorized: false),
+    );
+    final telemetry = _RecordingTelemetryRepository();
+    GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
+
+    final guard = AuthRouteGuard();
+    final resolver = _MockNavigationResolver();
+    final router = _RecordingStackRouter();
+    resolver.routeValue = _FakeRouteMatch(
+      fullPath: '/convites/compartilhar',
+      queryParams: const {'event': 'evt-1'},
+    );
+
+    guard.onNavigation(resolver, router);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(telemetry.loggedEvents, hasLength(1));
+    final trackedEvent = telemetry.loggedEvents.first;
+    expect(trackedEvent.event, EventTrackerEvents.buttonClick);
+    expect(trackedEvent.eventName, 'app_auth_wall_triggered');
+    expect(trackedEvent.properties?['action_type'], 'send_invite');
+    expect(
+      trackedEvent.properties?['redirect_path'],
+      '/convites/compartilhar',
+    );
+  });
+}
+
+class _LoggedEvent {
+  _LoggedEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _RecordingTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_LoggedEvent> loggedEvents = <_LoggedEvent>[];
+
+  @override
+  Future<bool> logEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    loggedEvents.add(
+      _LoggedEvent(
+        event: event,
+        eventName: eventName,
+        properties: properties,
+      ),
+    );
+    return true;
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
+    return true;
+  }
+
+  @override
+  Future<bool> flushTimedEvents() async {
+    return true;
+  }
+
+  @override
+  void setScreenContext(Map<String, dynamic>? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<bool> mergeIdentity({required String previousUserId}) async {
+    return true;
+  }
 }
 
 class _MockNavigationResolver extends Mock implements NavigationResolver {

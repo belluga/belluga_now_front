@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
@@ -22,6 +23,7 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
@@ -34,6 +36,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -201,18 +204,46 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleConfirmAttendance() async {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      AppPromotionDialog.show(
+        context,
+        redirectPath: redirectPath,
+        shareCode: resolveWebPromotionShareCode(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final result = await _controller.confirmAttendance();
     if (!mounted ||
         result != AttendanceConfirmationResult.requiresAuthentication) {
       return;
     }
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   void _openInviteFlow(EventModel event) {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      AuthWallTelemetry.trackTriggered(
+        actionType: AuthWallActionType.sendInvite,
+        redirectPath: redirectPath,
+      );
+      AppPromotionDialog.show(
+        context,
+        redirectPath: redirectPath,
+        shareCode: resolveWebPromotionShareCode(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final invite = _buildInviteFromEvent(event);
     context.router.push(InviteShareRoute(invite: invite));
   }

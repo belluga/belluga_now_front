@@ -182,9 +182,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       _setValue(initialLoadingLabelStreamValue, _loadingLocationLabel);
     }
     try {
-      await _resolveEffectiveOrigin(
-        warmUpIfPossible: shouldShowInitialLoading,
-      );
+      final stopwatch = Stopwatch()..start();
+      if (shouldShowInitialLoading) {
+        initialLoadingLabelStreamValue.addValue('Localizando...');
+        await _resolveEffectiveOrigin(
+          warmUpIfPossible: shouldShowInitialLoading,
+        );
+      }
+      final locationElapsed = stopwatch.elapsedMilliseconds;
+
       if (shouldShowInitialLoading) {
         _setValue(initialLoadingLabelStreamValue, _loadingNearbyEventsLabel);
       }
@@ -194,6 +200,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         page: 1,
         showPageLoadingForFirstPage: preserveCurrentResults,
       );
+      final totalElapsed = stopwatch.elapsedMilliseconds;
+      debugPrint('TenantHomeAgendaController._refresh: '
+          'Location resolution took ${locationElapsed}ms, '
+          'API fetch took ${totalElapsed - locationElapsed}ms. '
+          'Total: ${totalElapsed}ms.');
     } catch (error) {
       debugPrint('TenantHomeAgendaController._refresh failed: $error');
       if (shouldShowInitialLoading) {
@@ -681,15 +692,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       return coordinate;
     }
 
-    Duration freshnessWindow;
-    try {
-      freshnessWindow =
-          _appDataRepository.appData.telemetryContextSettings.locationFreshness;
-    } on Object {
-      freshnessWindow = const Duration(minutes: 5);
-    }
-
-    if (DateTime.now().difference(capturedAt) > freshnessWindow) {
+    // Aumentamos a "janela de frescor" de 5 para 20 minutos para evitar
+    // esperas desnecessárias pelo GPS ao reabrir o app em um local próximo.
+    if (DateTime.now().difference(capturedAt) > const Duration(minutes: 20)) {
       return null;
     }
 

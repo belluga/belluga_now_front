@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.d
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -46,6 +47,7 @@ import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.da
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
@@ -307,6 +309,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
+    );
+    _registerIfAbsent<DeferredLinkRepositoryContract>(
+      () => DeferredLinkRepository(),
     );
     _registerIfAbsent<FavoriteRepositoryContract>(
       () => FavoriteRepository(),

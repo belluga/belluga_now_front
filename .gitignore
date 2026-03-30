@@ -57,6 +57,8 @@ app.*.map.json
 
 # DELPHI-AI
 AGENTS.md
+CLINE.md
+GEMINI.md
 scripts
 delphi-ai
 foundation_documentation
@@ -70,7 +72,6 @@ foundation_documentation
 .cline/
 .clinerules
 .clinerules/
-CLINE.md
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json

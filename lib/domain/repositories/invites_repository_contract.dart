@@ -73,6 +73,9 @@ abstract class InvitesRepositoryContract {
   Future<InviteDeclineResult> declineInvite(
       InvitesRepositoryContractPrimString inviteId);
 
+  Future<InviteAcceptResult> acceptInviteByCode(
+      InvitesRepositoryContractPrimString code);
+
   Future<InviteMaterializeResult> materializeShareCode(
           InvitesRepositoryContractPrimString code) async =>
       throw UnimplementedError();

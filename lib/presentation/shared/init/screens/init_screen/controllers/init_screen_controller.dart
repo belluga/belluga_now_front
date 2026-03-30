@@ -8,17 +8,22 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_ui_state.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 
 final class InitScreenController extends BellugaInitScreenControllerContract {
   InitScreenController({
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
+    DeferredLinkRepositoryContract? deferredLinkRepository,
+    TelemetryRepositoryContract? telemetryRepository,
     PushPresentationGateContract? pushPresentationGate,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
@@ -28,6 +33,14 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _deferredLinkRepository = deferredLinkRepository ??
+            (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
+                ? GetIt.I.get<DeferredLinkRepositoryContract>()
+                : null),
+        _telemetryRepository = telemetryRepository ??
+            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+                ? GetIt.I.get<TelemetryRepositoryContract>()
+                : null),
         _pushPresentationGate = pushPresentationGate ??
             (GetIt.I.isRegistered<PushPresentationGateContract>()
                 ? GetIt.I.get<PushPresentationGateContract>()
@@ -36,6 +49,8 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
+  final DeferredLinkRepositoryContract? _deferredLinkRepository;
+  final TelemetryRepositoryContract? _telemetryRepository;
   final PushPresentationGateContract? _pushPresentationGate;
 
   @override
@@ -48,10 +63,13 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   );
 
   PageRouteInfo? _determinedRoute;
+  String? _initialRoutePath;
 
   @override
   PageRouteInfo get initialRoute =>
       _determinedRoute ?? _homeRouteForEnvironment();
+
+  String? get initialRoutePath => _initialRoutePath;
 
   List<PageRouteInfo> get initialRouteStack {
     final route = initialRoute;
@@ -95,8 +113,56 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     // loadingStatusStreamValue.addValue("É bom te ver por aqui!");
     // loadingStatusStreamValue.addValue("Ajustando últimos detalhes!");
     await _invitesRepository.init();
+    await _resolveDeferredInviteFirstOpenPath();
     _determinedRoute = _resolveInitialRoute();
     // await _initializeBehavior();
+  }
+
+  Future<void> _resolveDeferredInviteFirstOpenPath() async {
+    _initialRoutePath = null;
+
+    if (appData.typeValue.value == EnvironmentType.landlord) {
+      return;
+    }
+
+    final deferred = _deferredLinkRepository;
+    if (deferred == null) {
+      return;
+    }
+
+    final result = await deferred.captureFirstOpenInviteCode();
+    if (result.isCaptured) {
+      _initialRoutePath = Uri(
+        path: '/invite',
+        queryParameters: <String, String>{
+          'code': result.code!,
+        },
+      ).toString();
+      await _telemetryRepository?.logEvent(
+        EventTrackerEvents.buttonClick,
+        eventName: 'app_deferred_deep_link_captured',
+        properties: <String, dynamic>{
+          'code': result.code,
+          'platform': 'android',
+          if (result.storeChannel != null) 'store_channel': result.storeChannel,
+        },
+      );
+      return;
+    }
+
+    if (!result.shouldTrackFailure) {
+      return;
+    }
+
+    await _telemetryRepository?.logEvent(
+      EventTrackerEvents.buttonClick,
+      eventName: 'app_deferred_deep_link_capture_failed',
+      properties: <String, dynamic>{
+        'platform': 'android',
+        'failure_reason': result.failureReason,
+        if (result.storeChannel != null) 'store_channel': result.storeChannel,
+      },
+    );
   }
 
   PageRouteInfo _resolveInitialRoute() {

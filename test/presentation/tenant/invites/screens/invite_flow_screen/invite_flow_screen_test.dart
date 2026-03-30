@@ -80,6 +80,19 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       })();
 
   @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async => (() {
+        acceptedInviteIds.add('mock-$code');
+        return buildInviteAcceptResult(
+          inviteId: 'mock-$code',
+          status: 'accepted',
+          creditedAcceptance: true,
+          attendancePolicy: 'free_confirmation_only',
+          nextStep: InviteNextStep.freeConfirmationCreated,
+          supersededInviteIds: const [],
+        );
+      })();
+
+  @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
         declinedInviteIds.add(inviteId);
         _removeInvite(inviteId);
@@ -391,11 +404,12 @@ void main() {
   });
 
   testWidgets(
-      'Unauthenticated invite shows auth CTA and preserves invite deep link',
+      'Unauthenticated invite allows anonymous decision without login redirect',
       (tester) async {
     final invite = _buildInvite('1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
     final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
       telemetryRepository: _FakeTelemetryRepository(),
       authRepository: _FakeAuthRepository(authorized: false),
@@ -425,21 +439,19 @@ void main() {
     await tester.pump();
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+      if (find.text('Aceitar').evaluate().isNotEmpty) {
         break;
       }
     }
 
-    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
-    expect(find.text('Recusar'), findsNothing);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
+    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsOneWidget);
+    expect(router.lastPushedPath, isNull);
 
-    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
-    await tester.pump();
-
-    expect(
-      router.lastPushedPath,
-      '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9',
-    );
+    expect(repository.acceptedInviteIds, isEmpty);
+    expect(router.lastPushed, isNull);
+    expect(router.lastPushedPath, isNull);
   });
 
   testWidgets('Authenticated share invite accept uses canonical invite action',

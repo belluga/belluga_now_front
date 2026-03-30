@@ -1,1 +1,1 @@
-../delphi-ai/templates/agents/flutter.md
+../delphi-ai/GEMINI.md

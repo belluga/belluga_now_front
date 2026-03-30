@@ -70,6 +70,29 @@ void main() {
     expect(result.supersededInviteIds, ['invite-2']);
   });
 
+  test('acceptInviteByCode routes to share accept endpoint',
+      () async {
+    final backend = _FakeInvitesBackend(
+      acceptResponse: {
+        'invite_id': 'invite-from-share',
+        'status': 'accepted',
+        'credited_acceptance': true,
+        'attendance_policy': 'free_confirmation_only',
+        'next_step': 'free_confirmation_created',
+        'superseded_invite_ids': [],
+        'accepted_at': null,
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+
+    final result = await repository.acceptInviteByCode('ABCD1234');
+
+    expect(result.inviteId, 'invite-from-share');
+    expect(result.isAccepted, isTrue);
+    expect(backend.acceptShareCodeCalls, ['ABCD1234']);
+    expect(backend.acceptInviteCalls, isEmpty);
+  });
+
   test('materializeShareCode maps pending state from canonical payload',
       () async {
     final repository = InvitesRepository(
@@ -175,10 +198,20 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _declineResponse;
 
   int fetchInvitesCalls = 0;
+  final List<String> acceptInviteCalls = <String>[];
+  final List<String> acceptShareCodeCalls = <String>[];
 
   @override
-  Future<Map<String, dynamic>> acceptInvite(String inviteId) async =>
-      _acceptResponse;
+  Future<Map<String, dynamic>> acceptInvite(String inviteId) async {
+    acceptInviteCalls.add(inviteId);
+    return _acceptResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> acceptShareCode(String code) async {
+    acceptShareCodeCalls.add(code);
+    return _acceptResponse;
+  }
 
   @override
   Future<Map<String, dynamic>> createShareCode(

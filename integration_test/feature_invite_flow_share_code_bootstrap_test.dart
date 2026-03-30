@@ -353,6 +353,17 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async =>
+      buildInviteAcceptResult(
+        inviteId: 'mock-$code',
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.none,
+        supersededInviteIds: const [],
+      );
+
+  @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
       buildInviteDeclineResult(
         inviteId: inviteId,

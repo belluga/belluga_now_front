@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -17,6 +22,7 @@ class InviteFlowScreen extends StatefulWidget {
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
   final InviteFlowScreenController _controller =
       GetIt.I.get<InviteFlowScreenController>();
+  bool _trackedWebLanding = false;
 
   @override
   void initState() {
@@ -30,6 +36,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       shareCode: shareCode,
       redirectPath: redirectPath,
     );
+    _trackWebInviteLanding(shareCode);
   }
 
   @override
@@ -61,5 +68,25 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         );
       },
     );
+  }
+
+  void _trackWebInviteLanding(String? shareCode) {
+    if (!kIsWeb || _trackedWebLanding) {
+      return;
+    }
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    _trackedWebLanding = true;
+    final normalizedCode = shareCode?.trim();
+    final hasCode = normalizedCode != null && normalizedCode.isNotEmpty;
+    unawaited(GetIt.I.get<TelemetryRepositoryContract>().logEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'web_invite_landing_opened',
+      properties: <String, dynamic>{
+        'store_channel': 'web',
+        'has_code': hasCode,
+      },
+    ));
   }
 }

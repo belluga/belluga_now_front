@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -103,18 +104,37 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       return hasAnyCoordinate;
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-      ),
-    );
+    Position? position = await Geolocator.getLastKnownPosition();
 
-    await _applyLiveFix(
-      position,
-      shouldPersist: true,
+    // If we have a very recent (within 5 min) position, use it.
+    // Otherwise, request a new one with medium accuracy (faster).
+    if (position == null ||
+        DateTime.now().difference(position.timestamp) >
+            const Duration(minutes: 5)) {
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+      } catch (e) {
+        debugPrint('UserLocationRepository.refreshIfPermitted: $e');
+      }
+    }
+
+    if (position != null) {
+      await _applyLiveFix(
+        position,
+        shouldPersist: true,
+      );
+    }
+
+    locationResolutionPhaseStreamValue.addValue(
+      userLocationStreamValue.value != null
+          ? LocationResolutionPhase.resolved
+          : LocationResolutionPhase.unavailable,
     );
-    locationResolutionPhaseStreamValue
-        .addValue(LocationResolutionPhase.resolved);
     return userLocationStreamValue.value != null ||
         lastKnownLocationStreamValue.value != null;
   }

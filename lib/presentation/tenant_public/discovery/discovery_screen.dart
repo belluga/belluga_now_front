@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
@@ -10,7 +11,9 @@ import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discove
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
+import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -304,13 +307,56 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkPendingIntent();
+  }
+
+  void _checkPendingIntent() {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final action = AuthWallTelemetry.consumePendingAction(redirectPath);
+    if (action != null && action.actionType == AuthWallActionType.favorite) {
+      final partnerId = action.payload?['partnerId'] as String?;
+      if (partnerId != null) {
+        // Find the partner in the list. Wait, _controller.toggleFavorite just takes ID!
+        // We can just call it with the partnerId. But the method takes AccountProfileModel.
+        // Oh, wait, the controller method takes ID! But _handleFavoriteTap takes AccountProfileModel.
+        // Let's call controller directly.
+        _controller.toggleFavorite(partnerId);
+      }
+    }
+  }
+
   void _handleFavoriteTap(AccountProfileModel partner) {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      AuthWallTelemetry.trackTriggered(
+        actionType: AuthWallActionType.favorite,
+        redirectPath: redirectPath,
+        payload: {'partnerId': partner.id},
+      );
+      AppPromotionDialog.show(
+        context,
+        redirectPath: redirectPath,
+        shareCode: resolveWebPromotionShareCode(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final outcome = _controller.toggleFavorite(partner.id);
     if (outcome != FavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    AuthWallTelemetry.trackTriggered(
+      actionType: AuthWallActionType.favorite,
+      redirectPath: redirectPath,
+      payload: {'partnerId': partner.id},
+    );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }

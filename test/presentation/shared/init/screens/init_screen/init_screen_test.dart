@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -127,6 +128,49 @@ void main() {
       [LandlordHomeRoute.name],
     );
   });
+
+  testWidgets('deferred capture uses invite path override with share code',
+      (tester) async {
+    final gate = _FakePushPresentationGate();
+    GetIt.I.registerSingleton<InitScreenController>(
+      InitScreenController(
+        invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        deferredLinkRepository: const _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            code: 'ABCD1234',
+            storeChannel: 'play',
+          ),
+        ),
+        pushPresentationGate: gate,
+      ),
+    );
+
+    final router = _RecordingStackRouter(canPopValue: false);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: const MaterialApp(home: InitScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    final asyncExceptions = _takeAllExceptions(tester);
+    expect(
+      asyncExceptions,
+      isEmpty,
+      reason: _formatAsyncExceptions(asyncExceptions),
+    );
+    expect(router.lastReplacedPath, '/invite?code=ABCD1234');
+    expect(router.lastReplaced, isNull);
+  });
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -162,6 +206,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     return buildInviteAcceptResult(
       inviteId: inviteId,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  }
+
+  @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async {
+    return buildInviteAcceptResult(
+      inviteId: 'mock-$code',
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -266,6 +322,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
 
   final bool canPopValue;
   List<PageRouteInfo>? lastReplaced;
+  String? lastReplacedPath;
 
   @override
   bool canPop({
@@ -284,6 +341,26 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     lastReplaced = routes;
   }
+
+  @override
+  Future<T?> replacePath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedPath = path;
+    return null;
+  }
+}
+
+class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
+  const _FakeDeferredLinkRepository(this.result);
+
+  final DeferredLinkCaptureResult result;
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
+      result;
 }
 
 List<Object> _takeAllExceptions(WidgetTester tester) {

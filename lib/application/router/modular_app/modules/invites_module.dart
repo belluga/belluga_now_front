@@ -24,7 +24,7 @@ class InvitesModule extends ModuleContract {
         AutoRoute(
           path: '/convites',
           page: InviteFlowRoute.page,
-          guards: [TenantRouteGuard(), AuthRouteGuard()],
+          guards: [TenantRouteGuard()],
         ),
         AutoRoute(
           path: '/invite',

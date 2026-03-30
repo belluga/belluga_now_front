@@ -130,6 +130,19 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       })();
 
   @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async => (() {
+        acceptedInviteIds.add('mock-$code');
+        return buildInviteAcceptResult(
+          inviteId: 'mock-$code',
+          status: 'accepted',
+          creditedAcceptance: true,
+          attendancePolicy: 'free_confirmation_only',
+          nextStep: InviteNextStep.freeConfirmationCreated,
+          supersededInviteIds: const [],
+        );
+      })();
+
+  @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
         declinedInviteIds.add(inviteId);
         _removeInvite(inviteId);
@@ -376,7 +389,30 @@ void main() {
     expect(repository.materializedShareCodes, isEmpty);
     expect(controller.displayInvitesStreamValue.value, hasLength(1));
     expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
-    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+    await controller.onDispose();
+  });
+
+  test('unauthenticated decision uses canonical invite accept (anonymous conversion)',
+      () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: [_buildInvite('preview')],
+      previewInvite: _buildInvite('preview'),
+      materializedInviteId: 'preview',
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+    await controller.requestDecision(InviteDecision.accepted);
+
+    expect(repository.previewedShareCodes, ['SHARE-ABC']);
+    // Repository.acceptInvite should be called even while unauthorized
+    expect(repository.acceptedInviteIds, ['preview']);
     await controller.onDispose();
   });
 

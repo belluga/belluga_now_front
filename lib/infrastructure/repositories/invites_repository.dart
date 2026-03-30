@@ -85,6 +85,17 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     final response = await _backend.acceptInvite(inviteId);
     await fetchInvites();
+    return _decodeAcceptResult(response);
+  }
+
+  @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async {
+    final response = await _backend.acceptShareCode(code);
+    await fetchInvites();
+    return _decodeAcceptResult(response);
+  }
+
+  InviteAcceptResult _decodeAcceptResult(Map<String, dynamic> response) {
     return InviteAcceptResult(
       inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
       statusValue:

@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_decision_result.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -87,8 +88,20 @@ class InviteFlowScreenController with Disposable {
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
 
+    if (kIsWeb) {
+      // Web policy: keep invite landing preview-only and avoid mutation/materialization.
+      authRequiredForDecisionStreamValue.addValue(false);
+      _finishActiveInviteTimedEvent();
+      final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
+      displayInvitesStreamValue.addValue(preview);
+      _ensureTopIndexBounds(preview.length);
+      initializedStreamValue.addValue(true);
+      return;
+    }
+
     if (!_isAuthorized) {
-      authRequiredForDecisionStreamValue.addValue(true);
+      // Allow anonymous invite acceptance (invert auth-first to anonymous-first)
+      authRequiredForDecisionStreamValue.addValue(false);
       _finishActiveInviteTimedEvent();
       final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
       displayInvitesStreamValue.addValue(preview);
@@ -266,13 +279,14 @@ class InviteFlowScreenController with Disposable {
     InviteDecision decision, {
     String? inviteId,
   }) async {
+    // Allow decision even if not authorized (anonymous acceptance flow)
     if (authRequiredForDecisionStreamValue.value) {
       return null;
     }
 
-    final pendingInvites =
-        List<InviteModel>.from(pendingInvitesStreamValue.value);
-    final current = pendingInvites.isEmpty ? null : pendingInvites.first;
+    final invites =
+        List<InviteModel>.from(displayInvitesStreamValue.value);
+    final current = invites.isEmpty ? null : invites.first;
     if (current == null) {
       return null;
     }
@@ -297,7 +311,17 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
+      final isAnonymousDecision = !_isAuthorized;
+      final acceptedInviteId = resolvedInviteId;
       final result = await _repository.acceptInvite(resolvedInviteId);
+      if (isAnonymousDecision) {
+        unawaited(
+          _trackAnonymousInviteAccepted(
+            invite: current,
+            inviteId: acceptedInviteId,
+          ),
+        );
+      }
       _syncDisplayInvitesWithPending();
       return InviteDecisionResult(
         invite: current.prioritizeInviter(resolvedInviteId),
@@ -478,6 +502,47 @@ class InviteFlowScreenController with Disposable {
     }
 
     return properties;
+  }
+
+  Future<void> _trackAnonymousInviteAccepted({
+    required InviteModel invite,
+    required String inviteId,
+  }) async {
+    final properties = <String, dynamic>{
+      'event_id': invite.eventId,
+      'invite_id': inviteId,
+      'source': 'invite_flow',
+    };
+
+    final shareCode = _extractShareCode(inviteId);
+    if (shareCode != null) {
+      properties['code'] = shareCode;
+    }
+
+    final inviterPrincipal = invite.inviterPrincipal;
+    if (inviterPrincipal != null) {
+      properties['inviter_kind'] = inviterPrincipal.type.name;
+      properties['inviter_id'] = inviterPrincipal.id;
+    }
+
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.buttonClick,
+      eventName: 'app_anonymous_invite_accepted',
+      properties: properties,
+    );
+  }
+
+  String? _extractShareCode(String inviteId) {
+    final normalized = inviteId.trim();
+    const prefix = 'share:';
+    if (!normalized.startsWith(prefix)) {
+      return null;
+    }
+    final code = normalized.substring(prefix.length).trim();
+    if (code.isEmpty) {
+      return null;
+    }
+    return code;
   }
 
   void syncTopCardIndex(int invitesLength) {

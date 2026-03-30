@@ -17,11 +17,14 @@ import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
@@ -99,6 +102,28 @@ void main() {
     expect(authRepository.initCallCount, 1);
     expect(invitesRepository.initCallCount, 1);
   });
+
+  test('captured deferred share code overrides first route path to invite',
+      () async {
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: const _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          code: 'ABCD1234',
+          storeChannel: 'play',
+        ),
+      ),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.initialize();
+
+    expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+  });
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -136,6 +161,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     return buildInviteAcceptResult(
       inviteId: inviteId,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  }
+
+  @override
+  Future<InviteAcceptResult> acceptInviteByCode(String code) async {
+    return buildInviteAcceptResult(
+      inviteId: 'mock-$code',
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -249,6 +286,50 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> updateUser(Map<String, Object?> data) async {}
+}
+
+class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
+  const _FakeDeferredLinkRepository(this.result);
+
+  final DeferredLinkCaptureResult result;
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
+      result;
+}
+
+class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  @override
+  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
+      true;
+
+  @override
+  Future<bool> flushTimedEvents() async => true;
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<bool> logEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async =>
+      true;
+
+  @override
+  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+
+  @override
+  void setScreenContext(Map<String, dynamic>? screenContext) {}
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async =>
+      null;
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {

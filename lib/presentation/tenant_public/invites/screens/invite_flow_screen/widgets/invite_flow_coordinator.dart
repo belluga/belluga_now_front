@@ -1,11 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -75,6 +78,9 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   Widget _buildContent() {
     final invites = widget.invites;
     if (invites.isEmpty) {
+      if (kIsWeb) {
+        return _buildWebPromotionFallback();
+      }
       return const SizedBox.shrink();
     }
 
@@ -106,6 +112,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _handlePendingInvites(List<InviteModel> invites) {
     if (!widget.isInitialized) {
+      return;
+    }
+    if (kIsWeb && invites.isEmpty) {
+      _exitHandled = false;
       return;
     }
     if (invites.isNotEmpty) {
@@ -148,8 +158,12 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _openEventDetails(InviteModel invite) {
-    if (widget.requiresAuthentication) {
-      _openAuthForInviteDecision();
+    if (kIsWeb) {
+      AppPromotionDialog.show(
+        context,
+        redirectPath: _promotionRedirectPath(),
+        shareCode: _currentShareCode(),
+      );
       return;
     }
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
@@ -159,8 +173,12 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteModel invite,
     InviteDecision decision,
   ) async {
-    if (widget.requiresAuthentication) {
-      _openAuthForInviteDecision();
+    if (kIsWeb) {
+      AppPromotionDialog.show(
+        context,
+        redirectPath: _promotionRedirectPath(),
+        shareCode: _currentShareCode(),
+      );
       return;
     }
 
@@ -191,11 +209,66 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _openAuthForInviteDecision() {
+    if (kIsWeb) {
+      AppPromotionDialog.show(
+        context,
+        redirectPath: _promotionRedirectPath(),
+        shareCode: _currentShareCode(),
+      );
+      return;
+    }
     final pendingPath = _controller.redirectPath?.trim();
     final normalizedPath =
         pendingPath == null || pendingPath.isEmpty ? '/invite' : pendingPath;
     final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
     context.router.pushPath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  Widget _buildWebPromotionFallback() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.rocket_launch, size: 56, color: Colors.blue),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Bóra pro App!',
+                    style: theme.textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No app você confirma presença, envia convites e destrava a experiência completa.',
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () => AppPromotionDialog.show(
+                      context,
+                      redirectPath: _promotionRedirectPath(),
+                      shareCode: _currentShareCode(),
+                    ),
+                    child: const Text('Baixe o App para Confirmar'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _exitInviteFlow() {
@@ -275,5 +348,23 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       if (!mounted) return;
       action();
     });
+  }
+
+  String? _currentShareCode() {
+    final raw = context.routeData.queryParams.get('code');
+    final code = raw?.trim();
+    if (code == null || code.isEmpty) {
+      return null;
+    }
+    return code;
+  }
+
+  String _promotionRedirectPath() {
+    final explicit = _controller.redirectPath?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
+    }
+
+    return buildRedirectPathFromRouteMatch(context.routeData.route);
   }
 }

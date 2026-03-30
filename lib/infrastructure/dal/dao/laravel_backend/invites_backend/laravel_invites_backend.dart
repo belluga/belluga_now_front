@@ -70,6 +70,11 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
+  Future<Map<String, dynamic>> acceptShareCode(String code) {
+    return _post('$_apiBaseUrl/v1/invites/share/$code/accept');
+  }
+
+  @override
   Future<Map<String, dynamic>> materializeShareCode(String code) {
     return _post('$_apiBaseUrl/v1/invites/share/$code/materialize');
   }
