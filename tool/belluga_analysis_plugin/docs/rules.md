@@ -6,11 +6,13 @@
 
 ## Official Commands
 - Full project analyzer gate (local + CI, run at repository root):
-  - `fvm dart analyze . --format machine`
+  - `fvm dart analyze --format machine`
+- Local analyzer-state reset and warmup (run from `flutter-app` root when CLI results go false-clean, stale, or hang unexpectedly):
+  - `bash ./scripts/reset_analyzer_state.sh`
 - Important:
   - Do not use `fvm dart analyze lib` as architecture source-of-truth in this repo.
-  - In this workspace, `fvm dart analyze` without an explicit target can false-clean. Use `.` explicitly.
-  - Directory-target mode is currently inconsistent here (`lib` can false-clean while `.`/file targets emit diagnostics).
+  - If the root analyzer output looks false-clean, stale, or hangs unexpectedly, reset local analyzer state with `bash ./scripts/reset_analyzer_state.sh` and rerun `fvm dart analyze --format machine`.
+  - The first analyzer run after `./scripts/reset_analyzer_state.sh` can be significantly slower while `~/.dartServer/.plugin_manager` rebuilds the plugin AOT snapshot.
 - Rule matrix anti-regression gate:
   - `bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh`
 
