@@ -30,6 +30,10 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_search_query_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -335,6 +339,74 @@ void main() {
               'Second controller must hydrate from repository StreamValue cache.',
         );
         secondController.onDispose();
+      },
+    );
+
+    test(
+      'ignores stale empty cache when effective origin differs from snapshot origin',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final backend = _CountingPayloadScheduleBackend();
+        final scheduleRepository = ScheduleRepository(backend: backend);
+        final capturedAt = DateTime.now().subtract(const Duration(minutes: 5));
+
+        scheduleRepository.writeHomeAgendaCache(
+          HomeAgendaCacheSnapshot(
+            events: const <EventModel>[],
+            hasMoreValue: HomeAgendaBooleanValue(defaultValue: false)
+              ..parse('false'),
+            pageValue: HomeAgendaPageValue(defaultValue: 1)..parse('1'),
+            showPastOnlyValue: HomeAgendaBooleanValue(defaultValue: false)
+              ..parse('false'),
+            searchQueryValue: HomeAgendaSearchQueryValue(defaultValue: '')
+              ..parse(''),
+            confirmedOnlyValue: HomeAgendaBooleanValue(defaultValue: false)
+              ..parse('false'),
+            capturedAtValue: HomeAgendaCapturedAtValue(
+              defaultValue: capturedAt,
+            )..parse(capturedAt.toIso8601String()),
+            originLatValue: LatitudeValue()..parse('-21.000000'),
+            originLngValue: LongitudeValue()..parse('-41.000000'),
+            maxDistanceMetersValue: DistanceInMetersValue(defaultValue: 50000)
+              ..parse('50000'),
+          ),
+        );
+
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        expect(
+          backend.fetchEventsPageCallCount,
+          1,
+          reason:
+              'Stale cache with mismatched origin must not suppress the first real fetch.',
+        );
+        expect(controller.displayedEventsStreamValue.value, hasLength(1));
+        expect(
+          controller.displayedEventsStreamValue.value!.first.title.value,
+          'Evento Teste',
+        );
+
+        controller.onDispose();
       },
     );
 
@@ -1104,6 +1176,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) return null;
@@ -1662,6 +1737,42 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
       'artists': const [],
       'tags': const ['music'],
     });
+  }
+}
+
+class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
+  int fetchEventsPageCallCount = 0;
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    fetchEventsPageCallCount += 1;
+    return super.fetchEventsPage(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      liveNowOnly: liveNowOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
   }
 }
 

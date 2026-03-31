@@ -500,12 +500,16 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   List<EventModel> _currentCanonicalEvents() {
+    final cacheOrigin = _currentCacheReferenceOrigin();
     final cache = _scheduleRepository.readHomeAgendaCache(
       showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
       searchQuery: _toScheduleText(searchController.text.trim()),
       confirmedOnly: _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       ),
+      originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
+      originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
     );
     if (cache == null) {
       return const <EventModel>[];
@@ -514,6 +518,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   bool _restoreFromRepositoryCache() {
+    final cacheOrigin = _currentCacheReferenceOrigin();
     final showPastOnly = showHistoryStreamValue.value;
     final searchQuery = searchController.text.trim();
     final confirmedOnly =
@@ -522,6 +527,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       showPastOnly: _toScheduleBool(showPastOnly),
       searchQuery: _toScheduleText(searchQuery),
       confirmedOnly: _toScheduleBool(confirmedOnly),
+      originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
+      originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
     );
     if (cache == null) {
       return false;
@@ -600,6 +608,25 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       coordinateB: eventCoordinate,
     );
     return _formatDistanceLabel(distanceMeters.value);
+  }
+
+  CityCoordinate? _currentCacheReferenceOrigin() {
+    if (_effectiveOriginLat != null && _effectiveOriginLng != null) {
+      return CityCoordinate(
+        latitudeValue: _parseLatitude(_effectiveOriginLat!),
+        longitudeValue: _parseLongitude(_effectiveOriginLng!),
+      );
+    }
+
+    final repository = _userLocationRepository;
+    if (repository != null) {
+      final freshUserCoordinate = _resolveFreshLocationCoordinate(repository);
+      if (freshUserCoordinate != null) {
+        return freshUserCoordinate;
+      }
+    }
+
+    return _resolveTenantDefaultOriginCoordinate();
   }
 
   String _formatDistanceLabel(double meters) {

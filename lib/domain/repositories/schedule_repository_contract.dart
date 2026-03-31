@@ -55,6 +55,9 @@ abstract class ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   });
 
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot);

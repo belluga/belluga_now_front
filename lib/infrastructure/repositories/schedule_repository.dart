@@ -1,3 +1,6 @@
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -20,6 +23,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       Uri.parse('asset://event-placeholder');
   static const int _maxPagedFetches = 8;
   static const int _defaultPageSize = 25;
+  static const double _homeAgendaCacheReuseMaxOriginJumpMeters = 1000.0;
 
   ScheduleRepository({
     ScheduleBackendContract? backend,
@@ -46,6 +50,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) {
     final snapshot = homeAgendaCacheStreamValue.value;
     if (snapshot == null) {
@@ -60,7 +67,68 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     if (snapshot.confirmedOnly != confirmedOnly.value) {
       return null;
     }
+    if (!_matchesHomeAgendaOrigin(
+      snapshot: snapshot,
+      requestedOriginLat: originLat?.value,
+      requestedOriginLng: originLng?.value,
+    )) {
+      return null;
+    }
+    if (!_matchesHomeAgendaMaxDistance(
+      snapshot: snapshot,
+      requestedMaxDistanceMeters: maxDistanceMeters?.value,
+    )) {
+      return null;
+    }
     return snapshot;
+  }
+
+  bool _matchesHomeAgendaOrigin({
+    required HomeAgendaCacheSnapshot snapshot,
+    required double? requestedOriginLat,
+    required double? requestedOriginLng,
+  }) {
+    final snapshotOriginLat = snapshot.originLat;
+    final snapshotOriginLng = snapshot.originLng;
+
+    if (requestedOriginLat == null || requestedOriginLng == null) {
+      return snapshotOriginLat == null && snapshotOriginLng == null;
+    }
+
+    if (snapshotOriginLat == null || snapshotOriginLng == null) {
+      return false;
+    }
+
+    final jumpMeters = haversineDistanceMeters(
+      coordinateA: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse(snapshotOriginLat.toString()),
+        longitudeValue: LongitudeValue()..parse(snapshotOriginLng.toString()),
+      ),
+      coordinateB: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse(requestedOriginLat.toString()),
+        longitudeValue: LongitudeValue()..parse(requestedOriginLng.toString()),
+      ),
+    );
+
+    return jumpMeters.value < _homeAgendaCacheReuseMaxOriginJumpMeters;
+  }
+
+  bool _matchesHomeAgendaMaxDistance({
+    required HomeAgendaCacheSnapshot snapshot,
+    required double? requestedMaxDistanceMeters,
+  }) {
+    final snapshotMaxDistanceMeters = snapshot.maxDistanceMeters;
+
+    if (requestedMaxDistanceMeters == null) {
+      return snapshotMaxDistanceMeters == null;
+    }
+
+    if (snapshotMaxDistanceMeters == null) {
+      return false;
+    }
+
+    return (snapshotMaxDistanceMeters - requestedMaxDistanceMeters).abs() <
+        0.001;
   }
 
   @override

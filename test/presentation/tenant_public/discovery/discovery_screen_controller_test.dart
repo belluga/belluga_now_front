@@ -1496,6 +1496,9 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) {
     final snapshot = _cacheSnapshot;
     if (snapshot == null) {
