@@ -215,7 +215,6 @@ class MapScreenController implements Disposable {
       _filtersLoadFailed = false;
     } catch (error) {
       _filtersLoadFailed = true;
-      filterOptionsStreamValue.addValue(null);
       debugPrint('Failed to load POI filters: $error');
     }
   }
@@ -227,7 +226,6 @@ class MapScreenController implements Disposable {
     try {
       await _poiRepository.fetchMainFilters();
     } catch (error) {
-      mainFilterOptionsStreamValue.addValue(const <MainFilterOption>[]);
       debugPrint('Failed to load main filters: $error');
     }
   }

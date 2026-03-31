@@ -157,6 +157,14 @@ abstract class AccountProfilesRepositoryContract {
     selectedAccountProfileStreamValue.addValue(profile);
   }
 
+  void setSelectedAccountProfile(AccountProfileModel? profile) {
+    selectedAccountProfileStreamValue.addValue(profile);
+  }
+
+  void clearSelectedAccountProfile() {
+    selectedAccountProfileStreamValue.addValue(null);
+  }
+
   /// Toggle favorite status for an account profile
   Future<void> toggleFavorite(
       AccountProfilesRepositoryContractPrimString accountProfileId);

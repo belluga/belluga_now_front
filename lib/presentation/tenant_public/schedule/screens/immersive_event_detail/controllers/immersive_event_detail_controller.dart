@@ -50,12 +50,13 @@ class ImmersiveEventDetailController implements Disposable {
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
-  final eventStreamValue = StreamValue<EventModel?>(defaultValue: null);
-  final receivedInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
+  StreamValue<EventModel?> get eventStreamValue =>
+      _invitesRepository.immersiveSelectedEventStreamValue;
+  StreamValue<List<InviteModel>> get receivedInvitesStreamValue =>
+      _invitesRepository.immersiveReceivedInvitesStreamValue;
 
   void init(EventModel event) {
-    eventStreamValue.addValue(event);
+    _invitesRepository.setImmersiveSelectedEvent(event);
     _hydrateState(event);
     unawaited(_refreshConfirmationState(event.id.value));
   }
@@ -124,7 +125,7 @@ class ImmersiveEventDetailController implements Disposable {
     final filtered = invites
         .where((invite) => invite.eventIdValue.value == eventId)
         .toList();
-    receivedInvitesStreamValue.addValue(filtered);
+    _invitesRepository.setImmersiveReceivedInvites(filtered);
   }
 
   /// Confirm attendance at this event
@@ -208,8 +209,7 @@ class ImmersiveEventDetailController implements Disposable {
   @override
   void onDispose() {
     _pendingInvitesSubscription?.cancel();
-    eventStreamValue.dispose();
-    receivedInvitesStreamValue.dispose();
+    _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();
     missionStreamValue.dispose();

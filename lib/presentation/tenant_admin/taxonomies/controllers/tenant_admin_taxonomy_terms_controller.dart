@@ -337,7 +337,6 @@ class TenantAdminTaxonomyTermsController implements Disposable {
 
   void _resetTenantScopedState() {
     _repository.resetTermsState();
-    termsStreamValue.addValue(null);
     errorStreamValue.addValue(null);
     _syncPaginationMirrors();
     successMessageStreamValue.addValue(null);

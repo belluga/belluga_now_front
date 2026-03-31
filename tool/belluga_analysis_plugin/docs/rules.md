@@ -13,6 +13,13 @@
   - Do not use `fvm dart analyze lib` as architecture source-of-truth in this repo.
   - If the root analyzer output looks false-clean, stale, or hangs unexpectedly, reset local analyzer state with `bash ./scripts/reset_analyzer_state.sh` and rerun `fvm dart analyze --format machine`.
   - The first analyzer run after `./scripts/reset_analyzer_state.sh` can be significantly slower while `~/.dartServer/.plugin_manager` rebuilds the plugin AOT snapshot.
+  - After creating or altering analyzer rules, treat the next analyzer run as a cold plugin rebuild window:
+    - do not launch multiple `dart analyze` processes in parallel,
+    - let one analyzer process finish rebuilding `~/.dartServer/.plugin_manager` first,
+    - then re-run validation commands.
+  - Cold rebuilds after rule changes can transiently produce corrupted plugin snapshots (`plugin.aot: file too short` / `IsolateSpawnException`) if the plugin manager rebuild is interrupted or raced.
+  - Legacy orphan artifacts under `tool/belluga_custom_lint/` can still pollute local editor/analyzer state even though `custom_lint` is decommissioned. The reset script clears those artifacts as part of analyzer recovery.
+  - A successful plugin-cache rebuild is necessary, but does not by itself prove root-command parity; if root remains false-clean while explicit-file analyze reports real diagnostics, treat root parity as unresolved and continue under `TODO-v1-analyzer-cli-parity-deterministic-runner.md`.
 - Rule matrix anti-regression gate:
   - `bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh`
 

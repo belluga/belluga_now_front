@@ -243,7 +243,7 @@ class TenantAdminEventsController implements Disposable {
     }
     if (!_hasLandlordToken()) {
       _eventsRepository.resetEventsState();
-      eventsStreamValue.addValue(const <TenantAdminEvent>[]);
+      _eventsRepository.setEventsState(const <TenantAdminEvent>[]);
       return;
     }
     await _eventsRepository.loadEvents(

@@ -311,7 +311,6 @@ class TenantAdminTaxonomiesController implements Disposable {
       if (_activeTaxonomyId == taxonomyId) {
         _activeTaxonomyId = null;
         _repository.resetTermsState();
-        termsStreamValue.addValue(const <TenantAdminTaxonomyTermDefinition>[]);
       }
       successMessageStreamValue.addValue('Taxonomia removida.');
       await loadTaxonomies();
@@ -535,8 +534,6 @@ class TenantAdminTaxonomiesController implements Disposable {
   void _resetTenantScopedState() {
     _repository.resetTaxonomiesState();
     _repository.resetTermsState();
-    taxonomiesStreamValue.addValue(null);
-    termsStreamValue.addValue(null);
     errorStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);

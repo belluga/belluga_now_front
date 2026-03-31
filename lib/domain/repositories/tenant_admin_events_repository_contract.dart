@@ -81,6 +81,10 @@ abstract class TenantAdminEventsRepositoryContract {
     eventsErrorStreamValue.addValue(null);
   }
 
+  void setEventsState(List<TenantAdminEvent>? events) {
+    eventsStreamValue.addValue(events);
+  }
+
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
@@ -331,6 +335,11 @@ mixin TenantAdminEventsPaginationMixin
     _resetEventsPaginationMixin();
     eventsStreamValue.addValue(null);
     eventsErrorStreamValue.addValue(null);
+  }
+
+  @override
+  void setEventsState(List<TenantAdminEvent>? events) {
+    eventsStreamValue.addValue(events);
   }
 
   @override

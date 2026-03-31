@@ -20,6 +20,8 @@ typedef InvitesRepositoryContractPrimBool = InvitesRepositoryContractBoolValue;
 abstract class InvitesRepositoryContract {
   final pendingInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
+  final inviteFlowPendingInvitesStreamValue =
+      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
   final inviteFlowDisplayInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
   final immersiveSelectedEventStreamValue =
@@ -48,6 +50,38 @@ abstract class InvitesRepositoryContract {
     await fetchSettings();
     final invites = await fetchInvites();
     pendingInvitesStreamValue.addValue(invites);
+  }
+
+  void setInviteFlowPendingInvites(List<InviteModel> invites) {
+    inviteFlowPendingInvitesStreamValue.addValue(
+      List<InviteModel>.unmodifiable(invites),
+    );
+  }
+
+  void setInviteFlowDisplayInvites(List<InviteModel> invites) {
+    inviteFlowDisplayInvitesStreamValue.addValue(
+      List<InviteModel>.unmodifiable(invites),
+    );
+  }
+
+  void clearInviteFlowState() {
+    setInviteFlowPendingInvites(const <InviteModel>[]);
+    setInviteFlowDisplayInvites(const <InviteModel>[]);
+  }
+
+  void setImmersiveSelectedEvent(EventModel? event) {
+    immersiveSelectedEventStreamValue.addValue(event);
+  }
+
+  void setImmersiveReceivedInvites(List<InviteModel> invites) {
+    immersiveReceivedInvitesStreamValue.addValue(
+      List<InviteModel>.unmodifiable(invites),
+    );
+  }
+
+  void clearImmersiveDetailState() {
+    immersiveSelectedEventStreamValue.addValue(null);
+    immersiveReceivedInvitesStreamValue.addValue(const <InviteModel>[]);
   }
 
   Future<List<InviteModel>> fetchInvites(

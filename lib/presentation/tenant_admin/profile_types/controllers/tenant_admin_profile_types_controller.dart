@@ -639,7 +639,6 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void _resetTenantScopedState() {
     _repository.resetProfileTypesState();
-    typesStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
     availableTaxonomiesStreamValue.addValue(const []);

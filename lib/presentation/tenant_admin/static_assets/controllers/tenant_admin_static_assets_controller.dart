@@ -754,7 +754,6 @@ class TenantAdminStaticAssetsController implements Disposable {
 
   void _resetTenantScopedState() {
     _repository.resetStaticAssetsState();
-    assetsStreamValue.addValue(null);
     profileTypesStreamValue.addValue(const []);
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsStreamValue.addValue(const {});
