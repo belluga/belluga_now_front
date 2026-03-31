@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -7,6 +8,7 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract_pr
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -30,15 +32,15 @@ void main() {
     );
 
     final guard = AuthRouteGuard();
-    final resolver = _MockNavigationResolver();
+    final resolver = _RecordingNavigationResolver(
+      route: _FakeRouteMatch(fullPath: '/convites'),
+    );
     final router = _RecordingStackRouter();
-    resolver.routeValue = _FakeRouteMatch(fullPath: '/convites');
 
     guard.onNavigation(resolver, router);
 
-    verify(resolver.next(true)).called(1);
-    verifyNever(resolver.next(false));
-    expect(router.lastPushedPath, isNull);
+    expect(resolver.nextCalls, [true]);
+    expect(resolver.redirectedRoute, isNull);
   });
 
   test('redirects unauthorized user preserving deep-link query params', () {
@@ -47,19 +49,52 @@ void main() {
     );
 
     final guard = AuthRouteGuard();
-    final resolver = _MockNavigationResolver();
-    final router = _RecordingStackRouter();
-    resolver.routeValue = _FakeRouteMatch(
-      fullPath: '/convites',
-      queryParams: const {'code': '31F8RN5QJ9'},
+    final resolver = _RecordingNavigationResolver(
+      route: _FakeRouteMatch(
+        fullPath: '/convites',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      ),
     );
+    final router = _RecordingStackRouter();
 
     guard.onNavigation(resolver, router);
 
-    verify(resolver.next(false)).called(1);
+    final captured = resolver.redirectedRoute!;
     expect(
-      router.lastPushedPath,
-      '/auth/login?redirect=%2Fconvites%3Fcode%3D31F8RN5QJ9',
+      captured,
+      isA<AuthLoginRoute>(),
+    );
+    expect(
+      captured.rawQueryParams['redirect'],
+      '/convites?code=31F8RN5QJ9',
+    );
+  });
+
+  test('redirects unauthorized web user to promotion route preserving redirect',
+      () {
+    GetIt.I.registerSingleton<AuthRepositoryContract>(
+      _FakeAuthRepository(authorized: false),
+    );
+
+    final guard = AuthRouteGuard(isWebRuntime: true);
+    final resolver = _RecordingNavigationResolver(
+      route: _FakeRouteMatch(
+        fullPath: '/profile',
+        queryParams: const {'tab': 'settings'},
+      ),
+    );
+    final router = _RecordingStackRouter();
+
+    guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute!;
+    expect(
+      captured,
+      isA<AppPromotionRoute>(),
+    );
+    expect(
+      captured.rawQueryParams['redirect'],
+      '/profile?tab=settings',
     );
   });
 
@@ -70,19 +105,24 @@ void main() {
     );
 
     final guard = AuthRouteGuard();
-    final resolver = _MockNavigationResolver();
-    final router = _RecordingStackRouter();
-    resolver.routeValue = _FakeRouteMatch(
-      fullPath: 'convites',
-      queryParams: const {'code': 'ABC123'},
+    final resolver = _RecordingNavigationResolver(
+      route: _FakeRouteMatch(
+        fullPath: 'convites',
+        queryParams: const {'code': 'ABC123'},
+      ),
     );
+    final router = _RecordingStackRouter();
 
     guard.onNavigation(resolver, router);
 
-    verify(resolver.next(false)).called(1);
+    final captured = resolver.redirectedRoute!;
     expect(
-      router.lastPushedPath,
-      '/auth/login?redirect=%2Fconvites%3Fcode%3DABC123',
+      captured,
+      isA<AuthLoginRoute>(),
+    );
+    expect(
+      captured.rawQueryParams['redirect'],
+      '/convites?code=ABC123',
     );
   });
 
@@ -95,16 +135,23 @@ void main() {
     GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
 
     final guard = AuthRouteGuard();
-    final resolver = _MockNavigationResolver();
-    final router = _RecordingStackRouter();
-    resolver.routeValue = _FakeRouteMatch(
-      fullPath: '/convites/compartilhar',
-      queryParams: const {'event': 'evt-1'},
+    final resolver = _RecordingNavigationResolver(
+      route: _FakeRouteMatch(
+        fullPath: '/convites/compartilhar',
+        queryParams: const {'event': 'evt-1'},
+      ),
     );
+    final router = _RecordingStackRouter();
 
     guard.onNavigation(resolver, router);
     await Future<void>.delayed(Duration.zero);
 
+    final captured = resolver.redirectedRoute!;
+    expect(captured, isA<AuthLoginRoute>());
+    expect(
+      captured.rawQueryParams['redirect'],
+      '/convites/compartilhar?event=evt-1',
+    );
     expect(telemetry.loggedEvents, hasLength(1));
     final trackedEvent = telemetry.loggedEvents.first;
     expect(trackedEvent.event, EventTrackerEvents.buttonClick);
@@ -185,30 +232,34 @@ class _RecordingTelemetryRepository implements TelemetryRepositoryContract {
   }
 }
 
-class _MockNavigationResolver extends Mock implements NavigationResolver {
-  RouteMatch _route = _FakeRouteMatch(fullPath: '/');
+class _RecordingNavigationResolver extends NavigationResolver {
+  _RecordingNavigationResolver({
+    required RouteMatch route,
+  }) : super(
+          _RecordingStackRouter(),
+          Completer<ResolverResult>(),
+          route,
+        );
 
-  set routeValue(RouteMatch value) {
-    _route = value;
+  final List<bool> nextCalls = <bool>[];
+  PageRouteInfo? redirectedRoute;
+
+  @override
+  void next([bool continueNavigation = true]) {
+    nextCalls.add(continueNavigation);
   }
 
   @override
-  RouteMatch get route => _route;
-}
-
-class _RecordingStackRouter extends Mock implements StackRouter {
-  String? lastPushedPath;
-
-  @override
-  Future<T?> pushPath<T extends Object?>(
-    String path, {
-    bool includePrefixMatches = false,
+  void redirectUntil(
+    PageRouteInfo route, {
     OnNavigationFailure? onFailure,
-  }) async {
-    lastPushedPath = path;
-    return null;
+    bool replace = false,
+  }) {
+    redirectedRoute = route;
   }
 }
+
+class _RecordingStackRouter extends Mock implements StackRouter {}
 
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({
@@ -285,6 +336,5 @@ class _FakeAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }

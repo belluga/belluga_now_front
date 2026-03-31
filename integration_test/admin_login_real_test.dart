@@ -151,7 +151,7 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    app.appRouter.replaceAll([const AuthLoginRoute()]);
+    app.appRouter.replaceAll([AuthLoginRoute()]);
     await _pumpFor(tester, const Duration(seconds: 1));
 
     await _waitForFinder(tester, find.text('Entrar como Admin'));

@@ -12,7 +12,6 @@ import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discove
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
-import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -364,10 +363,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         redirectPath: redirectPath,
         payload: {'partnerId': partner.id},
       );
-      AppPromotionDialog.show(
-        context,
-        redirectPath: redirectPath,
-        shareCode: resolveWebPromotionShareCode(
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
           redirectPath: redirectPath,
         ),
       );

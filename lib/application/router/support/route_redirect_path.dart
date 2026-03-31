@@ -2,6 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
+const String webPromotionRoutePath = '/baixe-o-app';
+
 String buildRedirectPathFromRouteMatch(RouteMatch route) {
   return buildRedirectPath(
     fullPath: route.fullPath,
@@ -70,9 +72,24 @@ String? resolveWebPromotionShareCode({
   return code;
 }
 
+String buildWebPromotionBoundaryPath({
+  required String redirectPath,
+}) {
+  final normalizedRedirectPath = redirectPath.trim();
+  final resolvedRedirectPath =
+      normalizedRedirectPath.isEmpty ? '/' : normalizedRedirectPath;
+  return Uri(
+    path: webPromotionRoutePath,
+    queryParameters: <String, String>{
+      'redirect': resolvedRedirectPath,
+    },
+  ).toString();
+}
+
 Uri? buildTenantPromotionUriFromAppContext({
   String? redirectPath,
   String? shareCode,
+  String? platformTarget,
   Uri? mainDomainUri,
 }) {
   final normalizedRedirectPath = redirectPath?.trim();
@@ -88,11 +105,17 @@ Uri? buildTenantPromotionUriFromAppContext({
       (trimmedCode == null || trimmedCode.isEmpty) ? null : trimmedCode;
   final normalizedCode =
       redirectContextCode ?? (hasRedirectPath ? null : normalizedShareCode);
+  final normalizedPlatformTarget =
+      _normalizePromotionPlatformTarget(platformTarget);
   final targetPath = normalizedCode == null ? '/' : '/invite';
 
   final resolvedBaseUri = mainDomainUri ??
       (GetIt.I.isRegistered<AppDataRepositoryContract>()
-          ? GetIt.I.get<AppDataRepositoryContract>().appData.mainDomainValue.value
+          ? GetIt.I
+              .get<AppDataRepositoryContract>()
+              .appData
+              .mainDomainValue
+              .value
           : Uri.tryParse(Uri.base.origin));
   if (resolvedBaseUri == null || resolvedBaseUri.host.trim().isEmpty) {
     return null;
@@ -103,6 +126,8 @@ Uri? buildTenantPromotionUriFromAppContext({
     'path': targetPath,
     'store_channel': 'web',
     if (normalizedCode != null) 'code': normalizedCode,
+    if (normalizedPlatformTarget != null)
+      'platform_target': normalizedPlatformTarget,
   };
   return targetUri.replace(
     queryParameters: query.isEmpty ? null : query,
@@ -120,4 +145,15 @@ String _normalizePath(String path) {
     normalized = normalized.substring(0, normalized.length - 1);
   }
   return normalized;
+}
+
+String? _normalizePromotionPlatformTarget(String? platformTarget) {
+  final normalized = platformTarget?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  if (normalized == 'android' || normalized == 'ios') {
+    return normalized;
+  }
+  return null;
 }

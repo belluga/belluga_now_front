@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/app_promotion_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/account_workspace_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/home_module.dart';
@@ -107,6 +108,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(InitializationModule());
     await registerSubModule(HomeModule());
     await registerSubModule(AuthModule());
+    await registerSubModule(AppPromotionModule());
     await registerSubModule(LandlordModule());
     await registerSubModule(TenantAdminModule());
     await registerSubModule(ProfileModule());

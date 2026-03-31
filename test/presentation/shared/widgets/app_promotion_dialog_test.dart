@@ -74,6 +74,24 @@ void main() {
     expect(result?.queryParameters['path'], '/');
     expect(result?.queryParameters.containsKey('code'), isFalse);
   });
+
+  test('buildTenantPromotionUri keeps explicit platform target override', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/profile',
+      platformTarget: 'ios',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters['platform_target'], 'ios');
+  });
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {

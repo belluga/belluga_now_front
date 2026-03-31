@@ -55,4 +55,15 @@ void main() {
 
     expect(result, isNull);
   });
+
+  test('buildWebPromotionBoundaryPath preserves redirect path in query', () {
+    final result = buildWebPromotionBoundaryPath(
+      redirectPath: '/profile?tab=settings',
+    );
+
+    expect(
+      result,
+      '/baixe-o-app?redirect=%2Fprofile%3Ftab%3Dsettings',
+    );
+  });
 }

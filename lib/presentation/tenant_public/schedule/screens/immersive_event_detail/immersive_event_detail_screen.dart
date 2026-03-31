@@ -24,7 +24,6 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
-import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
@@ -214,10 +213,8 @@ class _ImmersiveEventDetailScreenState
     final redirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
     if (kIsWeb) {
-      AppPromotionDialog.show(
-        context,
-        redirectPath: redirectPath,
-        shareCode: resolveWebPromotionShareCode(
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
           redirectPath: redirectPath,
         ),
       );
@@ -241,10 +238,8 @@ class _ImmersiveEventDetailScreenState
         actionType: AuthWallActionType.sendInvite,
         redirectPath: redirectPath,
       );
-      AppPromotionDialog.show(
-        context,
-        redirectPath: redirectPath,
-        shareCode: resolveWebPromotionShareCode(
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
           redirectPath: redirectPath,
         ),
       );

@@ -50,10 +50,12 @@ class AppPromotionDialog extends StatelessWidget {
   static Uri? buildTenantPromotionUri({
     String? redirectPath,
     String? shareCode,
+    String? platformTarget,
   }) =>
       buildTenantPromotionUriFromAppContext(
         redirectPath: redirectPath,
         shareCode: shareCode,
+        platformTarget: platformTarget,
       );
 
   @override
@@ -90,7 +92,14 @@ class AppPromotionDialog extends StatelessWidget {
             }
             router.maybePop();
             if (uri.path == '/open-app') {
-              unawaited(WebPromotionTelemetry.trackOpenAppClick());
+              final platformTarget = uri.queryParameters['platform_target'];
+              if (platformTarget != null && platformTarget.isNotEmpty) {
+                unawaited(
+                  WebPromotionTelemetry.trackOpenAppClick(
+                    platformTarget: platformTarget,
+                  ),
+                );
+              }
             }
             if (await canLaunchUrl(uri)) {
               await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -105,5 +114,4 @@ class AppPromotionDialog extends StatelessWidget {
       ],
     );
   }
-
 }

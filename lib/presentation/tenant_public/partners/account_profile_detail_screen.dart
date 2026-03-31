@@ -3,7 +3,6 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
-import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -280,10 +279,8 @@ class _AccountProfileDetailScreenState
         redirectPath: redirectPath,
         payload: {'partnerId': accountProfileId},
       );
-      AppPromotionDialog.show(
-        context,
-        redirectPath: redirectPath,
-        shareCode: resolveWebPromotionShareCode(
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
           redirectPath: redirectPath,
         ),
       );

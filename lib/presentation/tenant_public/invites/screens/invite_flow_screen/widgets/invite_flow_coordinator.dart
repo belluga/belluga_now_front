@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
-import 'package:belluga_now/presentation/shared/widgets/app_promotion_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -159,10 +158,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _openEventDetails(InviteModel invite) {
     if (kIsWeb) {
-      AppPromotionDialog.show(
-        context,
-        redirectPath: _promotionRedirectPath(),
-        shareCode: _currentShareCode(),
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: _promotionRedirectPath(),
+        ),
       );
       return;
     }
@@ -174,10 +173,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteDecision decision,
   ) async {
     if (kIsWeb) {
-      AppPromotionDialog.show(
-        context,
-        redirectPath: _promotionRedirectPath(),
-        shareCode: _currentShareCode(),
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: _promotionRedirectPath(),
+        ),
       );
       return;
     }
@@ -210,10 +209,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _openAuthForInviteDecision() {
     if (kIsWeb) {
-      AppPromotionDialog.show(
-        context,
-        redirectPath: _promotionRedirectPath(),
-        shareCode: _currentShareCode(),
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: _promotionRedirectPath(),
+        ),
       );
       return;
     }
@@ -255,10 +254,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
                   ),
                   const SizedBox(height: 20),
                   FilledButton(
-                    onPressed: () => AppPromotionDialog.show(
-                      context,
-                      redirectPath: _promotionRedirectPath(),
-                      shareCode: _currentShareCode(),
+                    onPressed: () => context.router.pushPath(
+                      buildWebPromotionBoundaryPath(
+                        redirectPath: _promotionRedirectPath(),
+                      ),
                     ),
                     child: const Text('Baixe o App para Confirmar'),
                   ),
@@ -348,15 +347,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       if (!mounted) return;
       action();
     });
-  }
-
-  String? _currentShareCode() {
-    final raw = context.routeData.queryParams.get('code');
-    final code = raw?.trim();
-    if (code == null || code.isEmpty) {
-      return null;
-    }
-    return code;
   }
 
   String _promotionRedirectPath() {
