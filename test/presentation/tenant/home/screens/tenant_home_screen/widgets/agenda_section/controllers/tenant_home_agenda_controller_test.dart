@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -29,6 +30,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -36,6 +38,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart'
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -365,6 +368,71 @@ void main() {
 
       controller.onDispose();
     });
+
+    test('shows invite filter action for anonymous app sessions', () {
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        ),
+        authRepository: _FakeAuthRepository(authorized: false),
+        isWebRuntime: false,
+      );
+
+      expect(controller.shouldShowInviteFilterAction, isTrue);
+
+      controller.onDispose();
+    });
+
+    testWidgets(
+      'hides invite filter on unauthenticated web and reveals it after auth',
+      (tester) async {
+        final authRepository = _FakeAuthRepository(authorized: false);
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+          authRepository: authRepository,
+          isWebRuntime: true,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: HomeAgendaAppBar(controller: controller),
+              ),
+              body: const SizedBox.shrink(),
+            ),
+          ),
+        );
+
+        expect(find.byTooltip('Todos os eventos'), findsNothing);
+
+        authRepository.setAuthorized(true);
+        await tester.pump();
+
+        expect(find.byTooltip('Todos os eventos'), findsOneWidget);
+
+        controller.onDispose();
+      },
+    );
 
     test('uses tenant default origin when user location is unavailable',
         () async {
@@ -937,14 +1005,12 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
     double? initialMaxRadiusMeters,
     bool hasPersistedMaxRadiusPreference = false,
   })  : _hasPersistedMaxRadiusPreference = hasPersistedMaxRadiusPreference,
-        maxRadiusMetersStreamValue =
-            StreamValue<DistanceInMetersValue>(
-              defaultValue: DistanceInMetersValue.fromRaw(
-                initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
-                defaultValue:
-                    initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
-              ),
-            );
+        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(
+            initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
+            defaultValue: initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
+          ),
+        );
 
   final AppData _appData;
   bool _hasPersistedMaxRadiusPreference;
@@ -1735,7 +1801,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
   @override
   Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts) async =>
+          InviteContacts contacts) async =>
       const [];
 
   @override
@@ -1761,6 +1827,84 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({
+    required bool authorized,
+  }) : _authorized = authorized;
+
+  bool _authorized;
+
+  void setAuthorized(bool value) {
+    _authorized = value;
+    userStreamValue.addValue(null);
+  }
+
+  @override
+  Object get backend => throw UnimplementedError();
+
+  @override
+  String get userToken => _authorized ? 'token' : '';
+
+  @override
+  void setUserToken(AuthRepositoryContractParamString? token) {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-1';
+
+  @override
+  Future<String?> getUserId() async => _authorized ? 'user-1' : null;
+
+  @override
+  bool get isUserLoggedIn => _authorized;
+
+  @override
+  bool get isAuthorized => _authorized;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
+
+  @override
+  Future<void> logout() async {
+    setAuthorized(false);
+  }
+
+  @override
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
+
+  @override
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {

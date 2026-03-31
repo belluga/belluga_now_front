@@ -52,6 +52,7 @@ class DiscoveryScreenController implements Disposable {
   bool _isFetchingLiveNow = false;
   bool _hasPendingLiveNowReload = false;
   bool _scrollListenerAttached = false;
+  bool _isProgrammaticSearchTextChange = false;
   String? _lastOriginSignature;
 
   final ScrollController scrollController = ScrollController();
@@ -114,6 +115,9 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void _handleSearchControllerChanged() {
+    if (_isProgrammaticSearchTextChange) {
+      return;
+    }
     setSearchQuery(searchController.text);
   }
 
@@ -303,6 +307,62 @@ class DiscoveryScreenController implements Disposable {
     _scheduleReload(immediate: true);
   }
 
+  bool get hasActiveFilterState {
+    final selectedType = selectedTypeFilterStreamValue.value;
+    if (selectedType != null && selectedType.isNotEmpty) {
+      return true;
+    }
+    return searchQueryStreamValue.value.trim().isNotEmpty;
+  }
+
+  bool consumeBackNavigationIfNeeded() {
+    if (!hasActiveFilterState) {
+      return false;
+    }
+    resetToDefaultDiscoveryState();
+    return true;
+  }
+
+  void resetToDefaultDiscoveryState() {
+    _searchDebounce?.cancel();
+
+    var changed = false;
+    final selectedType = selectedTypeFilterStreamValue.value;
+    if (selectedType != null && selectedType.isNotEmpty) {
+      selectedTypeFilterStreamValue.addValue(null);
+      changed = true;
+    }
+
+    if (searchQueryStreamValue.value.isNotEmpty) {
+      searchQueryStreamValue.addValue('');
+      changed = true;
+    }
+
+    if (searchController.text.isNotEmpty) {
+      _setSearchControllerText('');
+    }
+
+    if (isSearchingStreamValue.value) {
+      isSearchingStreamValue.addValue(false);
+    }
+
+    if (changed) {
+      _scheduleReload(immediate: true);
+    }
+  }
+
+  void _setSearchControllerText(String value) {
+    if (searchController.text == value) {
+      return;
+    }
+    _isProgrammaticSearchTextChange = true;
+    searchController.text = value;
+    searchController.selection = TextSelection.collapsed(
+      offset: value.length,
+    );
+    _isProgrammaticSearchTextChange = false;
+  }
+
   void _scheduleReload({required bool immediate}) {
     _searchDebounce?.cancel();
     if (immediate) {
@@ -324,9 +384,9 @@ class DiscoveryScreenController implements Disposable {
       return;
     }
     if (!next) {
-      if (searchController.text.isNotEmpty) {
-        searchController.clear();
-      } else {
+      if (searchController.text.isNotEmpty ||
+          searchQueryStreamValue.value.isNotEmpty) {
+        _setSearchControllerText('');
         setSearchQuery('');
       }
     }

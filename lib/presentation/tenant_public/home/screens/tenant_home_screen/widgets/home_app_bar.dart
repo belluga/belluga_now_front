@@ -69,14 +69,6 @@ class HomeAppBar extends StatelessWidget {
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          tooltip: 'Workspace',
-          icon: const Icon(Icons.workspaces_outline),
-          onPressed: () =>
-              context.router.push(const AccountWorkspaceHomeRoute()),
-        ),
-      ],
     );
   }
 }

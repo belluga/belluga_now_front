@@ -141,14 +141,6 @@ abstract class AccountProfilesRepositoryContract {
           10,
           defaultValue: 10,
         );
-    final cachedProfiles = _resolveDiscoveryNearbyCachedProfiles(
-      pageSize: effectivePageSize.value,
-    );
-    if (cachedProfiles.isNotEmpty) {
-      discoveryNearbyAccountProfilesStreamValue.addValue(cachedProfiles);
-      return;
-    }
-
     final profiles = await fetchNearbyAccountProfiles(
       pageSize: effectivePageSize,
     );
@@ -299,26 +291,6 @@ abstract class AccountProfilesRepositoryContract {
         defaultValue: false,
       ),
     );
-  }
-
-  List<AccountProfileModel> _resolveDiscoveryNearbyCachedProfiles({
-    required int pageSize,
-  }) {
-    final pagedProfiles = pagedAccountProfilesStreamValue.value?.profiles;
-    if (pagedProfiles != null && pagedProfiles.isNotEmpty) {
-      return _filterDiscoveryMvpProfiles(pagedProfiles)
-          .take(pageSize)
-          .toList(growable: false);
-    }
-
-    final allProfiles = allAccountProfilesStreamValue.value;
-    if (allProfiles.isNotEmpty) {
-      return _filterDiscoveryMvpProfiles(allProfiles)
-          .take(pageSize)
-          .toList(growable: false);
-    }
-
-    return const <AccountProfileModel>[];
   }
 
   List<AccountProfileModel> _filterDiscoveryMvpProfiles(

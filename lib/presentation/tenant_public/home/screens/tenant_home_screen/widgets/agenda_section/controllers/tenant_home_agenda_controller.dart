@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -13,12 +14,14 @@ import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_va
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_search_query_value.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -30,6 +33,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    AuthRepositoryContract? authRepository,
+    bool isWebRuntime = kIsWeb,
     Duration locationWarmUpTimeout = const Duration(seconds: 4),
     Duration locationPermissionTimeout = const Duration(seconds: 8),
     Duration radiusRefreshDebounce = const Duration(milliseconds: 250),
@@ -45,6 +50,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
                 : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
+        _isWebRuntime = isWebRuntime,
         _locationWarmUpTimeout = locationWarmUpTimeout,
         _locationPermissionTimeout = locationPermissionTimeout,
         _radiusRefreshDebounce = radiusRefreshDebounce;
@@ -54,6 +64,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final AuthRepositoryContract? _authRepository;
+  final bool _isWebRuntime;
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
   final Duration _radiusRefreshDebounce;
@@ -123,6 +135,13 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
     return _localEventPlaceholderUri;
   }
+
+  StreamValue<UserContract?>? get authUserStreamValue =>
+      _authRepository?.userStreamValue;
+
+  bool get isAuthorized => _authRepository?.isAuthorized ?? true;
+
+  bool get shouldShowInviteFilterAction => !_isWebRuntime || isAuthorized;
 
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;

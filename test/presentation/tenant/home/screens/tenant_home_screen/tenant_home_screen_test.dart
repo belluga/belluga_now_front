@@ -8,6 +8,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -24,6 +25,7 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -64,9 +66,22 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
       _navigationTargetStreamValue;
 }
 
+class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
+  _TestTenantHomeAgendaController()
+      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null);
+
+  final StreamValue<UserContract?> _authUserStreamValue;
+
+  @override
+  StreamValue<UserContract?>? get authUserStreamValue => _authUserStreamValue;
+
+  @override
+  bool get shouldShowInviteFilterAction => true;
+}
+
 void main() {
   late MockTenantHomeController mockController;
-  late MockTenantHomeAgendaController mockAgendaController;
+  late _TestTenantHomeAgendaController mockAgendaController;
   late MockFavoritesSectionController mockFavoritesController;
   late MockInvitesBannerBuilderController mockInvitesBannerController;
   late MockAppDataRepository mockAppDataRepository;
@@ -80,7 +95,7 @@ void main() {
   setUp(() async {
     mockito.resetMockitoState();
     await GetIt.I.reset();
-    mockAgendaController = MockTenantHomeAgendaController();
+    mockAgendaController = _TestTenantHomeAgendaController();
     mockFavoritesController = _TestFavoritesSectionController();
     mockInvitesBannerController = MockInvitesBannerBuilderController();
     mockAppDataRepository = MockAppDataRepository();
@@ -112,9 +127,7 @@ void main() {
         MainLogoUrlValue()..parse('http://example.com/logo-light.png'));
     mockito.when(mockAppData.mainLogoDarkUrl).thenReturn(
         MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
-    mockito
-        .when(mockAppDataRepository.maxRadiusMetersStreamValue)
-        .thenReturn(
+    mockito.when(mockAppDataRepository.maxRadiusMetersStreamValue).thenReturn(
           StreamValue<DistanceInMetersValue>(
             defaultValue:
                 DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
@@ -251,6 +264,17 @@ void main() {
 
     // Verify Favorites Section
     expect(find.text('Seus Favoritos'), findsOneWidget);
+    final favoritesHeader = find.ancestor(
+      of: find.text('Seus Favoritos'),
+      matching: find.byType(SectionHeader),
+    );
+    expect(
+      find.descendant(
+        of: favoritesHeader,
+        matching: find.byIcon(Icons.arrow_forward),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('taps My Events card and pushes detail route', (tester) async {

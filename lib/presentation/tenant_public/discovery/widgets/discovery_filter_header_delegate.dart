@@ -6,11 +6,13 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.extent,
     required this.title,
     required this.filterBuilder,
+    this.action,
   });
 
   final double extent;
   final String title;
   final Widget Function() filterBuilder;
+  final Widget? action;
 
   @override
   double get minExtent => extent;
@@ -35,11 +37,19 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                     ),
+                  ),
+                  if (action != null) action!,
+                ],
               ),
             ),
             filterBuilder(),

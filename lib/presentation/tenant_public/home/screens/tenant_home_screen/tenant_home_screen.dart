@@ -12,7 +12,6 @@ import 'package:belluga_now/presentation/tenant_public/widgets/section_header.da
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
- 
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -22,8 +21,7 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  final TenantHomeController _controller =
-      GetIt.I.get<TenantHomeController>();
+  final TenantHomeController _controller = GetIt.I.get<TenantHomeController>();
 
   @override
   void initState() {
@@ -63,7 +61,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                         children: [
                           SectionHeader(
                             title: 'Seus Favoritos',
-                            onPressed: () {},
                           ),
                           const FavoritesSectionBuilder(),
                           InvitesBannerBuilder(
@@ -74,7 +71,8 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                           ),
                           const SizedBox(height: 12),
                           StreamValueBuilder(
-                            streamValue: _controller.myEventsFilteredStreamValue,
+                            streamValue:
+                                _controller.myEventsFilteredStreamValue,
                             builder: (context, events) {
                               return HomeMyEventsCarousel(
                                 events: events,

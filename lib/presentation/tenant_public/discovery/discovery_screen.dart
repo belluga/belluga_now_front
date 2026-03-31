@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
@@ -36,50 +38,77 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: StreamValueBuilder<bool>(
-          streamValue: _controller.isSearchingStreamValue,
-          builder: (context, isSearching) {
-            final colorScheme = Theme.of(context).colorScheme;
-            return isSearching
-                ? TextField(
-                    controller: _controller.searchController,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar artistas, locais...',
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                    ),
-                    style: TextStyle(color: colorScheme.onSurface),
-                  )
-                : _buildBrandAppBarTitle();
-          },
-        ),
-        actions: [
-          StreamValueBuilder<bool>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBackNavigation(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: StreamValueBuilder<bool>(
             streamValue: _controller.isSearchingStreamValue,
             builder: (context, isSearching) {
-              return IconButton(
-                icon: Icon(isSearching ? Icons.close : Icons.search),
-                onPressed: _controller.toggleSearch,
-              );
+              final colorScheme = Theme.of(context).colorScheme;
+              return isSearching
+                  ? TextField(
+                      controller: _controller.searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar artistas, locais...',
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      style: TextStyle(color: colorScheme.onSurface),
+                    )
+                  : _buildBrandAppBarTitle();
             },
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: StreamValueBuilder<bool>(
-          streamValue: _controller.isLoadingStreamValue,
-          builder: (context, isLoading) {
-            if (isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return _buildFeed(context);
-          },
+          actions: [
+            StreamValueBuilder<bool>(
+              streamValue: _controller.isSearchingStreamValue,
+              builder: (context, isSearching) {
+                if (!isSearching) {
+                  return const SizedBox.shrink();
+                }
+                return IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _controller.toggleSearch,
+                );
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: StreamValueBuilder<bool>(
+            streamValue: _controller.isLoadingStreamValue,
+            builder: (context, isLoading) {
+              if (isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return _buildFeed(context);
+            },
+          ),
         ),
       ),
     );
+  }
+
+  void _handleBackNavigation(BuildContext context) {
+    if (_controller.consumeBackNavigationIfNeeded()) {
+      return;
+    }
+
+    final router = context.router;
+    if (router.removeLast()) {
+      return;
+    }
+
+    unawaited(router.replaceAll([const TenantHomeRoute()]));
   }
 
   Widget _buildFeed(BuildContext context) {
@@ -112,8 +141,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                               streamValue:
                                   _controller.availableTypesStreamValue,
                               builder: (context, availableTypes) {
-                                final showDiscoveryFilters = !isSearching &&
-                                    hasLoaded &&
+                                final showDiscoveryHeader =
+                                    !isSearching && hasLoaded;
+                                final hasFilterChips =
                                     availableTypes.isNotEmpty;
                                 return CustomScrollView(
                                   controller: _controller.scrollController,
@@ -157,27 +187,36 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                           },
                                         ),
                                       ),
-                                    if (showDiscoveryFilters)
+                                    if (showDiscoveryHeader)
                                       SliverPersistentHeader(
                                         pinned: true,
                                         delegate: DiscoveryFilterHeaderDelegate(
-                                          extent: 122,
+                                          extent: hasFilterChips ? 128 : 72,
                                           title: 'Descubra',
-                                          filterBuilder: () =>
-                                              StreamValueBuilder<String?>(
-                                            streamValue: _controller
-                                                .selectedTypeFilterStreamValue,
-                                            builder: (context, selectedType) {
-                                              return DiscoveryFilterChips(
-                                                selectedType: selectedType,
-                                                availableTypes: availableTypes,
-                                                onSelectType:
-                                                    _controller.setTypeFilter,
-                                                labelForType: _controller
-                                                    .labelForAccountProfileType,
-                                              );
-                                            },
+                                          action: IconButton(
+                                            icon: const Icon(Icons.search),
+                                            onPressed: _controller.toggleSearch,
                                           ),
+                                          filterBuilder: () {
+                                            if (!hasFilterChips) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            return StreamValueBuilder<String?>(
+                                              streamValue: _controller
+                                                  .selectedTypeFilterStreamValue,
+                                              builder: (context, selectedType) {
+                                                return DiscoveryFilterChips(
+                                                  selectedType: selectedType,
+                                                  availableTypes:
+                                                      availableTypes,
+                                                  onSelectType:
+                                                      _controller.setTypeFilter,
+                                                  labelForType: _controller
+                                                      .labelForAccountProfileType,
+                                                );
+                                              },
+                                            );
+                                          },
                                         ),
                                       ),
                                     SliverToBoxAdapter(

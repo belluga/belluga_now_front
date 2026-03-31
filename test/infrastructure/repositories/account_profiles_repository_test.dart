@@ -282,7 +282,8 @@ void main() {
         repository.hasMorePagedAccountProfilesStreamValue.value.value, isFalse);
   });
 
-  test('discovery nearby stream reuses paged cache before backend fallback',
+  test(
+      'discovery nearby stream uses dedicated near endpoint even with paged cache',
       () async {
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
@@ -299,6 +300,22 @@ void main() {
           type: 'curator',
         ),
       ],
+      nearbyProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Nearest Venue',
+          slug: 'nearest-venue',
+          type: 'artist',
+          distanceMeters: 120,
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Second Venue',
+          slug: 'second-venue',
+          type: 'artist',
+          distanceMeters: 340,
+        ),
+      ],
     );
     final repository = AccountProfilesRepository(
       backend: backend,
@@ -313,18 +330,26 @@ void main() {
       pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
     );
 
-    expect(backend.fetchNearbyCalls, 0);
+    expect(backend.fetchNearbyCalls, 1);
     expect(repository.discoveryNearbyAccountProfilesStreamValue.value,
-        hasLength(1));
-    expect(repository.discoveryNearbyAccountProfilesStreamValue.value.first.type,
-        'artist');
+        hasLength(2));
+    expect(
+      repository.discoveryNearbyAccountProfilesStreamValue.value
+          .map((profile) => profile.name)
+          .toList(),
+      ['Nearest Venue', 'Second Venue'],
+    );
   });
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
-  _StubAccountProfilesBackend({required this.accountProfiles});
+  _StubAccountProfilesBackend({
+    required this.accountProfiles,
+    this.nearbyProfiles = const <AccountProfileModel>[],
+  });
 
   final List<AccountProfileModel> accountProfiles;
+  final List<AccountProfileModel> nearbyProfiles;
   List<String>? lastAllowedTypes;
   int fetchNearbyCalls = 0;
 
@@ -364,7 +389,8 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     int pageSize = 10,
   }) async {
     fetchNearbyCalls += 1;
-    return accountProfiles.take(pageSize).toList(growable: false);
+    final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
+    return source.take(pageSize).toList(growable: false);
   }
 
   @override

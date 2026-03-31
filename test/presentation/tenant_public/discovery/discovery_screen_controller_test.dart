@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -29,6 +30,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -221,7 +223,7 @@ void main() {
   });
 
   test(
-      'discovery nearby section reuses paged cache and skips independent fetch',
+      'discovery nearby section uses dedicated near source and preserves backend order',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -243,10 +245,18 @@ void main() {
       },
       nearbyProfiles: [
         buildAccountProfileModelFromPrimitives(
-          id: _mongoId('re-nearby-remote'),
-          name: 'Remote Nearby',
-          slug: 'remote-nearby',
+          id: _mongoId('re-nearby-remote-1'),
+          name: 'Nearest Nearby',
+          slug: 'nearest-nearby',
           type: 'artist',
+          distanceMeters: 120,
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _mongoId('re-nearby-remote-2'),
+          name: 'Second Nearby',
+          slug: 'second-nearby',
+          type: 'artist',
+          distanceMeters: 480,
         ),
       ],
     );
@@ -258,9 +268,14 @@ void main() {
 
     await controller.init();
 
-    expect(repository.nearbyFetchCalls, 0);
-    expect(controller.nearbyStreamValue.value, hasLength(1));
-    expect(controller.nearbyStreamValue.value.first.name, 'First');
+    expect(repository.nearbyFetchCalls, 1);
+    expect(controller.nearbyStreamValue.value, hasLength(2));
+    expect(
+      controller.nearbyStreamValue.value
+          .map((profile) => profile.name)
+          .toList(),
+      ['Nearest Nearby', 'Second Nearby'],
+    );
     controller.onDispose();
   });
 
@@ -289,6 +304,96 @@ void main() {
     expect(controller.nearbyStreamValue.value, hasLength(1));
     expect(controller.nearbyStreamValue.value.first.name, 'Nearby Venue');
     expect(controller.nearbyStreamValue.value.first.distanceMeters, 320);
+    controller.onDispose();
+  });
+
+  test('back consumption resets active filter state only', () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('back-1'), type: 'artist', name: 'Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    controller.toggleSearch();
+    controller.setSearchQuery('artist');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final consumed = controller.consumeBackNavigationIfNeeded();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(consumed, isTrue);
+    expect(controller.searchQueryStreamValue.value, isEmpty);
+    expect(controller.selectedTypeFilterStreamValue.value, isNull);
+    expect(controller.isSearchingStreamValue.value, isFalse);
+    controller.onDispose();
+  });
+
+  test('back consumption returns false when no filter state is active',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('back-2'), type: 'artist', name: 'Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    controller.toggleSearch();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final consumed = controller.consumeBackNavigationIfNeeded();
+
+    expect(consumed, isFalse);
+    expect(controller.isSearchingStreamValue.value, isTrue);
+    controller.onDispose();
+  });
+
+  test('back consumption resets selected category filter without popping',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('back-3'), type: 'artist', name: 'Artist'),
+            _profile(id: _mongoId('back-4'), type: 'venue', name: 'Venue'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    controller.setTypeFilter('artist');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final consumed = controller.consumeBackNavigationIfNeeded();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(consumed, isTrue);
+    expect(controller.selectedTypeFilterStreamValue.value, isNull);
+    expect(controller.isSearchingStreamValue.value, isFalse);
     controller.onDispose();
   });
 
@@ -564,6 +669,227 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
+  testWidgets(
+      'DiscoveryFilterChips defers selected and unselected colors to the theme',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DiscoveryFilterChips(
+            selectedType: 'artist',
+            availableTypes: const ['artist', 'venue'],
+            onSelectType: (_) {},
+            labelForType: (type) => type,
+          ),
+        ),
+      ),
+    );
+
+    final selectedChip = tester.widget<ChoiceChip>(
+      find.widgetWithText(ChoiceChip, 'artist'),
+    );
+    final unselectedChip = tester.widget<ChoiceChip>(
+      find.widgetWithText(ChoiceChip, 'Todos'),
+    );
+
+    expect(selectedChip.selectedColor, isNull);
+    expect(selectedChip.backgroundColor, isNull);
+    expect(selectedChip.side, isNull);
+    expect(selectedChip.shape, isNull);
+    expect(unselectedChip.selectedColor, isNull);
+    expect(unselectedChip.backgroundColor, isNull);
+    expect(unselectedChip.side, isNull);
+    expect(unselectedChip.shape, isNull);
+  });
+
+  testWidgets(
+      'DiscoveryScreen shows search action in Descubra header only in idle state',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+                id: _mongoId('ui-search-1'), type: 'artist', name: 'Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byIcon(Icons.search),
+      ),
+      findsNothing,
+    );
+    expect(find.text('Descubra'), findsOneWidget);
+    expect(find.byIcon(Icons.search), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen back clears active filters before removing the route',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('ui-back-1'), type: 'artist', name: 'Artist'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    router.removeLastResult = true;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'artist');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DiscoveryScreen), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DiscoveryScreen), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Descubra'), findsOneWidget);
+    expect(router.removeLastCallCount, 0);
+    expect(router.replaceAllRoutes, isEmpty);
+
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.removeLastCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets(
+      'DiscoveryScreen back falls back to TenantHomeRoute when there is no prior stack entry',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('ui-back-fallback-1'),
+              type: 'artist',
+              name: 'Artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    router.removeLastResult = false;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.removeLastCallCount, 1);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(router.replaceAllRoutes.single, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
+  });
+
   test(
       'discovery search keeps backend matches even when local name/tags do not match',
       () async {
@@ -711,7 +1037,26 @@ void main() {
   });
 }
 
-class _RecordingStackRouter extends Mock implements StackRouter {}
+class _RecordingStackRouter extends Mock implements StackRouter {
+  bool removeLastResult = true;
+  int removeLastCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+
+  @override
+  bool removeLast() {
+    removeLastCallCount += 1;
+    return removeLastResult;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
+  }
+}
 
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({

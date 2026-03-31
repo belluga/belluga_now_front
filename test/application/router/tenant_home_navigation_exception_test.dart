@@ -41,6 +41,7 @@ import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/user/friend.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -59,6 +60,19 @@ import 'package:stream_value/core/stream_value.dart';
 
 import '../../presentation/tenant/home/screens/tenant_home_screen/tenant_home_screen_test.mocks.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
+
+class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
+  _TestTenantHomeAgendaController()
+      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null);
+
+  final StreamValue<UserContract?> _authUserStreamValue;
+
+  @override
+  StreamValue<UserContract?>? get authUserStreamValue => _authUserStreamValue;
+
+  @override
+  bool get shouldShowInviteFilterAction => true;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -258,7 +272,7 @@ void _registerTenantBootstrapDependencies({
   final appDataRepository = _FakeAppDataRepository(appData);
 
   final mockController = MockTenantHomeController();
-  final mockAgendaController = MockTenantHomeAgendaController();
+  final mockAgendaController = _TestTenantHomeAgendaController();
   final mockFavoritesController = MockFavoritesSectionController();
   final mockInvitesBannerController = MockInvitesBannerBuilderController();
   final mockAppData = MockAppData();
@@ -488,8 +502,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       const [];
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
-      InviteRecipients recipients,
+  Future<void> sendInvites(
+      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
 
@@ -588,10 +602,13 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
   @override
   StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+      StreamValue<DistanceInMetersValue>(
+          defaultValue:
+              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -675,8 +692,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 InviteModel _buildInvite() {
