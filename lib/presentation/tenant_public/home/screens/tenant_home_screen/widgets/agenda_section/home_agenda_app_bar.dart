@@ -33,6 +33,14 @@ class HomeAgendaAppBar extends StatelessWidget {
         showRadius: true,
         showInviteFilter: controller.shouldShowInviteFilterAction,
         showHistory: false,
+        radiusSheetPresentation: const AgendaRadiusSheetPresentation(
+          title: 'Distância Máxima',
+          description:
+              'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+          helperText:
+              'Você pode alterar essa preferência quando quiser.',
+          confirmButtonLabel: 'Confirmar raio',
+        ),
       ),
     );
   }

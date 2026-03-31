@@ -131,10 +131,57 @@ void main() {
       await appDataRepository.setMaxRadiusMeters(
         DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
       );
+      await Future<void>.delayed(Duration.zero);
       expect(controller.radiusMetersStreamValue.value, 5000);
 
       controller.onDispose();
     });
+
+    test(
+      'persists selected radius preference without collapsing tenant max bound',
+      () async {
+        final appData = _buildAppData(
+          minKm: 2,
+          defaultKm: 7,
+          maxKm: 15,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(controller.maxRadiusMetersStreamValue.value, 15000);
+
+        controller.setRadiusMeters(4000);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
+        expect(appDataRepository.maxRadiusMeters.value, 4000);
+        expect(controller.radiusMetersStreamValue.value, 4000);
+        expect(
+          controller.maxRadiusMetersStreamValue.value,
+          15000,
+          reason: 'Persisted selection must not shrink the tenant max bound.',
+        );
+
+        controller.setRadiusMeters(12000);
+        expect(
+          controller.radiusMetersStreamValue.value,
+          12000,
+          reason:
+              'A lower persisted preference must not block future increases up to tenant max.',
+        );
+
+        controller.onDispose();
+      },
+    );
 
     test('coalesces rapid radius updates into a single refresh', () async {
       final appData = _buildAppData(
@@ -501,6 +548,59 @@ void main() {
         await tester.pump();
 
         expect(find.byTooltip('Todos os eventos'), findsOneWidget);
+
+        controller.onDispose();
+      },
+    );
+
+    testWidgets(
+      'home radius sheet shows explanatory copy and persistence note',
+      (tester) async {
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: HomeAgendaAppBar(controller: controller),
+              ),
+              body: const SizedBox.shrink(),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byIcon(Icons.radar));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Distância Máxima'), findsOneWidget);
+        expect(
+          find.text(
+            'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Você pode alterar essa preferência quando quiser.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Confirmar raio'), findsOneWidget);
 
         controller.onDispose();
       },
@@ -1086,6 +1186,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
   final AppData _appData;
   bool _hasPersistedMaxRadiusPreference;
+  int setMaxRadiusMetersCallCount = 0;
 
   @override
   AppData get appData => _appData;
@@ -1113,6 +1214,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
   @override
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    setMaxRadiusMetersCallCount += 1;
     _hasPersistedMaxRadiusPreference = true;
     maxRadiusMetersStreamValue.addValue(meters);
   }

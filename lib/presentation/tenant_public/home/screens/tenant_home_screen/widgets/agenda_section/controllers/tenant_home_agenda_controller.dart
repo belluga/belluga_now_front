@@ -126,6 +126,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
 
   Uri get defaultEventImageUri {
@@ -450,7 +451,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
+    final clamped = _clampRadiusMeters(meters);
+    _pendingPersistedRadiusEchoMeters = clamped;
+    _setValue(radiusMetersStreamValue, clamped);
+    unawaited(_persistSelectedRadiusPreference(clamped));
     _scheduleRadiusRefresh();
   }
 
@@ -661,15 +665,39 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
-    _setValue(_maxRadiusMetersStreamValue, _currentMaxRadiusMeters());
+    _setValue(_maxRadiusMetersStreamValue, _configuredMaxRadiusMeters());
     _radiusSubscription =
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
-      _setValue(_maxRadiusMetersStreamValue, value.value);
+      _setValue(_maxRadiusMetersStreamValue, _configuredMaxRadiusMeters());
+      final clamped = _clampRadiusMeters(value.value);
+      final pendingEcho = _pendingPersistedRadiusEchoMeters;
+      if (pendingEcho != null) {
+        if ((pendingEcho - clamped).abs() < 0.001) {
+          _pendingPersistedRadiusEchoMeters = null;
+        }
+        return;
+      }
       final current = radiusMetersStreamValue.value;
-      final clamped = _clampRadiusMeters(current);
+      if ((current - clamped).abs() < 0.001) {
+        return;
+      }
       _setValue(radiusMetersStreamValue, clamped);
       _scheduleRadiusRefresh();
     });
+  }
+
+  Future<void> _persistSelectedRadiusPreference(double meters) async {
+    final value = DistanceInMetersValue(
+      defaultValue: meters,
+    )..parse(meters.toString());
+    try {
+      await _appDataRepository.setMaxRadiusMeters(value);
+    } catch (_) {
+      if ((_pendingPersistedRadiusEchoMeters ?? -1) == meters) {
+        _pendingPersistedRadiusEchoMeters = null;
+      }
+      rethrow;
+    }
   }
 
   void _scheduleRadiusRefresh() {
@@ -853,7 +881,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     if (configured > 0) {
       return _clampRadiusMeters(configured);
     }
-    return _clampRadiusMeters(_currentMaxRadiusMeters());
+    return _clampRadiusMeters(_configuredMaxRadiusMeters());
   }
 
   double _configuredMinRadiusMeters() {
@@ -868,15 +896,21 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       return _appDataRepository.appData.mapRadiusDefaultMeters;
     } on Object {
-      return _currentMaxRadiusMeters();
+      return _configuredMaxRadiusMeters();
     }
   }
 
-  double _currentMaxRadiusMeters() => _appDataRepository.maxRadiusMeters.value;
+  double _configuredMaxRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusMaxMeters;
+    } on Object {
+      return _appDataRepository.maxRadiusMeters.value;
+    }
+  }
 
   double _clampRadiusMeters(double meters) {
     final min = _resolveMinRadiusMeters();
-    final max = _currentMaxRadiusMeters();
+    final max = _configuredMaxRadiusMeters();
     final effectiveMax = max < min ? min : max;
     return meters.clamp(min, effectiveMax).toDouble();
   }
