@@ -238,6 +238,87 @@ void main() {
     expect(nearby, hasLength(1));
     expect(nearby.first.type, 'artist');
   });
+
+  test('paged account profiles stream accumulates loaded pages canonically',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist Two',
+          slug: 'artist-two',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+    );
+    expect(repository.currentPagedAccountProfilesPage.value, 1);
+    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(1));
+    expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value, isTrue);
+
+    await repository.loadNextAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+    );
+    expect(repository.currentPagedAccountProfilesPage.value, 2);
+    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(2));
+    expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value, isFalse);
+  });
+
+  test('discovery nearby stream reuses paged cache before backend fallback',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Curator One',
+          slug: 'curator-one',
+          type: 'curator',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+    );
+    await repository.syncDiscoveryNearbyAccountProfiles(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+    );
+
+    expect(backend.fetchNearbyCalls, 0);
+    expect(repository.discoveryNearbyAccountProfilesStreamValue.value,
+        hasLength(1));
+    expect(repository.discoveryNearbyAccountProfilesStreamValue.value.first.type,
+        'artist');
+  });
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -245,6 +326,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
 
   final List<AccountProfileModel> accountProfiles;
   List<String>? lastAllowedTypes;
+  int fetchNearbyCalls = 0;
 
   @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() async =>
@@ -281,6 +363,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
   }) async {
+    fetchNearbyCalls += 1;
     return accountProfiles.take(pageSize).toList(growable: false);
   }
 

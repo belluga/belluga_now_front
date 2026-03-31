@@ -5,7 +5,6 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_curator_content_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_header_delegate.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
@@ -154,18 +153,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    if (showSections)
-                                      SliverToBoxAdapter(
-                                        child: StreamValueBuilder(
-                                          streamValue: _controller
-                                              .curatorContentStreamValue,
-                                          builder: (context, contents) {
-                                            return DiscoveryCuratorContentSection(
-                                              contents: contents,
                                             );
                                           },
                                         ),

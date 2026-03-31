@@ -6,18 +6,20 @@ import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 import '../path_utils.dart';
 import '../streamvalue_target_utils.dart';
 
-class ControllerDelegatedStreamValueDisposeForbiddenRule extends DartLintRule {
-  ControllerDelegatedStreamValueDisposeForbiddenRule()
+class ControllerDelegatedStreamValueWriteForbiddenRule extends DartLintRule {
+  ControllerDelegatedStreamValueWriteForbiddenRule()
     : super(
         code: const LintCode(
           errorSeverity: ErrorSeverity.WARNING,
-          name: 'controller_delegated_streamvalue_dispose_forbidden',
+          name: 'controller_delegated_streamvalue_write_forbidden',
           problemMessage:
-              'Controller must not dispose delegated StreamValue from repository/service contracts.',
+              'Controller must not mutate delegated StreamValue from repository/service contracts.',
           correctionMessage:
-              'Treatments: dispose only controller-owned StreamValue fields; keep delegated repository/service streams alive.',
+              'Treatments: treat delegated repository/service StreamValue as read-only; when canonical mutation is needed, route it through repository getter/setter APIs, otherwise use a controller-owned StreamValue for local screen-stage state.',
         ),
       );
+
+  static const _forbiddenMethods = <String>{'addValue', 'addError'};
 
   @override
   void run(
@@ -31,7 +33,7 @@ class ControllerDelegatedStreamValueDisposeForbiddenRule extends DartLintRule {
     }
 
     context.registry.addMethodInvocation((node) {
-      if (node.methodName.name != 'dispose') {
+      if (!_forbiddenMethods.contains(node.methodName.name)) {
         return;
       }
 

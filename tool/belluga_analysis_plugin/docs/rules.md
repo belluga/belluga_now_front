@@ -89,6 +89,29 @@ Controllers must not dispose delegated `StreamValue` sources.
 1. Remove `.dispose()` calls on delegated/external/getter-based `StreamValue`.
 2. Keep disposal only for controller-owned `StreamValue` fields.
 
+## `controller_delegated_streamvalue_write_forbidden`
+
+### Rule intent
+Controllers must not mutate delegated `StreamValue` sources owned by repositories/services or exposed via explicit delegation getters.
+
+### Ownership rule
+- Delegated `StreamValue` is read-only in controllers.
+- If canonical shared state must change, the controller must call an explicit repository getter/setter or repository mutation API.
+- Direct controller-side `.addValue(...)` / `.addError(...)` against delegated streams is forbidden, even when the mutation is logically “needed”.
+
+### Delegated semantics
+- External stream target (for example `repository.streamValue.addValue(...)`).
+- Explicit controller getter returning `StreamValue` from a delegated source (for example `get feedStreamValue => _repository.feedStreamValue`).
+
+### Forbidden mutations
+- `.addValue(...)`
+- `.addError(...)`
+
+### Remediation playbook
+1. Treat delegated repository/service `StreamValue` as read-only inside the controller.
+2. If the controller needs to mutate canonical shared state, add/use an explicit repository getter/setter or repository mutation API and perform the stream write inside the repository.
+3. If the controller needs only local screen-stage state, introduce a controller-owned `StreamValue`.
+
 ## `controller_owned_streamvalue_dispose_required`
 
 ### Rule intent

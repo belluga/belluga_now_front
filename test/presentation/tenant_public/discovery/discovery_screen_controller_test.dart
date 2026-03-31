@@ -68,6 +68,8 @@ void main() {
     await controller.init();
 
     expect(controller.availableTypesStreamValue.value, ['artist']);
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
     controller.onDispose();
   });
 
@@ -179,17 +181,93 @@ void main() {
     secondController.onDispose();
   });
 
-  test('discovery nearby section loads from independent repository request',
+  test(
+      'discovery re-entry with cached page does not raise fullscreen loading again',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
         1: pagedAccountProfilesResultFromRaw(
           profiles: [
-            _profile(id: _mongoId('d1'), type: 'artist', name: 'Grid Artist'),
+            _profile(id: _mongoId('re-cache-1'), type: 'artist', name: 'First'),
           ],
           hasMore: false,
         ),
       },
+    );
+
+    final firstController = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    await firstController.init();
+    firstController.onDispose();
+
+    final secondController = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    final loadingTransitions = <bool>[];
+    final subscription = secondController.isLoadingStreamValue.stream.listen(
+      loadingTransitions.add,
+    );
+
+    await secondController.init();
+
+    expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
+    expect(loadingTransitions, isNot(contains(true)));
+
+    await subscription.cancel();
+    secondController.onDispose();
+  });
+
+  test(
+      'discovery nearby section reuses paged cache and skips independent fetch',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('re-nearby-cache-1'),
+              type: 'artist',
+              name: 'First',
+            ),
+            _profile(
+              id: _mongoId('re-nearby-cache-2'),
+              type: 'curator',
+              name: 'Curator',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+      nearbyProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _mongoId('re-nearby-remote'),
+          name: 'Remote Nearby',
+          slug: 'remote-nearby',
+          type: 'artist',
+        ),
+      ],
+    );
+
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+
+    expect(repository.nearbyFetchCalls, 0);
+    expect(controller.nearbyStreamValue.value, hasLength(1));
+    expect(controller.nearbyStreamValue.value.first.name, 'First');
+    controller.onDispose();
+  });
+
+  test('discovery nearby section falls back to independent repository request',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: const <int, PagedAccountProfilesResult>{},
       nearbyProfiles: [
         buildAccountProfileModelFromPrimitives(
           id: _mongoId('d2'),
@@ -205,8 +283,7 @@ void main() {
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
-    await controller.init();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await repository.syncDiscoveryNearbyAccountProfiles();
 
     expect(repository.nearbyFetchCalls, 1);
     expect(controller.nearbyStreamValue.value, hasLength(1));

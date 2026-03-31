@@ -24,11 +24,7 @@ abstract class AccountProfilesRepositoryContract {
       StreamValue<AccountProfileModel?>(defaultValue: null);
   final discoveryFilteredAccountProfilesStreamValue =
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final discoveryLiveAccountProfilesStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final discoveryNearbyAccountProfilesStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final discoveryCuratorAccountProfilesStreamValue =
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
 
   /// Stream of favorite account profile IDs
@@ -137,6 +133,32 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimInt? pageSize,
   });
 
+  Future<void> syncDiscoveryNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ??
+        AccountProfilesRepositoryContractPrimInt.fromRaw(
+          10,
+          defaultValue: 10,
+        );
+    final cachedProfiles = _resolveDiscoveryNearbyCachedProfiles(
+      pageSize: effectivePageSize.value,
+    );
+    if (cachedProfiles.isNotEmpty) {
+      discoveryNearbyAccountProfilesStreamValue.addValue(cachedProfiles);
+      return;
+    }
+
+    final profiles = await fetchNearbyAccountProfiles(
+      pageSize: effectivePageSize,
+    );
+    discoveryNearbyAccountProfilesStreamValue.addValue(
+      _filterDiscoveryMvpProfiles(profiles)
+          .take(effectivePageSize.value)
+          .toList(growable: false),
+    );
+  }
+
   Future<void> loadAccountProfileBySlug(
       AccountProfilesRepositoryContractPrimString slug) async {
     final profile = await getAccountProfileBySlug(slug);
@@ -189,6 +211,13 @@ abstract class AccountProfilesRepositoryContract {
         query: query,
         typeFilter: typeFilter,
       );
+      final accumulatedProfiles = page.value <= 1
+          ? List<AccountProfileModel>.from(result.profiles)
+          : <AccountProfileModel>[
+              ...?_paginationState
+                  .pagedAccountProfilesStreamValue.value?.profiles,
+              ...result.profiles,
+            ];
       _paginationState.currentPage = page;
       _paginationState.hasMore =
           AccountProfilesRepositoryContractPrimBool.fromRaw(
@@ -196,13 +225,24 @@ abstract class AccountProfilesRepositoryContract {
         defaultValue: true,
       );
       hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
-      pagedAccountProfilesStreamValue.addValue(result);
+      pagedAccountProfilesStreamValue.addValue(
+        pagedAccountProfilesResultFromRaw(
+          profiles: accumulatedProfiles,
+          hasMore: result.hasMore,
+        ),
+      );
+      discoveryFilteredAccountProfilesStreamValue.addValue(
+        _filterDiscoveryMvpProfiles(accumulatedProfiles),
+      );
       pagedAccountProfilesErrorStreamValue.addValue(null);
     } catch (error) {
       pagedAccountProfilesErrorStreamValue.addValue(
         AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
       );
       if (page.value == 1) {
+        discoveryFilteredAccountProfilesStreamValue.addValue(
+          const <AccountProfileModel>[],
+        );
         pagedAccountProfilesStreamValue.addValue(
           pagedAccountProfilesResultFromRaw(
             profiles: <AccountProfileModel>[],
@@ -259,6 +299,34 @@ abstract class AccountProfilesRepositoryContract {
         defaultValue: false,
       ),
     );
+  }
+
+  List<AccountProfileModel> _resolveDiscoveryNearbyCachedProfiles({
+    required int pageSize,
+  }) {
+    final pagedProfiles = pagedAccountProfilesStreamValue.value?.profiles;
+    if (pagedProfiles != null && pagedProfiles.isNotEmpty) {
+      return _filterDiscoveryMvpProfiles(pagedProfiles)
+          .take(pageSize)
+          .toList(growable: false);
+    }
+
+    final allProfiles = allAccountProfilesStreamValue.value;
+    if (allProfiles.isNotEmpty) {
+      return _filterDiscoveryMvpProfiles(allProfiles)
+          .take(pageSize)
+          .toList(growable: false);
+    }
+
+    return const <AccountProfileModel>[];
+  }
+
+  List<AccountProfileModel> _filterDiscoveryMvpProfiles(
+    List<AccountProfileModel> profiles,
+  ) {
+    return profiles
+        .where((profile) => profile.type != 'curator')
+        .toList(growable: false);
   }
 }
 

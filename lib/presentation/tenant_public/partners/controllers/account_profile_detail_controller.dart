@@ -50,8 +50,8 @@ class AccountProfileDetailController implements Disposable {
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteIdsSubscription;
 
-  StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
-      _accountProfilesRepository.selectedAccountProfileStreamValue;
+  final accountProfileStreamValue =
+      StreamValue<AccountProfileModel?>(defaultValue: null);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
@@ -70,6 +70,7 @@ class AccountProfileDetailController implements Disposable {
       final accountProfile =
           _accountProfilesRepository.selectedAccountProfileStreamValue.value;
       if (accountProfile == null) {
+        accountProfileStreamValue.addValue(null);
         profileConfigStreamValue.addValue(null);
         moduleDataStreamValue.addValue(const {});
         return;
@@ -140,6 +141,7 @@ class AccountProfileDetailController implements Disposable {
   @override
   void onDispose() {
     _favoriteIdsSubscription?.cancel();
+    accountProfileStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();

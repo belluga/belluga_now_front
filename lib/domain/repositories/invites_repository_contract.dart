@@ -104,6 +104,10 @@ abstract class InvitesRepositoryContract {
     shareCodePreviewInviteStreamValue.addValue(preview);
   }
 
+  void clearShareCodePreview() {
+    shareCodePreviewInviteStreamValue.addValue(null);
+  }
+
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
   );

@@ -11,7 +11,6 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -46,17 +45,14 @@ class DiscoveryScreenController implements Disposable {
   StreamSubscription<Object?>? _lastKnownLocationSubscription;
   Timer? _searchDebounce;
   bool _initialized = false;
+  bool _isDisposed = false;
+  int _lifecycleToken = 0;
   int _reloadRequestToken = 0;
   bool _isFetchingPage = false;
-  bool _isFetchingNearby = false;
   bool _isFetchingLiveNow = false;
   bool _hasPendingLiveNowReload = false;
-  bool _hasMore = true;
   bool _scrollListenerAttached = false;
-  int _currentPage = 0;
   String? _lastOriginSignature;
-
-  List<AccountProfileModel> _allAccountProfiles = const [];
 
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
@@ -65,8 +61,6 @@ class DiscoveryScreenController implements Disposable {
       StreamValue<List<String>>(defaultValue: const []);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
-  StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
-      _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final isRefreshingStreamValue = StreamValue<bool>(defaultValue: false);
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -78,12 +72,10 @@ class DiscoveryScreenController implements Disposable {
   StreamValue<List<EventModel>> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
+      _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
-  StreamValue<List<AccountProfileModel>> get curatorStreamValue =>
-      _accountProfilesRepository.discoveryCuratorAccountProfilesStreamValue;
-  final curatorContentStreamValue =
-      StreamValue<List<CuratorContent>>(defaultValue: const []);
 
   Future<void> init() async {
     if (_initialized) {
@@ -91,7 +83,6 @@ class DiscoveryScreenController implements Disposable {
       if (!hasLoadedStreamValue.value && !_isFetchingPage) {
         await _reloadPartners(showFullScreenLoader: false);
       }
-      unawaited(_reloadNearbySection());
       unawaited(_reloadLiveNowSection());
       return;
     }
@@ -118,6 +109,7 @@ class DiscoveryScreenController implements Disposable {
       },
     );
     await _loadFavoriteIds();
+    _hydrateFromRepositoryCache();
     await _reloadPartners(showFullScreenLoader: false);
   }
 
@@ -130,7 +122,6 @@ class DiscoveryScreenController implements Disposable {
     _scrollListenerAttached = true;
     scrollController.addListener(() {
       if (_isFetchingPage ||
-          !_hasMore ||
           isLoadingStreamValue.value ||
           isRefreshingStreamValue.value ||
           !hasMoreStreamValue.value) {
@@ -170,17 +161,19 @@ class DiscoveryScreenController implements Disposable {
       return;
     }
     _lastOriginSignature = signature;
-    unawaited(_reloadNearbySection());
     unawaited(_reloadLiveNowSection());
   }
 
   Future<void> _reloadPartners({bool showFullScreenLoader = false}) async {
+    if (_isDisposed) {
+      return;
+    }
+    final lifecycleToken = _lifecycleToken;
     final requestToken = ++_reloadRequestToken;
     final useFullScreenLoader = showFullScreenLoader ||
-        (!hasLoadedStreamValue.value && _allAccountProfiles.isEmpty);
+        (!hasLoadedStreamValue.value &&
+            filteredPartnersStreamValue.value.isEmpty);
 
-    _currentPage = 0;
-    _hasMore = true;
     hasMoreStreamValue.addValue(true);
 
     if (useFullScreenLoader) {
@@ -194,25 +187,21 @@ class DiscoveryScreenController implements Disposable {
     try {
       await _fetchNextPage(isInitial: true, requestToken: requestToken);
     } catch (error) {
-      debugPrint('DiscoveryScreenController._reloadPartners failed: $error');
+      if (_isLifecycleTokenActive(lifecycleToken)) {
+        debugPrint('DiscoveryScreenController._reloadPartners failed: $error');
+      }
     } finally {
-      if (requestToken == _reloadRequestToken) {
+      if (_isLifecycleTokenActive(lifecycleToken) &&
+          requestToken == _reloadRequestToken) {
         hasLoadedStreamValue.addValue(true);
         isLoadingStreamValue.addValue(false);
         isRefreshingStreamValue.addValue(false);
-        unawaited(_reloadNearbySection());
         unawaited(_reloadLiveNowSection());
       }
     }
   }
 
   void _clearVisibleData() {
-    _allAccountProfiles = const [];
-    filteredPartnersStreamValue.addValue(const []);
-    liveNowEventsStreamValue.addValue(const []);
-    nearbyStreamValue.addValue(const []);
-    curatorStreamValue.addValue(const []);
-    curatorContentStreamValue.addValue(const []);
     _updateAvailableTypes();
   }
 
@@ -228,8 +217,9 @@ class DiscoveryScreenController implements Disposable {
     required int requestToken,
   }) async {
     if (_isFetchingPage) return;
-    if (!isInitial && !_hasMore) return;
+    if (!isInitial && !hasMoreStreamValue.value) return;
 
+    final lifecycleToken = _lifecycleToken;
     _isFetchingPage = true;
     if (!isInitial) {
       isPageLoadingStreamValue.addValue(true);
@@ -238,7 +228,8 @@ class DiscoveryScreenController implements Disposable {
     try {
       final query = searchQueryStreamValue.value.trim();
       final selectedType = selectedTypeFilterStreamValue.value;
-      final shouldLoadFirstPage = isInitial || _currentPage <= 0;
+      final shouldLoadFirstPage = isInitial ||
+          _accountProfilesRepository.currentPagedAccountProfilesPage.value <= 0;
       if (shouldLoadFirstPage) {
         await _accountProfilesRepository.loadAccountProfilesPage(
           query: query.isEmpty
@@ -275,30 +266,22 @@ class DiscoveryScreenController implements Disposable {
         return;
       }
 
-      if (requestToken != _reloadRequestToken) {
+      if (!_isLifecycleTokenActive(lifecycleToken) ||
+          requestToken != _reloadRequestToken) {
         return;
       }
 
-      if (loadedPage.value == 1) {
-        _allAccountProfiles =
-            List<AccountProfileModel>.from(pageResult.profiles);
-      } else {
-        _allAccountProfiles = [
-          ..._allAccountProfiles,
-          ...pageResult.profiles,
-        ];
-      }
-
-      _currentPage = loadedPage.value;
-      _hasMore = pageResult.hasMore;
-      hasMoreStreamValue.addValue(_hasMore);
+      hasMoreStreamValue.addValue(pageResult.hasMore);
 
       _updateAvailableTypes();
-      _buildSections();
-      _applyFilters();
+      if (_shouldSyncNearby(query: query, selectedType: selectedType)) {
+        await _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles();
+      }
     } finally {
       _isFetchingPage = false;
-      if (!isInitial && requestToken == _reloadRequestToken) {
+      if (_isLifecycleTokenActive(lifecycleToken) &&
+          !isInitial &&
+          requestToken == _reloadRequestToken) {
         isPageLoadingStreamValue.addValue(false);
       }
     }
@@ -383,29 +366,6 @@ class DiscoveryScreenController implements Disposable {
     favoriteIdsStreamValue.addValue(ids);
   }
 
-  void _buildSections() {
-    final curators = _allAccountProfiles
-        .where((p) => p.type == 'curator')
-        .toList()
-      ..sort((a, b) => (b.acceptedInvites).compareTo(a.acceptedInvites));
-    curatorStreamValue.addValue(curators.take(10).toList());
-
-    final curatorContent = curators.take(5).map((c) {
-      final thumb = c.coverUrl ?? c.avatarUrl ?? '';
-      final title = c.tags.isNotEmpty
-          ? 'Novo ${c.tags.first} por ${c.name}'
-          : 'Conteúdo de ${c.name}';
-      return CuratorContent(
-        id: c.id,
-        title: title,
-        typeLabel: 'Artigo',
-        imageUrl: thumb,
-        curatorName: c.name,
-      );
-    }).toList();
-    curatorContentStreamValue.addValue(curatorContent);
-  }
-
   String? _originSignatureFrom(UserLocationRepositoryContract repository) {
     final coordinate = repository.userLocationStreamValue.value ??
         repository.lastKnownLocationStreamValue.value;
@@ -414,24 +374,6 @@ class DiscoveryScreenController implements Disposable {
     }
     return '${coordinate.latitude.toStringAsFixed(6)}:'
         '${coordinate.longitude.toStringAsFixed(6)}';
-  }
-
-  Future<void> _reloadNearbySection() async {
-    if (_isFetchingNearby) {
-      return;
-    }
-
-    _isFetchingNearby = true;
-    try {
-      final nearby =
-          await _accountProfilesRepository.fetchNearbyAccountProfiles();
-      nearbyStreamValue.addValue(nearby);
-    } catch (error) {
-      debugPrint(
-          'DiscoveryScreenController._reloadNearbySection failed: $error');
-    } finally {
-      _isFetchingNearby = false;
-    }
   }
 
   Future<void> _reloadLiveNowSection() async {
@@ -481,9 +423,27 @@ class DiscoveryScreenController implements Disposable {
     }
   }
 
-  void _applyFilters() {
-    filteredPartnersStreamValue
-        .addValue(List<AccountProfileModel>.from(_allAccountProfiles));
+  void _hydrateFromRepositoryCache() {
+    final cachedPage =
+        _accountProfilesRepository.pagedAccountProfilesStreamValue.value;
+    if (cachedPage == null) {
+      return;
+    }
+    final cachedProfiles = cachedPage.profiles;
+    if (cachedProfiles.isEmpty) {
+      return;
+    }
+
+    hasLoadedStreamValue.addValue(true);
+    hasMoreStreamValue.addValue(cachedPage.hasMore);
+    _updateAvailableTypes();
+  }
+
+  bool _shouldSyncNearby({
+    required String query,
+    required String? selectedType,
+  }) {
+    return query.isEmpty && (selectedType == null || selectedType.isEmpty);
   }
 
   void _updateAvailableTypes() {
@@ -588,8 +548,14 @@ class DiscoveryScreenController implements Disposable {
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
+  bool _isLifecycleTokenActive(int lifecycleToken) {
+    return !_isDisposed && lifecycleToken == _lifecycleToken;
+  }
+
   @override
   void onDispose() {
+    _isDisposed = true;
+    _lifecycleToken++;
     _searchDebounce?.cancel();
     searchController.removeListener(_handleSearchControllerChanged);
     _userLocationSubscription?.cancel();
@@ -603,7 +569,6 @@ class DiscoveryScreenController implements Disposable {
     hasMoreStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();
-    curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();
     scrollController.dispose();

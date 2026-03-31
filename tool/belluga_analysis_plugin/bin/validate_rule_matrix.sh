@@ -13,6 +13,14 @@ if [[ ! -d "$fixture_dir" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$fixture_dir/.dart_tool/package_config.json" ]]; then
+  echo "[validate_rule_matrix] fixture package_config missing; running pub get..."
+  (
+    cd "$fixture_dir"
+    fvm flutter pub get
+  )
+fi
+
 analysis_backup="$(mktemp)"
 output_file="$(mktemp)"
 expected_codes_file="$(mktemp)"
