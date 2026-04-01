@@ -1,6 +1,7 @@
 export 'favorite_navigation_target.dart';
 
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart';
@@ -40,13 +41,20 @@ class FavoritesSectionController implements Disposable {
     final appData = _appDataRepository.appData;
     final mainIconUri = appData.mainIconLightUrl.value;
     final primaryColor = _parseHexColor(appData.mainColor.value);
+    final isPrimaryValue = FavoritePrimaryFlagValue()..parse('true');
+    final iconImageUriValue = mainIconUri != null
+        ? (ThumbUriValue(
+            defaultValue: mainIconUri,
+            isRequired: true,
+          )..parse(mainIconUri.toString()))
+        : null;
+
     return FavoriteResume(
       titleValue: TitleValue()..parse(appData.nameValue.value),
-      imageUriValue:
-          mainIconUri != null ? ThumbUriValue(defaultValue: mainIconUri) : null,
-      iconImageUrl: mainIconUri?.toString(),
+      imageUriValue: iconImageUriValue,
+      iconImageUriValue: iconImageUriValue,
       primaryColor: primaryColor,
-      isPrimary: true,
+      isPrimaryValue: isPrimaryValue,
     );
   }
 
@@ -88,7 +96,6 @@ class FavoritesSectionController implements Disposable {
 
   @override
   void onDispose() {
-    favoritesStreamValue.dispose();
     navigationTargetStreamValue.dispose();
   }
 }

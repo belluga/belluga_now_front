@@ -15,5 +15,6 @@ class RideShareOption {
 
   String get label => labelValue.value;
 
-  List<Uri> get uris => uriValues.map((value) => value.value).toList();
+  List<RideShareUriValue> get uris =>
+      List<RideShareUriValue>.unmodifiable(uriValues);
 }

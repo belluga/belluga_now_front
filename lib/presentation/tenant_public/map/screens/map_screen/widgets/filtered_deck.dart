@@ -1,10 +1,10 @@
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:flutter/material.dart';
 
 class FilteredDeck extends StatelessWidget {
@@ -39,6 +39,7 @@ class FilteredDeck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visual = _resolveDeckVisual();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,10 +47,10 @@ class FilteredDeck extends StatelessWidget {
         Row(
           children: [
             Icon(
-              _iconForFilterMode(controller.filterModeStreamValue.value),
-              color: _accentColorForFilter(
-                controller.filterModeStreamValue.value,
-                colorScheme,
+              _iconForDeckVisual(visual),
+              color: _accentColorForDeckVisual(
+                visual: visual,
+                scheme: colorScheme,
               ),
             ),
             const SizedBox(width: 8),
@@ -128,39 +129,47 @@ class FilteredDeck extends StatelessWidget {
   }
 
   IconData _iconForFilterMode(PoiFilterMode mode) {
-    switch (mode) {
-      case PoiFilterMode.events:
-        return Icons.local_activity;
-      case PoiFilterMode.restaurants:
-        return Icons.restaurant;
-      case PoiFilterMode.beaches:
-        return Icons.beach_access;
-      case PoiFilterMode.lodging:
-        return Icons.hotel;
-      case PoiFilterMode.server:
-        return Icons.tune;
-      case PoiFilterMode.none:
-        return Icons.map;
-    }
+    return switch (mode) {
+      PoiFilterMode.server => Icons.tune,
+      PoiFilterMode.none => Icons.map,
+      _ => MapMarkerIconResolver.fallbackIcon,
+    };
   }
 
-  Color _accentColorForFilter(
-    PoiFilterMode mode,
-    ColorScheme scheme,
-  ) {
-    switch (mode) {
-      case PoiFilterMode.events:
-        return scheme.primary;
-      case PoiFilterMode.restaurants:
-        return categoryTheme(CityPoiCategory.restaurant, scheme).color;
-      case PoiFilterMode.beaches:
-        return categoryTheme(CityPoiCategory.beach, scheme).color;
-      case PoiFilterMode.lodging:
-        return categoryTheme(CityPoiCategory.lodging, scheme).color;
-      case PoiFilterMode.server:
-        return scheme.primary;
-      case PoiFilterMode.none:
-        return scheme.primary;
+  CityPoiVisual? _resolveDeckVisual() {
+    final selected = controller.selectedPoiStreamValue.value?.visual;
+    if (selected != null && selected.isValid) {
+      return selected;
     }
+    for (final poi in pois) {
+      final candidate = poi.visual;
+      if (candidate != null && candidate.isValid) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  IconData _iconForDeckVisual(CityPoiVisual? visual) {
+    if (visual?.isIcon == true) {
+      return MapMarkerIconResolver.resolve(visual?.icon);
+    }
+    if (visual?.isImage == true) {
+      return Icons.image_outlined;
+    }
+
+    return _iconForFilterMode(controller.filterModeStreamValue.value);
+  }
+
+  Color _accentColorForDeckVisual({
+    required CityPoiVisual? visual,
+    required ColorScheme scheme,
+  }) {
+    if (visual?.isIcon == true) {
+      return MapMarkerIconResolver.tryParseHexColor(visual?.colorHex) ??
+          scheme.primary;
+    }
+
+    return scheme.primary;
   }
 }

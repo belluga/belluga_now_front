@@ -7,7 +7,7 @@ class TenantAdminEventOccurrence {
     TenantAdminOptionalTextValue? occurrenceIdValue,
     TenantAdminOptionalTextValue? occurrenceSlugValue,
   })  : dateTimeEndValue =
-            dateTimeEndValue ?? const TenantAdminOptionalDateTimeValue(null),
+            dateTimeEndValue ?? TenantAdminOptionalDateTimeValue(null),
         occurrenceIdValue = occurrenceIdValue ?? TenantAdminOptionalTextValue(),
         occurrenceSlugValue =
             occurrenceSlugValue ?? TenantAdminOptionalTextValue();

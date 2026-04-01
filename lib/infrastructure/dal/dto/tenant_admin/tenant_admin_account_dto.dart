@@ -48,12 +48,12 @@ class TenantAdminAccountDTO {
     final resolvedOwnershipState =
         (ownershipStateRaw == null || ownershipStateRaw.isEmpty)
             ? TenantAdminOwnershipState.unmanaged
-            : TenantAdminOwnershipState.fromApiValue(ownershipStateRaw);
-    return TenantAdminAccount(
+            : tenantAdminOwnershipStateFromRaw(ownershipStateRaw);
+    return tenantAdminAccountFromRaw(
       id: id,
       name: name,
       slug: slug,
-      document: TenantAdminDocument(
+      document: tenantAdminDocumentFromRaw(
         type: documentType,
         number: documentNumber,
       ),

@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +19,8 @@ class _FakeAccountProfilesRepository
 
   List<TenantAdminProfileTypeDefinition> _types;
   int deleteCalls = 0;
+  int projectionImpactCount = 0;
+  String? lastProjectionImpactType;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -28,20 +29,21 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     final types = await fetchProfileTypes();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= types.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < types.length ? start + pageSize : types.length;
-    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+    final end = start + pageSize.value < types.length
+        ? start + pageSize.value
+        : types.length;
+    return tenantAdminPagedResultFromRaw(
       items: types.sublist(start, end),
       hasMore: end < types.length,
     );
@@ -49,15 +51,16 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
-    final created = TenantAdminProfileTypeDefinition(
-      type: type,
-      label: label,
-      allowedTaxonomies: allowedTaxonomies,
+    final created = tenantAdminProfileTypeDefinitionFromRaw(
+      type: type.value,
+      label: label.value,
+      allowedTaxonomies:
+          allowedTaxonomies.map((entry) => entry.value).toList(growable: false),
       capabilities: capabilities,
     );
     _types = [..._types, created];
@@ -66,30 +69,33 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
-    final updated = TenantAdminProfileTypeDefinition(
-      type: newType ?? type,
-      label: label ?? 'Updated',
-      allowedTaxonomies: allowedTaxonomies ?? [],
+    final updated = tenantAdminProfileTypeDefinitionFromRaw(
+      type: newType?.value ?? type.value,
+      label: label?.value ?? 'Updated',
+      allowedTaxonomies: allowedTaxonomies
+              ?.map((entry) => entry.value)
+              .toList(growable: false) ??
+          <String>[],
       capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
-            isFavoritable: true,
-            isPoiEnabled: false,
-            hasBio: false,
-            hasContent: false,
-            hasTaxonomies: false,
-            hasAvatar: false,
-            hasCover: false,
-            hasEvents: false,
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
           ),
     );
     _types = _types.map((entry) {
-      if (entry.type == type) {
+      if (entry.type == type.value) {
         return updated;
       }
       return entry;
@@ -98,22 +104,23 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<void> deleteProfileType(String type) async {
+  Future<void> deleteProfileType(
+      TenantAdminAccountProfilesRepoString type) async {
     deleteCalls += 1;
-    _types = _types.where((entry) => entry.type != type).toList();
+    _types = _types.where((entry) => entry.type != type.value).toList();
   }
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
-    String? accountId,
+    TenantAdminAccountProfilesRepoString? accountId,
   }) async =>
       [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -123,19 +130,20 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
-    required String accountId,
-    required String profileType,
-    required String displayName,
+    required TenantAdminAccountProfilesRepoString accountId,
+    required TenantAdminAccountProfilesRepoString profileType,
+    required TenantAdminAccountProfilesRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -145,20 +153,22 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> updateAccountProfile({
-    required String accountProfileId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? displayName,
+    TenantAdminAccountProfilesRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
+    TenantAdminAccountProfilesRepoBool? removeAvatar,
+    TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -167,13 +177,14 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<void> deleteAccountProfile(String accountProfileId) async {}
+  Future<void> deleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -182,7 +193,20 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<void> forceDeleteAccountProfile(String accountProfileId) async {}
+  Future<void> forceDeleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+
+  @override
+  Future<TenantAdminAccountProfilesRepoInt>
+      fetchProfileTypeMapPoiProjectionImpact({
+    required TenantAdminAccountProfilesRepoString type,
+  }) async {
+    lastProjectionImpactType = type.value;
+    return tenantAdminAccountProfilesRepoInt(
+      projectionImpactCount,
+      defaultValue: 0,
+    );
+  }
 }
 
 class _FakeTaxonomiesRepository
@@ -198,37 +222,37 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) {
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= taxonomies.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
     }
-    final end = (start + pageSize) < taxonomies.length
-        ? (start + pageSize)
+    final end = (start + pageSize.value) < taxonomies.length
+        ? (start + pageSize.value)
         : taxonomies.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: taxonomies.sublist(start, end),
       hasMore: end < taxonomies.length,
     );
@@ -236,7 +260,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) {
     throw UnimplementedError();
   }
@@ -244,48 +268,48 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
@@ -295,19 +319,19 @@ void main() {
   test('appends profile type pages and stops when hasMore is false', () async {
     final types = List<TenantAdminProfileTypeDefinition>.generate(
       25,
-      (index) => TenantAdminProfileTypeDefinition(
+      (index) => tenantAdminProfileTypeDefinitionFromRaw(
         type: 'type-$index',
         label: 'Type $index',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: false,
-          isPoiEnabled: false,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+          isFavoritable: TenantAdminFlagValue(false),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
         ),
       ),
     );
@@ -321,6 +345,7 @@ void main() {
 
     await controller.loadNextTypesPage();
     expect(controller.typesStreamValue.value?.length, 25);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
     expect(controller.hasMoreTypesStreamValue.value, isFalse);
 
     await controller.loadNextTypesPage();
@@ -337,14 +362,14 @@ void main() {
       label: 'Venue',
       allowedTaxonomies: [],
       capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: true,
-        isPoiEnabled: true,
-        hasBio: false,
-        hasContent: false,
-        hasTaxonomies: false,
-        hasAvatar: false,
-        hasCover: false,
-        hasEvents: false,
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(false),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasEvents: TenantAdminFlagValue(false),
       ),
     );
 
@@ -353,19 +378,19 @@ void main() {
 
   test('deleteType removes entry', () async {
     final repository = _FakeAccountProfilesRepository([
-      TenantAdminProfileTypeDefinition(
+      tenantAdminProfileTypeDefinitionFromRaw(
         type: 'venue',
         label: 'Venue',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: true,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
         ),
       ),
     ]);
@@ -383,19 +408,19 @@ void main() {
 
   test('reloads registry when tenant scope changes', () async {
     final repository = _FakeAccountProfilesRepository([
-      TenantAdminProfileTypeDefinition(
+      tenantAdminProfileTypeDefinitionFromRaw(
         type: 'artist',
         label: 'Artist',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: false,
-          hasBio: true,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: true,
-          hasCover: true,
-          hasEvents: true,
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
       ),
     ]);
@@ -409,19 +434,19 @@ void main() {
     expect(controller.typesStreamValue.value?.first.type, 'artist');
 
     repository._types = [
-      TenantAdminProfileTypeDefinition(
+      tenantAdminProfileTypeDefinitionFromRaw(
         type: 'venue',
         label: 'Venue',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: true,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
         ),
       ),
     ];
@@ -436,7 +461,7 @@ void main() {
       () async {
     final repository = _FakeAccountProfilesRepository([]);
     final taxonomiesRepository = _FakeTaxonomiesRepository([
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: '1',
         slug: 'music_genre',
         name: 'Music Genre',
@@ -444,7 +469,7 @@ void main() {
         icon: null,
         color: null,
       ),
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: '2',
         slug: 'event_type',
         name: 'Event Type',
@@ -470,7 +495,7 @@ void main() {
   test('ignores non-listed taxonomy slug when toggling selection', () async {
     final repository = _FakeAccountProfilesRepository([]);
     final taxonomiesRepository = _FakeTaxonomiesRepository([
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: '1',
         slug: 'music_genre',
         name: 'Music Genre',
@@ -494,38 +519,38 @@ void main() {
   test('submitUpdateType keeps detail stream aligned with saved values',
       () async {
     final repository = _FakeAccountProfilesRepository([
-      TenantAdminProfileTypeDefinition(
+      tenantAdminProfileTypeDefinitionFromRaw(
         type: 'artist',
         label: 'Artist',
         allowedTaxonomies: [],
         capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: false,
-          isPoiEnabled: false,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+          isFavoritable: TenantAdminFlagValue(false),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
         ),
       ),
     ]);
     final controller =
         TenantAdminProfileTypesController(repository: repository);
 
-    controller.initDetailType(TenantAdminProfileTypeDefinition(
+    controller.initDetailType(tenantAdminProfileTypeDefinitionFromRaw(
       type: 'artist',
       label: 'Artist',
       allowedTaxonomies: [],
       capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: false,
-        isPoiEnabled: false,
-        hasBio: false,
-        hasContent: false,
-        hasTaxonomies: false,
-        hasAvatar: false,
-        hasCover: false,
-        hasEvents: false,
+        isFavoritable: TenantAdminFlagValue(false),
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(false),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasEvents: TenantAdminFlagValue(false),
       ),
     ));
 
@@ -539,6 +564,18 @@ void main() {
     expect(detail, isNotNull);
     expect(detail!.type, 'artist-pro');
     expect(detail.label, 'Artist Pro');
+  });
+
+  test('previewDisableProjectionCount delegates to repository', () async {
+    final repository = _FakeAccountProfilesRepository([]);
+    repository.projectionImpactCount = 67;
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
+
+    final count = await controller.previewDisableProjectionCount('venue');
+
+    expect(count, 67);
+    expect(repository.lastProjectionImpactType, 'venue');
   });
 }
 
@@ -566,7 +603,10 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }

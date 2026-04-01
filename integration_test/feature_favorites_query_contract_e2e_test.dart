@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
@@ -79,17 +80,17 @@ void main() {
 
     if (seededEmail.trim().isNotEmpty && seededPassword.trim().isNotEmpty) {
       await authRepository.loginWithEmailPassword(
-        seededEmail.trim(),
-        seededPassword.trim(),
+        authRepoString(seededEmail.trim()),
+        authRepoString(seededPassword.trim()),
       );
     } else {
       final now = DateTime.now().millisecondsSinceEpoch;
       final email = 'favorites-e2e-$now@belluga.test';
       const password = 'SecurePass!123';
       await authRepository.signUpWithEmailPassword(
-        'Favorites E2E Tester',
-        email,
-        password,
+        authRepoString('Favorites E2E Tester'),
+        authRepoString(email),
+        authRepoString(password),
       );
     }
 

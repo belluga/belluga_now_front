@@ -2,16 +2,20 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
@@ -46,12 +50,14 @@ void main() {
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
     );
-    await userEventsRepository
-        .confirmEventAttendance(_CapturingScheduleBackend.eventId);
+    await userEventsRepository.confirmEventAttendance(
+      userEventsRepoString(_CapturingScheduleBackend.eventId),
+    );
 
-    final controller = TenantHomeController(
+    final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
@@ -85,12 +91,14 @@ void main() {
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
     );
-    await userEventsRepository
-        .confirmEventAttendance(_CapturingScheduleBackend.eventId);
+    await userEventsRepository.confirmEventAttendance(
+      userEventsRepoString(_CapturingScheduleBackend.eventId),
+    );
 
-    final controller = TenantHomeController(
+    final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
@@ -135,6 +143,22 @@ void main() {
   });
 }
 
+TenantHomeController _buildTenantHomeController({
+  required UserEventsRepositoryContract userEventsRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+}) {
+  return TenantHomeController(
+    userEventsRepository: userEventsRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+  );
+}
+
 class _CapturingScheduleBackend implements ScheduleBackendContract {
   _CapturingScheduleBackend({
     this.hasMoreFirstPage = false,
@@ -161,6 +185,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -295,8 +320,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -307,7 +332,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -324,10 +349,15 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> stopTracking() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
       : maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: _appData.mapRadiusMaxMeters);
+            StreamValue<DistanceInMetersValue>(
+              defaultValue: DistanceInMetersValue.fromRaw(
+                _appData.mapRadiusMaxMeters,
+                defaultValue: _appData.mapRadiusMaxMeters,
+              ),
+            );
 
   final AppData _appData;
 
@@ -345,18 +375,21 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue;
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }

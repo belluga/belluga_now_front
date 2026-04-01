@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef TenantAdminSettingsRepositoryContractPrimString = String;
@@ -27,7 +28,7 @@ abstract class TenantAdminSettingsRepositoryContract {
   });
 
   Future<TenantAdminSettingsRepositoryContractPrimString> uploadMapFilterImage({
-    required TenantAdminSettingsRepositoryContractPrimString key,
+    required TenantAdminLowercaseTokenValue key,
     required TenantAdminMediaUpload upload,
   });
 
@@ -35,6 +36,12 @@ abstract class TenantAdminSettingsRepositoryContract {
 
   Future<TenantAdminFirebaseSettings> updateFirebaseSettings({
     required TenantAdminFirebaseSettings settings,
+  });
+
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings();
+
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
   });
 
   Future<TenantAdminPushSettings> updatePushSettings({
@@ -48,7 +55,7 @@ abstract class TenantAdminSettingsRepositoryContract {
   });
 
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
-    required TenantAdminSettingsRepositoryContractPrimString type,
+    required TenantAdminLowercaseTokenValue type,
   });
 
   Future<TenantAdminBrandingSettings> fetchBrandingSettings();

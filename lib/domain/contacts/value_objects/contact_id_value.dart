@@ -1,5 +1,11 @@
-class ContactIdValue {
-  const ContactIdValue(String raw) : value = raw;
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
+class ContactIdValue extends GenericStringValue {
+  ContactIdValue([String raw = ''])
+      : super(defaultValue: '', isRequired: false) {
+    parse(raw);
+  }
+
+  @override
+  String doParse(String? parseValue) => (parseValue ?? '').trim();
 }

@@ -148,6 +148,28 @@ jobs:
           echo "lane=$lane" >> "$GITHUB_OUTPUT"
           echo "defines_file=$defines_file" >> "$GITHUB_OUTPUT"
 
+      - name: Determine architecture gate scope
+        id: architecture_gate
+        run: |
+          set -euo pipefail
+
+          enabled=false
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            case "${GITHUB_BASE_REF}" in
+              stage|main)
+                enabled=true
+                ;;
+            esac
+          fi
+
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+
+          if [[ "$enabled" == "true" ]]; then
+            echo "Architecture gate enabled for PR lane ${GITHUB_HEAD_REF} -> ${GITHUB_BASE_REF}."
+          else
+            echo "Architecture gate skipped for this context (${GITHUB_EVENT_NAME}, lane=${GITHUB_BASE_REF:-$GITHUB_REF_NAME})."
+          fi
+
       - name: Resolve Flutter version
         id: flutter_version
         run: |
@@ -184,14 +206,27 @@ jobs:
       - name: Flutter dependencies
         run: fvm flutter pub get
 
-      - name: Prepare custom lint fixture workspace
+      - name: Prepare analyzer rule matrix fixture workspace
+        if: steps.architecture_gate.outputs.enabled == 'true'
         run: |
-          fvm dart pub get --directory tool/belluga_custom_lint/test_fixtures/lint_matrix
+          fvm dart pub get --directory tool/belluga_analysis_plugin/test_fixtures/lint_matrix
 
-      - name: Flutter architecture custom lint (blocking)
+      - name: Validate analyzer plugin rule matrix
+        if: steps.architecture_gate.outputs.enabled == 'true'
         run: |
           set -euo pipefail
-          fvm dart run custom_lint --fatal-infos --fatal-warnings
+          bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh
+
+      - name: Flutter architecture analyzer plugin gate (blocking)
+        if: steps.architecture_gate.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          fvm dart analyze --format machine
+
+      - name: Skip architecture gate on DEV/non-promotion contexts
+        if: steps.architecture_gate.outputs.enabled != 'true'
+        run: |
+          echo "SKIP: architecture gate runs only from PR to stage/main."
 
       - name: Flutter unit/widget tests
         run: |

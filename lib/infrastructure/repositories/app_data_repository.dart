@@ -1,6 +1,12 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -28,16 +34,43 @@ class AppDataRepository implements AppDataRepositoryContract {
   final StreamValue<ThemeMode?> themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(
+      50000,
+      defaultValue: 50000,
+    ),
+  );
+  @override
+  final StreamValue<LocationOriginSettings?> locationOriginSettingsStreamValue =
+      StreamValue<LocationOriginSettings?>(defaultValue: null);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
+  // Legacy key names are preserved for local compatibility.
+  static const String _locationOriginUsesLiveStorageKey =
+      'home_use_live_location';
+  static const String _locationOriginReasonStorageKey =
+      'home_location_origin_reason';
+  static const String _locationOriginFixedReferenceLatStorageKey =
+      'home_fixed_location_reference_lat';
+  static const String _locationOriginFixedReferenceLngStorageKey =
+      'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  bool _hasPersistedMaxRadiusPreference = false;
+  bool _hasPersistedLocationOriginPreference = false;
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  @override
+  LocationOriginSettings? get locationOriginSettings =>
+      locationOriginSettingsStreamValue.value;
+  @override
+  bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
+  @override
+  bool get hasPersistedLocationOriginPreference =>
+      _hasPersistedLocationOriginPreference;
 
   @override
   Future<void> init() async {
@@ -46,14 +79,35 @@ class AppDataRepository implements AppDataRepositoryContract {
     appData = remoteData.toDomain(localInfo: localInfo);
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
-    maxRadiusMetersStreamValue.addValue(appData.mapRadiusMaxMeters);
+    maxRadiusMetersStreamValue.addValue(
+      DistanceInMetersValue.fromRaw(
+        appData.mapRadiusMaxMeters,
+        defaultValue: appData.mapRadiusMaxMeters,
+      ),
+    );
     final storedRadius = await _loadMaxRadiusMeters();
     if (storedRadius != null) {
       final clamped = storedRadius.clamp(
         appData.mapRadiusMinMeters,
         appData.mapRadiusMaxMeters,
       );
-      maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+      maxRadiusMetersStreamValue.addValue(
+        DistanceInMetersValue.fromRaw(
+          clamped.toDouble(),
+          defaultValue: clamped.toDouble(),
+        ),
+      );
+      _hasPersistedMaxRadiusPreference = true;
+    } else {
+      _hasPersistedMaxRadiusPreference = false;
+    }
+    final storedLocationOriginSettings = await _loadLocationOriginSettings();
+    if (storedLocationOriginSettings != null) {
+      locationOriginSettingsStreamValue
+          .addValue(storedLocationOriginSettings);
+      _hasPersistedLocationOriginPreference = true;
+    } else {
+      _hasPersistedLocationOriginPreference = false;
     }
     await _precacheLogos();
     await _persistRuntimeMetadata();
@@ -65,23 +119,67 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
     // TODO(Delphi): Persist theme preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
-    themeModeStreamValue.addValue(mode);
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
-    if (meters <= 0) return;
-    final clamped = meters.clamp(
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    final normalized = meters.value;
+    if (normalized <= 0) return;
+    final clamped = normalized.clamp(
       appData.mapRadiusMinMeters,
       appData.mapRadiusMaxMeters,
     );
     // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
-    maxRadiusMetersStreamValue.addValue(clamped.toDouble());
+    maxRadiusMetersStreamValue.addValue(
+      DistanceInMetersValue.fromRaw(
+        clamped.toDouble(),
+        defaultValue: clamped.toDouble(),
+      ),
+    );
+    _hasPersistedMaxRadiusPreference = true;
     await _storage.write(
       key: _maxRadiusStorageKey,
       value: clamped.toString(),
+    );
+  }
+
+  @override
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
+  ) async {
+    final current = locationOriginSettingsStreamValue.value;
+    if (current != null && current.sameAs(settings)) {
+      return;
+    }
+
+    locationOriginSettingsStreamValue.addValue(settings);
+    _hasPersistedLocationOriginPreference = true;
+    await _storage.write(
+      key: _locationOriginUsesLiveStorageKey,
+      value: settings.usesUserLiveLocation.toString(),
+    );
+    await _storage.write(
+      key: _locationOriginReasonStorageKey,
+      value: settings.reason.name,
+    );
+
+    final fixedReference = settings.fixedLocationReference;
+    if (fixedReference == null) {
+      await _storage.delete(key: _locationOriginFixedReferenceLatStorageKey);
+      await _storage.delete(key: _locationOriginFixedReferenceLngStorageKey);
+      return;
+    }
+
+    await _storage.write(
+      key: _locationOriginFixedReferenceLatStorageKey,
+      value: fixedReference.latitude.toString(),
+    );
+    await _storage.write(
+      key: _locationOriginFixedReferenceLngStorageKey,
+      value: fixedReference.longitude.toString(),
     );
   }
 
@@ -91,6 +189,62 @@ class AppDataRepository implements AppDataRepositoryContract {
     final parsed = double.tryParse(stored);
     if (parsed == null || parsed <= 0) return null;
     return parsed;
+  }
+
+  Future<LocationOriginSettings?> _loadLocationOriginSettings() async {
+    final rawUseLive = await _storage.read(
+      key: _locationOriginUsesLiveStorageKey,
+    );
+    if (rawUseLive == null || rawUseLive.trim().isEmpty) {
+      return null;
+    }
+
+    final usesUserLiveLocation = rawUseLive.trim().toLowerCase() == 'true';
+    if (usesUserLiveLocation) {
+      return LocationOriginSettings.userLiveLocation();
+    }
+
+    final rawLat = await _storage.read(
+      key: _locationOriginFixedReferenceLatStorageKey,
+    );
+    final rawLng = await _storage.read(
+      key: _locationOriginFixedReferenceLngStorageKey,
+    );
+    if (rawLat == null || rawLng == null) {
+      return null;
+    }
+
+    final lat = double.tryParse(rawLat);
+    final lng = double.tryParse(rawLng);
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    final reasonRaw = await _storage.read(
+      key: _locationOriginReasonStorageKey,
+    );
+    final reason = switch (reasonRaw?.trim()) {
+      'outsideRange' => LocationOriginReason.outsideRange,
+      'unavailable' => LocationOriginReason.unavailable,
+      'userPreference' => LocationOriginReason.userPreference,
+      _ => LocationOriginReason.unavailable,
+    };
+
+    final fixedLocationReference = CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(lat.toString()),
+      longitudeValue: LongitudeValue()..parse(lng.toString()),
+    );
+
+    if (reason == LocationOriginReason.userPreference) {
+      return LocationOriginSettings.userFixedLocation(
+        fixedLocationReference: fixedLocationReference,
+      );
+    }
+
+    return LocationOriginSettings.tenantDefaultLocation(
+      fixedLocationReference: fixedLocationReference,
+      reason: reason,
+    );
   }
 
   ThemeMode _resolveInitialThemeMode() =>

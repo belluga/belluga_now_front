@@ -1,6 +1,7 @@
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -10,15 +11,20 @@ void main() {
     'radius slider updates local value on change and commits on change end',
     (tester) async {
       final controller = _FakeAgendaAppBarController();
+      final router = _RecordingStackRouter();
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight),
-              child: AgendaAppBar(controller: controller),
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: AgendaAppBar(controller: controller),
+              ),
+              body: const SizedBox.shrink(),
             ),
-            body: const SizedBox.shrink(),
           ),
         ),
       );
@@ -42,6 +48,131 @@ void main() {
 
       expect(controller.setRadiusMetersCallCount, 1);
       expect(controller.radiusMetersStreamValue.value, 6000);
+    },
+  );
+
+  testWidgets(
+    'renders custom radius sheet presentation when provided',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController();
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: AgendaAppBar(
+                  controller: controller,
+                  actions: const AgendaAppBarActions(
+                    radiusSheetPresentation: AgendaRadiusSheetPresentation(
+                      title: 'Distância Máxima',
+                      description:
+                          'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+                      helperText:
+                          'Você pode alterar essa preferência quando quiser.',
+                      confirmButtonLabel: 'Confirmar raio',
+                    ),
+                  ),
+                ),
+              ),
+              body: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.radar));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Distância Máxima'), findsOneWidget);
+      expect(
+        find.text(
+          'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Você pode alterar essa preferência quando quiser.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Confirmar raio'), findsOneWidget);
+
+      final slider = tester.widget<Slider>(find.byType(Slider));
+      slider.onChanged!(6);
+      await tester.pump();
+
+      expect(controller.setRadiusMetersCallCount, 0);
+
+      await tester.ensureVisible(find.text('Confirmar raio'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar raio'));
+      await tester.pumpAndSettle();
+
+      expect(controller.setRadiusMetersCallCount, 1);
+      expect(controller.radiusMetersStreamValue.value, 6000);
+    },
+  );
+
+  testWidgets(
+    'keeps confirm button inside bottom safe area on constrained mobile viewport',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeAgendaAppBarController();
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(430, 900),
+            padding: EdgeInsets.only(bottom: 32),
+            viewPadding: EdgeInsets.only(bottom: 32),
+          ),
+          child: StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: Scaffold(
+                appBar: PreferredSize(
+                  preferredSize: const Size.fromHeight(kToolbarHeight),
+                  child: AgendaAppBar(
+                    controller: controller,
+                    actions: const AgendaAppBarActions(
+                      radiusSheetPresentation: AgendaRadiusSheetPresentation(
+                        title: 'Distância Máxima',
+                        description:
+                            'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+                        helperText:
+                            'Você pode alterar essa preferência quando quiser.',
+                        confirmButtonLabel: 'Confirmar raio',
+                      ),
+                    ),
+                  ),
+                ),
+                body: const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.radar));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      final buttonRect = tester.getRect(
+        find.widgetWithText(FilledButton, 'Confirmar raio'),
+      );
+      expect(buttonRect.bottom, lessThanOrEqualTo(900 - 32));
     },
   );
 }
@@ -95,4 +226,9 @@ class _FakeAgendaAppBarController implements AgendaAppBarController {
 
   @override
   void toggleSearchMode() {}
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  @override
+  Future<bool> maybePop<T extends Object?>([T? result]) async => true;
 }

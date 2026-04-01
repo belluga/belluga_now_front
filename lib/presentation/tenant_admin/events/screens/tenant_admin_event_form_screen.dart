@@ -1,10 +1,13 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -510,9 +513,11 @@ class _TenantAdminEventFormScreenState
             onTap: _pickStartDateTime,
             validator: (_) {
               final startAt = formState.startAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventStartController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventStartController.text,
+                    ),
+                  );
               if (startAt == null) {
                 return 'Início é obrigatório.';
               }
@@ -528,13 +533,17 @@ class _TenantAdminEventFormScreenState
                 formState.endAt == null ? null : _controller.clearEventEndAt,
             validator: (_) {
               final startAt = formState.startAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventStartController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventStartController.text,
+                    ),
+                  );
               final endAt = formState.endAt ??
-                  _parseDateTimeFromField(
-                    _controller.eventEndController.text,
-                  )?.toLocal();
+                  _toLocalDateTime(
+                    _parseDateTimeFromField(
+                      _controller.eventEndController.text,
+                    ),
+                  );
               if (endAt == null) {
                 return null;
               }
@@ -589,9 +598,11 @@ class _TenantAdminEventFormScreenState
                   return null;
                 }
                 final publishAt = formState.publishAt ??
-                    _parseDateTimeFromField(
-                      _controller.eventPublishAtController.text,
-                    )?.toLocal();
+                    _toLocalDateTime(
+                      _parseDateTimeFromField(
+                        _controller.eventPublishAtController.text,
+                      ),
+                    );
                 if (publishAt == null) {
                   return 'Publish at é obrigatório para publish_scheduled.';
                 }
@@ -1233,22 +1244,26 @@ class _TenantAdminEventFormScreenState
     }
 
     final startAt = formState.startAt ??
-        _parseDateTimeFromField(_controller.eventStartController.text)
-            ?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventStartController.text),
+        );
 
     if (startAt == null) {
       return;
     }
 
     final endAt = formState.endAt ??
-        _parseDateTimeFromField(_controller.eventEndController.text)?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventEndController.text),
+        );
     if (endAt != null && endAt.isBefore(startAt)) {
       return;
     }
 
     final publishAt = formState.publishAt ??
-        _parseDateTimeFromField(_controller.eventPublishAtController.text)
-            ?.toLocal();
+        _toLocalDateTime(
+          _parseDateTimeFromField(_controller.eventPublishAtController.text),
+        );
 
     final selectedType = eventTypes.firstWhereOrNull(
       (type) => type.slug.trim() == (formState.selectedTypeSlug ?? '').trim(),
@@ -1287,7 +1302,7 @@ class _TenantAdminEventFormScreenState
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
       for (final termSlug in termSlugs) {
         taxonomyTerms.add(
-          TenantAdminTaxonomyTerm(type: taxonomySlug, value: termSlug),
+          tenantAdminTaxonomyTermFromRaw(type: taxonomySlug, value: termSlug),
         );
       }
     });
@@ -1311,43 +1326,55 @@ class _TenantAdminEventFormScreenState
           ? TenantAdminEventPlaceRef(
               typeValue: tenantAdminRequiredText('account_profile'),
               idValue: tenantAdminRequiredText(selectedVenue.id),
-              metadataValue: tenantAdminDynamicMap({
-                'display_name': selectedVenue.displayName,
-              }),
             )
           : null;
 
       final draft = TenantAdminEventDraft(
-        title: _controller.eventTitleController.text.trim(),
-        content: _controller.eventContentController.text.trim(),
+        titleValue: tenantAdminRequiredText(
+            _controller.eventTitleController.text.trim()),
+        contentValue: tenantAdminOptionalText(
+            _controller.eventContentController.text.trim()),
         type: TenantAdminEventType(
-          id: selectedTypeId,
-          name: selectedType.name,
-          slug: selectedType.slug,
-          description: selectedType.description,
-          icon: selectedType.icon,
-          color: selectedType.color,
+          idValue: tenantAdminOptionalText(selectedTypeId),
+          nameValue: tenantAdminRequiredText(selectedType.name),
+          slugValue: tenantAdminRequiredText(selectedType.slug),
+          descriptionValue: tenantAdminOptionalText(selectedType.description),
+          iconValue: tenantAdminOptionalText(selectedType.icon),
+          colorValue: tenantAdminOptionalText(selectedType.color),
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
-            dateTimeStartValue: tenantAdminDateTime(startAt.toUtc()),
-            dateTimeEndValue: tenantAdminOptionalDateTime(endAt?.toUtc()),
+            dateTimeStartValue:
+                tenantAdminDateTime(TimezoneConverter.localToUtc(startAt)),
+            dateTimeEndValue: tenantAdminOptionalDateTime(
+              endAt == null ? null : TimezoneConverter.localToUtc(endAt),
+            ),
           ),
         ],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(formState.publicationStatus),
           publishAtValue: tenantAdminOptionalDateTime(
             formState.publicationStatus == 'publish_scheduled'
-                ? publishAt?.toUtc()
+                ? publishAt == null
+                    ? null
+                    : TimezoneConverter.localToUtc(publishAt)
                 : null,
           ),
         ),
         location: location,
         placeRef: placeRef,
         coverUpload: coverUpload,
-        removeCover: removeCover,
-        artistIds: formState.selectedArtistIds.toList(growable: false),
-        taxonomyTerms: taxonomyTerms,
+        removeCoverValue: tenantAdminFlag(removeCover),
+        artistIdValues: formState.selectedArtistIds
+            .map(TenantAdminArtistIdValue.new)
+            .toList(growable: false),
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          for (final taxonomyTerm in taxonomyTerms) {
+            terms.add(taxonomyTerm);
+          }
+          return terms;
+        })(),
       );
 
       final result = await (_isEditing
@@ -1387,8 +1414,9 @@ class _TenantAdminEventFormScreenState
     final online = (formState.locationMode == 'online' ||
             formState.locationMode == 'hybrid')
         ? TenantAdminEventOnlineLocation(
-            url: onlineUrl,
-            platform: onlinePlatform.isEmpty ? null : onlinePlatform,
+            urlValue: tenantAdminRequiredText(onlineUrl),
+            platformValue: tenantAdminOptionalText(
+                onlinePlatform.isEmpty ? null : onlinePlatform),
           )
         : null;
 
@@ -1400,9 +1428,9 @@ class _TenantAdminEventFormScreenState
         includesPhysicalVenue ? selectedVenue?.location?.longitude : null;
 
     return TenantAdminEventLocation(
-      mode: formState.locationMode,
-      latitude: latitude,
-      longitude: longitude,
+      modeValue: tenantAdminRequiredText(formState.locationMode),
+      latitudeValue: tenantAdminOptionalDouble(latitude),
+      longitudeValue: tenantAdminOptionalDouble(longitude),
       online: online,
     );
   }
@@ -1415,6 +1443,13 @@ class _TenantAdminEventFormScreenState
     final normalized =
         trimmed.contains('T') ? trimmed : trimmed.replaceFirst(' ', 'T');
     return DateTime.tryParse(normalized);
+  }
+
+  DateTime? _toLocalDateTime(DateTime? value) {
+    if (value == null) {
+      return null;
+    }
+    return TimezoneConverter.utcToLocal(value);
   }
 }
 

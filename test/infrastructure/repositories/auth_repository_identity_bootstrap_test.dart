@@ -214,6 +214,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
 
@@ -221,11 +222,18 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) =>
       throw UnimplementedError();
 }
 
@@ -413,6 +421,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,

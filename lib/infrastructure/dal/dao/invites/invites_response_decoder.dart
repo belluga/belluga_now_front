@@ -1,11 +1,20 @@
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_accepted_at_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_credited_acceptance_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_target_ref.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesResponseDecoder {
   const InvitesResponseDecoder();
@@ -53,6 +62,31 @@ class InvitesResponseDecoder {
     return dtos;
   }
 
+  InviteAcceptResult decodeAcceptResult(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    return InviteAcceptResult(
+      inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
+      statusValue: _buildAcceptanceStatusValue(
+        _stringOrEmpty(response['status']),
+      ),
+      creditedAcceptanceValue: _buildCreditedAcceptanceValue(
+        response['credited_acceptance'] == true,
+      ),
+      attendancePolicyValue: _buildAttendancePolicyValue(
+        _resolveAttendancePolicy(response['attendance_policy']),
+      ),
+      nextStep: InviteNextStepApiMapper.parse(
+        InviteNextStepRawValue()..parse(response['next_step']?.toString()),
+      ),
+      supersededInviteIdValues: _buildInviteIdValues(
+        _parseStringList(response['superseded_invite_ids']),
+      ),
+      acceptedAtValue: _buildAcceptedAtValue(
+        _parseDateTime(response['accepted_at']),
+      ),
+    );
+  }
+
   List<InviteContactMatch> decodeContactMatches(Object? rawMatches) {
     if (rawMatches is! List) {
       return const <InviteContactMatch>[];
@@ -89,6 +123,16 @@ class InvitesResponseDecoder {
       eventId: mappedEventId.isEmpty ? fallbackEventId : mappedEventId,
       occurrenceId: _stringOrNull(targetRefMap['occurrence_id']),
     );
+  }
+
+  Map<String, dynamic> _asMap(Object? raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return const <String, dynamic>{};
   }
 
   List<String> decodeRecipientIds(Object? raw) {
@@ -167,6 +211,69 @@ class InvitesResponseDecoder {
       return null;
     }
     return value;
+  }
+
+  DateTime? _parseDateTime(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final value = raw.toString().trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return DateTimeValue().doParse(value);
+  }
+
+  String _resolveAttendancePolicy(Object? raw) {
+    final value = _stringOrNull(raw);
+    if (value == null || value.isEmpty) {
+      return 'invite_required';
+    }
+    return value;
+  }
+
+  List<String> _parseStringList(Object? raw) {
+    if (raw is! List) {
+      return const <String>[];
+    }
+    return raw
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  InviteIdValue _buildInviteIdValue(String value) {
+    final inviteIdValue = InviteIdValue()..parse(value);
+    return inviteIdValue;
+  }
+
+  InviteAcceptanceStatusValue _buildAcceptanceStatusValue(String value) {
+    final statusValue = InviteAcceptanceStatusValue()..parse(value);
+    return statusValue;
+  }
+
+  InviteCreditedAcceptanceValue _buildCreditedAcceptanceValue(bool value) {
+    final creditedValue = InviteCreditedAcceptanceValue()
+      ..parse(value.toString());
+    return creditedValue;
+  }
+
+  InviteAttendancePolicyValue _buildAttendancePolicyValue(String value) {
+    final attendancePolicyValue = InviteAttendancePolicyValue()..parse(value);
+    return attendancePolicyValue;
+  }
+
+  InviteAcceptedAtValue _buildAcceptedAtValue(DateTime? value) {
+    final acceptedAtValue = InviteAcceptedAtValue()
+      ..parse(value?.toIso8601String());
+    return acceptedAtValue;
+  }
+
+  List<InviteIdValue> _buildInviteIdValues(List<String> values) {
+    return values
+        .map(_buildInviteIdValue)
+        .where((value) => value.value.isNotEmpty)
+        .toList(growable: false);
   }
 
   void _assertRequiredInviteFields(

@@ -1,11 +1,15 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_poi_disable_confirmation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_color_picker_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -74,14 +78,34 @@ class _TenantAdminProfileTypeFormScreenState
 
     final capabilities = _controller.currentCapabilities;
     final allowedTaxonomies = _controller.selectedAllowedTaxonomies;
+    final poiVisual =
+        capabilities.isPoiEnabled ? _controller.buildCurrentPoiVisual() : null;
+    if (capabilities.isPoiEnabled && poiVisual == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Configuração visual do POI inválida. Revise modo, ícone/cor ou fonte de imagem.',
+          ),
+        ),
+      );
+      return;
+    }
 
     if (_isEdit) {
+      final confirmed = await _confirmDisablePoiIfNeeded(
+        nextPoiEnabled: capabilities.isPoiEnabled,
+      );
+      if (!confirmed) {
+        return;
+      }
       _controller.submitUpdateType(
         type: widget.definition!.type,
         newType: _controller.typeController.text.trim(),
         label: _controller.labelController.text.trim(),
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: true,
       );
       return;
     }
@@ -91,6 +115,34 @@ class _TenantAdminProfileTypeFormScreenState
       label: _controller.labelController.text.trim(),
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
+      poiVisual: poiVisual,
+      includePoiVisual: true,
+    );
+  }
+
+  Future<bool> _confirmDisablePoiIfNeeded({
+    required bool nextPoiEnabled,
+  }) async {
+    if (!_isEdit) {
+      return true;
+    }
+    final currentDefinition = widget.definition!;
+    final wasPoiEnabled = currentDefinition.capabilities.isPoiEnabled;
+    if (!wasPoiEnabled || nextPoiEnabled) {
+      return true;
+    }
+
+    final typeLabel = currentDefinition.label.trim().isNotEmpty
+        ? currentDefinition.label.trim()
+        : currentDefinition.type;
+    final typeValue = currentDefinition.type;
+    return tenantAdminConfirmDisablePoiProjection(
+      context: context,
+      shouldConfirm: true,
+      typeLabel: typeLabel,
+      loadProjectionCount: () {
+        return _controller.previewDisableProjectionCount(typeValue);
+      },
     );
   }
 
@@ -201,6 +253,11 @@ class _TenantAdminProfileTypeFormScreenState
                                     isPoiEnabled: value,
                                   ),
                                 ),
+                                if (capabilities.isPoiEnabled) ...[
+                                  const SizedBox(height: 12),
+                                  _buildPoiVisualEditor(context),
+                                  const SizedBox(height: 8),
+                                ],
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Bio habilitada'),
@@ -272,6 +329,89 @@ class _TenantAdminProfileTypeFormScreenState
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildPoiVisualEditor(BuildContext context) {
+    return StreamValueBuilder<TenantAdminPoiVisualMode>(
+      streamValue: _controller.poiVisualModeStreamValue,
+      builder: (context, mode) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Visual do POI',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<TenantAdminPoiVisualMode>(
+              initialValue: mode,
+              decoration: const InputDecoration(
+                labelText: 'Modo visual',
+              ),
+              items: TenantAdminPoiVisualMode.values
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(item.label),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+                _controller.updatePoiVisualMode(value);
+              },
+            ),
+            if (mode == TenantAdminPoiVisualMode.icon) ...[
+              const SizedBox(height: 12),
+              TenantAdminMapMarkerIconPickerField(
+                controller: _controller.poiVisualIconController,
+                labelText: 'Ícone',
+              ),
+              const SizedBox(height: 12),
+              TenantAdminColorPickerField(
+                controller: _controller.poiVisualColorController,
+                labelText: 'Cor do marcador',
+              ),
+              const SizedBox(height: 12),
+              TenantAdminColorPickerField(
+                controller: _controller.poiVisualIconColorController,
+                labelText: 'Cor do ícone',
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              StreamValueBuilder<TenantAdminPoiVisualImageSource>(
+                streamValue: _controller.poiVisualImageSourceStreamValue,
+                builder: (context, imageSource) {
+                  return DropdownButtonFormField<
+                      TenantAdminPoiVisualImageSource>(
+                    initialValue: imageSource,
+                    decoration: const InputDecoration(
+                      labelText: 'Fonte da imagem',
+                    ),
+                    items: TenantAdminPoiVisualImageSource.values
+                        .map(
+                          (item) => DropdownMenuItem(
+                            value: item,
+                            child: Text(item.label),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      _controller.updatePoiVisualImageSource(value);
+                    },
+                  );
+                },
+              ),
+            ],
+          ],
         );
       },
     );

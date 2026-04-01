@@ -28,7 +28,7 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-id';
@@ -49,24 +49,24 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {
     throw Exception('Falha backend');
   }
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {
     throw UnimplementedError();
   }
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {
     throw UnimplementedError();
   }
 
@@ -75,19 +75,21 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {
+  Future<void> updateUser(
+      UserCustomData data) async {
     throw UnimplementedError();
   }
 }

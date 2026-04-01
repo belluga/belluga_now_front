@@ -1,5 +1,9 @@
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_custom_data.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+export 'package:belluga_now/domain/user/user_custom_data.dart';
 
 typedef AuthRepositoryContractPrimString = String;
 typedef AuthRepositoryContractPrimInt = int;
@@ -7,6 +11,7 @@ typedef AuthRepositoryContractPrimBool = bool;
 typedef AuthRepositoryContractPrimDouble = double;
 typedef AuthRepositoryContractPrimDateTime = DateTime;
 typedef AuthRepositoryContractPrimDynamic = dynamic;
+typedef AuthRepositoryContractParamString = AuthRepositoryContractTextValue;
 
 abstract class AuthRepositoryContract<T extends UserContract> {
   Object get backend;
@@ -15,13 +20,13 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   T get user => userStreamValue.value!;
 
-  AuthRepositoryContractPrimString get userToken;
+  String get userToken;
 
-  void setUserToken(AuthRepositoryContractPrimString? token);
+  void setUserToken(AuthRepositoryContractParamString? token);
 
-  Future<AuthRepositoryContractPrimString> getDeviceId();
+  Future<String> getDeviceId();
 
-  Future<AuthRepositoryContractPrimString?> getUserId();
+  Future<String?> getUserId();
 
   AuthRepositoryContractPrimBool get isUserLoggedIn;
 
@@ -31,24 +36,30 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   Future<void> autoLogin();
 
-  Future<void> loginWithEmailPassword(AuthRepositoryContractPrimString email,
-      AuthRepositoryContractPrimString password);
-
-  Future<void> signUpWithEmailPassword(
-    AuthRepositoryContractPrimString name,
-    AuthRepositoryContractPrimString email,
-    AuthRepositoryContractPrimString password,
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   );
 
-  Future<void> sendTokenRecoveryPassword(AuthRepositoryContractPrimString email,
-      AuthRepositoryContractPrimString codigoEnviado);
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  );
+
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  );
 
   Future<void> logout();
 
-  Future<void> createNewPassword(AuthRepositoryContractPrimString newPassword,
-      AuthRepositoryContractPrimString confirmPassword);
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  );
 
-  Future<void> sendPasswordResetEmail(AuthRepositoryContractPrimString email);
+  Future<void> sendPasswordResetEmail(AuthRepositoryContractParamString email);
 
-  Future<void> updateUser(Map<AuthRepositoryContractPrimString, Object?> data);
+  Future<void> updateUser(UserCustomData data);
 }

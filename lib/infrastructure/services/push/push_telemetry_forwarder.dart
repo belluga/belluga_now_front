@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:push_handler/push_handler.dart';
@@ -15,8 +16,8 @@ class PushTelemetryForwarder {
     final idempotencyKey = _buildIdempotencyKey(event);
     await _telemetryRepository.logEvent(
       trackerEvent,
-      eventName: 'push_${event.type}',
-      properties: {
+      eventName: telemetryRepoString('push_${event.type}'),
+      properties: telemetryRepoMap({
         'push_id': event.pushId,
         'message_instance_id': event.messageInstanceId,
         'step_slug': event.stepSlug,
@@ -29,7 +30,7 @@ class PushTelemetryForwarder {
         'timestamp': event.timestamp.toIso8601String(),
         if (event.metadata != null) ...event.metadata!,
         'idempotency_key': idempotencyKey,
-      },
+      }),
     );
   }
 

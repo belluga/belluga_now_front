@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -14,8 +15,30 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 void main() {
+  TenantAdminEventsRepoString _repoText(String value) {
+    return TenantAdminEventsRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  TenantAdminEventsRepoInt _repoInt(int value) {
+    return TenantAdminEventsRepoInt.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  TenantAdminEventsRepoBool _repoBool(bool value) {
+    return TenantAdminEventsRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
   Future<void> registerAuth({
     required String landlordToken,
     required String accountToken,
@@ -58,10 +81,19 @@ void main() {
 
     final created = await repository.createEvent(
       draft: _buildDraft(
-        taxonomyTerms: [
-          TenantAdminTaxonomyTerm(type: 'music_genre', value: 'rock'),
-          TenantAdminTaxonomyTerm(type: 'audience', value: 'families'),
-        ],
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          terms.add(
+            tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+          );
+          terms.add(
+            tenantAdminTaxonomyTermFromRaw(
+              type: 'audience',
+              value: 'families',
+            ),
+          );
+          return terms;
+        })(),
       ),
     );
 
@@ -99,11 +131,11 @@ void main() {
     await repository.createEvent(
       draft: _buildDraft(
         location: TenantAdminEventLocation(
-          mode: 'online',
-          latitude: -20.611121,
-          longitude: -40.498617,
+          modeValue: tenantAdminRequiredText('online'),
+          latitudeValue: tenantAdminOptionalDouble(-20.611121),
+          longitudeValue: tenantAdminOptionalDouble(-40.498617),
           online: TenantAdminEventOnlineLocation(
-            url: 'https://example.com/live',
+            urlValue: tenantAdminRequiredText('https://example.com/live'),
           ),
         ),
       ),
@@ -133,14 +165,13 @@ void main() {
     await repository.createEvent(
       draft: _buildDraft(
         location: TenantAdminEventLocation(
-          mode: 'physical',
-          latitude: -20.611121,
-          longitude: -40.498617,
+          modeValue: tenantAdminRequiredText('physical'),
+          latitudeValue: tenantAdminOptionalDouble(-20.611121),
+          longitudeValue: tenantAdminOptionalDouble(-40.498617),
         ),
         placeRef: TenantAdminEventPlaceRef(
           typeValue: tenantAdminRequiredText('account_profile'),
           idValue: tenantAdminRequiredText('profile-1'),
-          metadataValue: tenantAdminDynamicMap({'display_name': 'Main Host'}),
         ),
       ),
     );
@@ -166,7 +197,7 @@ void main() {
     );
 
     await repository.createOwnEvent(
-      accountSlug: 'my-account',
+      accountSlug: _repoText('my-account'),
       draft: _buildDraft(),
     );
 
@@ -189,7 +220,7 @@ void main() {
 
     await repository.createEvent(
       draft: _buildDraft(
-        coverUpload: TenantAdminMediaUpload(
+        coverUpload: tenantAdminMediaUploadFromRaw(
           bytes: Uint8List.fromList([1, 2, 3, 4]),
           fileName: 'event-cover.png',
           mimeType: 'image/png',
@@ -215,7 +246,7 @@ void main() {
     );
 
     await repository.updateEvent(
-      eventId: 'evt-1',
+      eventId: _repoText('evt-1'),
       draft: _buildDraft(removeCover: true),
     );
 
@@ -239,8 +270,8 @@ void main() {
 
     await expectLater(
       repository.fetchEventsPage(
-        page: 1,
-        pageSize: 20,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
       ),
       throwsA(
         isA<FormatException>().having(
@@ -263,9 +294,9 @@ void main() {
     );
 
     await repository.fetchEventsPage(
-      page: 1,
-      pageSize: 20,
-      archived: true,
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      archived: _repoBool(true),
     );
 
     final request = adapter.requests.lastWhere(
@@ -364,7 +395,9 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(search: 'main');
+    final candidates = await repository.fetchPartyCandidates(
+      search: _repoText('main'),
+    );
 
     expect(candidates.venues, hasLength(1));
     expect(candidates.venues.first.id, 'venue-1');
@@ -394,8 +427,8 @@ void main() {
     );
 
     final candidates = await repository.fetchPartyCandidates(
-      search: 'main',
-      accountSlug: 'my-account',
+      search: _repoText('main'),
+      accountSlug: _repoText('my-account'),
     );
 
     expect(candidates.venues, hasLength(1));
@@ -426,7 +459,9 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(search: 'legacy');
+    final candidates = await repository.fetchPartyCandidates(
+      search: _repoText('legacy'),
+    );
 
     expect(candidates.venues, isEmpty);
     expect(candidates.artists, isEmpty);
@@ -443,7 +478,7 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: 'main'),
+      () => repository.fetchPartyCandidates(search: _repoText('main')),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -471,7 +506,7 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: 'main'),
+      () => repository.fetchPartyCandidates(search: _repoText('main')),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -502,9 +537,9 @@ void main() {
     );
 
     await repository.updateEventType(
-      eventTypeId: '507f1f77bcf86cd799439011',
-      name: 'Show',
-      slug: 'show',
+      eventTypeId: _repoText('507f1f77bcf86cd799439011'),
+      name: _repoText('Show'),
+      slug: _repoText('show'),
       description: null,
     );
 
@@ -533,9 +568,9 @@ void main() {
     );
 
     await repository.createEventType(
-      name: 'Show',
-      slug: 'show',
-      description: '   ',
+      name: _repoText('Show'),
+      slug: _repoText('show'),
+      description: _repoText('   '),
     );
 
     final request = adapter.requests.singleWhere(
@@ -553,18 +588,19 @@ void main() {
 }
 
 TenantAdminEventDraft _buildDraft({
-  List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+  TenantAdminTaxonomyTerms taxonomyTerms =
+      const TenantAdminTaxonomyTerms.empty(),
   TenantAdminEventLocation? location,
   TenantAdminEventPlaceRef? placeRef,
   TenantAdminMediaUpload? coverUpload,
   bool removeCover = false,
 }) {
   return TenantAdminEventDraft(
-    title: 'My event',
-    content: 'Content',
+    titleValue: tenantAdminRequiredText('My event'),
+    contentValue: tenantAdminOptionalText('Content'),
     type: TenantAdminEventType(
-      name: 'Show',
-      slug: 'show',
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
     ),
     occurrences: [
       TenantAdminEventOccurrence(
@@ -577,7 +613,7 @@ TenantAdminEventDraft _buildDraft({
     location: location,
     placeRef: placeRef,
     coverUpload: coverUpload,
-    removeCover: removeCover,
+    removeCoverValue: tenantAdminFlag(removeCover),
     taxonomyTerms: taxonomyTerms,
   );
 }
@@ -597,7 +633,10 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -621,7 +660,7 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   String get userToken => tokenValue;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'device-id';
@@ -642,35 +681,37 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _MutableTenantScope implements TenantAdminTenantScopeContract {
@@ -697,8 +738,11 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

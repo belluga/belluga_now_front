@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/app_promotion_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/account_workspace_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/home_module.dart';
@@ -8,7 +9,6 @@ import 'package:belluga_now/application/router/modular_app/modules/initializatio
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.d
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -39,12 +40,15 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
@@ -72,9 +76,11 @@ import 'package:belluga_now/infrastructure/dal/dao/production_backend/production
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
+import 'package:belluga_now/infrastructure/services/timezone/timezone_service.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/user/profile_avatar_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -103,6 +109,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(InitializationModule());
     await registerSubModule(HomeModule());
     await registerSubModule(AuthModule());
+    await registerSubModule(AppPromotionModule());
     await registerSubModule(LandlordModule());
     await registerSubModule(TenantAdminModule());
     await registerSubModule(ProfileModule());
@@ -111,7 +118,6 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());
     await registerSubModule(AccountWorkspaceModule());
-    await registerSubModule(MenuModule());
   }
 
   void _registerBackend() {
@@ -270,6 +276,9 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
     );
+    _registerIfAbsent<TimezoneServiceContract>(
+      () => TimezoneService(),
+    );
     _registerIfAbsent<AdminModeRepositoryContract>(
       () => AdminModeRepository(),
     );
@@ -302,6 +311,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
+    );
+    _registerIfAbsent<DeferredLinkRepositoryContract>(
+      () => DeferredLinkRepository(),
     );
     _registerIfAbsent<FavoriteRepositoryContract>(
       () => FavoriteRepository(),
@@ -350,6 +362,11 @@ class ModuleSettings extends ModuleSettingsContract {
       ),
     );
     await appDataRepository.init();
+    _registerLazySingletonIfAbsent<LocationOriginServiceContract>(
+      () => LocationOriginService(
+        appDataRepository: appDataRepository,
+      ),
+    );
     GetIt.I
         .get<BackendContract>()
         .setContext(BackendContext.fromAppData(appDataRepository.appData));

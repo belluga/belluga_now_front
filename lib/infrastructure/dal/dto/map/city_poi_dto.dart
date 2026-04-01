@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -8,9 +9,19 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_visual_dto.dart';
 
 class CityPoiDTO {
   const CityPoiDTO({
@@ -36,6 +47,7 @@ class CityPoiDTO {
     this.isHappeningNow = false,
     this.updatedAt,
     this.distanceMeters,
+    this.visual,
   });
 
   final String id;
@@ -60,6 +72,7 @@ class CityPoiDTO {
   final bool isHappeningNow;
   final DateTime? updatedAt;
   final double? distanceMeters;
+  final CityPoiVisualDTO? visual;
 
   factory CityPoiDTO.fromJson(Map<String, dynamic> json) {
     CityPoiCategory parseCategory(Object? raw) {
@@ -84,14 +97,10 @@ class CityPoiDTO {
       return double.tryParse(raw?.toString() ?? '') ?? 0;
     }
 
-    final locationRaw = json['location'];
-    final latitudeRaw = json['latitude'] ??
-        json['lat'] ??
-        (locationRaw is Map<String, dynamic> ? locationRaw['lat'] : null);
-    final longitudeRaw = json['longitude'] ??
-        json['lng'] ??
-        json['lon'] ??
-        (locationRaw is Map<String, dynamic> ? locationRaw['lng'] : null);
+    final locationRaw = _normalizeMap(json['location']);
+    final latitudeRaw = json['latitude'] ?? json['lat'] ?? locationRaw?['lat'];
+    final longitudeRaw =
+        json['longitude'] ?? json['lng'] ?? json['lon'] ?? locationRaw?['lng'];
     final refType = (json['ref_type'] ?? '').toString().trim();
     final refId = (json['ref_id'] ?? json['id'] ?? '').toString().trim();
     final poiId = (json['id'] ?? '').toString().trim().isNotEmpty
@@ -108,6 +117,8 @@ class CityPoiDTO {
     final updatedAtRaw = json['updated_at']?.toString();
     final updatedAt =
         updatedAtRaw == null ? null : DateTime.tryParse(updatedAtRaw);
+    final visual =
+        CityPoiVisualDTO.tryFromJson(json['visual'] ?? json['poi_visual']);
 
     return CityPoiDTO(
       id: poiId,
@@ -124,7 +135,8 @@ class CityPoiDTO {
       assetPath: json['asset_path'] as String?,
       isDynamic:
           json['is_dynamic'] as bool? ?? refType.toLowerCase() == 'event',
-      movementRadiusMeters: (json['movement_radius_meters'] as num?)?.toDouble(),
+      movementRadiusMeters:
+          (json['movement_radius_meters'] as num?)?.toDouble(),
       tags: (json['tags'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(growable: false),
@@ -135,13 +147,13 @@ class CityPoiDTO {
       refPath: json['ref_path']?.toString(),
       stackKey: json['stack_key']?.toString() ?? '',
       stackCount: (json['stack_count'] as num?)?.toInt() ?? 1,
-      items: (json['items'] as List<dynamic>? ?? const [])
-          .whereType<Map<String, dynamic>>()
+      items: _normalizeMapList(json['items'])
           .map(CityPoiDTO.fromJson)
           .toList(growable: false),
       isHappeningNow: json['is_happening_now'] as bool? ?? false,
       updatedAt: updatedAt,
       distanceMeters: (json['distance_meters'] as num?)?.toDouble(),
+      visual: visual,
     );
   }
 
@@ -149,8 +161,8 @@ class CityPoiDTO {
     Map<String, dynamic> stackJson, {
     bool includeItems = false,
   }) {
-    final topPoiRaw = stackJson['top_poi'];
-    if (topPoiRaw is! Map<String, dynamic>) {
+    final topPoiRaw = _normalizeMap(stackJson['top_poi']);
+    if (topPoiRaw == null) {
       throw FormatException('Missing top_poi payload in stack response');
     }
 
@@ -163,8 +175,7 @@ class CityPoiDTO {
     };
 
     if (includeItems) {
-      topPayload['items'] = (stackJson['items'] as List<dynamic>? ?? const [])
-          .whereType<Map<String, dynamic>>()
+      topPayload['items'] = _normalizeMapList(stackJson['items'])
           .map((item) => <String, dynamic>{
                 ...item,
                 'stack_key': stackKey,
@@ -198,8 +209,11 @@ class CityPoiDTO {
       'stack_count': stackCount,
       'items': items.map((item) => item.toJson()).toList(growable: false),
       'is_happening_now': isHappeningNow,
-      'updated_at': updatedAt?.toUtc().toIso8601String(),
+      'updated_at': updatedAt == null
+          ? null
+          : TimezoneConverter.localToUtc(updatedAt!).toIso8601String(),
       'distance_meters': distanceMeters,
+      if (visual != null) 'visual': visual!.toJson(),
     };
   }
 
@@ -228,12 +242,42 @@ class CityPoiDTO {
         ..parse(movementRadiusMeters!.toString());
     }
 
-    final tagValues = tags
-        .map((tag) => PoiTagValue()..parse(tag))
-        .toList(growable: false);
-    final stackItems = items.map((item) => item.toDomain()).toList(growable: false);
+    final tagValues =
+        tags.map((tag) => PoiTagValue()..parse(tag)).toList(growable: false);
+    final stackItems =
+        items.map((item) => item.toDomain()).toList(growable: false);
+    final stackItemCollection = CityPoiStackItems();
+    for (final item in stackItems) {
+      stackItemCollection.add(item);
+    }
     final resolvedStackKey =
         stackKey.trim().isNotEmpty ? stackKey.trim() : '$refType:$refId';
+    final isDynamicValue = PoiBooleanValue()..parse(isDynamic.toString());
+    final refTypeValue = PoiReferenceTypeValue()..parse(refType.trim());
+    final refIdValue = PoiReferenceIdValue()..parse(refId.trim());
+    PoiReferenceSlugValue? refSlugValue;
+    final normalizedRefSlug = refSlug?.trim();
+    if (normalizedRefSlug != null && normalizedRefSlug.isNotEmpty) {
+      refSlugValue = PoiReferenceSlugValue()..parse(normalizedRefSlug);
+    }
+    PoiReferencePathValue? refPathValue;
+    final normalizedRefPath = refPath?.trim();
+    if (normalizedRefPath != null && normalizedRefPath.isNotEmpty) {
+      refPathValue = PoiReferencePathValue()..parse(normalizedRefPath);
+    }
+    final stackKeyValue = PoiStackKeyValue()..parse(resolvedStackKey.trim());
+    final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
+    final isHappeningNowValue = PoiBooleanValue()
+      ..parse(isHappeningNow.toString());
+    PoiUpdatedAtValue? updatedAtValue;
+    if (updatedAt != null) {
+      updatedAtValue = PoiUpdatedAtValue()..parse(updatedAt!.toIso8601String());
+    }
+    DistanceInMetersValue? distanceMetersValue;
+    if (distanceMeters != null) {
+      distanceMetersValue = DistanceInMetersValue()
+        ..parse(distanceMeters!.toString());
+    }
 
     return CityPoiModel(
       idValue: idValue,
@@ -244,19 +288,40 @@ class CityPoiDTO {
       coordinate: coordinate,
       priorityValue: priorityValue,
       assetPathValue: assetPathValue,
-      isDynamic: isDynamic,
+      isDynamicValue: isDynamicValue,
       movementRadiusValue: movementRadiusValue,
       tagValues: tagValues,
-      refType: refType,
-      refId: refId,
-      refSlug: refSlug,
-      refPath: refPath,
-      stackKey: resolvedStackKey,
-      stackCount: stackCount,
-      stackItems: stackItems,
-      isHappeningNow: isHappeningNow,
-      updatedAt: updatedAt,
-      distanceMeters: distanceMeters,
+      refTypeValue: refTypeValue,
+      refIdValue: refIdValue,
+      refSlugValue: refSlugValue,
+      refPathValue: refPathValue,
+      stackKeyValue: stackKeyValue,
+      stackCountValue: stackCountValue,
+      stackItems: stackItemCollection,
+      isHappeningNowValue: isHappeningNowValue,
+      updatedAtValue: updatedAtValue,
+      distanceMetersValue: distanceMetersValue,
+      visual: visual?.toDomain(),
     );
+  }
+
+  static Map<String, dynamic>? _normalizeMap(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+    return raw.map(
+      (key, value) => MapEntry(key.toString(), value),
+    );
+  }
+
+  static List<Map<String, dynamic>> _normalizeMapList(Object? raw) {
+    if (raw is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    return raw
+        .map(_normalizeMap)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
   }
 }

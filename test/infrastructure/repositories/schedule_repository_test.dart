@@ -4,10 +4,14 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -216,13 +220,69 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
     expect(result.events.first.type.description.value, isEmpty);
+  });
+
+  test('getEventsPage forwards liveNowOnly to backend', () async {
+    final backend = _CapturingScheduleBackend();
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    await repository.getEventsPage(
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
+    );
+
+    expect(backend.requests, hasLength(1));
+    expect(backend.requests.first.liveNowOnly, isTrue);
+  });
+
+  test('getEventsPage keeps standard upcoming request as single backend call',
+      () async {
+    const upcomingId = '507f1f77bcf86cd799439061';
+    const upcomingOccurrenceId = '507f1f77bcf86cd799439062';
+
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: upcomingId,
+              occurrenceId: upcomingOccurrenceId,
+              startsAtIso: '2099-01-01T22:00:00+00:00',
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+    );
+
+    final ids = result.events.map((event) => event.id.value).toList();
+    expect(ids, [upcomingId]);
+    expect(backend.requests, hasLength(1));
+    expect(backend.requests.single.liveNowOnly, isFalse);
   });
 
   test('getEventsPage maps events when event content is null', () async {
@@ -247,9 +307,9 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
@@ -280,9 +340,9 @@ void main() {
     );
 
     final result = await repository.getEventsPage(
-      page: 1,
-      pageSize: 25,
-      showPastOnly: false,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(result.events, hasLength(1));
@@ -290,7 +350,8 @@ void main() {
     expect(result.events.first.content.valueText, isEmpty);
   });
 
-  test('loadEventsPage ignores second first-page request while one is in-flight',
+  test(
+      'loadEventsPage ignores second first-page request while one is in-flight',
       () async {
     final backend = _BlockingFirstPageScheduleBackend();
     final repository = ScheduleRepository(
@@ -300,13 +361,13 @@ void main() {
     );
 
     final firstLoadFuture = repository.loadEventsPage(
-      showPastOnly: false,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     await backend.waitUntilFirstRequestStarts();
 
     await repository.loadEventsPage(
-      showPastOnly: false,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
     expect(
@@ -318,7 +379,7 @@ void main() {
     backend.releaseFirstRequest();
     await firstLoadFuture;
 
-    expect(repository.currentPagedEventsPage, 1);
+    expect(repository.currentPagedEventsPage.value, 1);
   });
 }
 
@@ -350,6 +411,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -362,6 +424,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     requests.add(
       _AgendaRequestSample(
         page: page,
+        liveNowOnly: liveNowOnly,
         originLat: originLat,
         originLng: originLng,
       ),
@@ -428,6 +491,7 @@ class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -468,11 +532,13 @@ class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
+    required this.liveNowOnly,
     required this.originLat,
     required this.originLng,
   });
 
   final int page;
+  final bool liveNowOnly;
   final double? originLat;
   final double? originLng;
 }
@@ -518,8 +584,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(
+    UserLocationRepositoryContractTextValue? address,
+  ) async {
+    lastKnownAddressStreamValue.addValue(address?.value);
   }
 
   @override
@@ -533,7 +601,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    UserLocationRepositoryContractDurationValue? minInterval,
   }) async =>
       false;
 
@@ -550,10 +618,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> stopTracking() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: _appData.mapRadiusMaxMeters);
+      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(
+            _appData.mapRadiusMaxMeters,
+            defaultValue: _appData.mapRadiusMaxMeters,
+          ),
+        );
 
   final AppData _appData;
 
@@ -571,18 +643,21 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
   }
 
   @override
-  final StreamValue<double> maxRadiusMetersStreamValue;
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     maxRadiusMetersStreamValue.addValue(meters);
   }
 }

@@ -12,6 +12,9 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
@@ -77,6 +80,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     required int page,
     required int pageSize,
     required bool showPastOnly,
+    bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
     List<String>? tags,
@@ -195,6 +199,14 @@ class MockScheduleBackend implements ScheduleBackendContract {
     required double originLat,
     required double originLng,
   }) {
+    final originCoordinate = _buildCoordinate(
+      latitude: originLat,
+      longitude: originLng,
+    );
+    if (originCoordinate == null) {
+      return input;
+    }
+
     final withinRadius = <EventDTO>[];
     for (final event in input) {
       final lat = event.latitude;
@@ -202,19 +214,39 @@ class MockScheduleBackend implements ScheduleBackendContract {
       if (lat == null || lon == null) {
         continue;
       }
+
+      final eventCoordinate = _buildCoordinate(latitude: lat, longitude: lon);
+      if (eventCoordinate == null) {
+        continue;
+      }
+
       final distance = haversineDistanceMeters(
-        lat1: originLat,
-        lon1: originLng,
-        lat2: lat,
-        lon2: lon,
+        coordinateA: originCoordinate,
+        coordinateB: eventCoordinate,
       );
-      if (distance <= radiusMeters) {
+      if (distance.value <= radiusMeters) {
         withinRadius.add(event);
       }
     }
 
     // Fallback: if nothing is inside the radius, keep the original list.
     return withinRadius.isNotEmpty ? withinRadius : input;
+  }
+
+  CityCoordinate? _buildCoordinate({
+    required double latitude,
+    required double longitude,
+  }) {
+    try {
+      final latitudeValue = LatitudeValue()..parse(latitude.toString());
+      final longitudeValue = LongitudeValue()..parse(longitude.toString());
+      return CityCoordinate(
+        latitudeValue: latitudeValue,
+        longitudeValue: longitudeValue,
+      );
+    } on Object {
+      return null;
+    }
   }
 
   List<EventDTO> _filterByCategories(

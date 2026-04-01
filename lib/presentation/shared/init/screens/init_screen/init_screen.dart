@@ -140,6 +140,17 @@ class _InitScreenState extends State<InitScreen> {
   }
 
   void _gotoInitialRoute() {
+    final initialPath = _controller.initialRoutePath;
+    if (initialPath != null && initialPath.isNotEmpty) {
+      debugPrint('[Push] Init path override ready ($initialPath).');
+      context.router.replacePath(initialPath);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('[Push] Init path presented; releasing push gate.');
+        _controller.markPushReady();
+      });
+      return;
+    }
+
     final routes = _controller.initialRouteStack;
     debugPrint(
       '[Push] Init stack ready '

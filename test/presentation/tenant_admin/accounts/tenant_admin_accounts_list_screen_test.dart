@@ -8,7 +8,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_accounts_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -58,11 +57,11 @@ void main() {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(
         initialAccounts: [
-          TenantAdminAccount(
+          tenantAdminAccountFromRaw(
             id: 'acc-1',
             name: 'Conta 1',
             slug: 'conta-1',
-            document: TenantAdminDocument(type: 'cpf', number: '0001'),
+            document: tenantAdminDocumentFromRaw(type: 'cpf', number: '0001'),
             ownershipState: TenantAdminOwnershipState.tenantOwned,
           ),
         ],
@@ -81,11 +80,11 @@ void main() {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(
         initialAccounts: [
-          TenantAdminAccount(
+          tenantAdminAccountFromRaw(
             id: 'acc-legacy',
             name: 'Conta Legacy',
             slug: 'conta-legacy',
-            document: TenantAdminDocument(type: 'cpf', number: '1000'),
+            document: tenantAdminDocumentFromRaw(type: 'cpf', number: '1000'),
             ownershipState: TenantAdminOwnershipState.userOwned,
           ),
         ],
@@ -110,11 +109,11 @@ void main() {
       accountsByOwnership: {
         TenantAdminOwnershipState.tenantOwned: [],
         TenantAdminOwnershipState.unmanaged: [
-          TenantAdminAccount(
+          tenantAdminAccountFromRaw(
             id: 'acc-unmanaged',
             name: 'Conta unmanaged',
             slug: 'conta-unmanaged',
-            document: TenantAdminDocument(type: 'cpf', number: '2222'),
+            document: tenantAdminDocumentFromRaw(type: 'cpf', number: '2222'),
             ownershipState: TenantAdminOwnershipState.unmanaged,
           ),
         ],
@@ -148,18 +147,18 @@ void main() {
       (tester) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
-        TenantAdminAccount(
+        tenantAdminAccountFromRaw(
           id: 'acc-1',
           name: 'Conta Alpha',
           slug: 'conta-alpha',
-          document: TenantAdminDocument(type: 'cpf', number: '1001'),
+          document: tenantAdminDocumentFromRaw(type: 'cpf', number: '1001'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-        TenantAdminAccount(
+        tenantAdminAccountFromRaw(
           id: 'acc-2',
           name: 'Conta Beta',
           slug: 'conta-beta',
-          document: TenantAdminDocument(type: 'cpf', number: '1002'),
+          document: tenantAdminDocumentFromRaw(type: 'cpf', number: '1002'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ],
@@ -196,11 +195,11 @@ void main() {
       (tester) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
-        TenantAdminAccount(
+        tenantAdminAccountFromRaw(
           id: 'acc-1',
           name: 'Conta 1',
           slug: 'conta-1',
-          document: TenantAdminDocument(type: 'cpf', number: '0001'),
+          document: tenantAdminDocumentFromRaw(type: 'cpf', number: '0001'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ],
@@ -232,11 +231,11 @@ void main() {
       (tester) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
-        TenantAdminAccount(
+        tenantAdminAccountFromRaw(
           id: 'acc-1',
           name: 'Conta 1',
           slug: 'conta-1',
-          document: TenantAdminDocument(type: 'cpf', number: '0001'),
+          document: tenantAdminDocumentFromRaw(type: 'cpf', number: '0001'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ],
@@ -334,7 +333,12 @@ class _FakeAccountsRepository
     if (initialAccounts != null) {
       accountsStreamValue
           .addValue(List<TenantAdminAccount>.from(initialAccounts!));
-      hasMoreAccountsStreamValue.addValue(false);
+      hasMoreAccountsStreamValue.addValue(
+        TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
@@ -351,20 +355,25 @@ class _FakeAccountsRepository
 
   @override
   Future<void> loadAccounts({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     loadAccountsOwnershipCalls.add(ownershipState);
-    loadAccountsSearchCalls.add(searchQuery);
+    loadAccountsSearchCalls.add(searchQuery?.value);
     final selectedAccounts = _selectedAccounts(
       ownershipState,
-      searchQuery: searchQuery,
+      searchQuery: searchQuery?.value,
     );
     if (selectedAccounts != null) {
       accountsStreamValue
           .addValue(List<TenantAdminAccount>.from(selectedAccounts));
-      hasMoreAccountsStreamValue.addValue(false);
+      hasMoreAccountsStreamValue.addValue(
+        TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
       accountsErrorStreamValue.addValue(null);
       return;
     }
@@ -374,21 +383,31 @@ class _FakeAccountsRepository
     }
     accountsStreamValue
         .addValue(List<TenantAdminAccount>.from(initialAccounts!));
-    hasMoreAccountsStreamValue.addValue(false);
+    hasMoreAccountsStreamValue.addValue(
+      TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
     accountsErrorStreamValue.addValue(null);
   }
 
   @override
   Future<void> loadNextAccountsPage({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {}
 
   @override
   void resetAccountsState() {
     accountsStreamValue.addValue(null);
-    hasMoreAccountsStreamValue.addValue(false);
+    hasMoreAccountsStreamValue.addValue(
+      TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
     accountsErrorStreamValue.addValue(null);
   }
 
@@ -398,58 +417,60 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     final selectedAccounts = _selectedAccounts(
       ownershipState,
-      searchQuery: searchQuery,
+      searchQuery: searchQuery?.value,
     );
     final accounts = List<TenantAdminAccount>.from(
       selectedAccounts ?? initialAccounts ?? [],
     );
-    final start = (page - 1) * pageSize;
-    if (start >= accounts.length || page <= 0 || pageSize <= 0) {
-      return TenantAdminPagedAccountsResult(
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= accounts.length || page.value <= 0 || pageSize.value <= 0) {
+      return tenantAdminPagedAccountsResultFromRaw(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
     }
-    final end = (start + pageSize) < accounts.length
-        ? (start + pageSize)
+    final end = (start + pageSize.value) < accounts.length
+        ? (start + pageSize.value)
         : accounts.length;
-    return TenantAdminPagedAccountsResult(
+    return tenantAdminPagedAccountsResultFromRaw(
       accounts: accounts.sublist(start, end),
       hasMore: end < accounts.length,
     );
   }
 
   @override
-  Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) {
+  Future<TenantAdminAccount> fetchAccountBySlug(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminAccount> createAccount({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
-    String? organizationId,
+    TenantAdminAccountsRepositoryContractPrimString? organizationId,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     required TenantAdminOwnershipState ownershipState,
-    required String profileType,
+    required TenantAdminAccountsRepositoryContractPrimString profileType,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountsRepositoryContractPrimString? bio,
+    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) {
@@ -458,9 +479,9 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminAccount> updateAccount({
-    required String accountSlug,
-    String? name,
-    String? slug,
+    required TenantAdminAccountsRepositoryContractPrimString accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? name,
+    TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
   }) {
@@ -468,17 +489,20 @@ class _FakeAccountsRepository
   }
 
   @override
-  Future<void> deleteAccount(String accountSlug) {
+  Future<void> deleteAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
     throw UnimplementedError();
   }
 
   @override
-  Future<TenantAdminAccount> restoreAccount(String accountSlug) {
+  Future<TenantAdminAccount> restoreAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> forceDeleteAccount(String accountSlug) {
+  Future<void> forceDeleteAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
     throw UnimplementedError();
   }
 

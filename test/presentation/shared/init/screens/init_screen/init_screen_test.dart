@@ -10,7 +10,6 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -18,10 +17,11 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/init_screen.dart';
@@ -127,25 +127,77 @@ void main() {
       [LandlordHomeRoute.name],
     );
   });
+
+  testWidgets('deferred capture uses invite path override with share code',
+      (tester) async {
+    final gate = _FakePushPresentationGate();
+    GetIt.I.registerSingleton<InitScreenController>(
+      InitScreenController(
+        invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
+            storeChannelValue:
+                DeferredLinkStoreChannelValue(defaultValue: 'play'),
+          ),
+        ),
+        pushPresentationGate: gate,
+      ),
+    );
+
+    final router = _RecordingStackRouter(canPopValue: false);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: const MaterialApp(home: InitScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    final asyncExceptions = _takeAllExceptions(tester);
+    expect(
+      asyncExceptions,
+      isEmpty,
+      reason: _formatAsyncExceptions(asyncExceptions),
+    );
+    expect(router.lastReplacedPath, '/invite?code=ABCD1234');
+    expect(router.lastReplaced, isNull);
+  });
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({required this.hasPendingInvites});
+  _FakeInvitesRepository({required bool hasPendingInvites})
+      : _hasPendingInvites = hasPendingInvites;
 
   @override
-  final bool hasPendingInvites;
+  InvitesRepositoryContractPrimBool get hasPendingInvites =>
+      InvitesRepositoryContractPrimBool.fromRaw(
+        _hasPendingInvites,
+        defaultValue: false,
+        isRequired: true,
+      );
+  final bool _hasPendingInvites;
 
   @override
   Future<void> init() async {
     pendingInvitesStreamValue.addValue(
-      hasPendingInvites ? [_buildInvite()] : const [],
+      _hasPendingInvites ? [_buildInvite()] : const [],
     );
   }
 
   @override
   Future<List<InviteModel>> fetchInvites(
-      {int page = 1, int pageSize = 20}) async {
-    return hasPendingInvites ? [_buildInvite()] : const [];
+      {InvitesRepositoryContractPrimInt? page,
+      InvitesRepositoryContractPrimInt? pageSize}) async {
+    return _hasPendingInvites ? [_buildInvite()] : const [];
   }
 
   @override
@@ -159,9 +211,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteAcceptResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
@@ -171,9 +224,23 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInviteByCode(
+      InvitesRepositoryContractPrimString code) async {
+    return buildInviteAcceptResult(
+      inviteId: 'mock-${code.value}',
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  }
+
+  @override
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId) async {
     return buildInviteDeclineResult(
-      inviteId: inviteId,
+      inviteId: inviteId.value,
       status: 'declined',
       groupHasOtherPending: false,
     );
@@ -181,50 +248,56 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
     return buildInviteShareCodeResult(
       code: 'CODE123',
-      eventId: eventId,
-      occurrenceId: occurrenceId,
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value,
     );
   }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    List<ContactModel> contacts,
+    InviteContacts contacts,
   ) async =>
       const [];
 
   @override
   Future<void> sendInvites(
-    String eventId,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
   }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
-    String eventId,
+    InvitesRepositoryContractPrimString eventId,
   ) async =>
       const [];
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this.appData);
 
   @override
   final AppData appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
 
   @override
   ThemeMode get themeMode => ThemeMode.light;
@@ -237,10 +310,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _FakePushPresentationGate implements PushPresentationGateContract {
@@ -263,6 +336,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
 
   final bool canPopValue;
   List<PageRouteInfo>? lastReplaced;
+  String? lastReplacedPath;
 
   @override
   bool canPop({
@@ -281,6 +355,26 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     lastReplaced = routes;
   }
+
+  @override
+  Future<T?> replacePath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedPath = path;
+    return null;
+  }
+}
+
+class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
+  const _FakeDeferredLinkRepository(this.result);
+
+  final DeferredLinkCaptureResult result;
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
+      result;
 }
 
 List<Object> _takeAllExceptions(WidgetTester tester) {

@@ -4,8 +4,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class InvitesModule extends ModuleContract {
@@ -24,12 +26,22 @@ class InvitesModule extends ModuleContract {
         AutoRoute(
           path: '/convites',
           page: InviteFlowRoute.page,
-          guards: [TenantRouteGuard(), AuthRouteGuard()],
+          guards: [
+            TenantRouteGuard(),
+            WebAnonymousFallbackGuard(
+              allowAnonymousWeb: _allowAnonymousInvitePreview,
+            ),
+          ],
         ),
         AutoRoute(
           path: '/invite',
           page: InviteEntryRoute.page,
-          guards: [TenantRouteGuard()],
+          guards: [
+            TenantRouteGuard(),
+            WebAnonymousFallbackGuard(
+              allowAnonymousWeb: _allowAnonymousInvitePreview,
+            ),
+          ],
         ),
         AutoRoute(
           path: '/convites/compartilhar',
@@ -37,4 +49,14 @@ class InvitesModule extends ModuleContract {
           guards: [TenantRouteGuard(), AuthRouteGuard()],
         ),
       ];
+
+  static bool _allowAnonymousInvitePreview(RouteMatch route) {
+    final code = route.queryParams.rawMap['code']?.toString().trim();
+    return code != null && code.isNotEmpty;
+  }
+
+  @visibleForTesting
+  static bool allowAnonymousInvitePreviewForTesting(RouteMatch route) {
+    return _allowAnonymousInvitePreview(route);
+  }
 }

@@ -1,5 +1,8 @@
-class ProfileTypeLabelValue {
-  const ProfileTypeLabelValue(String raw) : value = raw;
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
+class ProfileTypeLabelValue extends GenericStringValue {
+  ProfileTypeLabelValue([String raw = ''])
+    : super(defaultValue: '', isRequired: false) {
+    parse(raw.trim());
+  }
 }

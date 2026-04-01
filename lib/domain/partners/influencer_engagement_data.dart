@@ -1,11 +1,11 @@
 part of 'engagement_data.dart';
 
-typedef InfluencerInviteCount = int;
-
 class InfluencerEngagementData extends EngagementData {
-  final InfluencerInviteCount inviteCount;
+  final EngagementCountValue inviteCountValue;
 
-  const InfluencerEngagementData({
-    required this.inviteCount,
+  InfluencerEngagementData({
+    required this.inviteCountValue,
   });
+
+  int get inviteCount => inviteCountValue.value;
 }

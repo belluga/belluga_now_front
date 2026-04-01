@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 
 abstract class TenantRepositoryContract {
   AppData get appData;
@@ -39,7 +40,8 @@ abstract class TenantRepositoryContract {
       return false;
     }
 
-    return currentTenant.hasDomain(appData.hostname);
+    final hostnameValue = TenantLookupDomainValue()..parse(appData.hostname);
+    return currentTenant.hasDomain(hostnameValue).value;
   }
 
   Future<Tenant> _getTenant() async {

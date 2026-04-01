@@ -2,11 +2,13 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:crypto/crypto.dart';
@@ -45,9 +47,10 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 
   @override
-  void setUserToken(String? token) => _userTokenStreamValue.addValue(token);
+  void setUserToken(AuthRepositoryContractTextValue? token) =>
+      _userTokenStreamValue.addValue(token?.value);
 
-  void userTokenUpdate(String token) => setUserToken(token);
+  void userTokenUpdate(String token) => setUserToken(authRepoString(token));
   void userTokenDelete() => setUserToken(null);
 
   @override
@@ -62,10 +65,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       return false;
     }
 
-    final identityState =
-        user.customData?['identity_state']?.toString().trim().toLowerCase();
-
-    if (identityState == 'anonymous') {
+    if (user.customData?.isAnonymous ?? false) {
       return false;
     }
 
@@ -103,12 +103,15 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractTextValue email,
+    AuthRepositoryContractTextValue password,
+  ) async {
     final previousUserId = await getUserId();
     var (UserDto _user, String _token) =
         await backend.auth.loginWithEmailPassword(
-      email,
-      password,
+      email.value,
+      password.value,
     );
 
     await _finalizeAuthenticatedUser(
@@ -131,18 +134,18 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractTextValue name,
+    AuthRepositoryContractTextValue email,
+    AuthRepositoryContractTextValue password,
   ) async {
     final previousUserId = await getUserId();
     final anonymousIds = (previousUserId != null && previousUserId.isNotEmpty)
         ? [previousUserId]
         : null;
     final response = await backend.auth.registerWithEmailPassword(
-      name: name,
-      email: email,
-      password: password,
+      name: name.value,
+      email: email.value,
+      password: password.value,
       anonymousUserIds: anonymousIds,
     );
     if (response.token.isNotEmpty) {
@@ -169,8 +172,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     }
 
     try {
-      final loginResult =
-          await backend.auth.loginWithEmailPassword(email, password);
+      final loginResult = await backend.auth
+          .loginWithEmailPassword(email.value, password.value);
       userDto = loginResult.$1;
       resolvedToken = loginResult.$2;
     } catch (_) {
@@ -193,12 +196,12 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) {
+  Future<void> sendPasswordResetEmail(AuthRepositoryContractTextValue email) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> updateUser(Object data) {
+  Future<void> updateUser(UserCustomData data) {
     throw UnimplementedError();
   }
 
@@ -313,7 +316,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       return;
     }
     final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
-    await telemetry.mergeIdentity(previousUserId: previousUserId);
+    await telemetry.mergeIdentity(
+      previousUserId: telemetryRepoString(previousUserId),
+    );
   }
 
   Future<AnonymousIdentityResponse> _issueAnonymousIdentityWithRetry({
@@ -431,14 +436,17 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
+    AuthRepositoryContractTextValue email,
+    AuthRepositoryContractTextValue codigoEnviado,
   ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) {
+  Future<void> createNewPassword(
+    AuthRepositoryContractTextValue newPassword,
+    AuthRepositoryContractTextValue confirmPassword,
+  ) {
     throw UnimplementedError();
   }
 }

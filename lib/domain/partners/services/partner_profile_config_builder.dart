@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 
 /// Builds profile module configuration based on partner type and capabilities.
 class PartnerProfileConfigBuilder {
@@ -17,7 +18,7 @@ class PartnerProfileConfigBuilder {
           partner.bio!.trim().isNotEmpty) {
         tabs.add(
           ProfileTabConfig(
-            title: 'Sobre',
+            titleValue: partnerProjectionRequiredText('Sobre'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.richText),
             ],
@@ -27,7 +28,7 @@ class PartnerProfileConfigBuilder {
       if (capabilities.isPoiEnabled) {
         tabs.add(
           ProfileTabConfig(
-            title: 'Como Chegar',
+            titleValue: partnerProjectionRequiredText('Como Chegar'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.locationInfo),
             ],
@@ -37,7 +38,7 @@ class PartnerProfileConfigBuilder {
       if (capabilities.hasEvents) {
         tabs.add(
           ProfileTabConfig(
-            title: 'Próximos Eventos',
+            titleValue: partnerProjectionRequiredText('Próximos Eventos'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.agendaList),
             ],
@@ -57,7 +58,7 @@ class PartnerProfileConfigBuilder {
         if (hasBio) {
           tabs.add(
             ProfileTabConfig(
-              title: 'Sobre',
+              titleValue: partnerProjectionRequiredText('Sobre'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.richText),
               ],
@@ -66,7 +67,7 @@ class PartnerProfileConfigBuilder {
         }
         tabs.add(
           ProfileTabConfig(
-            title: 'Agenda',
+            titleValue: partnerProjectionRequiredText('Agenda'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.agendaList),
             ],
@@ -82,7 +83,7 @@ class PartnerProfileConfigBuilder {
         if (hasBio) {
           tabs.add(
             ProfileTabConfig(
-              title: 'Sobre',
+              titleValue: partnerProjectionRequiredText('Sobre'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.richText),
               ],
@@ -91,13 +92,13 @@ class PartnerProfileConfigBuilder {
         }
         tabs.addAll([
           ProfileTabConfig(
-            title: 'Como Chegar',
+            titleValue: partnerProjectionRequiredText('Como Chegar'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.locationInfo),
             ],
           ),
           ProfileTabConfig(
-            title: 'Eventos',
+            titleValue: partnerProjectionRequiredText('Eventos'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.agendaList),
             ],
@@ -112,22 +113,22 @@ class PartnerProfileConfigBuilder {
           partner: partner,
           tabs: [
             ProfileTabConfig(
-              title: 'Experiências',
+              titleValue: partnerProjectionRequiredText('Experiências'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.experienceCards),
               ],
             ),
             ProfileTabConfig(
-              title: 'Sobre o Guia',
+              titleValue: partnerProjectionRequiredText('Sobre o Guia'),
               modules: [
                 ProfileModuleConfig(
                   id: ProfileModuleId.richText,
-                  title: 'Quem Somos',
+                  titleValue: partnerProjectionOptionalText('Quem Somos'),
                 ),
               ],
             ),
             ProfileTabConfig(
-              title: 'Dúvidas',
+              titleValue: partnerProjectionRequiredText('Dúvidas'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.faq),
               ],
@@ -139,19 +140,22 @@ class PartnerProfileConfigBuilder {
           partner: partner,
           tabs: [
             ProfileTabConfig(
-              title: 'Acervo',
+              titleValue: partnerProjectionRequiredText('Acervo'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.videoGallery),
                 ProfileModuleConfig(
                   id: ProfileModuleId.richText,
-                  title: 'Artigos Recentes',
+                  titleValue: partnerProjectionOptionalText('Artigos Recentes'),
                 ),
               ],
             ),
             ProfileTabConfig(
-              title: 'Sobre & Apoio',
+              titleValue: partnerProjectionRequiredText('Sobre & Apoio'),
               modules: [
-                ProfileModuleConfig(id: ProfileModuleId.richText, title: 'Sobre'),
+                ProfileModuleConfig(
+                  id: ProfileModuleId.richText,
+                  titleValue: partnerProjectionOptionalText('Sobre'),
+                ),
                 ProfileModuleConfig(id: ProfileModuleId.externalLinks),
                 ProfileModuleConfig(id: ProfileModuleId.sponsorBanner),
               ],
@@ -163,19 +167,19 @@ class PartnerProfileConfigBuilder {
           partner: partner,
           tabs: [
             ProfileTabConfig(
-              title: 'Galeria',
+              titleValue: partnerProjectionRequiredText('Galeria'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.photoGallery),
               ],
             ),
             ProfileTabConfig(
-              title: 'Recomendações',
+              titleValue: partnerProjectionRequiredText('Recomendações'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.affinityCarousels),
               ],
             ),
             ProfileTabConfig(
-              title: 'Próximos rolês',
+              titleValue: partnerProjectionRequiredText('Próximos rolês'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.agendaList),
               ],

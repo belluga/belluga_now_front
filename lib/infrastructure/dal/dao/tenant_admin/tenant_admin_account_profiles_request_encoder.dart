@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
@@ -10,7 +11,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     String? bio,
     String? content,
     String? avatarUrl,
@@ -41,11 +43,13 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? displayName,
     String? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -66,6 +70,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
     if (coverUrl != null) payload['cover_url'] = coverUrl;
+    if (removeAvatar == true) payload['remove_avatar'] = true;
+    if (removeCover == true) payload['remove_cover'] = true;
     return payload;
   }
 
@@ -74,11 +80,14 @@ class TenantAdminAccountProfilesRequestEncoder {
     required String label,
     required List<String> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) {
     return {
       'type': type,
       'label': label,
       'allowed_taxonomies': allowedTaxonomies,
+      if (includePoiVisual) 'poi_visual': poiVisual?.toJson(),
       'capabilities': _encodeCapabilities(capabilities),
     };
   }
@@ -88,6 +97,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) {
     final payload = <String, dynamic>{};
     if (newType != null && newType.trim().isNotEmpty) {
@@ -101,6 +112,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (capabilities != null) {
       payload['capabilities'] = _encodeCapabilities(capabilities);
+    }
+    if (includePoiVisual) {
+      payload['poi_visual'] = poiVisual?.toJson();
     }
     return payload;
   }

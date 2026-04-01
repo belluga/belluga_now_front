@@ -4,9 +4,29 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
@@ -82,21 +102,21 @@ class _FakePoiRepository implements PoiRepositoryContract {
 
   @override
   Future<List<CityPoiModel>> fetchStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) async =>
       null;
 
   @override
   Future<void> loadStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
     final stackItems = await fetchStackItems(
@@ -121,6 +141,32 @@ class _FakePoiRepository implements PoiRepositoryContract {
   }
 }
 
+class _NoopLocationOriginService implements LocationOriginServiceContract {
+  const _NoopLocationOriginService();
+
+  static const LocationOriginResolution _resolution = LocationOriginResolution(
+    settings: null,
+    effectiveCoordinate: null,
+    liveUserCoordinate: null,
+    tenantDefaultCoordinate: null,
+    userFixedCoordinate: null,
+    distanceFromTenantDefaultOriginValue: null,
+  );
+
+  @override
+  LocationOriginResolution resolveCached() => _resolution;
+
+  @override
+  Future<LocationOriginResolution> resolve(
+    LocationOriginResolutionRequest request,
+  ) async => _resolution;
+
+  @override
+  Future<LocationOriginResolution> resolveAndPersist(
+    LocationOriginResolutionRequest request,
+  ) async => _resolution;
+}
+
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
@@ -143,7 +189,6 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>();
 
   @override
-  @override
   final StreamValue<LocationResolutionPhase>
       locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
@@ -154,7 +199,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> refreshIfPermitted({
-    Duration minInterval = const Duration(seconds: 30),
+    Object? minInterval,
   }) async =>
       false;
 
@@ -162,7 +207,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {}
+  Future<void> setLastKnownAddress(Object? address) async {}
 
   @override
   Future<bool> startTracking({
@@ -190,43 +235,422 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
-      true;
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       null;
 }
 
+PoiFilterCategory _buildCategory({
+  required String key,
+  required String label,
+  Set<String> tags = const <String>{},
+  String? imageUri,
+  bool overrideMarker = false,
+  PoiFilterMarkerOverride? markerOverride,
+  PoiFilterServerQuery? serverQuery,
+}) {
+  return PoiFilterCategory(
+    keyValue: _buildFilterKeyValue(key),
+    labelValue: _buildFilterLabelValue(label),
+    countValue: _buildFilterCountValue(tags.length),
+    tagValues: _buildTagValues(tags),
+    imageUriValue: _buildFilterImageUriValue(imageUri),
+    overrideMarkerValue: _buildBooleanValue(overrideMarker),
+    markerOverride: markerOverride,
+    serverQuery: serverQuery,
+  );
+}
+
+PoiFilterServerQuery _buildServerQuery({
+  String? source,
+  Set<String> types = const <String>{},
+  Set<String> categoryKeys = const <String>{},
+  Set<String> taxonomy = const <String>{},
+  Set<String> tags = const <String>{},
+}) {
+  return PoiFilterServerQuery(
+    sourceValue: _buildFilterSourceValue(source),
+    typeValues: _buildFilterTypeValues(types),
+    categoryKeyValues: _buildFilterKeyValues(categoryKeys),
+    taxonomyTokenValues: _buildFilterTaxonomyValues(taxonomy),
+    tagValues: _buildTagValues(tags),
+  );
+}
+
+PoiFilterMarkerOverride _buildIconMarkerOverride({
+  required String icon,
+  required String colorHex,
+  String? iconColorHex,
+}) {
+  return PoiFilterMarkerOverride.icon(
+    iconValue: _buildIconSymbolValue(icon),
+    colorHexValue: _buildHexColorValue(colorHex),
+    iconColorHexValue:
+        iconColorHex == null ? null : _buildHexColorValue(iconColorHex),
+  );
+}
+
+PoiFilterKeyValue _buildFilterKeyValue(String raw) {
+  final value = PoiFilterKeyValue();
+  value.parse(raw.trim().toLowerCase());
+  return value;
+}
+
+PoiFilterLabelValue _buildFilterLabelValue(String raw) {
+  final value = PoiFilterLabelValue();
+  value.parse(raw.trim());
+  return value;
+}
+
+PoiFilterCountValue _buildFilterCountValue(int raw) {
+  final value = PoiFilterCountValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+PoiFilterImageUriValue? _buildFilterImageUriValue(String? raw) {
+  final normalized = raw?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterImageUriValue();
+  value.parse(normalized);
+  return value;
+}
+
+PoiBooleanValue _buildBooleanValue(bool raw) {
+  final value = PoiBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+PoiFilterSourceValue? _buildFilterSourceValue(String? raw) {
+  final normalized = raw?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterSourceValue();
+  value.parse(normalized);
+  return value;
+}
+
+List<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTypeValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterTypeValue>.unmodifiable(values.toSet().toList());
+}
+
+List<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterKeyValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterKeyValue>.unmodifiable(values.toSet().toList());
+}
+
+List<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
+  Iterable<String> rawValues,
+) {
+  final values = <PoiFilterTaxonomyTokenValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTaxonomyTokenValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
+    values.toSet().toList(),
+  );
+}
+
+List<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>[];
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiTagValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return List<PoiTagValue>.unmodifiable(values.toSet().toList());
+}
+
+PoiIconSymbolValue _buildIconSymbolValue(String raw) {
+  final value = PoiIconSymbolValue();
+  value.parse(raw.trim());
+  return value;
+}
+
+PoiHexColorValue _buildHexColorValue(String raw) {
+  final value = PoiHexColorValue();
+  value.parse(raw.trim());
+  return value;
+}
+
+MapScreenController _buildMapScreenController({
+  required PoiRepositoryContract poiRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required TelemetryRepositoryContract telemetryRepository,
+}) {
+  return MapScreenController(
+    poiRepository: poiRepository,
+    userLocationRepository: userLocationRepository,
+    telemetryRepository: telemetryRepository,
+    appData: _buildTestAppData(),
+    locationOriginService: _NoopLocationOriginService(),
+  );
+}
+
+AppData _buildTestAppData() {
+  return buildAppDataFromInitialization(
+    remoteData: const {
+      'name': 'Tenant Test',
+      'type': 'tenant',
+      'main_domain': 'https://tenant.test',
+      'profile_types': [],
+      'domains': ['https://tenant.test'],
+      'app_domains': [],
+      'theme_data_settings': {
+        'brightness_default': 'light',
+        'primary_seed_color': '#FFFFFF',
+        'secondary_seed_color': '#000000',
+      },
+      'main_color': '#FFFFFF',
+      'tenant_id': 'tenant-1',
+      'telemetry': {'trackers': []},
+      'telemetry_context': {'location_freshness_minutes': 5},
+      'settings': {
+        'map_ui': {
+          'distance_bounds': {
+            'min_meters': 1000,
+            'default_meters': 15000,
+            'max_meters': 50000,
+          },
+          'default_origin': {
+            'lat': -20.0,
+            'lng': -40.0,
+            'label': 'Centro',
+          },
+        },
+      },
+      'firebase': null,
+      'push': null,
+    },
+    localInfo: const {
+      'platformType': 'mobile',
+      'hostname': 'tenant.test',
+      'href': 'https://tenant.test',
+      'port': null,
+      'device': 'test-device',
+    },
+  );
+}
+
 void main() {
+  testWidgets(
+    'category FAB prefers override icon+color over legacy image',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = _buildMapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      poiRepository.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: [
+            _buildCategory(
+              key: 'events',
+              label: 'Eventos',
+              tags: const <String>{},
+              imageUri: 'https://tenant.test/legacy-events.png',
+              overrideMarker: true,
+              markerOverride: _buildIconMarkerOverride(
+                icon: 'music',
+                colorHex: '#C6141F',
+                iconColorHex: '#00DD88',
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final filterFabFinder = find.ancestor(
+        of: find.text('Eventos'),
+        matching: find.byType(FloatingActionButton),
+      );
+      expect(filterFabFinder, findsOneWidget);
+
+      final iconFinder = find.descendant(
+        of: filterFabFinder,
+        matching: find.byIcon(Icons.music_note),
+      );
+      expect(iconFinder, findsOneWidget);
+
+      final imageFinder = find.descendant(
+        of: filterFabFinder,
+        matching: find.byType(Image),
+      );
+      expect(imageFinder, findsNothing);
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'selected category FAB uses marker override color as background',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = _buildMapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      mapController.isLoading.addValue(false);
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      poiRepository.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: [
+            _buildCategory(
+              key: 'events',
+              label: 'Eventos',
+              tags: const <String>{},
+              overrideMarker: true,
+              markerOverride: _buildIconMarkerOverride(
+                icon: 'music',
+                colorHex: '#C6141F',
+                iconColorHex: '#101010',
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Eventos'));
+      await tester.pump();
+      await tester.pump();
+
+      final selectedFab = tester.widget<FloatingActionButton>(
+        find.ancestor(
+          of: find.text('Eventos'),
+          matching: find.byType(FloatingActionButton),
+        ),
+      );
+
+      expect(selectedFab.backgroundColor, const Color(0xFFC6141F));
+      final selectedIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Eventos'),
+            matching: find.byType(FloatingActionButton),
+          ),
+          matching: find.byIcon(Icons.music_note),
+        ),
+      );
+      expect(selectedIcon.color, const Color(0xFF101010));
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
   testWidgets('filter image uses icon-sized contain envelope in fab', (
     tester,
   ) async {
     final poiRepository = _FakePoiRepository();
     final userLocationRepository = _FakeUserLocationRepository();
     final telemetryRepository = _FakeTelemetryRepository();
-    final mapController = MapScreenController(
+    final mapController = _buildMapScreenController(
       poiRepository: poiRepository,
       userLocationRepository: userLocationRepository,
       telemetryRepository: telemetryRepository,
@@ -238,7 +662,7 @@ void main() {
     poiRepository.filterOptionsStreamValue.addValue(
       PoiFilterOptions(
         categories: [
-          PoiFilterCategory(
+          _buildCategory(
             key: 'events',
             label: 'Eventos',
             tags: const <String>{},
@@ -282,7 +706,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -295,11 +719,11 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia_filtro',
               label: 'Praia',
               tags: const <String>{},
-              serverQuery: PoiFilterServerQuery(
+              serverQuery: _buildServerQuery(
                 source: 'static_asset',
                 types: {'beach_spot'},
               ),
@@ -339,11 +763,11 @@ void main() {
 
       expect(
         mapController.isCategoryFilterActive(
-          PoiFilterCategory(
+          _buildCategory(
             key: 'praia_filtro',
             label: 'Praia',
             tags: const <String>{},
-            serverQuery: PoiFilterServerQuery(
+            serverQuery: _buildServerQuery(
               source: 'static_asset',
               types: {'beach_spot'},
             ),
@@ -366,7 +790,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -435,7 +859,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -447,12 +871,12 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia-a',
               label: 'Praia',
               tags: const <String>{},
             ),
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia-b',
               label: 'Praia',
               tags: const <String>{},

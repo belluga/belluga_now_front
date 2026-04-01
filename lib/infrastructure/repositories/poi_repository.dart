@@ -6,8 +6,12 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -64,7 +68,7 @@ class PoiRepository implements PoiRepositoryContract {
 
   @override
   Future<List<CityPoiModel>> fetchStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) {
     return _dataSource.fetchStackItems(
@@ -75,8 +79,8 @@ class PoiRepository implements PoiRepositoryContract {
 
   @override
   Future<CityPoiModel?> fetchPoiByReference({
-    required String refType,
-    required String refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   }) {
     return _dataSource.fetchPoiByReference(
       refType: refType,
@@ -86,7 +90,7 @@ class PoiRepository implements PoiRepositoryContract {
 
   @override
   Future<void> loadStackItems({
-    required String stackKey,
+    required PoiStackKeyValue stackKey,
     required PoiQuery query,
   }) async {
     final stackItems = await fetchStackItems(
@@ -115,7 +119,7 @@ class PoiRepository implements PoiRepositoryContract {
   Future<List<MapRegionDefinition>> fetchRegions() =>
       _dataSource.fetchRegions();
 
-  Future<String> fetchFallbackEventImage() =>
+  Future<ThumbUriValue> fetchFallbackEventImage() =>
       _dataSource.fetchFallbackEventImage();
 
   Stream<PoiUpdateEvent?> get poiEvents => _dataSource.poiEvents;

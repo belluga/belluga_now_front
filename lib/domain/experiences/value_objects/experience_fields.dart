@@ -1,9 +1,10 @@
 export 'experience_category_value.dart';
 export 'experience_description_value.dart';
+export 'experience_highlight_item_value.dart';
 export 'experience_id_value.dart';
 export 'experience_image_url_value.dart';
 export 'experience_optional_text_value.dart';
 export 'experience_provider_id_value.dart';
 export 'experience_provider_name_value.dart';
-export 'experience_string_list_value.dart';
+export 'experience_tag_value.dart';
 export 'experience_title_value.dart';

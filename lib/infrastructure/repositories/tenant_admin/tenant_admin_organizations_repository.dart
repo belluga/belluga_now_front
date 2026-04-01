@@ -47,8 +47,14 @@ class TenantAdminOrganizationsRepository
 
     while (hasMore) {
       final result = await fetchOrganizationsPage(
-        page: page,
-        pageSize: pageSize,
+        page: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          page,
+          defaultValue: 1,
+        ),
+        pageSize: TenantAdminOrganizationsRepositoryContractPrimInt.fromRaw(
+          pageSize,
+          defaultValue: pageSize,
+        ),
       );
       organizations.addAll(result.items);
       hasMore = result.hasMore;
@@ -61,24 +67,24 @@ class TenantAdminOrganizationsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminOrganization>>
       fetchOrganizationsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminOrganizationsRepositoryContractPrimInt page,
+    required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeOrganizationList(response.data);
-      return TenantAdminPagedResult<TenantAdminOrganization>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -88,10 +94,11 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> fetchOrganization(
-      String organizationId) async {
+      TenantAdminOrganizationsRepositoryContractPrimString
+          organizationId) async {
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/organizations/$organizationId',
+        '$_apiBaseUrl/v1/organizations/${organizationId.value}',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
@@ -103,16 +110,16 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> createOrganization({
-    required String name,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString name,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   }) async {
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/organizations',
         data: {
-          'name': name,
-          if (description != null && description.trim().isNotEmpty)
-            'description': description.trim(),
+          'name': name.value,
+          if (description != null && description.value.trim().isNotEmpty)
+            'description': description.value.trim(),
         },
         options: Options(headers: _buildHeaders()),
       );
@@ -125,19 +132,20 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> updateOrganization({
-    required String organizationId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString
+        organizationId,
+    TenantAdminOrganizationsRepositoryContractPrimString? name,
+    TenantAdminOrganizationsRepositoryContractPrimString? slug,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   }) async {
     try {
       final payload = _requestEncoder.encodeOrganizationUpdate(
-        name: name,
-        slug: slug,
-        description: description,
+        name: name?.value,
+        slug: slug?.value,
+        description: description?.value,
       );
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/organizations/$organizationId',
+        '$_apiBaseUrl/v1/organizations/${organizationId.value}',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
@@ -149,10 +157,12 @@ class TenantAdminOrganizationsRepository
   }
 
   @override
-  Future<void> deleteOrganization(String organizationId) async {
+  Future<void> deleteOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/organizations/$organizationId',
+        '$_apiBaseUrl/v1/organizations/${organizationId.value}',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -162,11 +172,11 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> restoreOrganization(
-    String organizationId,
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
   ) async {
     try {
       final response = await _dio.post(
-        '$_apiBaseUrl/v1/organizations/$organizationId/restore',
+        '$_apiBaseUrl/v1/organizations/${organizationId.value}/restore',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
@@ -177,10 +187,12 @@ class TenantAdminOrganizationsRepository
   }
 
   @override
-  Future<void> forceDeleteOrganization(String organizationId) async {
+  Future<void> forceDeleteOrganization(
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) async {
     try {
       await _dio.post(
-        '$_apiBaseUrl/v1/organizations/$organizationId/force_delete',
+        '$_apiBaseUrl/v1/organizations/${organizationId.value}/force_delete',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {

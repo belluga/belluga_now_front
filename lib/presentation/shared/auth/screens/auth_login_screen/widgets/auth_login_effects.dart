@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:flutter/material.dart';
 
 class AuthLoginEffects extends StatefulWidget {
@@ -103,6 +106,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
+        unawaited(_trackSignupCompleted());
         final rootRouter = context.router.root;
         if (rootRouter.canPop()) {
           rootRouter.pop();
@@ -111,6 +115,10 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
       }
       widget.onClearSignUpResult();
     });
+  }
+
+  Future<void> _trackSignupCompleted() async {
+    await AuthWallTelemetry.trackSignupCompleted();
   }
 
   void _navigateAfterAuth() {

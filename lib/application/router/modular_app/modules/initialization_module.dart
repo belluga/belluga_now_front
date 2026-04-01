@@ -29,10 +29,7 @@ class InitializationModule extends ModuleContract {
         AutoRoute(
           path: '/location/permission',
           page: LocationPermissionRoute.page,
-        ),
-        AutoRoute(
-          path: '/location/not-live',
-          page: LocationNotLiveRoute.page,
+          guards: [TenantRouteGuard()],
         ),
       ];
 }

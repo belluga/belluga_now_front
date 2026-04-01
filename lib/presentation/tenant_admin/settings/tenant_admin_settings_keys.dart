@@ -24,6 +24,8 @@ class TenantAdminSettingsKeys {
 
   static const hubIntegrationFirebase =
       ValueKey('tenant_admin_settings_hub_integration_firebase');
+  static const hubIntegrationResend =
+      ValueKey('tenant_admin_settings_hub_integration_resend');
   static const hubIntegrationAppLinks =
       ValueKey('tenant_admin_settings_hub_integration_app_links');
   static const hubIntegrationTelemetry =
@@ -59,6 +61,10 @@ class TenantAdminSettingsKeys {
   static ValueKey<String> localPreferencesMapFilterRow(int index) => ValueKey(
         'tenant_admin_settings_local_preferences_map_filter_row_$index',
       );
+  static ValueKey<String> localPreferencesMapFilterVisualPreview(int index) =>
+      ValueKey(
+        'tenant_admin_settings_local_preferences_map_filter_visual_preview_$index',
+      );
   static const visualIdentityScopedAppBar =
       ValueKey('tenant_admin_settings_visual_identity_scoped_app_bar');
   static const visualIdentityBackButton =
@@ -69,6 +75,29 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_technical_integrations_back_button');
   static const technicalIntegrationsAppLinksSection = ValueKey(
       'tenant_admin_settings_technical_integrations_app_links_section');
+  static const technicalIntegrationsResendSection =
+      ValueKey('tenant_admin_settings_technical_integrations_resend_section');
+  static const technicalIntegrationsResendTokenEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_token_edit',
+  );
+  static const technicalIntegrationsResendFromEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_from_edit',
+  );
+  static const technicalIntegrationsResendToEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_to_edit',
+  );
+  static const technicalIntegrationsResendCcEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_cc_edit',
+  );
+  static const technicalIntegrationsResendBccEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_bcc_edit',
+  );
+  static const technicalIntegrationsResendReplyToEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_resend_reply_to_edit',
+  );
+  static const technicalIntegrationsSaveResend = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_resend',
+  );
   static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_android_package_edit',
   );

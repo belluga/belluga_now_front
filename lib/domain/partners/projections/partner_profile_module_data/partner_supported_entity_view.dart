@@ -1,14 +1,14 @@
 part of '../partner_profile_module_data.dart';
 
-typedef PartnerSupportedEntityTitle = String;
-typedef PartnerSupportedEntityThumb = String;
-
 class PartnerSupportedEntityView {
-  const PartnerSupportedEntityView({
-    required this.title,
-    this.thumb,
+  PartnerSupportedEntityView({
+    required this.titleValue,
+    this.thumbValue,
   });
 
-  final PartnerSupportedEntityTitle title;
-  final PartnerSupportedEntityThumb? thumb;
+  final PartnerProjectionRequiredTextValue titleValue;
+  final PartnerProjectionOptionalTextValue? thumbValue;
+
+  String get title => titleValue.value;
+  String? get thumb => thumbValue?.value;
 }

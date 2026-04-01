@@ -2,13 +2,4 @@ import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/cr
 
 class CreatePasswordController extends CreatePasswordControllerContract {
   CreatePasswordController({super.newPassword, super.confirmPassword});
-
-  @override
-  void onDispose() {
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-    buttonLoadingValue.dispose();
-    fieldEnabled.dispose();
-    generalErrorStreamValue.dispose();
-  }
 }

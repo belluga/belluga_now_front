@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_badge_chip.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
@@ -147,10 +148,11 @@ class _EventMarkerState extends State<EventMarker>
     if (state == CityEventTemporalState.past) {
       return 'Encerrado';
     }
-    final start = event.dateTimeStart.value;
-    if (start == null) {
+    final rawStart = event.dateTimeStart.value;
+    if (rawStart == null) {
       return '--:--';
     }
+    final start = TimezoneConverter.utcToLocal(rawStart);
 
     final hours = start.hour.toString().padLeft(2, '0');
     final minutes = start.minute.toString().padLeft(2, '0');

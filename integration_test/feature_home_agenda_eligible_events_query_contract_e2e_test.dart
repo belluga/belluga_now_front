@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -112,12 +113,25 @@ void main() {
               : appDataRepository.appData.mapRadiusMaxMeters;
 
       final firstPage = await scheduleRepository.getEventsPage(
-        page: 1,
-        pageSize: pageSize,
-        showPastOnly: false,
-        originLat: origin?.latitude,
-        originLng: origin?.longitude,
-        maxDistanceMeters: maxDistanceMeters,
+        page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+        pageSize: ScheduleRepoInt.fromRaw(pageSize, defaultValue: pageSize),
+        showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        originLat: origin == null
+            ? null
+            : ScheduleRepoDouble.fromRaw(
+                origin.latitude,
+                defaultValue: origin.latitude,
+              ),
+        originLng: origin == null
+            ? null
+            : ScheduleRepoDouble.fromRaw(
+                origin.longitude,
+                defaultValue: origin.longitude,
+              ),
+        maxDistanceMeters: ScheduleRepoDouble.fromRaw(
+          maxDistanceMeters,
+          defaultValue: maxDistanceMeters,
+        ),
       );
 
       expect(firstPage.events, isA<List<EventModel>>());

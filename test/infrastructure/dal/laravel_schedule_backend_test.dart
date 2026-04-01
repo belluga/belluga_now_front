@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_backend/laravel_schedule_backend.dart';
@@ -122,7 +123,7 @@ void main() {
   test('fetchEventsPage bootstraps auth when token is empty', () async {
     final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
         as _FakeAuthRepository;
-    authRepository.setUserToken('');
+    authRepository.setUserToken(authRepoString(''));
 
     final adapter = _NoopAdapter(
       responseData: const {
@@ -146,6 +147,33 @@ void main() {
     expect(authRepository.initCallCount, 1);
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
+  });
+
+  test('fetchEventsPage forwards live_now_only query parameter', () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+      liveNowOnly: true,
+    );
+
+    final options = adapter.lastOptions;
+    expect(options, isNotNull);
+    expect(options!.queryParameters['live_now_only'], 1);
+    expect(options.queryParameters.containsKey('past_only'), isFalse);
   });
 }
 
@@ -206,8 +234,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {
-    _token = token ?? '';
+  void setUserToken(AuthRepositoryContractParamString? token) {
+    _token = token?.value ?? '';
   }
 
   @override
@@ -234,33 +262,35 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 AppData _buildAppData() {

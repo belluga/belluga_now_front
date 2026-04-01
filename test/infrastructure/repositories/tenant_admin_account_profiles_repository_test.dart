@@ -6,8 +6,13 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -39,10 +44,22 @@ void main() {
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
     await repository.createAccountProfile(
-      accountId: 'account-1',
-      profileType: 'personal',
-      displayName: 'Profile',
-      avatarUpload: TenantAdminMediaUpload(
+      accountId: tenantAdminAccountProfilesRepoString(
+        'account-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      profileType: tenantAdminAccountProfilesRepoString(
+        'personal',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      displayName: tenantAdminAccountProfilesRepoString(
+        'Profile',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3]),
         fileName: 'avatar.png',
       ),
@@ -56,6 +73,53 @@ void main() {
     expect(data, isA<FormData>());
     final formData = data as FormData;
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+    expect(
+      adapter.lastRequest?.contentType,
+      contains('multipart/form-data'),
+    );
+  });
+
+  test('createAccountProfile sends both avatar and cover files in multipart',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createAccountProfile(
+      accountId: tenantAdminAccountProfilesRepoString(
+        'account-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      profileType: tenantAdminAccountProfilesRepoString(
+        'personal',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      displayName: tenantAdminAccountProfilesRepoString(
+        'Profile',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      avatarUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'avatar.png',
+      ),
+      coverUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([4, 5, 6]),
+        fileName: 'cover.png',
+      ),
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<FormData>());
+    final formData = data as FormData;
+    expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+    expect(formData.files.any((entry) => entry.key == 'cover'), isTrue);
+    expect(
+      adapter.lastRequest?.contentType,
+      contains('multipart/form-data'),
+    );
   });
 
   test('updateAccountProfile sends slug when provided', () async {
@@ -64,8 +128,14 @@ void main() {
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
     await repository.updateAccountProfile(
-      accountProfileId: 'profile-1',
-      slug: 'profile-slug-custom',
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      slug: tenantAdminAccountProfilesRepoString(
+        'profile-slug-custom',
+      ),
     );
 
     expect(adapter.lastRequest?.method, 'PATCH');
@@ -84,13 +154,47 @@ void main() {
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
     await repository.updateAccountProfile(
-      accountProfileId: 'profile-1',
-      bio: '',
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      bio: tenantAdminAccountProfilesRepoString(''),
     );
 
     final data = adapter.lastRequest?.data;
     expect(data, isA<Map<String, dynamic>>());
     expect((data as Map<String, dynamic>)['bio'], '');
+  });
+
+  test('updateAccountProfile sends explicit remove avatar/cover flags',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      removeAvatar: tenantAdminAccountProfilesRepoBool(
+        true,
+        defaultValue: true,
+      ),
+      removeCover: tenantAdminAccountProfilesRepoBool(
+        true,
+        defaultValue: true,
+      ),
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    final payload = data as Map<String, dynamic>;
+    expect(payload['remove_avatar'], isTrue);
+    expect(payload['remove_cover'], isTrue);
   });
 
   test('updateAccountProfile omits bio when null', () async {
@@ -99,9 +203,13 @@ void main() {
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
     await repository.updateAccountProfile(
-      accountProfileId: 'profile-1',
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
       bio: null,
-      displayName: 'New Name',
+      displayName: tenantAdminAccountProfilesRepoString('New Name'),
     );
 
     final data = adapter.lastRequest?.data;
@@ -116,7 +224,13 @@ void main() {
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    final profiles = await repository.fetchAccountProfiles(accountId: 'acc-1');
+    final profiles = await repository.fetchAccountProfiles(
+      accountId: tenantAdminAccountProfilesRepoString(
+        'acc-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
 
     expect(profiles, hasLength(1));
     expect(profiles.first.id, 'profile-1');
@@ -135,13 +249,128 @@ void main() {
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    final page = await repository.fetchProfileTypesPage(page: 1, pageSize: 2);
+    final page = await repository.fetchProfileTypesPage(
+      page: tenantAdminAccountProfilesRepoInt(
+        1,
+        defaultValue: 1,
+      ),
+      pageSize: tenantAdminAccountProfilesRepoInt(
+        2,
+        defaultValue: 2,
+      ),
+    );
 
     expect(page.items, hasLength(2));
     expect(page.hasMore, isTrue);
+    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.icon);
+    expect(page.items.first.poiVisual?.icon, 'place');
+    expect(page.items.first.poiVisual?.color, '#FF8800');
+    expect(page.items.first.poiVisual?.iconColor, '#FFFFFF');
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 1);
     expect(adapter.requests.single.queryParameters['page_size'], 2);
+  });
+
+  test('createProfileTypeWithPoiVisual sends poi_visual icon payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createProfileTypeWithPoiVisual(
+      type: tenantAdminAccountProfilesRepoString(
+        'venue',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      label: tenantAdminAccountProfilesRepoString(
+        'Venue',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      allowedTaxonomies: <TenantAdminAccountProfilesRepoString>[
+        tenantAdminAccountProfilesRepoString(
+          'genre',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      ],
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasEvents: TenantAdminFlagValue(true),
+      ),
+      poiVisual: TenantAdminPoiVisual.icon(
+        iconValue: TenantAdminRequiredTextValue()..parse('place'),
+        colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+      ),
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['poi_visual'], <String, dynamic>{
+      'mode': 'icon',
+      'icon': 'place',
+      'color': '#FF8800',
+      'icon_color': '#FFFFFF',
+    });
+  });
+
+  test('updateProfileTypeWithPoiVisual sends nullable poi_visual payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateProfileTypeWithPoiVisual(
+      type: tenantAdminAccountProfilesRepoString(
+        'venue',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasEvents: TenantAdminFlagValue(true),
+      ),
+      poiVisual: null,
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('poi_visual'), isTrue);
+    expect(payload['poi_visual'], isNull);
+  });
+
+  test('fetchProfileTypeMapPoiProjectionImpact returns projection count',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    final count = await repository.fetchProfileTypeMapPoiProjectionImpact(
+      type: tenantAdminAccountProfilesRepoString(
+        'venue',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+
+    expect(count.value, 67);
+    expect(
+      adapter.lastRequest?.path,
+      contains(
+        '/admin/api/v1/account_profile_types/venue/map_poi_projection_impact',
+      ),
+    );
   });
 
   test('load/reset/next follow paged stream contract for profile types',
@@ -152,12 +381,22 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'account profile types',
-      loadFirstPage: () => repository.loadProfileTypes(pageSize: 2),
-      loadNextPage: () => repository.loadNextProfileTypesPage(pageSize: 2),
+      loadFirstPage: () => repository.loadProfileTypes(
+        pageSize: tenantAdminAccountProfilesRepoInt(
+          2,
+          defaultValue: 2,
+        ),
+      ),
+      loadNextPage: () => repository.loadNextProfileTypesPage(
+        pageSize: tenantAdminAccountProfilesRepoInt(
+          2,
+          defaultValue: 2,
+        ),
+      ),
       resetState: repository.resetProfileTypesState,
       readItems: () => repository.profileTypesStreamValue.value,
-      readHasMore: () => repository.hasMoreProfileTypesStreamValue.value,
-      readError: () => repository.profileTypesErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreProfileTypesStreamValue.value.value,
+      readError: () => repository.profileTypesErrorStreamValue.value?.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
     );
@@ -171,9 +410,21 @@ void main() {
 
     expect(
       repository.createAccountProfile(
-        accountId: 'account-1',
-        profileType: 'venue',
-        displayName: 'Perfil',
+        accountId: tenantAdminAccountProfilesRepoString(
+          'account-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        profileType: tenantAdminAccountProfilesRepoString(
+          'venue',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        displayName: tenantAdminAccountProfilesRepoString(
+          'Perfil',
+          defaultValue: '',
+          isRequired: true,
+        ),
       ),
       throwsA(
         isA<FormValidationFailure>()
@@ -196,9 +447,21 @@ void main() {
 
     expect(
       repository.createAccountProfile(
-        accountId: 'account-1',
-        profileType: 'venue',
-        displayName: 'Perfil',
+        accountId: tenantAdminAccountProfilesRepoString(
+          'account-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        profileType: tenantAdminAccountProfilesRepoString(
+          'venue',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        displayName: tenantAdminAccountProfilesRepoString(
+          'Perfil',
+          defaultValue: '',
+          isRequired: true,
+        ),
       ),
       throwsA(
         isA<FormApiFailure>()
@@ -224,7 +487,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -252,8 +517,10 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomain = tenantDomain;
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomain = tenantDomain is String
+        ? tenantDomain
+        : (tenantDomain as dynamic).value as String;
   }
 }
 
@@ -270,6 +537,51 @@ class _CaptureAdapter implements HttpClientAdapter {
     Future? cancelFuture,
   ) async {
     lastRequest = options;
+    if (options.path.endsWith('/map_poi_projection_impact')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'profile_type': 'venue',
+            'projection_count': 67,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    if (options.path.contains('/v1/account_profile_types')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'type': 'venue',
+            'label': 'Venue',
+            'poi_visual': {
+              'mode': 'icon',
+              'icon': 'place',
+              'color': '#FF8800',
+              'icon_color': '#FFFFFF',
+            },
+            'allowed_taxonomies': <String>[],
+            'capabilities': {
+              'is_favoritable': true,
+              'is_poi_enabled': true,
+              'has_bio': true,
+              'has_content': true,
+              'has_taxonomies': true,
+              'has_avatar': true,
+              'has_cover': true,
+              'has_events': true,
+            },
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     final payload = jsonEncode({
       'data': {
         'id': 'profile-1',
@@ -341,6 +653,12 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
       'id': id,
       'type': type,
       'label': label,
+      'poi_visual': {
+        'mode': 'icon',
+        'icon': 'place',
+        'color': '#FF8800',
+        'icon_color': '#FFFFFF',
+      },
       'allowed_taxonomies': const <String>[],
       'capabilities': const {
         'is_favoritable': true,

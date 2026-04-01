@@ -38,11 +38,23 @@ class TenantAdminTaxonomyTermRouteResolver
     final normalizedTaxonomyId = taxonomyId.trim();
     final normalizedTermId = termId.trim();
     final taxonomy = await _taxonomiesRepository.fetchTaxonomy(
-      normalizedTaxonomyId,
+      tenantAdminTaxRepoString(
+        normalizedTaxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
     );
     final term = await _taxonomiesRepository.fetchTerm(
-      taxonomyId: normalizedTaxonomyId,
-      termId: normalizedTermId,
+      taxonomyId: tenantAdminTaxRepoString(
+        normalizedTaxonomyId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      termId: tenantAdminTaxRepoString(
+        normalizedTermId,
+        defaultValue: '',
+        isRequired: true,
+      ),
     );
     return TenantAdminTaxonomyTermRouteModel(
       taxonomy: taxonomy,

@@ -23,7 +23,13 @@ class ImmersiveEventDetailRouteResolver
         'Event slug must be provided',
       );
     }
-    final event = await _scheduleRepository.getEventBySlug(slug);
+    final event = await _scheduleRepository.getEventBySlug(
+      ScheduleRepoString.fromRaw(
+        slug,
+        defaultValue: slug,
+        isRequired: true,
+      ),
+    );
     if (event == null) {
       throw Exception('Event not found for slug: $slug');
     }

@@ -48,4 +48,16 @@ class TenantAdminAccountProfilesResponseDecoder {
         .map(TenantAdminProfileTypeDTO.fromJson)
         .toList(growable: false);
   }
+
+  int decodeProjectionImpactCount(Object? rawResponse) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'profile type projection impact',
+    );
+    final rawCount = item['projection_count'];
+    if (rawCount is num) {
+      return rawCount.toInt();
+    }
+    return 0;
+  }
 }

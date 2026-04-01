@@ -174,7 +174,7 @@ class EventDTO {
         ?.map(_mapEventFriendResume)
         .toList(growable: false);
 
-    return EventModel(
+    return eventModelFromRaw(
       id: MongoIDValue()..parse(id),
       slugValue: SlugValue()..parse(slug),
       type: EventTypeModel(

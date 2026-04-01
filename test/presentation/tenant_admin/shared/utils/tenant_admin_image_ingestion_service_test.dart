@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -245,7 +246,9 @@ Future<XFile> _writeBytes(Uint8List bytes, {required String name}) async {
 class _FailingExternalImageProxy
     implements TenantAdminExternalImageProxyContract {
   @override
-  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+  Future<Uint8List> fetchExternalImageBytes({
+    required TenantAdminOptionalUrlValue imageUrl,
+  }) async {
     throw StateError('blocked');
   }
 }
@@ -256,7 +259,9 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
   final Uint8List _bytes;
 
   @override
-  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+  Future<Uint8List> fetchExternalImageBytes({
+    required TenantAdminOptionalUrlValue imageUrl,
+  }) async {
     return _bytes;
   }
 }

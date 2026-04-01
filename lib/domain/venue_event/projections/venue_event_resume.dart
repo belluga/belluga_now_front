@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -24,6 +25,7 @@ class VenueEventResume {
     required this.titleValue,
     required this.imageUriValue,
     required this.startDateTimeValue,
+    this.endDateTimeValue,
     required this.locationValue,
     required this.artists,
     required this.tagValues,
@@ -36,6 +38,7 @@ class VenueEventResume {
   final TitleValue titleValue;
   final ThumbUriValue imageUriValue;
   final DateTimeValue startDateTimeValue;
+  final DateTimeValue? endDateTimeValue;
   final DescriptionValue locationValue;
   final List<ArtistResume> artists;
   final List<VenueEventTagValue> tagValues;
@@ -53,20 +56,29 @@ class VenueEventResume {
     if (date == null) {
       throw StateError('startDateTime should not be null');
     }
-    return date;
+    return TimezoneConverter.utcToLocal(date);
+  }
+
+  VenueEventResumePrimDateTime? get endDateTime {
+    final date = endDateTimeValue?.value;
+    if (date == null) {
+      return null;
+    }
+    return TimezoneConverter.utcToLocal(date);
   }
 
   VenueEventResumePrimString get location => locationValue.value;
   CityCoordinate? get coordinateValue => coordinate;
   VenueEventResumePrimBool get hasArtists => artists.isNotEmpty;
   ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
-  List<VenueEventResumePrimString> get tags =>
-      tagValues.map((tagValue) => tagValue.value).toList(growable: false);
+  List<VenueEventTagValue> get tags =>
+      List<VenueEventTagValue>.unmodifiable(tagValues);
   VenueEventResumePrimString get artistNamesLabel =>
       artists.map((artist) => artist.displayName).join(', ');
 
-  static VenueEventResumePrimString slugify(VenueEventResumePrimString value) {
-    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  static VenueEventResumePrimString slugify(TitleValue value) {
+    final rawValue = value.value;
+    final slug = rawValue.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
@@ -102,15 +114,14 @@ class VenueEventResume {
 
   factory VenueEventResume.fromScheduleEvent(
     EventModel event,
-    Object fallbackImage,
+    ThumbUriValue fallbackImageValue,
   ) {
-    final fallbackImageValue = _coerceFallbackImageValue(fallbackImage);
     final slugSource = event.slug;
     final slug = SlugValue()
       ..parse(
         slugSource.isNotEmpty
             ? slugSource
-            : VenueEventResume.slugify(event.title.value),
+            : VenueEventResume.slugify(event.title),
       );
 
     final preferredImageUri = resolvePreferredImageUri(
@@ -128,6 +139,11 @@ class VenueEventResume {
 
     final startValue = DateTimeValue(isRequired: true)
       ..parse(startDateTime.toIso8601String());
+    final endDateTime = event.dateTimeEnd?.value;
+    final endValue = endDateTime == null
+        ? null
+        : (DateTimeValue(isRequired: true)
+          ..parse(endDateTime.toIso8601String()));
 
     return VenueEventResume(
       idValue: event.id,
@@ -135,29 +151,12 @@ class VenueEventResume {
       titleValue: event.title,
       imageUriValue: thumb,
       startDateTimeValue: startValue,
+      endDateTimeValue: endValue,
       locationValue: event.location,
       artists: event.artists,
-      tagValues: event.taxonomyTags
-          .map((tag) => VenueEventTagValue(tag))
-          .toList(growable: false),
+      tagValues: event.taxonomyTags,
       coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available
-    );
-  }
-
-  static ThumbUriValue _coerceFallbackImageValue(Object raw) {
-    if (raw is ThumbUriValue) {
-      return raw;
-    }
-    if (raw is Uri) {
-      final thumb = ThumbUriValue(defaultValue: raw, isRequired: true)
-        ..parse(raw.toString());
-      return thumb;
-    }
-    throw ArgumentError.value(
-      raw,
-      'fallbackImage',
-      'Expected Uri or ThumbUriValue',
     );
   }
 }

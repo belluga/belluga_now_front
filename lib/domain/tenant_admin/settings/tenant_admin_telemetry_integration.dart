@@ -5,91 +5,50 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 
-typedef TenantAdminTelemetryIntegrationPrimString = String;
-typedef TenantAdminTelemetryIntegrationPrimInt = int;
-typedef TenantAdminTelemetryIntegrationPrimBool = bool;
-typedef TenantAdminTelemetryIntegrationPrimDouble = double;
-typedef TenantAdminTelemetryIntegrationPrimDateTime = DateTime;
-typedef TenantAdminTelemetryIntegrationPrimDynamic = dynamic;
-
 class TenantAdminTelemetryIntegration {
   TenantAdminTelemetryIntegration({
-    required TenantAdminTelemetryIntegrationPrimString type,
-    required TenantAdminTelemetryIntegrationPrimBool trackAll,
-    required List<TenantAdminTelemetryIntegrationPrimString> events,
-    TenantAdminTelemetryIntegrationPrimString? token,
-    TenantAdminTelemetryIntegrationPrimString? url,
-    Map<TenantAdminTelemetryIntegrationPrimString,
-            TenantAdminTelemetryIntegrationPrimDynamic>?
-        extra,
-  })  : typeValue = _buildTypeValue(type),
-        trackAllValue = _buildTrackAllValue(trackAll),
-        eventValues = TenantAdminTrimmedStringListValue(events),
-        tokenValue = _buildOptionalTextValue(token),
-        urlValue = _buildOptionalUrlValue(url),
-        extraValue = extra == null || extra.isEmpty
-            ? null
-            : TenantAdminDynamicMapValue(extra);
+    required TenantAdminLowercaseTokenValue type,
+    required TenantAdminBooleanValue trackAll,
+    required List<TenantAdminLowercaseTokenValue> eventValues,
+    TenantAdminOptionalTextValue? token,
+    TenantAdminOptionalUrlValue? url,
+    this.rawExtraValue,
+  })  : typeValue = type,
+        trackAllValue = trackAll,
+        eventValues = _eventListValue(eventValues),
+        tokenValue = token,
+        urlValue = url;
 
   final TenantAdminLowercaseTokenValue typeValue;
   final TenantAdminBooleanValue trackAllValue;
   final TenantAdminTrimmedStringListValue eventValues;
   final TenantAdminOptionalTextValue? tokenValue;
   final TenantAdminOptionalUrlValue? urlValue;
-  final TenantAdminDynamicMapValue? extraValue;
+  final TenantAdminDynamicMapValue? rawExtraValue;
 
-  TenantAdminTelemetryIntegrationPrimString get type => typeValue.value;
-  TenantAdminTelemetryIntegrationPrimBool get trackAll => trackAllValue.value;
-  List<TenantAdminTelemetryIntegrationPrimString> get events =>
-      eventValues.value;
-  TenantAdminTelemetryIntegrationPrimString? get token =>
-      tokenValue?.nullableValue;
-  TenantAdminTelemetryIntegrationPrimString? get url => urlValue?.nullableValue;
-  Map<TenantAdminTelemetryIntegrationPrimString,
-          TenantAdminTelemetryIntegrationPrimDynamic>?
-      get extra => extraValue?.value;
+  String get type => typeValue.value;
+  bool get trackAll => trackAllValue.value;
+  TenantAdminTrimmedStringListValue get events => eventValues;
+  String? get token => tokenValue?.nullableValue;
+  String? get url => urlValue?.nullableValue;
+  TenantAdminDynamicMapValue? get rawExtra => rawExtraValue;
 
-  Map<TenantAdminTelemetryIntegrationPrimString,
-      TenantAdminTelemetryIntegrationPrimDynamic> toUpsertPayload() {
-    return {
+  TenantAdminDynamicMapValue toUpsertPayload() {
+    return TenantAdminDynamicMapValue({
       'type': type,
       'track_all': trackAll,
       'events': events,
       if (token != null) 'token': token,
       if (url != null) 'url': url,
-      if (extra != null) ...extra!,
-    };
+      if (rawExtra != null) ...rawExtra!.value,
+    });
   }
 
-  static TenantAdminLowercaseTokenValue _buildTypeValue(
-      TenantAdminTelemetryIntegrationPrimString raw) {
-    final value = TenantAdminLowercaseTokenValue()..parse(raw);
-    return value;
-  }
-
-  static TenantAdminBooleanValue _buildTrackAllValue(
-      TenantAdminTelemetryIntegrationPrimBool raw) {
-    final value = TenantAdminBooleanValue()..parse(raw.toString());
-    return value;
-  }
-
-  static TenantAdminOptionalTextValue? _buildOptionalTextValue(
-      TenantAdminTelemetryIntegrationPrimString? raw) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminOptionalTextValue()..parse(normalized);
-    return value;
-  }
-
-  static TenantAdminOptionalUrlValue? _buildOptionalUrlValue(
-      TenantAdminTelemetryIntegrationPrimString? raw) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminOptionalUrlValue()..parse(normalized);
-    return value;
+  static TenantAdminTrimmedStringListValue _eventListValue(
+    List<TenantAdminLowercaseTokenValue> rawValues,
+  ) {
+    return TenantAdminTrimmedStringListValue(
+      rawValues.map((entry) => entry.value),
+    );
   }
 }

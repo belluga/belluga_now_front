@@ -1,22 +1,17 @@
-typedef TenantAdminBrandingBrightnessPrimString = String;
-typedef TenantAdminBrandingBrightnessPrimInt = int;
-typedef TenantAdminBrandingBrightnessPrimBool = bool;
-typedef TenantAdminBrandingBrightnessPrimDouble = double;
-typedef TenantAdminBrandingBrightnessPrimDateTime = DateTime;
-typedef TenantAdminBrandingBrightnessPrimDynamic = dynamic;
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 
 enum TenantAdminBrandingBrightness {
   light,
   dark;
 
-  TenantAdminBrandingBrightnessPrimString get rawValue => switch (this) {
+  String get rawValue => switch (this) {
         TenantAdminBrandingBrightness.light => 'light',
         TenantAdminBrandingBrightness.dark => 'dark',
       };
 
   static TenantAdminBrandingBrightness fromRaw(
-      TenantAdminBrandingBrightnessPrimString? raw) {
-    if (raw?.trim().toLowerCase() == 'dark') {
+      TenantAdminLowercaseTokenValue? raw) {
+    if (raw?.value == 'dark') {
       return TenantAdminBrandingBrightness.dark;
     }
     return TenantAdminBrandingBrightness.light;

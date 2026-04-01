@@ -4,7 +4,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/anonymous_profile_card.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_header.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_section_card.dart';
@@ -70,13 +69,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: StreamValueBuilder<UserContract?>(
           streamValue: _controller.userStreamValue,
-          onNullWidget: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-            children: [
-              AnonymousProfileCard(
-                onTapLogin: () => context.router.push(const AuthLoginRoute()),
-              ),
-            ],
+          onNullWidget: const Center(
+            child: CircularProgressIndicator.adaptive(),
           ),
           builder: (context, user) {
             final avatarUrl = user!.profile.pictureUrlValue?.value?.toString();

@@ -1,13 +1,17 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
@@ -15,36 +19,37 @@ class TenantHomeController implements Disposable {
   TenantHomeController({
     UserEventsRepositoryContract? userEventsRepository,
     UserLocationRepositoryContract? userLocationRepository,
-    Duration locationWarmUpTimeout = const Duration(seconds: 4),
+    AppDataRepositoryContract? appDataRepository,
+    LocationOriginServiceContract? locationOriginService,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null),
-        _locationWarmUpTimeout = locationWarmUpTimeout;
+        _appDataRepository =
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>();
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
 
   final UserEventsRepositoryContract _userEventsRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
-  final Duration _locationWarmUpTimeout;
+  final AppDataRepositoryContract _appDataRepository;
+  final LocationOriginServiceContract _locationOriginService;
   final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
-  final StreamValue<String?> userAddressStreamValue = StreamValue<String?>();
+  final StreamValue<HomeLocationStatusState?> homeLocationStatusStreamValue =
+      StreamValue<HomeLocationStatusState?>(defaultValue: null);
   final StreamValue<List<VenueEventResume>> myEventsFilteredStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: const []);
 
   ScrollController get scrollController => _scrollController;
 
-  StreamValue<Set<String>> get confirmedIdsStreamValue =>
-      _userEventsRepository.confirmedEventIdsStream;
+  StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      get confirmedIdsStreamValue =>
+          _userEventsRepository.confirmedEventIdsStream;
   AppData get appData => _appData;
 
   StreamSubscription? _confirmedEventsSubscription;
-  StreamSubscription? _userLocationSubscription;
-  StreamSubscription? _userLocationPhaseSubscription;
+  StreamSubscription? _homeLocationStatusSubscription;
   bool _isDisposed = false;
   bool _initialized = false;
 
@@ -58,16 +63,7 @@ class TenantHomeController implements Disposable {
       debugPrint('TenantHomeController.init confirmed ids failed: $error');
     }
     await loadMyEvents();
-
-    try {
-      await _userLocationRepository?.warmUpIfPermitted().timeout(
-            _locationWarmUpTimeout,
-            onTimeout: () => false,
-          );
-    } on Object {
-      // Best-effort warm up.
-    }
-    _listenUserLocation();
+    _listenLocationOrigin();
     _listenConfirmedEvents();
   }
 
@@ -96,105 +92,12 @@ class TenantHomeController implements Disposable {
     myEventsFilteredStreamValue.addValue(_filterConfirmedUpcoming(events));
   }
 
-  void _listenUserLocation() {
-    final repo = _userLocationRepository;
-    if (repo == null) return;
-
-    final cachedAddress = repo.lastKnownAddressStreamValue.value;
-    if (cachedAddress != null && cachedAddress.trim().isNotEmpty) {
-      if (_isDisposed) return;
-      userAddressStreamValue.addValue(cachedAddress);
-    }
-
-    unawaited(_updateUserAddress(repo.userLocationStreamValue.value));
-
-    _userLocationSubscription?.cancel();
-    _userLocationSubscription = repo.userLocationStreamValue.stream.listen(
-      (coordinate) {
-        unawaited(_updateUserAddress(coordinate));
-      },
-    );
-
-    _userLocationPhaseSubscription?.cancel();
-    _userLocationPhaseSubscription =
-        repo.locationResolutionPhaseStreamValue.stream.listen((phase) {
-      if (_isDisposed) return;
-      if (phase != LocationResolutionPhase.resolved) {
-        userAddressStreamValue.addValue(null);
-        return;
-      }
-      unawaited(_updateUserAddress(repo.userLocationStreamValue.value));
-    });
-  }
-
-  Future<void> _updateUserAddress(CityCoordinate? coordinate) async {
-    if (_isDisposed) return;
-    final phase =
-        _userLocationRepository?.locationResolutionPhaseStreamValue.value;
-    if (phase != null && phase != LocationResolutionPhase.resolved) {
-      userAddressStreamValue.addValue(null);
-      return;
-    }
-    if (coordinate == null) {
-      if (_isDisposed) return;
-      userAddressStreamValue.addValue(null);
-      return;
-    }
-
-    try {
-      final geocoderPresent = await isPresent();
-      if (!geocoderPresent) {
-        if (_isDisposed) return;
-        userAddressStreamValue.addValue('Localizacao detectada');
-        return;
-      }
-
-      try {
-        await setLocaleIdentifier('pt_BR');
-      } catch (_) {
-        // Non-fatal: platform may ignore locale overrides.
-      }
-
-      final placemarks = await placemarkFromCoordinates(
-        coordinate.latitude,
-        coordinate.longitude,
-      );
-      final first = placemarks.isNotEmpty ? placemarks.first : null;
-      final streetParts = <String>[
-        if ((first?.thoroughfare ?? '').trim().isNotEmpty) first!.thoroughfare!,
-        if ((first?.subThoroughfare ?? '').trim().isNotEmpty)
-          first!.subThoroughfare!,
-      ];
-      final streetLabel =
-          streetParts.isNotEmpty ? streetParts.join(', ') : null;
-
-      final parts = <String>[
-        if ((streetLabel ?? '').trim().isNotEmpty) streetLabel!,
-        if ((first?.subLocality ?? '').trim().isNotEmpty) first!.subLocality!,
-        if ((first?.locality ?? '').trim().isNotEmpty) first!.locality!,
-        if ((first?.administrativeArea ?? '').trim().isNotEmpty)
-          first!.administrativeArea!,
-      ];
-      final label = parts.isNotEmpty ? parts.join(', ') : null;
-      await _userLocationRepository?.setLastKnownAddress(label);
-      if (_isDisposed) return;
-      userAddressStreamValue.addValue(
-        (label == null || label.trim().isEmpty)
-            ? 'Localizacao detectada'
-            : label,
-      );
-    } catch (e, stackTrace) {
-      debugPrint('[TenantHomeController] reverse geocode failed: $e');
-      debugPrintStack(stackTrace: stackTrace);
-      final previous = userAddressStreamValue.value;
-      if (previous != null && previous.trim().isNotEmpty) {
-        return;
-      }
-      await _userLocationRepository
-          ?.setLastKnownAddress('Localizacao detectada');
-      if (_isDisposed) return;
-      userAddressStreamValue.addValue('Localizacao detectada');
-    }
+  void _listenLocationOrigin() {
+    _publishHomeLocationStatus(_appDataRepository.locationOriginSettings);
+    _homeLocationStatusSubscription?.cancel();
+    _homeLocationStatusSubscription = _appDataRepository
+        .locationOriginSettingsStreamValue.stream
+        .listen(_publishHomeLocationStatus);
   }
 
   List<VenueEventResume> _filterConfirmedUpcoming(
@@ -203,11 +106,11 @@ class TenantHomeController implements Disposable {
     final now = DateTime.now();
     return events.where((event) {
       final start = event.startDateTime;
-      if (!start.isAfter(now)) {
-        final end = start.add(_assumedEventDuration);
-        return now.isBefore(end);
+      if (start.isAfter(now)) {
+        return true;
       }
-      return true;
+      final end = event.endDateTime ?? start.add(_assumedEventDuration);
+      return now.isBefore(end) || now.isAtSameMomentAs(end);
     }).toList();
   }
 
@@ -219,19 +122,44 @@ class TenantHomeController implements Disposable {
 
   String? distanceLabelForMyEvent(VenueEventResume event) {
     if (_isDisposed) return null;
-    final userCoordinate =
-        _userLocationRepository?.userLocationStreamValue.value;
+    final userCoordinate = _resolveHomeDistanceReferenceCoordinate();
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
+  }
+
+  void _publishHomeLocationStatus(LocationOriginSettings? settings) {
+    if (_isDisposed) return;
+    if (settings == null) {
+      homeLocationStatusStreamValue.addValue(null);
+      return;
+    }
+    homeLocationStatusStreamValue.addValue(
+      HomeLocationStatusState(
+        statusText: settings.usesUserLiveLocation
+            ? 'Usando sua localização.'
+            : 'Usando localização fixa.',
+        dialogTitle: settings.usesUserLiveLocation
+            ? 'Usando sua localização'
+            : 'Usando localização fixa',
+        dialogMessage: _dialogMessageForLocationOrigin(settings),
+      ),
+    );
+  }
+
+  String _dialogMessageForLocationOrigin(
+    LocationOriginSettings settings,
+  ) {
+    return LocationOriginMessageResolver.fromSettings(
+      settings: settings,
+      appName: _appData.nameValue.value,
+    );
   }
 
   String _formatDistanceLabel(double meters) {
@@ -241,14 +169,17 @@ class TenantHomeController implements Disposable {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
+  CityCoordinate? _resolveHomeDistanceReferenceCoordinate() {
+    return _locationOriginService.resolveCached().effectiveCoordinate;
+  }
+
   @override
   void onDispose() {
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
-    _userLocationSubscription?.cancel();
-    _userLocationPhaseSubscription?.cancel();
+    _homeLocationStatusSubscription?.cancel();
     _scrollController.dispose();
+    homeLocationStatusStreamValue.dispose();
     myEventsFilteredStreamValue.dispose();
-    userAddressStreamValue.dispose();
   }
 }

@@ -1,14 +1,14 @@
 part of 'engagement_data.dart';
 
-typedef ArtistEngagementStatus = String;
-typedef ArtistEngagementNextShowAt = DateTime;
-
 class ArtistEngagementData extends EngagementData {
-  final ArtistEngagementStatus status;
-  final ArtistEngagementNextShowAt? nextShow;
+  final EngagementStatusValue statusValue;
+  final EngagementNextShowAtValue nextShowValue;
 
-  const ArtistEngagementData({
-    required this.status,
-    this.nextShow,
-  });
+  ArtistEngagementData({
+    required this.statusValue,
+    EngagementNextShowAtValue? nextShowValue,
+  }) : nextShowValue = nextShowValue ?? EngagementNextShowAtValue();
+
+  String get status => statusValue.value;
+  DateTime? get nextShow => nextShowValue.value;
 }

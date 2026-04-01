@@ -3,43 +3,47 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i29;
-import 'dart:ui' as _i38;
+import 'dart:async' as _i30;
+import 'dart:ui' as _i39;
 
 import 'package:auto_route/auto_route.dart' as _i6;
 import 'package:auto_route/src/matcher/route_matcher.dart' as _i7;
 import 'package:auto_route/src/router/controller/navigation_history/navigation_history_base.dart'
     as _i8;
 import 'package:belluga_now/domain/app_data/app_data.dart' as _i4;
-import 'package:belluga_now/domain/app_data/platform_type.dart' as _i40;
+import 'package:belluga_now/domain/app_data/platform_type.dart' as _i42;
 import 'package:belluga_now/domain/app_data/telemetry_context_settings.dart'
-    as _i21;
-import 'package:belluga_now/domain/app_data/telemetry_settings.dart' as _i20;
+    as _i22;
+import 'package:belluga_now/domain/app_data/telemetry_settings.dart' as _i21;
 import 'package:belluga_now/domain/app_data/value_object/app_data_hostname_value.dart'
-    as _i11;
-import 'package:belluga_now/domain/app_data/value_object/app_data_href_value.dart'
     as _i12;
+import 'package:belluga_now/domain/app_data/value_object/app_data_href_value.dart'
+    as _i13;
 import 'package:belluga_now/domain/app_data/value_object/app_data_map_filter_catalog_keys_value.dart'
     as _i23;
 import 'package:belluga_now/domain/app_data/value_object/app_data_port_value.dart'
-    as _i10;
+    as _i11;
 import 'package:belluga_now/domain/app_data/value_object/app_data_required_text_value.dart'
-    as _i13;
-import 'package:belluga_now/domain/app_data/value_object/domain_value.dart'
-    as _i19;
-import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart'
     as _i14;
-import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart'
+import 'package:belluga_now/domain/app_data/value_object/domain_value.dart'
+    as _i20;
+import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart'
     as _i15;
+import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart'
+    as _i16;
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart'
-    as _i9;
+    as _i10;
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart'
     as _i5;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i37;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i38;
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart'
-    as _i22;
-import 'package:belluga_now/domain/partners/profile_type_registry.dart' as _i18;
-import 'package:belluga_now/domain/schedule/event_model.dart' as _i31;
+    as _i9;
+import 'package:belluga_now/domain/partners/profile_type_registry.dart' as _i19;
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart'
+    as _i41;
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart'
+    as _i29;
+import 'package:belluga_now/domain/schedule/event_model.dart' as _i32;
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart'
     as _i24;
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart'
@@ -47,28 +51,30 @@ import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart'
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart'
     as _i26;
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart'
-    as _i17;
+    as _i18;
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart'
-    as _i16;
+    as _i17;
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart'
     as _i28;
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart'
-    as _i39;
+    as _i40;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart'
     as _i27;
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart'
+    as _i43;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart'
-    as _i30;
+    as _i31;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart'
-    as _i34;
+    as _i35;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
-    as _i33;
+    as _i34;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart'
-    as _i36;
+    as _i37;
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart'
-    as _i32;
+    as _i33;
 import 'package:flutter/material.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i35;
+import 'package:mockito/src/dummies.dart' as _i36;
 import 'package:stream_value/core/stream_value.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -313,9 +319,9 @@ class _FakeRoutingController_20 extends _i1.SmartFake
         );
 }
 
-class _FakePlatformTypeValue_21 extends _i1.SmartFake
-    implements _i9.PlatformTypeValue {
-  _FakePlatformTypeValue_21(
+class _FakeDistanceInMetersValue_21 extends _i1.SmartFake
+    implements _i9.DistanceInMetersValue {
+  _FakeDistanceInMetersValue_21(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -324,9 +330,9 @@ class _FakePlatformTypeValue_21 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataPortValue_22 extends _i1.SmartFake
-    implements _i10.AppDataPortValue {
-  _FakeAppDataPortValue_22(
+class _FakePlatformTypeValue_22 extends _i1.SmartFake
+    implements _i10.PlatformTypeValue {
+  _FakePlatformTypeValue_22(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -335,9 +341,9 @@ class _FakeAppDataPortValue_22 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataHostnameValue_23 extends _i1.SmartFake
-    implements _i11.AppDataHostnameValue {
-  _FakeAppDataHostnameValue_23(
+class _FakeAppDataPortValue_23 extends _i1.SmartFake
+    implements _i11.AppDataPortValue {
+  _FakeAppDataPortValue_23(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -346,9 +352,9 @@ class _FakeAppDataHostnameValue_23 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataHrefValue_24 extends _i1.SmartFake
-    implements _i12.AppDataHrefValue {
-  _FakeAppDataHrefValue_24(
+class _FakeAppDataHostnameValue_24 extends _i1.SmartFake
+    implements _i12.AppDataHostnameValue {
+  _FakeAppDataHostnameValue_24(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -357,9 +363,9 @@ class _FakeAppDataHrefValue_24 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataRequiredTextValue_25 extends _i1.SmartFake
-    implements _i13.AppDataRequiredTextValue {
-  _FakeAppDataRequiredTextValue_25(
+class _FakeAppDataHrefValue_25 extends _i1.SmartFake
+    implements _i13.AppDataHrefValue {
+  _FakeAppDataHrefValue_25(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -368,9 +374,9 @@ class _FakeAppDataRequiredTextValue_25 extends _i1.SmartFake
         );
 }
 
-class _FakeEnvironmentNameValue_26 extends _i1.SmartFake
-    implements _i14.EnvironmentNameValue {
-  _FakeEnvironmentNameValue_26(
+class _FakeAppDataRequiredTextValue_26 extends _i1.SmartFake
+    implements _i14.AppDataRequiredTextValue {
+  _FakeAppDataRequiredTextValue_26(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -379,9 +385,9 @@ class _FakeEnvironmentNameValue_26 extends _i1.SmartFake
         );
 }
 
-class _FakeEnvironmentTypeValue_27 extends _i1.SmartFake
-    implements _i15.EnvironmentTypeValue {
-  _FakeEnvironmentTypeValue_27(
+class _FakeEnvironmentNameValue_27 extends _i1.SmartFake
+    implements _i15.EnvironmentNameValue {
+  _FakeEnvironmentNameValue_27(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -390,9 +396,9 @@ class _FakeEnvironmentTypeValue_27 extends _i1.SmartFake
         );
 }
 
-class _FakeThemeDataSettings_28 extends _i1.SmartFake
-    implements _i16.ThemeDataSettings {
-  _FakeThemeDataSettings_28(
+class _FakeEnvironmentTypeValue_28 extends _i1.SmartFake
+    implements _i16.EnvironmentTypeValue {
+  _FakeEnvironmentTypeValue_28(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -401,9 +407,9 @@ class _FakeThemeDataSettings_28 extends _i1.SmartFake
         );
 }
 
-class _FakeTenantIdValue_29 extends _i1.SmartFake
-    implements _i17.TenantIdValue {
-  _FakeTenantIdValue_29(
+class _FakeThemeDataSettings_29 extends _i1.SmartFake
+    implements _i17.ThemeDataSettings {
+  _FakeThemeDataSettings_29(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -412,9 +418,9 @@ class _FakeTenantIdValue_29 extends _i1.SmartFake
         );
 }
 
-class _FakeProfileTypeRegistry_30 extends _i1.SmartFake
-    implements _i18.ProfileTypeRegistry {
-  _FakeProfileTypeRegistry_30(
+class _FakeTenantIdValue_30 extends _i1.SmartFake
+    implements _i18.TenantIdValue {
+  _FakeTenantIdValue_30(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -423,8 +429,9 @@ class _FakeProfileTypeRegistry_30 extends _i1.SmartFake
         );
 }
 
-class _FakeDomainValue_31 extends _i1.SmartFake implements _i19.DomainValue {
-  _FakeDomainValue_31(
+class _FakeProfileTypeRegistry_31 extends _i1.SmartFake
+    implements _i19.ProfileTypeRegistry {
+  _FakeProfileTypeRegistry_31(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -433,9 +440,8 @@ class _FakeDomainValue_31 extends _i1.SmartFake implements _i19.DomainValue {
         );
 }
 
-class _FakeTelemetrySettings_32 extends _i1.SmartFake
-    implements _i20.TelemetrySettings {
-  _FakeTelemetrySettings_32(
+class _FakeDomainValue_32 extends _i1.SmartFake implements _i20.DomainValue {
+  _FakeDomainValue_32(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -444,9 +450,9 @@ class _FakeTelemetrySettings_32 extends _i1.SmartFake
         );
 }
 
-class _FakeTelemetryContextSettings_33 extends _i1.SmartFake
-    implements _i21.TelemetryContextSettings {
-  _FakeTelemetryContextSettings_33(
+class _FakeTelemetrySettings_33 extends _i1.SmartFake
+    implements _i21.TelemetrySettings {
+  _FakeTelemetrySettings_33(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -455,9 +461,9 @@ class _FakeTelemetryContextSettings_33 extends _i1.SmartFake
         );
 }
 
-class _FakeDistanceInMetersValue_34 extends _i1.SmartFake
-    implements _i22.DistanceInMetersValue {
-  _FakeDistanceInMetersValue_34(
+class _FakeTelemetryContextSettings_34 extends _i1.SmartFake
+    implements _i22.TelemetryContextSettings {
+  _FakeTelemetryContextSettings_34(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -528,6 +534,21 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i2.StreamValue<String?>);
 
   @override
+  _i2.StreamValue<_i43.HomeLocationStatusState?>
+      get homeLocationStatusStreamValue => (super.noSuchMethod(
+            Invocation.getter(#homeLocationStatusStreamValue),
+            returnValue: _FakeStreamValue_0<_i43.HomeLocationStatusState?>(
+              this,
+              Invocation.getter(#homeLocationStatusStreamValue),
+            ),
+            returnValueForMissingStub:
+                _FakeStreamValue_0<_i43.HomeLocationStatusState?>(
+              this,
+              Invocation.getter(#homeLocationStatusStreamValue),
+            ),
+          ) as _i2.StreamValue<_i43.HomeLocationStatusState?>);
+
+  @override
   _i2.StreamValue<List<_i28.VenueEventResume>>
       get myEventsFilteredStreamValue => (super.noSuchMethod(
             Invocation.getter(#myEventsFilteredStreamValue),
@@ -556,18 +577,21 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i3.ScrollController);
 
   @override
-  _i2.StreamValue<Set<String>> get confirmedIdsStreamValue =>
-      (super.noSuchMethod(
-        Invocation.getter(#confirmedIdsStreamValue),
-        returnValue: _FakeStreamValue_0<Set<String>>(
-          this,
-          Invocation.getter(#confirmedIdsStreamValue),
-        ),
-        returnValueForMissingStub: _FakeStreamValue_0<Set<String>>(
-          this,
-          Invocation.getter(#confirmedIdsStreamValue),
-        ),
-      ) as _i2.StreamValue<Set<String>>);
+  _i2.StreamValue<Set<_i29.UserEventsRepositoryContractTextValue>>
+      get confirmedIdsStreamValue => (super.noSuchMethod(
+            Invocation.getter(#confirmedIdsStreamValue),
+            returnValue: _FakeStreamValue_0<
+                Set<_i29.UserEventsRepositoryContractTextValue>>(
+              this,
+              Invocation.getter(#confirmedIdsStreamValue),
+            ),
+            returnValueForMissingStub: _FakeStreamValue_0<
+                Set<_i29.UserEventsRepositoryContractTextValue>>(
+              this,
+              Invocation.getter(#confirmedIdsStreamValue),
+            ),
+          ) as _i2
+              .StreamValue<Set<_i29.UserEventsRepositoryContractTextValue>>);
 
   @override
   _i4.AppData get appData => (super.noSuchMethod(
@@ -583,24 +607,24 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i4.AppData);
 
   @override
-  _i29.Future<void> init() => (super.noSuchMethod(
+  _i30.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> loadMyEvents() => (super.noSuchMethod(
+  _i30.Future<void> loadMyEvents() => (super.noSuchMethod(
         Invocation.method(
           #loadMyEvents,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   String? distanceLabelForMyEvent(_i28.VenueEventResume? event) =>
@@ -626,7 +650,7 @@ class MockTenantHomeController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTenantHomeAgendaController extends _i1.Mock
-    implements _i30.TenantHomeAgendaController {
+    implements _i31.TenantHomeAgendaController {
   @override
   _i3.TextEditingController get searchController => (super.noSuchMethod(
         Invocation.getter(#searchController),
@@ -654,18 +678,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i3.FocusNode);
 
   @override
-  _i2.StreamValue<List<_i31.EventModel>?> get displayedEventsStreamValue =>
+  _i2.StreamValue<List<_i32.EventModel>?> get displayedEventsStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#displayedEventsStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i31.EventModel>?>(
+        returnValue: _FakeStreamValue_0<List<_i32.EventModel>?>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i31.EventModel>?>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i32.EventModel>?>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i31.EventModel>?>);
+      ) as _i2.StreamValue<List<_i32.EventModel>?>);
 
   @override
   _i2.StreamValue<bool> get isInitialLoadingStreamValue => (super.noSuchMethod(
@@ -747,18 +771,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i2.StreamValue<bool>);
 
   @override
-  _i2.StreamValue<_i32.InviteFilter> get inviteFilterStreamValue =>
+  _i2.StreamValue<_i33.InviteFilter> get inviteFilterStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#inviteFilterStreamValue),
-        returnValue: _FakeStreamValue_0<_i32.InviteFilter>(
+        returnValue: _FakeStreamValue_0<_i33.InviteFilter>(
           this,
           Invocation.getter(#inviteFilterStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<_i32.InviteFilter>(
+        returnValueForMissingStub: _FakeStreamValue_0<_i33.InviteFilter>(
           this,
           Invocation.getter(#inviteFilterStreamValue),
         ),
-      ) as _i2.StreamValue<_i32.InviteFilter>);
+      ) as _i2.StreamValue<_i33.InviteFilter>);
 
   @override
   _i2.StreamValue<double> get radiusMetersStreamValue => (super.noSuchMethod(
@@ -807,26 +831,26 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as Uri);
 
   @override
-  _i29.Future<void> init({bool? startWithHistory = false}) =>
+  _i30.Future<void> init({bool? startWithHistory = false}) =>
       (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
           {#startWithHistory: startWithHistory},
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> loadNextPage() => (super.noSuchMethod(
+  _i30.Future<void> loadNextPage() => (super.noSuchMethod(
         Invocation.method(
           #loadNextPage,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   void toggleHistory() => super.noSuchMethod(
@@ -838,7 +862,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
       );
 
   @override
-  void setInviteFilter(_i32.InviteFilter? filter) => super.noSuchMethod(
+  void setInviteFilter(_i33.InviteFilter? filter) => super.noSuchMethod(
         Invocation.method(
           #setInviteFilter,
           [filter],
@@ -892,14 +916,14 @@ class MockTenantHomeAgendaController extends _i1.Mock
       );
 
   @override
-  _i29.Future<void> searchEvents(String? query) => (super.noSuchMethod(
+  _i30.Future<void> searchEvents(String? query) => (super.noSuchMethod(
         Invocation.method(
           #searchEvents,
           [query],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   bool isEventConfirmed(String? eventId) => (super.noSuchMethod(
@@ -944,7 +968,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockFavoritesSectionController extends _i1.Mock
-    implements _i33.FavoritesSectionController {
+    implements _i34.FavoritesSectionController {
   @override
   _i2.StreamValue<List<_i5.FavoriteResume>?> get favoritesStreamValue =>
       (super.noSuchMethod(
@@ -961,29 +985,29 @@ class MockFavoritesSectionController extends _i1.Mock
       ) as _i2.StreamValue<List<_i5.FavoriteResume>?>);
 
   @override
-  _i2.StreamValue<_i34.FavoriteNavigationTarget?>
+  _i2.StreamValue<_i35.FavoriteNavigationTarget?>
       get navigationTargetStreamValue => (super.noSuchMethod(
             Invocation.getter(#navigationTargetStreamValue),
-            returnValue: _FakeStreamValue_0<_i34.FavoriteNavigationTarget?>(
+            returnValue: _FakeStreamValue_0<_i35.FavoriteNavigationTarget?>(
               this,
               Invocation.getter(#navigationTargetStreamValue),
             ),
             returnValueForMissingStub:
-                _FakeStreamValue_0<_i34.FavoriteNavigationTarget?>(
+                _FakeStreamValue_0<_i35.FavoriteNavigationTarget?>(
               this,
               Invocation.getter(#navigationTargetStreamValue),
             ),
-          ) as _i2.StreamValue<_i34.FavoriteNavigationTarget?>);
+          ) as _i2.StreamValue<_i35.FavoriteNavigationTarget?>);
 
   @override
-  _i29.Future<void> init() => (super.noSuchMethod(
+  _i30.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   _i5.FavoriteResume buildPinnedFavorite() => (super.noSuchMethod(
@@ -1008,15 +1032,15 @@ class MockFavoritesSectionController extends _i1.Mock
       ) as _i5.FavoriteResume);
 
   @override
-  _i29.Future<_i34.FavoriteNavigationTarget> resolveNavigationTarget(
+  _i30.Future<_i35.FavoriteNavigationTarget> resolveNavigationTarget(
           _i5.FavoriteResume? favorite) =>
       (super.noSuchMethod(
         Invocation.method(
           #resolveNavigationTarget,
           [favorite],
         ),
-        returnValue: _i29.Future<_i34.FavoriteNavigationTarget>.value(
-            _i35.dummyValue<_i34.FavoriteNavigationTarget>(
+        returnValue: _i30.Future<_i35.FavoriteNavigationTarget>.value(
+            _i36.dummyValue<_i35.FavoriteNavigationTarget>(
           this,
           Invocation.method(
             #resolveNavigationTarget,
@@ -1024,26 +1048,26 @@ class MockFavoritesSectionController extends _i1.Mock
           ),
         )),
         returnValueForMissingStub:
-            _i29.Future<_i34.FavoriteNavigationTarget>.value(
-                _i35.dummyValue<_i34.FavoriteNavigationTarget>(
+            _i30.Future<_i35.FavoriteNavigationTarget>.value(
+                _i36.dummyValue<_i35.FavoriteNavigationTarget>(
           this,
           Invocation.method(
             #resolveNavigationTarget,
             [favorite],
           ),
         )),
-      ) as _i29.Future<_i34.FavoriteNavigationTarget>);
+      ) as _i30.Future<_i35.FavoriteNavigationTarget>);
 
   @override
-  _i29.Future<void> requestNavigationTarget(_i5.FavoriteResume? favorite) =>
+  _i30.Future<void> requestNavigationTarget(_i5.FavoriteResume? favorite) =>
       (super.noSuchMethod(
         Invocation.method(
           #requestNavigationTarget,
           [favorite],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   void clearNavigationTarget() => super.noSuchMethod(
@@ -1068,20 +1092,20 @@ class MockFavoritesSectionController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockInvitesBannerBuilderController extends _i1.Mock
-    implements _i36.InvitesBannerBuilderController {
+    implements _i37.InvitesBannerBuilderController {
   @override
-  _i2.StreamValue<List<_i37.InviteModel>> get pendingInvitesStreamValue =>
+  _i2.StreamValue<List<_i38.InviteModel>> get pendingInvitesStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#pendingInvitesStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i37.InviteModel>>(
+        returnValue: _FakeStreamValue_0<List<_i38.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i37.InviteModel>>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i38.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i37.InviteModel>>);
+      ) as _i2.StreamValue<List<_i38.InviteModel>>);
 
   @override
   bool get hasPendingInvites => (super.noSuchMethod(
@@ -1304,11 +1328,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   String get currentPath => (super.noSuchMethod(
         Invocation.getter(#currentPath),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
@@ -1317,11 +1341,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   String get currentUrl => (super.noSuchMethod(
         Invocation.getter(#currentUrl),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
@@ -1448,14 +1472,14 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       );
 
   @override
-  _i29.Future<void> reevaluateGuards() => (super.noSuchMethod(
+  _i30.Future<void> reevaluateGuards() => (super.noSuchMethod(
         Invocation.method(
           #reevaluateGuards,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   bool canPop({
@@ -1478,7 +1502,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       ) as bool);
 
   @override
-  _i29.Future<T?> pushWidget<T extends Object?>(
+  _i30.Future<T?> pushWidget<T extends Object?>(
     _i3.Widget? widget, {
     _i3.RouteTransitionsBuilder? transitionBuilder,
     bool? fullscreenDialog = false,
@@ -1496,31 +1520,31 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #opaque: opaque,
           },
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<T?> pushNativeRoute<T extends Object?>(_i3.Route<T>? route) =>
+  _i30.Future<T?> pushNativeRoute<T extends Object?>(_i3.Route<T>? route) =>
       (super.noSuchMethod(
         Invocation.method(
           #pushNativeRoute,
           [route],
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<bool> maybePop<T extends Object?>([T? result]) =>
+  _i30.Future<bool> maybePop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
         Invocation.method(
           #maybePop,
           [result],
         ),
-        returnValue: _i29.Future<bool>.value(false),
-        returnValueForMissingStub: _i29.Future<bool>.value(false),
-      ) as _i29.Future<bool>);
+        returnValue: _i30.Future<bool>.value(false),
+        returnValueForMissingStub: _i30.Future<bool>.value(false),
+      ) as _i30.Future<bool>);
 
   @override
   void pop<T extends Object?>([T? result]) => super.noSuchMethod(
@@ -1565,7 +1589,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       );
 
   @override
-  _i29.Future<T?> push<T extends Object?>(
+  _i30.Future<T?> push<T extends Object?>(
     _i6.PageRouteInfo<Object?>? route, {
     _i6.OnNavigationFailure? onFailure,
   }) =>
@@ -1575,12 +1599,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<void> insert(
+  _i30.Future<void> insert(
     _i6.PageRouteInfo<Object?>? route, {
     int? index = 0,
     _i6.OnNavigationFailure? onFailure,
@@ -1594,12 +1618,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<T?> replace<T extends Object?>(
+  _i30.Future<T?> replace<T extends Object?>(
     _i6.PageRouteInfo<Object?>? route, {
     _i6.OnNavigationFailure? onFailure,
   }) =>
@@ -1609,12 +1633,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<void> pushAll(
+  _i30.Future<void> pushAll(
     List<_i6.PageRouteInfo<Object?>>? routes, {
     _i6.OnNavigationFailure? onFailure,
   }) =>
@@ -1624,12 +1648,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> popAndPushAll(
+  _i30.Future<void> popAndPushAll(
     List<_i6.PageRouteInfo<Object?>>? routes, {
     dynamic onFailure,
   }) =>
@@ -1639,12 +1663,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> replaceAll(
+  _i30.Future<void> replaceAll(
     List<_i6.PageRouteInfo<Object?>>? routes, {
     _i6.OnNavigationFailure? onFailure,
     bool? updateExistingRoutes = true,
@@ -1658,9 +1682,9 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #updateExistingRoutes: updateExistingRoutes,
           },
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   void popUntilRoot() => super.noSuchMethod(
@@ -1672,7 +1696,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       );
 
   @override
-  _i29.Future<T?> popAndPush<T extends Object?, TO extends Object?>(
+  _i30.Future<T?> popAndPush<T extends Object?, TO extends Object?>(
     _i6.PageRouteInfo<Object?>? route, {
     TO? result,
     _i6.OnNavigationFailure? onFailure,
@@ -1686,9 +1710,9 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
   bool removeUntil(
@@ -1745,7 +1769,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       );
 
   @override
-  _i29.Future<void> navigateAll(
+  _i30.Future<void> navigateAll(
     List<_i6.RouteMatch<dynamic>>? routes, {
     _i6.OnNavigationFailure? onFailure,
   }) =>
@@ -1755,12 +1779,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<T?> pushAndPopUntil<T extends Object?>(
+  _i30.Future<T?> pushAndPopUntil<T extends Object?>(
     _i6.PageRouteInfo<Object?>? route, {
     required _i3.RoutePredicate? predicate,
     bool? scopedPopUntil = true,
@@ -1776,12 +1800,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<T?> replacePath<T extends Object?>(
+  _i30.Future<T?> replacePath<T extends Object?>(
     String? path, {
     bool? includePrefixMatches = false,
     _i6.OnNavigationFailure? onFailure,
@@ -1795,12 +1819,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
-  _i29.Future<T?> pushPath<T extends Object?>(
+  _i30.Future<T?> pushPath<T extends Object?>(
     String? path, {
     bool? includePrefixMatches = false,
     _i6.OnNavigationFailure? onFailure,
@@ -1814,9 +1838,9 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<T?>.value(),
-        returnValueForMissingStub: _i29.Future<T?>.value(),
-      ) as _i29.Future<T?>);
+        returnValue: _i30.Future<T?>.value(),
+        returnValueForMissingStub: _i30.Future<T?>.value(),
+      ) as _i30.Future<T?>);
 
   @override
   void popUntilRouteWithName(
@@ -1946,7 +1970,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       ) as _i6.RouteMatch<dynamic>?);
 
   @override
-  _i29.Future<dynamic> navigate(
+  _i30.Future<dynamic> navigate(
     _i6.PageRouteInfo<Object?>? route, {
     _i6.OnNavigationFailure? onFailure,
   }) =>
@@ -1956,12 +1980,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i29.Future<dynamic>.value(),
-        returnValueForMissingStub: _i29.Future<dynamic>.value(),
-      ) as _i29.Future<dynamic>);
+        returnValue: _i30.Future<dynamic>.value(),
+        returnValueForMissingStub: _i30.Future<dynamic>.value(),
+      ) as _i30.Future<dynamic>);
 
   @override
-  _i29.Future<void> navigatePath(
+  _i30.Future<void> navigatePath(
     String? path, {
     bool? includePrefixMatches = false,
     _i6.OnNavigationFailure? onFailure,
@@ -1975,9 +1999,9 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
   void back() => super.noSuchMethod(
@@ -2043,15 +2067,15 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       ) as T?);
 
   @override
-  _i29.Future<bool> maybePopTop<T extends Object?>([T? result]) =>
+  _i30.Future<bool> maybePopTop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
         Invocation.method(
           #maybePopTop,
           [result],
         ),
-        returnValue: _i29.Future<bool>.value(false),
-        returnValueForMissingStub: _i29.Future<bool>.value(false),
-      ) as _i29.Future<bool>);
+        returnValue: _i30.Future<bool>.value(false),
+        returnValueForMissingStub: _i30.Future<bool>.value(false),
+      ) as _i30.Future<bool>);
 
   @override
   void popTop<T extends Object?>([T? result]) => super.noSuchMethod(
@@ -2115,7 +2139,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       ) as List<_i6.PageRouteInfo<Object?>>?);
 
   @override
-  void addListener(_i38.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i39.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #addListener,
           [listener],
@@ -2124,7 +2148,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
       );
 
   @override
-  void removeListener(_i38.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i39.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #removeListener,
           [listener],
@@ -2145,7 +2169,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
 /// A class which mocks [AppDataRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAppDataRepository extends _i1.Mock implements _i39.AppDataRepository {
+class MockAppDataRepository extends _i1.Mock implements _i40.AppDataRepository {
   @override
   _i4.AppData get appData => (super.noSuchMethod(
         Invocation.getter(#appData),
@@ -2174,17 +2198,19 @@ class MockAppDataRepository extends _i1.Mock implements _i39.AppDataRepository {
       ) as _i2.StreamValue<_i3.ThemeMode?>);
 
   @override
-  _i2.StreamValue<double> get maxRadiusMetersStreamValue => (super.noSuchMethod(
+  _i2.StreamValue<_i9.DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      (super.noSuchMethod(
         Invocation.getter(#maxRadiusMetersStreamValue),
-        returnValue: _FakeStreamValue_0<double>(
+        returnValue: _FakeStreamValue_0<_i9.DistanceInMetersValue>(
           this,
           Invocation.getter(#maxRadiusMetersStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<double>(
+        returnValueForMissingStub:
+            _FakeStreamValue_0<_i9.DistanceInMetersValue>(
           this,
           Invocation.getter(#maxRadiusMetersStreamValue),
         ),
-      ) as _i2.StreamValue<double>);
+      ) as _i2.StreamValue<_i9.DistanceInMetersValue>);
 
   @override
   _i3.ThemeMode get themeMode => (super.noSuchMethod(
@@ -2194,11 +2220,17 @@ class MockAppDataRepository extends _i1.Mock implements _i39.AppDataRepository {
       ) as _i3.ThemeMode);
 
   @override
-  double get maxRadiusMeters => (super.noSuchMethod(
+  _i9.DistanceInMetersValue get maxRadiusMeters => (super.noSuchMethod(
         Invocation.getter(#maxRadiusMeters),
-        returnValue: 0.0,
-        returnValueForMissingStub: 0.0,
-      ) as double);
+        returnValue: _FakeDistanceInMetersValue_21(
+          this,
+          Invocation.getter(#maxRadiusMeters),
+        ),
+        returnValueForMissingStub: _FakeDistanceInMetersValue_21(
+          this,
+          Invocation.getter(#maxRadiusMeters),
+        ),
+      ) as _i9.DistanceInMetersValue);
 
   @override
   set appData(_i4.AppData? value) => super.noSuchMethod(
@@ -2210,34 +2242,36 @@ class MockAppDataRepository extends _i1.Mock implements _i39.AppDataRepository {
       );
 
   @override
-  _i29.Future<void> init() => (super.noSuchMethod(
+  _i30.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> setThemeMode(_i3.ThemeMode? mode) => (super.noSuchMethod(
+  _i30.Future<void> setThemeMode(_i41.AppThemeModeValue? mode) =>
+      (super.noSuchMethod(
         Invocation.method(
           #setThemeMode,
           [mode],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 
   @override
-  _i29.Future<void> setMaxRadiusMeters(double? meters) => (super.noSuchMethod(
+  _i30.Future<void> setMaxRadiusMeters(_i9.DistanceInMetersValue? meters) =>
+      (super.noSuchMethod(
         Invocation.method(
           #setMaxRadiusMeters,
           [meters],
         ),
-        returnValue: _i29.Future<void>.value(),
-        returnValueForMissingStub: _i29.Future<void>.value(),
-      ) as _i29.Future<void>);
+        returnValue: _i30.Future<void>.value(),
+        returnValueForMissingStub: _i30.Future<void>.value(),
+      ) as _i30.Future<void>);
 }
 
 /// A class which mocks [AppData].
@@ -2245,221 +2279,221 @@ class MockAppDataRepository extends _i1.Mock implements _i39.AppDataRepository {
 /// See the documentation for Mockito's code generation for more information.
 class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
-  _i9.PlatformTypeValue get platformType => (super.noSuchMethod(
+  _i10.PlatformTypeValue get platformType => (super.noSuchMethod(
         Invocation.getter(#platformType),
-        returnValue: _FakePlatformTypeValue_21(
+        returnValue: _FakePlatformTypeValue_22(
           this,
           Invocation.getter(#platformType),
         ),
-        returnValueForMissingStub: _FakePlatformTypeValue_21(
+        returnValueForMissingStub: _FakePlatformTypeValue_22(
           this,
           Invocation.getter(#platformType),
         ),
-      ) as _i9.PlatformTypeValue);
+      ) as _i10.PlatformTypeValue);
 
   @override
-  _i10.AppDataPortValue get portValue => (super.noSuchMethod(
+  _i11.AppDataPortValue get portValue => (super.noSuchMethod(
         Invocation.getter(#portValue),
-        returnValue: _FakeAppDataPortValue_22(
+        returnValue: _FakeAppDataPortValue_23(
           this,
           Invocation.getter(#portValue),
         ),
-        returnValueForMissingStub: _FakeAppDataPortValue_22(
+        returnValueForMissingStub: _FakeAppDataPortValue_23(
           this,
           Invocation.getter(#portValue),
         ),
-      ) as _i10.AppDataPortValue);
+      ) as _i11.AppDataPortValue);
 
   @override
-  _i11.AppDataHostnameValue get hostnameValue => (super.noSuchMethod(
+  _i12.AppDataHostnameValue get hostnameValue => (super.noSuchMethod(
         Invocation.getter(#hostnameValue),
-        returnValue: _FakeAppDataHostnameValue_23(
+        returnValue: _FakeAppDataHostnameValue_24(
           this,
           Invocation.getter(#hostnameValue),
         ),
-        returnValueForMissingStub: _FakeAppDataHostnameValue_23(
+        returnValueForMissingStub: _FakeAppDataHostnameValue_24(
           this,
           Invocation.getter(#hostnameValue),
         ),
-      ) as _i11.AppDataHostnameValue);
+      ) as _i12.AppDataHostnameValue);
 
   @override
-  _i12.AppDataHrefValue get hrefValue => (super.noSuchMethod(
+  _i13.AppDataHrefValue get hrefValue => (super.noSuchMethod(
         Invocation.getter(#hrefValue),
-        returnValue: _FakeAppDataHrefValue_24(
+        returnValue: _FakeAppDataHrefValue_25(
           this,
           Invocation.getter(#hrefValue),
         ),
-        returnValueForMissingStub: _FakeAppDataHrefValue_24(
+        returnValueForMissingStub: _FakeAppDataHrefValue_25(
           this,
           Invocation.getter(#hrefValue),
         ),
-      ) as _i12.AppDataHrefValue);
+      ) as _i13.AppDataHrefValue);
 
   @override
-  _i13.AppDataRequiredTextValue get deviceValue => (super.noSuchMethod(
+  _i14.AppDataRequiredTextValue get deviceValue => (super.noSuchMethod(
         Invocation.getter(#deviceValue),
-        returnValue: _FakeAppDataRequiredTextValue_25(
+        returnValue: _FakeAppDataRequiredTextValue_26(
           this,
           Invocation.getter(#deviceValue),
         ),
-        returnValueForMissingStub: _FakeAppDataRequiredTextValue_25(
+        returnValueForMissingStub: _FakeAppDataRequiredTextValue_26(
           this,
           Invocation.getter(#deviceValue),
         ),
-      ) as _i13.AppDataRequiredTextValue);
+      ) as _i14.AppDataRequiredTextValue);
 
   @override
-  _i14.EnvironmentNameValue get nameValue => (super.noSuchMethod(
+  _i15.EnvironmentNameValue get nameValue => (super.noSuchMethod(
         Invocation.getter(#nameValue),
-        returnValue: _FakeEnvironmentNameValue_26(
+        returnValue: _FakeEnvironmentNameValue_27(
           this,
           Invocation.getter(#nameValue),
         ),
-        returnValueForMissingStub: _FakeEnvironmentNameValue_26(
+        returnValueForMissingStub: _FakeEnvironmentNameValue_27(
           this,
           Invocation.getter(#nameValue),
         ),
-      ) as _i14.EnvironmentNameValue);
+      ) as _i15.EnvironmentNameValue);
 
   @override
-  _i15.EnvironmentTypeValue get typeValue => (super.noSuchMethod(
+  _i16.EnvironmentTypeValue get typeValue => (super.noSuchMethod(
         Invocation.getter(#typeValue),
-        returnValue: _FakeEnvironmentTypeValue_27(
+        returnValue: _FakeEnvironmentTypeValue_28(
           this,
           Invocation.getter(#typeValue),
         ),
-        returnValueForMissingStub: _FakeEnvironmentTypeValue_27(
+        returnValueForMissingStub: _FakeEnvironmentTypeValue_28(
           this,
           Invocation.getter(#typeValue),
         ),
-      ) as _i15.EnvironmentTypeValue);
+      ) as _i16.EnvironmentTypeValue);
 
   @override
-  _i16.ThemeDataSettings get themeDataSettings => (super.noSuchMethod(
+  _i17.ThemeDataSettings get themeDataSettings => (super.noSuchMethod(
         Invocation.getter(#themeDataSettings),
-        returnValue: _FakeThemeDataSettings_28(
+        returnValue: _FakeThemeDataSettings_29(
           this,
           Invocation.getter(#themeDataSettings),
         ),
-        returnValueForMissingStub: _FakeThemeDataSettings_28(
+        returnValueForMissingStub: _FakeThemeDataSettings_29(
           this,
           Invocation.getter(#themeDataSettings),
         ),
-      ) as _i16.ThemeDataSettings);
+      ) as _i17.ThemeDataSettings);
 
   @override
-  _i17.TenantIdValue get tenantIdValue => (super.noSuchMethod(
+  _i18.TenantIdValue get tenantIdValue => (super.noSuchMethod(
         Invocation.getter(#tenantIdValue),
-        returnValue: _FakeTenantIdValue_29(
+        returnValue: _FakeTenantIdValue_30(
           this,
           Invocation.getter(#tenantIdValue),
         ),
-        returnValueForMissingStub: _FakeTenantIdValue_29(
+        returnValueForMissingStub: _FakeTenantIdValue_30(
           this,
           Invocation.getter(#tenantIdValue),
         ),
-      ) as _i17.TenantIdValue);
+      ) as _i18.TenantIdValue);
 
   @override
-  _i18.ProfileTypeRegistry get profileTypeRegistry => (super.noSuchMethod(
+  _i19.ProfileTypeRegistry get profileTypeRegistry => (super.noSuchMethod(
         Invocation.getter(#profileTypeRegistry),
-        returnValue: _FakeProfileTypeRegistry_30(
+        returnValue: _FakeProfileTypeRegistry_31(
           this,
           Invocation.getter(#profileTypeRegistry),
         ),
-        returnValueForMissingStub: _FakeProfileTypeRegistry_30(
+        returnValueForMissingStub: _FakeProfileTypeRegistry_31(
           this,
           Invocation.getter(#profileTypeRegistry),
         ),
-      ) as _i18.ProfileTypeRegistry);
+      ) as _i19.ProfileTypeRegistry);
 
   @override
-  _i19.DomainValue get mainDomainValue => (super.noSuchMethod(
+  _i20.DomainValue get mainDomainValue => (super.noSuchMethod(
         Invocation.getter(#mainDomainValue),
-        returnValue: _FakeDomainValue_31(
+        returnValue: _FakeDomainValue_32(
           this,
           Invocation.getter(#mainDomainValue),
         ),
-        returnValueForMissingStub: _FakeDomainValue_31(
+        returnValueForMissingStub: _FakeDomainValue_32(
           this,
           Invocation.getter(#mainDomainValue),
         ),
-      ) as _i19.DomainValue);
+      ) as _i20.DomainValue);
 
   @override
-  List<_i19.DomainValue> get domains => (super.noSuchMethod(
+  List<_i20.DomainValue> get domains => (super.noSuchMethod(
         Invocation.getter(#domains),
-        returnValue: <_i19.DomainValue>[],
-        returnValueForMissingStub: <_i19.DomainValue>[],
-      ) as List<_i19.DomainValue>);
+        returnValue: <_i20.DomainValue>[],
+        returnValueForMissingStub: <_i20.DomainValue>[],
+      ) as List<_i20.DomainValue>);
 
   @override
-  _i20.TelemetrySettings get telemetrySettings => (super.noSuchMethod(
+  _i21.TelemetrySettings get telemetrySettings => (super.noSuchMethod(
         Invocation.getter(#telemetrySettings),
-        returnValue: _FakeTelemetrySettings_32(
+        returnValue: _FakeTelemetrySettings_33(
           this,
           Invocation.getter(#telemetrySettings),
         ),
-        returnValueForMissingStub: _FakeTelemetrySettings_32(
+        returnValueForMissingStub: _FakeTelemetrySettings_33(
           this,
           Invocation.getter(#telemetrySettings),
         ),
-      ) as _i20.TelemetrySettings);
+      ) as _i21.TelemetrySettings);
 
   @override
-  _i21.TelemetryContextSettings get telemetryContextSettings =>
+  _i22.TelemetryContextSettings get telemetryContextSettings =>
       (super.noSuchMethod(
         Invocation.getter(#telemetryContextSettings),
-        returnValue: _FakeTelemetryContextSettings_33(
+        returnValue: _FakeTelemetryContextSettings_34(
           this,
           Invocation.getter(#telemetryContextSettings),
         ),
-        returnValueForMissingStub: _FakeTelemetryContextSettings_33(
+        returnValueForMissingStub: _FakeTelemetryContextSettings_34(
           this,
           Invocation.getter(#telemetryContextSettings),
         ),
-      ) as _i21.TelemetryContextSettings);
+      ) as _i22.TelemetryContextSettings);
 
   @override
-  _i22.DistanceInMetersValue get mapRadiusMinMetersValue => (super.noSuchMethod(
+  _i9.DistanceInMetersValue get mapRadiusMinMetersValue => (super.noSuchMethod(
         Invocation.getter(#mapRadiusMinMetersValue),
-        returnValue: _FakeDistanceInMetersValue_34(
+        returnValue: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusMinMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusMinMetersValue),
         ),
-      ) as _i22.DistanceInMetersValue);
+      ) as _i9.DistanceInMetersValue);
 
   @override
-  _i22.DistanceInMetersValue get mapRadiusDefaultMetersValue =>
+  _i9.DistanceInMetersValue get mapRadiusDefaultMetersValue =>
       (super.noSuchMethod(
         Invocation.getter(#mapRadiusDefaultMetersValue),
-        returnValue: _FakeDistanceInMetersValue_34(
+        returnValue: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusDefaultMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusDefaultMetersValue),
         ),
-      ) as _i22.DistanceInMetersValue);
+      ) as _i9.DistanceInMetersValue);
 
   @override
-  _i22.DistanceInMetersValue get mapRadiusMaxMetersValue => (super.noSuchMethod(
+  _i9.DistanceInMetersValue get mapRadiusMaxMetersValue => (super.noSuchMethod(
         Invocation.getter(#mapRadiusMaxMetersValue),
-        returnValue: _FakeDistanceInMetersValue_34(
+        returnValue: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusMaxMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_21(
           this,
           Invocation.getter(#mapRadiusMaxMetersValue),
         ),
-      ) as _i22.DistanceInMetersValue);
+      ) as _i9.DistanceInMetersValue);
 
   @override
   _i23.AppDataMapFilterCatalogKeysValue get mapFilterCatalogKeysValue =>
@@ -2541,20 +2575,20 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
       ) as _i26.MainLogoUrlValue);
 
   @override
-  _i40.PlatformType get appType => (super.noSuchMethod(
+  _i42.PlatformType get appType => (super.noSuchMethod(
         Invocation.getter(#appType),
-        returnValue: _i40.PlatformType.web,
-        returnValueForMissingStub: _i40.PlatformType.web,
-      ) as _i40.PlatformType);
+        returnValue: _i42.PlatformType.web,
+        returnValueForMissingStub: _i42.PlatformType.web,
+      ) as _i42.PlatformType);
 
   @override
   String get hostname => (super.noSuchMethod(
         Invocation.getter(#hostname),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
@@ -2563,11 +2597,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   String get href => (super.noSuchMethod(
         Invocation.getter(#href),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
@@ -2576,11 +2610,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   String get device => (super.noSuchMethod(
         Invocation.getter(#device),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
@@ -2608,22 +2642,29 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
       ) as double);
 
   @override
-  List<String> get mapFilterCatalogKeys => (super.noSuchMethod(
+  _i23.AppDataMapFilterCatalogKeysValue get mapFilterCatalogKeys =>
+      (super.noSuchMethod(
         Invocation.getter(#mapFilterCatalogKeys),
-        returnValue: <String>[],
-        returnValueForMissingStub: <String>[],
-      ) as List<String>);
+        returnValue: _FakeAppDataMapFilterCatalogKeysValue_35(
+          this,
+          Invocation.getter(#mapFilterCatalogKeys),
+        ),
+        returnValueForMissingStub: _FakeAppDataMapFilterCatalogKeysValue_35(
+          this,
+          Invocation.getter(#mapFilterCatalogKeys),
+        ),
+      ) as _i23.AppDataMapFilterCatalogKeysValue);
 
   @override
-  _i24.IconUrlValue get iconUrl => (super.noSuchMethod(
-        Invocation.getter(#iconUrl),
+  _i24.IconUrlValue get iconMUrl => (super.noSuchMethod(
+        Invocation.getter(#iconMUrl),
         returnValue: _FakeIconUrlValue_36(
           this,
-          Invocation.getter(#iconUrl),
+          Invocation.getter(#iconMUrl),
         ),
         returnValueForMissingStub: _FakeIconUrlValue_36(
           this,
-          Invocation.getter(#iconUrl),
+          Invocation.getter(#iconMUrl),
         ),
       ) as _i24.IconUrlValue);
 
@@ -2643,11 +2684,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   String get schema => (super.noSuchMethod(
         Invocation.getter(#schema),
-        returnValue: _i35.dummyValue<String>(
+        returnValue: _i36.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),
-        returnValueForMissingStub: _i35.dummyValue<String>(
+        returnValueForMissingStub: _i36.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),
