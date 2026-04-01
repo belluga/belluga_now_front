@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
@@ -11,9 +12,11 @@ class LocationPermissionScreen extends StatefulWidget {
   const LocationPermissionScreen({
     super.key,
     required this.initialState,
+    this.allowContinueWithoutLocation = true,
   });
 
   final LocationPermissionState initialState;
+  final bool allowContinueWithoutLocation;
 
   @override
   State<LocationPermissionScreen> createState() =>
@@ -26,97 +29,162 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = switch (widget.initialState) {
-      LocationPermissionState.serviceDisabled => 'Ative a localização',
-      LocationPermissionState.denied => 'Permita a localização',
-      LocationPermissionState.deniedForever => 'Permissão necessária',
-    };
-
-    final description = switch (widget.initialState) {
-      LocationPermissionState.serviceDisabled =>
-        'Para encontrar locais e endereços próximos, precisamos que os serviços de localização do seu aparelho estejam ativos.',
-      LocationPermissionState.denied =>
-        'Para mostrar locais próximos e ordenar por distância, precisamos da sua permissão de localização.',
-      LocationPermissionState.deniedForever => kIsWeb
-          ? 'A localização foi bloqueada no navegador. Para liberar novamente, abra as permissões do site no navegador e permita Localização.'
-          : 'A permissão de localização foi negada permanentemente. Abra as configurações do app para permitir e voltar ao mapa.',
-    };
-
     final primaryLabel = switch (widget.initialState) {
-      LocationPermissionState.serviceDisabled => 'Ativar serviços',
+      LocationPermissionState.serviceDisabled => 'Ativar localização',
       LocationPermissionState.denied => 'Permitir localização',
       LocationPermissionState.deniedForever =>
         kIsWeb ? 'Tentar novamente' : 'Abrir configurações',
     };
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
     return StreamValueBuilder<bool?>(
       streamValue: _controller.resultStreamValue,
       builder: (context, result) {
         _handleResult(result);
         return Scaffold(
-          appBar: AppBar(
-            title: Text(title),
-            automaticallyImplyLeading: false,
-          ),
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
+                  _TopBar(onBackPressed: _onBackPressed),
                   const SizedBox(height: 12),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final content = ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: widget.initialState ==
+                                  LocationPermissionState.deniedForever
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _TitleBlock(
+                                      textTheme: textTheme,
+                                      colorScheme: colorScheme,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    _HeroCard(
+                                      colorScheme: colorScheme,
+                                      textTheme: textTheme,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme
+                                            .surfaceContainerHighest,
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Como liberar:',
+                                            style: textTheme.titleMedium
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          ..._deniedForeverSteps().map(
+                                            (step) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 6,
+                                              ),
+                                              child: Text(
+                                                step,
+                                                style: textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                  height: 1.35,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : SizedBox(
+                                  height: constraints.maxHeight,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      _TitleBlock(
+                                        textTheme: textTheme,
+                                        colorScheme: colorScheme,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Expanded(
+                                        child: Center(
+                                          child: _HeroCard(
+                                            colorScheme: colorScheme,
+                                            textTheme: textTheme,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        );
+
+                        if (widget.initialState ==
+                            LocationPermissionState.deniedForever) {
+                          return SingleChildScrollView(
+                            child: Center(child: content),
+                          );
+                        }
+
+                        return Center(child: content);
+                      },
+                    ),
                   ),
-                  if (widget.initialState ==
-                      LocationPermissionState.deniedForever) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            'Como liberar:',
-                            style: Theme.of(context).textTheme.titleMedium,
+                          StreamValueBuilder(
+                            streamValue: _controller.loading,
+                            builder: (context, isLoading) {
+                              return ButtonLoading(
+                                label: primaryLabel,
+                                isLoading: isLoading,
+                                onPressed: _onPrimaryPressed,
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(56),
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary,
+                                  shape: const StadiumBorder(),
+                                  elevation: 0,
+                                ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 8),
-                          ..._deniedForeverSteps().map(
-                            (step) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Text(step),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _onSecondaryPressed,
+                            child: Text(
+                              widget.allowContinueWithoutLocation
+                                  ? 'Continuar sem localização'
+                                  : 'Agora não',
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                  const Spacer(),
-                  StreamValueBuilder(
-                    streamValue: _controller.loading,
-                    builder: (context, isLoading) {
-                      return ButtonLoading(
-                        label: primaryLabel,
-                        isLoading: isLoading,
-                        onPressed: _onPrimaryPressed,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _onNotNowPressed,
-                    child: const Text('Agora não'),
                   ),
                 ],
               ),
@@ -131,16 +199,35 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     _controller.requestPermission(initialState: widget.initialState);
   }
 
-  void _onNotNowPressed() {
-    context.router.pop(false);
+  Future<void> _onBackPressed() async {
+    final router = context.router;
+    if (router.canPop()) {
+      router.pop(false);
+      return;
+    }
+    router.replace(const TenantHomeRoute());
+  }
+
+  Future<void> _onSecondaryPressed() async {
+    final router = context.router;
+    if (router.canPop()) {
+      router.pop(widget.allowContinueWithoutLocation);
+      return;
+    }
+    router.replace(const TenantHomeRoute());
   }
 
   void _handleResult(bool? result) {
     if (result == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (result == true) {
-        context.router.pop(true);
         _controller.clearResult();
+        final router = context.router;
+        if (router.canPop()) {
+          router.pop(true);
+          return;
+        }
+        router.replace(const TenantHomeRoute());
         return;
       }
 
@@ -170,5 +257,224 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       '3. Escolha Permitir durante o uso do app.',
       '4. Volte para o app e tente novamente.',
     ];
+  }
+}
+
+class _TitleBlock extends StatelessWidget {
+  const _TitleBlock({
+    required this.textTheme,
+    required this.colorScheme,
+  });
+
+  final TextTheme textTheme;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Veja o que está perto de você',
+          style: textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            height: 1.05,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Ative sua localização para mostrar eventos e lugares mais relevantes próximos de você.',
+          style: textTheme.bodyLarge?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.onBackPressed,
+  });
+
+  final VoidCallback onBackPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBackPressed,
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Voltar',
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              'PERMISSÃO',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.3,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 48),
+      ],
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.colorScheme,
+    required this.textTheme,
+  });
+
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colorScheme.surfaceContainerHigh,
+            colorScheme.surfaceContainer,
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: CustomPaint(
+                painter: _HeroPatternPainter(
+                  strokeColor: colorScheme.onSurface.withAlpha(18),
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: const Alignment(0, -0.1),
+            child: Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colorScheme.primaryContainer,
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withAlpha(46),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.location_on_rounded,
+                size: 42,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colorScheme.secondaryContainer,
+                    ),
+                    child: Icon(
+                      Icons.restaurant_menu_rounded,
+                      size: 20,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'MAIS PRÓXIMO',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Eventos e Gastronomia • 400m',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroPatternPainter extends CustomPainter {
+  _HeroPatternPainter({
+    required this.strokeColor,
+  });
+
+  final Color strokeColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = strokeColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    const spacing = 28.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HeroPatternPainter oldDelegate) {
+    return oldDelegate.strokeColor != strokeColor;
   }
 }

@@ -118,6 +118,63 @@ void main() {
       expect(controller.radiusMetersStreamValue.value, 6000);
     },
   );
+
+  testWidgets(
+    'keeps confirm button inside bottom safe area on constrained mobile viewport',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeAgendaAppBarController();
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(430, 900),
+            padding: EdgeInsets.only(bottom: 32),
+            viewPadding: EdgeInsets.only(bottom: 32),
+          ),
+          child: StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: Scaffold(
+                appBar: PreferredSize(
+                  preferredSize: const Size.fromHeight(kToolbarHeight),
+                  child: AgendaAppBar(
+                    controller: controller,
+                    actions: const AgendaAppBarActions(
+                      radiusSheetPresentation: AgendaRadiusSheetPresentation(
+                        title: 'Distância Máxima',
+                        description:
+                            'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
+                        helperText:
+                            'Você pode alterar essa preferência quando quiser.',
+                        confirmButtonLabel: 'Confirmar raio',
+                      ),
+                    ),
+                  ),
+                ),
+                body: const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.radar));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      final buttonRect = tester.getRect(
+        find.widgetWithText(FilledButton, 'Confirmar raio'),
+      );
+      expect(buttonRect.bottom, lessThanOrEqualTo(900 - 32));
+    },
+  );
 }
 
 class _FakeAgendaAppBarController implements AgendaAppBarController {

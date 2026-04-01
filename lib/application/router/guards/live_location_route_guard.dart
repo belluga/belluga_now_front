@@ -16,7 +16,10 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
     }
 
     final granted = await router.push<bool>(
-      LocationPermissionRoute(initialState: blocker),
+      LocationPermissionRoute(
+        initialState: blocker,
+        allowContinueWithoutLocation: false,
+      ),
     );
     resolver.next(granted == true);
   }

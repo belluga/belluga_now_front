@@ -19,28 +19,17 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
     final locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
     await locationRepository.ensureLoaded();
 
-    final cached = locationRepository.lastKnownLocationStreamValue.value;
-
     final blocker = await _currentBlocker();
     if (blocker == null) {
       resolver.next(true);
       return;
     }
 
-    if (cached != null) {
-      final proceed = await router.push<bool>(
-        LocationNotLiveRoute(
-          blockerState: blocker,
-          addressLabel: locationRepository.lastKnownAddressStreamValue.value,
-          capturedAt: locationRepository.lastKnownCapturedAtStreamValue.value,
-        ),
-      );
-      resolver.next(proceed == true);
-      return;
-    }
-
     final granted = await router.push<bool>(
-      LocationPermissionRoute(initialState: blocker),
+      LocationPermissionRoute(
+        initialState: blocker,
+        allowContinueWithoutLocation: true,
+      ),
     );
     resolver.next(granted == true);
   }

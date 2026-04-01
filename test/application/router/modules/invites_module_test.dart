@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,11 +31,11 @@ void main() {
 
     expect(
       flowRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [TenantRouteGuard],
+      [TenantRouteGuard, WebAnonymousFallbackGuard],
     );
     expect(
       inviteAliasRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [TenantRouteGuard],
+      [TenantRouteGuard, WebAnonymousFallbackGuard],
     );
     expect(
       shareRoute.guards.map((guard) => guard.runtimeType).toList(),
@@ -49,6 +50,48 @@ void main() {
 
     expect(inviteRoute, isNot(isA<RedirectRoute>()));
   });
+
+  test('anonymous invite preview allowance requires a non-empty code', () {
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(
+          fullPath: '/convites',
+          queryParams: const {'code': 'ABC123'},
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(fullPath: '/convites'),
+      ),
+      isFalse,
+    );
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(
+          fullPath: '/invite',
+          queryParams: const {'code': '   '},
+        ),
+      ),
+      isFalse,
+    );
+  });
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const {},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  final String fullPath;
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract {

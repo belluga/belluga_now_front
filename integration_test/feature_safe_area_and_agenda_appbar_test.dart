@@ -23,7 +23,6 @@ import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/a
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
-import 'package:belluga_now/presentation/shared/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
@@ -71,7 +70,8 @@ void main() {
     expect(scaffold.body, isA<SafeArea>());
   });
 
-  testWidgets('LocationNotLiveScreen uses SafeArea', (tester) async {
+  testWidgets('LocationPermissionScreen keeps SafeArea in live-only mode',
+      (tester) async {
     final getIt = GetIt.I;
     if (getIt.isRegistered<LocationPermissionController>()) {
       getIt.unregister<LocationPermissionController>();
@@ -86,10 +86,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: LocationNotLiveScreen(
-          blockerState: LocationPermissionState.denied,
-          addressLabel: null,
-          capturedAt: null,
+        home: LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+          allowContinueWithoutLocation: false,
         ),
       ),
     );

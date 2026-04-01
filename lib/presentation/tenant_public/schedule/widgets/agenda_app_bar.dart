@@ -215,10 +215,12 @@ class AgendaAppBar extends StatelessWidget {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          child: StatefulBuilder(
+        return StatefulBuilder(
             builder: (context, setModalState) {
+              final bottomSafeArea =
+                  MediaQuery.viewPaddingOf(context).bottom;
               final currentLabel = draftRadiusKm.toStringAsFixed(0);
               final requiresExplicitConfirmation =
                   presentation?.requiresExplicitConfirmation ?? false;
@@ -228,7 +230,12 @@ class AgendaAppBar extends StatelessWidget {
               if (requiresExplicitConfirmation && presentation != null) {
                 return SingleChildScrollView(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      8,
+                      24,
+                      24 + bottomSafeArea,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -381,7 +388,12 @@ class AgendaAppBar extends StatelessWidget {
 
               return SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    24 + bottomSafeArea,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -460,8 +472,7 @@ class AgendaAppBar extends StatelessWidget {
                 ),
               );
             },
-          ),
-        );
+          );
       },
     );
   }

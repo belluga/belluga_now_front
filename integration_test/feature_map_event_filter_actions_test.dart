@@ -25,7 +25,6 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_back
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
-import 'package:belluga_now/presentation/shared/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
@@ -117,15 +116,13 @@ void main() {
   Future<void> _dismissLocationGateIfNeeded(WidgetTester tester) async {
     final permissionScreen = find.byType(LocationPermissionScreen);
     if (await _waitForMaybeFinder(tester, permissionScreen)) {
-      final allowButton = find.byType(ButtonLoading);
-      await tester.tap(allowButton.first);
-      await _pumpFor(tester, const Duration(seconds: 1));
-    }
-
-    final notLiveScreen = find.byType(LocationNotLiveScreen);
-    if (await _waitForMaybeFinder(tester, notLiveScreen)) {
-      final continueButton = find.byType(TextButton);
-      await tester.tap(continueButton.first);
+      final continueButton = find.text('Continuar sem localização');
+      if (continueButton.evaluate().isNotEmpty) {
+        await tester.tap(continueButton.first);
+      } else {
+        final allowButton = find.byType(ButtonLoading);
+        await tester.tap(allowButton.first);
+      }
       await _pumpFor(tester, const Duration(seconds: 1));
     }
   }

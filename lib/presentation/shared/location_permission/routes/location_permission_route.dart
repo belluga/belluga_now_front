@@ -10,9 +10,11 @@ class LocationPermissionRoutePage extends StatelessWidget {
   const LocationPermissionRoutePage({
     super.key,
     this.initialState,
+    this.allowContinueWithoutLocation = true,
   });
 
   final LocationPermissionState? initialState;
+  final bool allowContinueWithoutLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +22,7 @@ class LocationPermissionRoutePage extends StatelessWidget {
     return ModuleScope<InitializationModule>(
       child: LocationPermissionScreen(
         initialState: resolvedInitialState,
+        allowContinueWithoutLocation: allowContinueWithoutLocation,
       ),
     );
   }
