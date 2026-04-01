@@ -158,14 +158,15 @@ if [[ "$analyze_status" -ne 0 && "$analyze_status" -ne 2 && "$analyze_status" -n
   exit "$analyze_status"
 fi
 
-if rg -q "plugin.*crash|Failed to start plugin|Unhandled exception.*plugin" "$output_file"; then
+if grep -Eiq "plugin.*crash|Failed to start plugin|Unhandled exception.*plugin" "$output_file"; then
   echo "[validate_rule_matrix] analyzer plugin runtime error detected"
   sed -n '1,200p' "$output_file"
   exit 1
 fi
 
-rg --no-filename "expect_lint:\\s*([a-z0-9_,\\s]+)" -or '$1' \
-  "$fixture_dir/lib" "$fixture_dir/integration_test" -g '*.dart' |
+grep -RhoE --include='*.dart' 'expect_lint:[[:space:]]*[a-z0-9_,[:space:]]+' \
+  "$fixture_dir/lib" "$fixture_dir/integration_test" |
+  sed -E 's/.*expect_lint:[[:space:]]*//' |
   tr ',' '\n' |
   tr -d ' ' |
   sed '/^$/d' |
