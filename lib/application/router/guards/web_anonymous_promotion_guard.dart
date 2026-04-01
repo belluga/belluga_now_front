@@ -29,5 +29,6 @@ class WebAnonymousPromotionGuard extends AutoRouteGuard {
         redirectPath: redirectPath,
       ),
     );
+    resolver.next(false);
   }
 }

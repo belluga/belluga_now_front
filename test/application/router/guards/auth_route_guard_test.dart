@@ -68,6 +68,7 @@ void main() {
       captured.rawQueryParams['redirect'],
       '/convites?code=31F8RN5QJ9',
     );
+    expect(resolver.nextCalls, [false]);
   });
 
   test('redirects unauthorized web user to promotion route preserving redirect',
@@ -96,6 +97,7 @@ void main() {
       captured.rawQueryParams['redirect'],
       '/profile?tab=settings',
     );
+    expect(resolver.nextCalls, [false]);
   });
 
   test('normalizes path when route fullPath does not include leading slash',
@@ -124,6 +126,7 @@ void main() {
       captured.rawQueryParams['redirect'],
       '/convites?code=ABC123',
     );
+    expect(resolver.nextCalls, [false]);
   });
 
   test('tracks auth wall telemetry for send-invite guard interception',
@@ -161,6 +164,7 @@ void main() {
       trackedEvent.properties?['redirect_path'],
       '/convites/compartilhar',
     );
+    expect(resolver.nextCalls, [false]);
   });
 }
 

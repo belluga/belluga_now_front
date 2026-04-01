@@ -44,6 +44,7 @@ class AuthRouteGuard extends AutoRouteGuard {
           ),
         );
       }
+      resolver.next(false);
     }
   }
 }

@@ -38,7 +38,7 @@ void main() {
 
     guard.onNavigation(resolver, router);
 
-    expect(resolver.nextCalls, isEmpty);
+    expect(resolver.nextCalls, [false]);
     expect(resolver.redirectedRoute, isA<AppPromotionRoute>());
     expect(
       resolver.redirectedRoute!.rawQueryParams['redirect'],
