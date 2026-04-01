@@ -1,6 +1,11 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -36,17 +41,35 @@ class AppDataRepository implements AppDataRepositoryContract {
       defaultValue: 50000,
     ),
   );
+  @override
+  final StreamValue<HomeLocationOriginSettings?>
+      homeLocationOriginSettingsStreamValue =
+      StreamValue<HomeLocationOriginSettings?>(defaultValue: null);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
+  static const String _homeUseLiveLocationStorageKey = 'home_use_live_location';
+  static const String _homeLocationOriginReasonStorageKey =
+      'home_location_origin_reason';
+  static const String _homeFixedLocationReferenceLatStorageKey =
+      'home_fixed_location_reference_lat';
+  static const String _homeFixedLocationReferenceLngStorageKey =
+      'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   bool _hasPersistedMaxRadiusPreference = false;
+  bool _hasPersistedHomeLocationOriginPreference = false;
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
   @override
+  HomeLocationOriginSettings? get homeLocationOriginSettings =>
+      homeLocationOriginSettingsStreamValue.value;
+  @override
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
+  @override
+  bool get hasPersistedHomeLocationOriginPreference =>
+      _hasPersistedHomeLocationOriginPreference;
 
   @override
   Future<void> init() async {
@@ -76,6 +99,15 @@ class AppDataRepository implements AppDataRepositoryContract {
       _hasPersistedMaxRadiusPreference = true;
     } else {
       _hasPersistedMaxRadiusPreference = false;
+    }
+    final storedHomeLocationOriginSettings =
+        await _loadHomeLocationOriginSettings();
+    if (storedHomeLocationOriginSettings != null) {
+      homeLocationOriginSettingsStreamValue
+          .addValue(storedHomeLocationOriginSettings);
+      _hasPersistedHomeLocationOriginPreference = true;
+    } else {
+      _hasPersistedHomeLocationOriginPreference = false;
     }
     await _precacheLogos();
     await _persistRuntimeMetadata();
@@ -114,12 +146,94 @@ class AppDataRepository implements AppDataRepositoryContract {
     );
   }
 
+  @override
+  Future<void> setHomeLocationOriginSettings(
+    HomeLocationOriginSettings settings,
+  ) async {
+    final current = homeLocationOriginSettingsStreamValue.value;
+    if (current != null && current.sameAs(settings)) {
+      return;
+    }
+
+    homeLocationOriginSettingsStreamValue.addValue(settings);
+    _hasPersistedHomeLocationOriginPreference = true;
+    await _storage.write(
+      key: _homeUseLiveLocationStorageKey,
+      value: settings.usesLiveLocation.toString(),
+    );
+    await _storage.write(
+      key: _homeLocationOriginReasonStorageKey,
+      value: settings.reason.name,
+    );
+
+    final fixedReference = settings.fixedLocationReference;
+    if (fixedReference == null) {
+      await _storage.delete(key: _homeFixedLocationReferenceLatStorageKey);
+      await _storage.delete(key: _homeFixedLocationReferenceLngStorageKey);
+      return;
+    }
+
+    await _storage.write(
+      key: _homeFixedLocationReferenceLatStorageKey,
+      value: fixedReference.latitude.toString(),
+    );
+    await _storage.write(
+      key: _homeFixedLocationReferenceLngStorageKey,
+      value: fixedReference.longitude.toString(),
+    );
+  }
+
   Future<double?> _loadMaxRadiusMeters() async {
     final stored = await _storage.read(key: _maxRadiusStorageKey);
     if (stored == null || stored.trim().isEmpty) return null;
     final parsed = double.tryParse(stored);
     if (parsed == null || parsed <= 0) return null;
     return parsed;
+  }
+
+  Future<HomeLocationOriginSettings?> _loadHomeLocationOriginSettings() async {
+    final rawUseLive = await _storage.read(key: _homeUseLiveLocationStorageKey);
+    if (rawUseLive == null || rawUseLive.trim().isEmpty) {
+      return null;
+    }
+
+    final usesLiveLocation = rawUseLive.trim().toLowerCase() == 'true';
+    if (usesLiveLocation) {
+      return HomeLocationOriginSettings.live();
+    }
+
+    final rawLat = await _storage.read(
+      key: _homeFixedLocationReferenceLatStorageKey,
+    );
+    final rawLng = await _storage.read(
+      key: _homeFixedLocationReferenceLngStorageKey,
+    );
+    if (rawLat == null || rawLng == null) {
+      return null;
+    }
+
+    final lat = double.tryParse(rawLat);
+    final lng = double.tryParse(rawLng);
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    final reasonRaw = await _storage.read(
+      key: _homeLocationOriginReasonStorageKey,
+    );
+    final reason = switch (reasonRaw?.trim()) {
+      'outsideRange' => HomeLocationOriginReason.outsideRange,
+      'unavailable' => HomeLocationOriginReason.unavailable,
+      _ => HomeLocationOriginReason.unavailable,
+    };
+
+    return HomeLocationOriginSettings.fixed(
+      fixedLocationReference: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse(lat.toString()),
+        longitudeValue: LongitudeValue()..parse(lng.toString()),
+      ),
+      reason: reason,
+    );
   }
 
   ThemeMode _resolveInitialThemeMode() =>

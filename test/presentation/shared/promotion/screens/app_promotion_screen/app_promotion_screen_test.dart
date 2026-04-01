@@ -197,7 +197,7 @@ Widget _buildWidget({
 
 class _RecordingStackRouter extends Mock implements StackRouter {}
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required String appName,
     required Uri mainDomain,

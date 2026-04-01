@@ -81,7 +81,7 @@ void main() {
   });
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required String hostname,
     required EnvironmentType environmentType,

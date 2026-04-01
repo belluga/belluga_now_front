@@ -154,7 +154,7 @@ class _FakeAppData extends Fake implements AppData {
   MainColorValue get mainColor => MainColorValue()..parse('#112233');
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository()
       : _appData = _FakeAppData(),
         themeModeStreamValue =

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/home_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/home_my_events_carousel.dart';
@@ -48,10 +49,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               return NestedScrollView(
                 controller: _controller.scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  StreamValueBuilder<String>(
-                    streamValue: _controller.userAddressStreamValue,
+                  StreamValueBuilder<HomeLocationStatusState?>(
+                    streamValue: _controller.homeLocationStatusStreamValue,
                     onNullWidget: _buildHomeAppBar(null),
-                    builder: (context, address) => _buildHomeAppBar(address),
+                    builder: (context, status) => _buildHomeAppBar(status),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
@@ -103,10 +104,32 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  Widget _buildHomeAppBar(String? address) {
+  Widget _buildHomeAppBar(HomeLocationStatusState? status) {
     return HomeAppBar(
       appData: _controller.appData,
-      userAddress: address,
+      locationStatus: status,
+      onLocationStatusTap: () => _showHomeLocationOriginDialog(status),
+    );
+  }
+
+  Future<void> _showHomeLocationOriginDialog(
+    HomeLocationStatusState? status,
+  ) async {
+    if (status == null) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(status.dialogTitle),
+        content: Text(status.dialogMessage),
+        actions: [
+          TextButton(
+            onPressed: () => context.router.maybePop(),
+            child: const Text('Entendi'),
+          ),
+        ],
+      ),
     );
   }
 

@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -103,6 +106,87 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'seeds initial radius from distance to tenant origin when no preference exists',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 50,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final userCoordinate = CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.850000'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        );
+        final expectedMeters = haversineDistanceMeters(
+          coordinateA: userCoordinate,
+          coordinateB: appData.tenantDefaultOrigin!,
+        ).value;
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(userCoordinate);
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(
+          controller.radiusMetersStreamValue.value,
+          closeTo(expectedMeters, 0.001),
+        );
+        expect(
+          appDataRepository.maxRadiusMeters.value,
+          closeTo(expectedMeters, 0.001),
+        );
+        expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'seeds initial radius to tenant max when user is farther than tenant max and no preference exists',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-23.550520'),
+              longitudeValue: LongitudeValue()..parse('-46.633308'),
+            ),
+          );
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(controller.radiusMetersStreamValue.value, 10000);
+        expect(appDataRepository.maxRadiusMeters.value, 10000);
+        expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
 
     test('clamps radius updates to tenant bounds and reacts to max changes',
         () async {
@@ -632,9 +716,253 @@ void main() {
       expect(scheduleRepository.getEventsPageCallCount, 1);
       expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
       expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+      expect(
+        appDataRepository.homeLocationOriginSettings?.usesFixedReference,
+        isTrue,
+      );
+      expect(
+        appDataRepository.homeLocationOriginSettings?.reason,
+        HomeLocationOriginReason.unavailable,
+      );
 
       controller.onDispose();
     });
+
+    test(
+      'uses live user location and persists live mode when within tenant max radius of tenant origin',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.675000'),
+              longitudeValue: LongitudeValue()..parse('-40.500000'),
+            ),
+          );
+
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.675000, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.500000, 0.000001));
+        expect(appDataRepository.setHomeLocationOriginSettingsCallCount, 1);
+        expect(
+          appDataRepository.homeLocationOriginSettings?.usesLiveLocation,
+          isTrue,
+        );
+        expect(
+          appDataRepository.homeLocationOriginSettings?.fixedLocationReference,
+          isNull,
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'uses tenant default origin and persists fixed reference when user is outside tenant max radius',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-23.550520'),
+              longitudeValue: LongitudeValue()..parse('-46.633308'),
+            ),
+          );
+
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+        expect(appDataRepository.setHomeLocationOriginSettingsCallCount, 1);
+        expect(
+          appDataRepository.homeLocationOriginSettings?.usesFixedReference,
+          isTrue,
+        );
+        expect(
+          appDataRepository.homeLocationOriginSettings?.reason,
+          HomeLocationOriginReason.outsideRange,
+        );
+        expect(
+          appDataRepository.homeLocationOriginSettings?.fixedLocationReference
+              ?.latitude,
+          closeTo(-20.671339, 0.000001),
+        );
+        expect(
+          appDataRepository.homeLocationOriginSettings?.fixedLocationReference
+              ?.longitude,
+          closeTo(-40.495395, 0.000001),
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'uses tenant max radius as the boundary instead of a fixed 50km rule',
+      () async {
+        final userCoordinate = CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.850000'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        );
+
+        final withinTenantMaxRepository = _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 30,
+          ),
+        );
+        final withinTenantMaxScheduleRepository = _FakeScheduleRepository();
+        final withinTenantMaxLocationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(userCoordinate);
+
+        final withinTenantMaxController = TenantHomeAgendaController(
+          scheduleRepository: withinTenantMaxScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: withinTenantMaxLocationRepository,
+          appDataRepository: withinTenantMaxRepository,
+        );
+
+        await withinTenantMaxController.init();
+
+        expect(
+          withinTenantMaxScheduleRepository.lastOriginLat,
+          closeTo(-20.850000, 0.000001),
+        );
+        expect(
+          withinTenantMaxScheduleRepository.lastOriginLng,
+          closeTo(-40.495395, 0.000001),
+        );
+        expect(
+          withinTenantMaxRepository.homeLocationOriginSettings?.usesLiveLocation,
+          isTrue,
+        );
+
+        withinTenantMaxController.onDispose();
+
+        final outsideTenantMaxRepository = _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        );
+        final outsideTenantMaxScheduleRepository = _FakeScheduleRepository();
+        final outsideTenantMaxLocationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(userCoordinate);
+
+        final outsideTenantMaxController = TenantHomeAgendaController(
+          scheduleRepository: outsideTenantMaxScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: outsideTenantMaxLocationRepository,
+          appDataRepository: outsideTenantMaxRepository,
+        );
+
+        await outsideTenantMaxController.init();
+
+        expect(
+          outsideTenantMaxScheduleRepository.lastOriginLat,
+          closeTo(-20.671339, 0.000001),
+        );
+        expect(
+          outsideTenantMaxScheduleRepository.lastOriginLng,
+          closeTo(-40.495395, 0.000001),
+        );
+        expect(
+          outsideTenantMaxRepository
+              .homeLocationOriginSettings?.usesFixedReference,
+          isTrue,
+        );
+        expect(
+          outsideTenantMaxRepository.homeLocationOriginSettings?.reason,
+          HomeLocationOriginReason.outsideRange,
+        );
+
+        outsideTenantMaxController.onDispose();
+      },
+    );
+
+    test(
+      'reuses cached fixed reference origin across controller instances after outside-range classification',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final sharedScheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-23.550520'),
+              longitudeValue: LongitudeValue()..parse('-46.633308'),
+            ),
+          );
+
+        final firstController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await firstController.init();
+        expect(sharedScheduleRepository.getEventsPageCallCount, 1);
+        firstController.onDispose();
+
+        final secondController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await secondController.init();
+
+        expect(
+          sharedScheduleRepository.getEventsPageCallCount,
+          1,
+          reason:
+              'Persisted fixed-reference mode must hydrate the same Home cache on re-entry.',
+        );
+
+        secondController.onDispose();
+      },
+    );
 
     test('uses tenant default origin when cached user location is stale',
         () async {
@@ -1171,7 +1499,7 @@ AppData _buildAppData({
       remoteData: remoteData, localInfo: localInfo);
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(
     this._appData, {
     double? initialMaxRadiusMeters,
@@ -1187,6 +1515,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   final AppData _appData;
   bool _hasPersistedMaxRadiusPreference;
   int setMaxRadiusMetersCallCount = 0;
+  int setHomeLocationOriginSettingsCallCount = 0;
 
   @override
   AppData get appData => _appData;
@@ -1217,6 +1546,18 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
     setMaxRadiusMetersCallCount += 1;
     _hasPersistedMaxRadiusPreference = true;
     maxRadiusMetersStreamValue.addValue(meters);
+  }
+
+  @override
+  Future<void> setHomeLocationOriginSettings(
+    HomeLocationOriginSettings settings,
+  ) async {
+    final current = homeLocationOriginSettingsStreamValue.value;
+    if (current != null && current.sameAs(settings)) {
+      return;
+    }
+    setHomeLocationOriginSettingsCallCount += 1;
+    homeLocationOriginSettingsStreamValue.addValue(settings);
   }
 
   @override

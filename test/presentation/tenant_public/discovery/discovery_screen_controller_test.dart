@@ -1692,7 +1692,7 @@ class _PageRequest {
   final String? typeFilter;
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required AppData appData,
     required double maxRadiusMeters,

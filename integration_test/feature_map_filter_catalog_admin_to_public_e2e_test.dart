@@ -809,7 +809,7 @@ AppData _buildAppData({
   );
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;

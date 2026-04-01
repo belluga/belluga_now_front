@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,10 @@ typedef AppDataRepositoryContractPrimDateTime = DateTime;
 typedef AppDataRepositoryContractPrimDynamic = dynamic;
 
 abstract class AppDataRepositoryContract {
+  final StreamValue<HomeLocationOriginSettings?>
+      _homeLocationOriginSettingsStreamValue =
+      StreamValue<HomeLocationOriginSettings?>(defaultValue: null);
+
   AppData get appData;
 
   Future<void> init();
@@ -26,4 +31,15 @@ abstract class AppDataRepositoryContract {
   DistanceInMetersValue get maxRadiusMeters;
   bool get hasPersistedMaxRadiusPreference => false;
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters);
+
+  StreamValue<HomeLocationOriginSettings?> get homeLocationOriginSettingsStreamValue =>
+      _homeLocationOriginSettingsStreamValue;
+  HomeLocationOriginSettings? get homeLocationOriginSettings =>
+      _homeLocationOriginSettingsStreamValue.value;
+  bool get hasPersistedHomeLocationOriginPreference => false;
+  Future<void> setHomeLocationOriginSettings(
+    HomeLocationOriginSettings settings,
+  ) async {
+    _homeLocationOriginSettingsStreamValue.addValue(settings);
+  }
 }

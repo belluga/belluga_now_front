@@ -10,13 +10,15 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i64;
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart'
+    as _i69;
 import 'package:belluga_now/application/router/guards/location_permission_state.dart'
     as _i68;
 import 'package:belluga_now/domain/invites/invite_model.dart' as _i67;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart'
-    as _i69;
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
     as _i70;
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
+    as _i71;
 import 'package:belluga_now/presentation/account_workspace/routes/account_workspace_create_event_route.dart'
     as _i1;
 import 'package:belluga_now/presentation/account_workspace/routes/account_workspace_home_route.dart'
@@ -76,7 +78,7 @@ import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenan
 import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_types_list_route.dart'
     as _i40;
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart'
-    as _i71;
+    as _i72;
 import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_environment_snapshot_route.dart'
     as _i41;
 import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_local_preferences_route.dart'
@@ -737,6 +739,7 @@ class LocationPermissionRoute
     _i65.Key? key,
     _i68.LocationPermissionState? initialState,
     bool allowContinueWithoutLocation = true,
+    _i65.ValueChanged<_i69.LocationPermissionGateResult>? onResult,
     List<_i64.PageRouteInfo>? children,
   }) : super(
           LocationPermissionRoute.name,
@@ -744,6 +747,7 @@ class LocationPermissionRoute
             key: key,
             initialState: initialState,
             allowContinueWithoutLocation: allowContinueWithoutLocation,
+            onResult: onResult,
           ),
           initialChildren: children,
         );
@@ -760,6 +764,7 @@ class LocationPermissionRoute
         key: args.key,
         initialState: args.initialState,
         allowContinueWithoutLocation: args.allowContinueWithoutLocation,
+        onResult: args.onResult,
       );
     },
   );
@@ -770,6 +775,7 @@ class LocationPermissionRouteArgs {
     this.key,
     this.initialState,
     this.allowContinueWithoutLocation = true,
+    this.onResult,
   });
 
   final _i65.Key? key;
@@ -778,9 +784,11 @@ class LocationPermissionRouteArgs {
 
   final bool allowContinueWithoutLocation;
 
+  final _i65.ValueChanged<_i69.LocationPermissionGateResult>? onResult;
+
   @override
   String toString() {
-    return 'LocationPermissionRouteArgs{key: $key, initialState: $initialState, allowContinueWithoutLocation: $allowContinueWithoutLocation}';
+    return 'LocationPermissionRouteArgs{key: $key, initialState: $initialState, allowContinueWithoutLocation: $allowContinueWithoutLocation, onResult: $onResult}';
   }
 
   @override
@@ -789,14 +797,16 @@ class LocationPermissionRouteArgs {
     if (other is! LocationPermissionRouteArgs) return false;
     return key == other.key &&
         initialState == other.initialState &&
-        allowContinueWithoutLocation == other.allowContinueWithoutLocation;
+        allowContinueWithoutLocation == other.allowContinueWithoutLocation &&
+        onResult == other.onResult;
   }
 
   @override
   int get hashCode =>
       key.hashCode ^
       initialState.hashCode ^
-      allowContinueWithoutLocation.hashCode;
+      allowContinueWithoutLocation.hashCode ^
+      onResult.hashCode;
 }
 
 /// generated route for
@@ -1255,7 +1265,7 @@ class TenantAdminEventCreateRoute extends _i64.PageRouteInfo<void> {
 class TenantAdminEventEditRoute
     extends _i64.PageRouteInfo<TenantAdminEventEditRouteArgs> {
   TenantAdminEventEditRoute({
-    _i69.TenantAdminEvent? event,
+    _i70.TenantAdminEvent? event,
     _i65.Key? key,
     List<_i64.PageRouteInfo>? children,
   }) : super(
@@ -1283,7 +1293,7 @@ class TenantAdminEventEditRoute
 class TenantAdminEventEditRouteArgs {
   const TenantAdminEventEditRouteArgs({this.event, this.key});
 
-  final _i69.TenantAdminEvent? event;
+  final _i70.TenantAdminEvent? event;
 
   final _i65.Key? key;
 
@@ -1324,7 +1334,7 @@ class TenantAdminEventTypeCreateRoute extends _i64.PageRouteInfo<void> {
 class TenantAdminEventTypeEditRoute
     extends _i64.PageRouteInfo<TenantAdminEventTypeEditRouteArgs> {
   TenantAdminEventTypeEditRoute({
-    _i69.TenantAdminEventType? type,
+    _i70.TenantAdminEventType? type,
     _i65.Key? key,
     List<_i64.PageRouteInfo>? children,
   }) : super(
@@ -1352,7 +1362,7 @@ class TenantAdminEventTypeEditRoute
 class TenantAdminEventTypeEditRouteArgs {
   const TenantAdminEventTypeEditRouteArgs({this.type, this.key});
 
-  final _i69.TenantAdminEventType? type;
+  final _i70.TenantAdminEventType? type;
 
   final _i65.Key? key;
 
@@ -1410,7 +1420,7 @@ class TenantAdminLocationPickerRoute
     extends _i64.PageRouteInfo<TenantAdminLocationPickerRouteArgs> {
   TenantAdminLocationPickerRoute({
     _i65.Key? key,
-    _i70.TenantAdminLocation? initialLocation,
+    _i71.TenantAdminLocation? initialLocation,
     List<_i64.PageRouteInfo>? children,
   }) : super(
           TenantAdminLocationPickerRoute.name,
@@ -1442,7 +1452,7 @@ class TenantAdminLocationPickerRouteArgs {
 
   final _i65.Key? key;
 
-  final _i70.TenantAdminLocation? initialLocation;
+  final _i71.TenantAdminLocation? initialLocation;
 
   @override
   String toString() {
@@ -1780,8 +1790,8 @@ class TenantAdminSettingsTechnicalIntegrationsRoute extends _i64
     .PageRouteInfo<TenantAdminSettingsTechnicalIntegrationsRouteArgs> {
   TenantAdminSettingsTechnicalIntegrationsRoute({
     _i65.Key? key,
-    _i71.TenantAdminSettingsIntegrationSection initialSection =
-        _i71.TenantAdminSettingsIntegrationSection.firebase,
+    _i72.TenantAdminSettingsIntegrationSection initialSection =
+        _i72.TenantAdminSettingsIntegrationSection.firebase,
     List<_i64.PageRouteInfo>? children,
   }) : super(
           TenantAdminSettingsTechnicalIntegrationsRoute.name,
@@ -1812,12 +1822,12 @@ class TenantAdminSettingsTechnicalIntegrationsRoute extends _i64
 class TenantAdminSettingsTechnicalIntegrationsRouteArgs {
   const TenantAdminSettingsTechnicalIntegrationsRouteArgs({
     this.key,
-    this.initialSection = _i71.TenantAdminSettingsIntegrationSection.firebase,
+    this.initialSection = _i72.TenantAdminSettingsIntegrationSection.firebase,
   });
 
   final _i65.Key? key;
 
-  final _i71.TenantAdminSettingsIntegrationSection initialSection;
+  final _i72.TenantAdminSettingsIntegrationSection initialSection;
 
   @override
   String toString() {

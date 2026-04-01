@@ -248,7 +248,7 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
   Future<void> setUserMode() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({required AppData appData}) : _appData = appData;
 
   final AppData _appData;

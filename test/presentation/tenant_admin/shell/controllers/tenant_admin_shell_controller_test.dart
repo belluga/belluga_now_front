@@ -217,7 +217,7 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required List<String> domains,
     List<String> appDomains = const [],

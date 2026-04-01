@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
@@ -42,6 +44,7 @@ import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properti
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -798,6 +801,7 @@ void main() {
     late MapScreenController controller;
 
     setUp(() {
+      LocationPermissionGateRuntime.resetForTesting();
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
       userLocationRepository = _FakeUserLocationRepository();
@@ -808,10 +812,12 @@ void main() {
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
+        appData: _buildAppData(),
       );
     });
 
     tearDown(() {
+      LocationPermissionGateRuntime.resetForTesting();
       mapRepository.dispose();
       userLocationRepository.dispose();
       controller.onDispose();
@@ -1254,6 +1260,30 @@ void main() {
       expect(userLocationRepository.resolveUserLocationCallCount, 1);
     });
 
+    test(
+        'soft-gate map entry skips interactive resolution and exposes fixed-location notice',
+        () async {
+      LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
+
+      await controller.init();
+      await _flushMicrotasks();
+
+      expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+      expect(userLocationRepository.resolveUserLocationCallCount, 0);
+      expect(
+        controller.softLocationNoticeStreamValue.value,
+        'Sua localização não está disponível agora. Por isso, estamos usando uma localização de referência para mostrar resultados relevantes.',
+      );
+      expect(
+        mapRepository.lastQuery?.origin?.latitude,
+        mapRepository.defaultCenter().latitude,
+      );
+      expect(
+        mapRepository.lastQuery?.origin?.longitude,
+        mapRepository.defaultCenter().longitude,
+      );
+    });
+
     test('centerOnUser shows status when map is not ready yet', () async {
       final notReadyMapController = _NotReadyMapController();
       final localController = MapScreenController(
@@ -1261,6 +1291,7 @@ void main() {
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapController: notReadyMapController,
+        appData: _buildAppData(),
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -1425,6 +1456,7 @@ void main() {
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapController: fakeMapController,
+        appData: _buildAppData(),
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -1459,4 +1491,47 @@ void main() {
       );
     });
   });
+}
+
+AppData _buildAppData() {
+  final remoteData = {
+    'name': 'Tenant Test',
+    'type': 'tenant',
+    'main_domain': 'https://tenant.test',
+    'profile_types': const [
+      {
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': [],
+        'capabilities': {
+          'is_favoritable': true,
+          'is_poi_enabled': true,
+        },
+      },
+    ],
+    'domains': ['https://tenant.test'],
+    'app_domains': const [],
+    'theme_data_settings': {
+      'brightness_default': 'light',
+      'primary_seed_color': '#FFFFFF',
+      'secondary_seed_color': '#000000',
+    },
+    'main_color': '#FFFFFF',
+    'tenant_id': 'tenant-1',
+    'telemetry': const {'trackers': []},
+    'telemetry_context': const {'location_freshness_minutes': 5},
+    'firebase': null,
+    'push': null,
+  };
+  const localInfo = {
+    'platformType': 'mobile',
+    'hostname': 'tenant.test',
+    'href': 'https://tenant.test',
+    'port': null,
+    'device': 'test-device',
+  };
+  return buildAppDataFromInitialization(
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }

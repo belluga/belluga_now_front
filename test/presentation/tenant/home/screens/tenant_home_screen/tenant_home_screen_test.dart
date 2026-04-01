@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/tenant_home_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
@@ -152,8 +153,14 @@ void main() {
         .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
 
     // Stub Home Controller
-    mockito.when(mockController.userAddressStreamValue).thenReturn(
-          StreamValue<String?>(defaultValue: 'Rua Teste, 123'),
+    mockito.when(mockController.homeLocationStatusStreamValue).thenReturn(
+          StreamValue<HomeLocationStatusState?>(
+            defaultValue: const HomeLocationStatusState(
+              statusText: 'Usando sua localização.',
+              dialogTitle: 'Usando sua localização',
+              dialogMessage: 'Dialogo teste',
+            ),
+          ),
         );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
@@ -258,6 +265,8 @@ void main() {
 
     // Verify AppBar
     expect(find.byIcon(Icons.location_on_outlined), findsOneWidget);
+    expect(find.text('Usando sua localização.'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
 
     // Verify My Events Section
     expect(find.text('Meus Eventos'), findsOneWidget);
@@ -351,6 +360,39 @@ void main() {
     await tester.pump();
 
     expect(find.text('Voce tem 1 convites pendentes'), findsOneWidget);
+  });
+
+  testWidgets('tapping home location status opens explanatory dialog',
+      (tester) async {
+    mockito.when(mockController.homeLocationStatusStreamValue).thenReturn(
+          StreamValue<HomeLocationStatusState?>(
+            defaultValue: const HomeLocationStatusState(
+              statusText: 'Usando localização fixa.',
+              dialogTitle: 'Usando localização fixa',
+              dialogMessage: 'Explicação da localização fixa.',
+            ),
+          ),
+        );
+
+    final mockRouter = MockStackRouter();
+    mockito.when(mockRouter.maybePop()).thenAnswer((_) async => true);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: mockRouter,
+        stateHash: 0,
+        child: const MaterialApp(
+          home: TenantHomeScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Usando localização fixa.'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usando localização fixa'), findsOneWidget);
+    expect(find.text('Explicação da localização fixa.'), findsOneWidget);
   });
 }
 

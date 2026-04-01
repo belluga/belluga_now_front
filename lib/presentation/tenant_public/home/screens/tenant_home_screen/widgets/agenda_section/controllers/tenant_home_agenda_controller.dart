@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -202,6 +204,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     if (restored) {
       _setValue(isInitialLoadingStreamValue, false);
       _setValue(initialLoadingLabelStreamValue, '');
+      unawaited(_reconcileEffectiveOriginAfterCacheRestore());
       return;
     }
 
@@ -622,6 +625,23 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       );
     }
 
+    final persistedHomeLocationOrigin = _appDataRepository.homeLocationOriginSettings;
+    if (persistedHomeLocationOrigin != null) {
+      if (persistedHomeLocationOrigin.usesFixedReference &&
+          persistedHomeLocationOrigin.fixedLocationReference != null) {
+        return persistedHomeLocationOrigin.fixedLocationReference;
+      }
+      if (persistedHomeLocationOrigin.usesLiveLocation) {
+        final repository = _userLocationRepository;
+        if (repository != null) {
+          final freshUserCoordinate = _resolveFreshLocationCoordinate(repository);
+          if (freshUserCoordinate != null) {
+            return freshUserCoordinate;
+          }
+        }
+      }
+    }
+
     final repository = _userLocationRepository;
     if (repository != null) {
       final freshUserCoordinate = _resolveFreshLocationCoordinate(repository);
@@ -728,6 +748,27 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     await _refresh(preserveCurrentResults: true);
   }
 
+  Future<void> _reconcileEffectiveOriginAfterCacheRestore() async {
+    if (_isDisposed) {
+      return;
+    }
+    final previousOriginLat = _effectiveOriginLat;
+    final previousOriginLng = _effectiveOriginLng;
+    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    if (!changed) {
+      return;
+    }
+    if (!_shouldRefreshForLocationJump(
+      previousOriginLat: previousOriginLat,
+      previousOriginLng: previousOriginLng,
+      nextOriginLat: _effectiveOriginLat,
+      nextOriginLng: _effectiveOriginLng,
+    )) {
+      return;
+    }
+    await _refresh(preserveCurrentResults: true);
+  }
+
   bool _shouldRefreshForLocationJump({
     required double? previousOriginLat,
     required double? previousOriginLng,
@@ -769,17 +810,59 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     final userCoordinate = await _resolveUserCoordinate(
       warmUpIfPossible: warmUpIfPossible,
     );
-    if (userCoordinate != null) {
-      _effectiveOriginLat = userCoordinate.latitude;
-      _effectiveOriginLng = userCoordinate.longitude;
+    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
+    await _seedInitialRadiusPreferenceIfNeeded(
+      userCoordinate: userCoordinate,
+      tenantDefaultOrigin: tenantDefaultOrigin,
+    );
+    if (userCoordinate != null && tenantDefaultOrigin != null) {
+      final homeFixedReferenceBoundaryMeters = _configuredMaxRadiusMeters();
+      final distanceFromTenantDefaultOrigin = haversineDistanceMeters(
+        coordinateA: userCoordinate,
+        coordinateB: tenantDefaultOrigin,
+      );
+      if (distanceFromTenantDefaultOrigin.value <=
+          homeFixedReferenceBoundaryMeters) {
+        _effectiveOriginLat = userCoordinate.latitude;
+        _effectiveOriginLng = userCoordinate.longitude;
+        await _persistHomeLocationOriginSettings(
+          HomeLocationOriginSettings.live(),
+        );
+        return _effectiveOriginLat != currentLat ||
+            _effectiveOriginLng != currentLng;
+      }
+
+      _effectiveOriginLat = tenantDefaultOrigin.latitude;
+      _effectiveOriginLng = tenantDefaultOrigin.longitude;
+      await _persistHomeLocationOriginSettings(
+        HomeLocationOriginSettings.fixed(
+          fixedLocationReference: tenantDefaultOrigin,
+          reason: HomeLocationOriginReason.outsideRange,
+        ),
+      );
       return _effectiveOriginLat != currentLat ||
           _effectiveOriginLng != currentLng;
     }
 
-    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
+    if (userCoordinate != null) {
+      _effectiveOriginLat = userCoordinate.latitude;
+      _effectiveOriginLng = userCoordinate.longitude;
+      await _persistHomeLocationOriginSettings(
+        HomeLocationOriginSettings.live(),
+      );
+      return _effectiveOriginLat != currentLat ||
+          _effectiveOriginLng != currentLng;
+    }
+
     if (tenantDefaultOrigin != null) {
       _effectiveOriginLat = tenantDefaultOrigin.latitude;
       _effectiveOriginLng = tenantDefaultOrigin.longitude;
+      await _persistHomeLocationOriginSettings(
+        HomeLocationOriginSettings.fixed(
+          fixedLocationReference: tenantDefaultOrigin,
+          reason: HomeLocationOriginReason.unavailable,
+        ),
+      );
       return _effectiveOriginLat != currentLat ||
           _effectiveOriginLng != currentLng;
     }
@@ -787,6 +870,53 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _effectiveOriginLat = null;
     _effectiveOriginLng = null;
     return currentLat != null || currentLng != null;
+  }
+
+  Future<void> _persistHomeLocationOriginSettings(
+    HomeLocationOriginSettings settings,
+  ) async {
+    try {
+      await _appDataRepository.setHomeLocationOriginSettings(settings);
+    } on Object {
+      debugPrint(
+        'TenantHomeAgendaController._persistHomeLocationOriginSettings failed',
+      );
+    }
+  }
+
+  Future<void> _seedInitialRadiusPreferenceIfNeeded({
+    required CityCoordinate? userCoordinate,
+    required CityCoordinate? tenantDefaultOrigin,
+  }) async {
+    if (_appDataRepository.hasPersistedMaxRadiusPreference ||
+        userCoordinate == null ||
+        tenantDefaultOrigin == null) {
+      return;
+    }
+
+    final suggestedRadiusMeters = _clampRadiusMeters(
+      haversineDistanceMeters(
+        coordinateA: userCoordinate,
+        coordinateB: tenantDefaultOrigin,
+      ).value,
+    );
+
+    if ((radiusMetersStreamValue.value - suggestedRadiusMeters).abs() >=
+        0.001) {
+      _setValue(radiusMetersStreamValue, suggestedRadiusMeters);
+    }
+
+    _pendingPersistedRadiusEchoMeters = suggestedRadiusMeters;
+    try {
+      await _persistSelectedRadiusPreference(suggestedRadiusMeters);
+    } on Object {
+      if ((_pendingPersistedRadiusEchoMeters ?? -1) == suggestedRadiusMeters) {
+        _pendingPersistedRadiusEchoMeters = null;
+      }
+      debugPrint(
+        'TenantHomeAgendaController._seedInitialRadiusPreferenceIfNeeded failed',
+      );
+    }
   }
 
   Future<CityCoordinate?> _resolveUserCoordinate({
@@ -875,6 +1005,19 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       if (preferred.value > 0) {
         return _clampRadiusMeters(preferred.value);
       }
+    }
+
+    final userCoordinate = _userLocationRepository == null
+        ? null
+        : _resolveFreshLocationCoordinate(_userLocationRepository);
+    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
+    if (userCoordinate != null && tenantDefaultOrigin != null) {
+      return _clampRadiusMeters(
+        haversineDistanceMeters(
+          coordinateA: userCoordinate,
+          coordinateB: tenantDefaultOrigin,
+        ).value,
+      );
     }
 
     final configured = _configuredDefaultRadiusMeters();

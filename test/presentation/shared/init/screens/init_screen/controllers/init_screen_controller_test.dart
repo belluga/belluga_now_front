@@ -360,7 +360,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
       null;
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this.appData);
 
   @override

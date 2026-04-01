@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_soft_location_notice_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_status_message_listener.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
@@ -93,20 +94,29 @@ class _MapScreenState extends State<MapScreen> {
                 //   ),
                 // ),
                 SafeArea(
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: IconButton.filled(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black54,
-                          foregroundColor: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              context.router.replaceAll(
+                                [const TenantHomeRoute()],
+                              );
+                            },
+                            icon: const Icon(Icons.arrow_back),
+                          ),
                         ),
-                        onPressed: () {
-                          context.router.replaceAll([const TenantHomeRoute()]);
-                        },
-                        icon: const Icon(Icons.arrow_back),
-                      ),
+                        MapSoftLocationNoticeBanner(controller: _controller),
+                      ],
                     ),
                   ),
                 ),

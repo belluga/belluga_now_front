@@ -164,7 +164,7 @@ class _FakeAppData extends Fake implements AppData {
   }
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({required List<String> domains})
       : _appData = _FakeAppData(domains: domains);
 

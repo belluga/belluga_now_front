@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
@@ -13,10 +16,12 @@ class LocationPermissionScreen extends StatefulWidget {
     super.key,
     required this.initialState,
     this.allowContinueWithoutLocation = true,
+    this.onResult,
   });
 
   final LocationPermissionState initialState;
   final bool allowContinueWithoutLocation;
+  final ValueChanged<LocationPermissionGateResult>? onResult;
 
   @override
   State<LocationPermissionScreen> createState() =>
@@ -43,80 +48,31 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       streamValue: _controller.resultStreamValue,
       builder: (context, result) {
         _handleResult(result);
-        return Scaffold(
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _TopBar(onBackPressed: _onBackPressed),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final content = ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: widget.initialState ==
-                                  LocationPermissionState.deniedForever
-                              ? Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    _TitleBlock(
-                                      textTheme: textTheme,
-                                      colorScheme: colorScheme,
-                                    ),
-                                    const SizedBox(height: 24),
-                                    _HeroCard(
-                                      colorScheme: colorScheme,
-                                      textTheme: textTheme,
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme
-                                            .surfaceContainerHighest,
-                                        borderRadius:
-                                            BorderRadius.circular(20),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Como liberar:',
-                                            style: textTheme.titleMedium
-                                                ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          ..._deniedForeverSteps().map(
-                                            (step) => Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 6,
-                                              ),
-                                              child: Text(
-                                                step,
-                                                style: textTheme.bodyMedium
-                                                    ?.copyWith(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                  height: 1.35,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : SizedBox(
-                                  height: constraints.maxHeight,
-                                  child: Column(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) {
+              return;
+            }
+            unawaited(_finishFlow(LocationPermissionGateResult.cancelled));
+          },
+          child: Scaffold(
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TopBar(onBackPressed: _onBackPressed),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final content = ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: widget.initialState ==
+                                    LocationPermissionState.deniedForever
+                                ? Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
@@ -125,68 +81,126 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
                                         colorScheme: colorScheme,
                                       ),
                                       const SizedBox(height: 24),
-                                      Expanded(
-                                        child: Center(
-                                          child: _HeroCard(
-                                            colorScheme: colorScheme,
-                                            textTheme: textTheme,
-                                          ),
+                                      _HeroCard(
+                                        colorScheme: colorScheme,
+                                        textTheme: textTheme,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Como liberar:',
+                                              style: textTheme.titleMedium
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            ..._deniedForeverSteps().map(
+                                              (step) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 6,
+                                                ),
+                                                child: Text(
+                                                  step,
+                                                  style: textTheme.bodyMedium
+                                                      ?.copyWith(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    height: 1.35,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
+                                  )
+                                : SizedBox(
+                                    height: constraints.maxHeight,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        _TitleBlock(
+                                          textTheme: textTheme,
+                                          colorScheme: colorScheme,
+                                        ),
+                                        const SizedBox(height: 24),
+                                        Expanded(
+                                          child: Center(
+                                            child: _HeroCard(
+                                              colorScheme: colorScheme,
+                                              textTheme: textTheme,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                        );
-
-                        if (widget.initialState ==
-                            LocationPermissionState.deniedForever) {
-                          return SingleChildScrollView(
-                            child: Center(child: content),
                           );
-                        }
 
-                        return Center(child: content);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          StreamValueBuilder(
-                            streamValue: _controller.loading,
-                            builder: (context, isLoading) {
-                              return ButtonLoading(
-                                label: primaryLabel,
-                                isLoading: isLoading,
-                                onPressed: _onPrimaryPressed,
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(56),
-                                  backgroundColor: colorScheme.primary,
-                                  foregroundColor: colorScheme.onPrimary,
-                                  shape: const StadiumBorder(),
-                                  elevation: 0,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _onSecondaryPressed,
-                            child: Text(
-                              widget.allowContinueWithoutLocation
-                                  ? 'Continuar sem localização'
-                                  : 'Agora não',
-                            ),
-                          ),
-                        ],
+                          if (widget.initialState ==
+                              LocationPermissionState.deniedForever) {
+                            return SingleChildScrollView(
+                              child: Center(child: content),
+                            );
+                          }
+
+                          return Center(child: content);
+                        },
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            StreamValueBuilder(
+                              streamValue: _controller.loading,
+                              builder: (context, isLoading) {
+                                return ButtonLoading(
+                                  label: primaryLabel,
+                                  isLoading: isLoading,
+                                  onPressed: _onPrimaryPressed,
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(56),
+                                    backgroundColor: colorScheme.primary,
+                                    foregroundColor: colorScheme.onPrimary,
+                                    shape: const StadiumBorder(),
+                                    elevation: 0,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _onSecondaryPressed,
+                              child: Text(
+                                widget.allowContinueWithoutLocation
+                                    ? 'Continuar sem localização'
+                                    : 'Agora não',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -200,18 +214,29 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
   }
 
   Future<void> _onBackPressed() async {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop(false);
-      return;
-    }
-    router.replace(const TenantHomeRoute());
+    await _finishFlow(LocationPermissionGateResult.cancelled);
   }
 
   Future<void> _onSecondaryPressed() async {
+    await _finishFlow(
+      widget.allowContinueWithoutLocation
+          ? LocationPermissionGateResult.continueWithoutLocation
+          : LocationPermissionGateResult.cancelled,
+    );
+  }
+
+  Future<void> _finishFlow(LocationPermissionGateResult result) async {
+    _controller.clearResult();
+
+    final onResult = widget.onResult;
+    if (onResult != null) {
+      onResult(result);
+      return;
+    }
+
     final router = context.router;
     if (router.canPop()) {
-      router.pop(widget.allowContinueWithoutLocation);
+      router.pop(result);
       return;
     }
     router.replace(const TenantHomeRoute());
@@ -221,13 +246,7 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     if (result == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (result == true) {
-        _controller.clearResult();
-        final router = context.router;
-        if (router.canPop()) {
-          router.pop(true);
-          return;
-        }
-        router.replace(const TenantHomeRoute());
+        unawaited(_finishFlow(LocationPermissionGateResult.granted));
         return;
       }
 

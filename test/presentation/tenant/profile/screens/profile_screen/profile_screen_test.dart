@@ -94,7 +94,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> updateUser(UserCustomData data) async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     ThemeMode? initialThemeMode,
     double initialMaxRadiusMeters = 5000,

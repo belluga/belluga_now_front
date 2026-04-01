@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
@@ -29,6 +32,7 @@ import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class MapScreenController implements Disposable {
@@ -39,20 +43,24 @@ class MapScreenController implements Disposable {
     UserLocationRepositoryContract? userLocationRepository,
     TelemetryRepositoryContract? telemetryRepository,
     MapController? mapController,
+    AppData? appData,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
+        _appData = appData ?? GetIt.I.get<AppData>(),
         mapController = mapController ?? MapController();
 
   final PoiRepositoryContract _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
   final TelemetryRepositoryContract _telemetryRepository;
+  final AppData _appData;
 
   final MapController mapController;
 
   final statusMessageStreamValue = StreamValue<String?>();
+  final softLocationNoticeStreamValue = StreamValue<String>(defaultValue: '');
   final mapStatusStreamValue =
       StreamValue<MapStatus>(defaultValue: MapStatus.locating);
   final isLoading = StreamValue<bool>(defaultValue: false);
@@ -103,6 +111,7 @@ class MapScreenController implements Disposable {
   CityCoordinate get defaultCenter => _poiRepository.defaultCenter;
 
   PoiQuery _currentQuery = PoiQuery();
+  CityCoordinate? _forcedEntryOrigin;
   bool _filtersLoadFailed = false;
   Set<String> _activeCategoryKeys = <String>{};
   Set<String> _activeTaxonomyTokens = <String>{};
@@ -124,7 +133,20 @@ class MapScreenController implements Disposable {
     String? initialPoiQuery,
     String? initialPoiStackQuery,
   }) async {
+    final enteredViaSoftLocationGate =
+        LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry();
     _resetInitialPoiFocusState();
+    _forcedEntryOrigin = enteredViaSoftLocationGate ? defaultCenter : null;
+    if (enteredViaSoftLocationGate) {
+      softLocationNoticeStreamValue.addValue(
+        LocationOriginMessageResolver.fixed(
+          reason: HomeLocationOriginReason.unavailable,
+          appName: _appData.nameValue.value,
+        ),
+      );
+    } else {
+      softLocationNoticeStreamValue.addValue('');
+    }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
     _bindFilteredPoisClamp();
     _attachZoomListener();
@@ -155,7 +177,7 @@ class MapScreenController implements Disposable {
         initialPoiQuery: initialPoiQuery,
         initialPoiStackQuery: initialPoiStackQuery,
       );
-    } else {
+    } else if (!enteredViaSoftLocationGate) {
       _requestLocationPermissionIfNeeded();
     }
 
@@ -163,7 +185,7 @@ class MapScreenController implements Disposable {
   }
 
   void _requestLocationPermissionIfNeeded() {
-    if (hasResolvedUserLocation) {
+    if (_forcedEntryOrigin != null || hasResolvedUserLocation) {
       return;
     }
     unawaited(_userLocationRepository.resolveUserLocation());
@@ -284,6 +306,10 @@ class MapScreenController implements Disposable {
     statusMessageStreamValue.addValue(null);
   }
 
+  void dismissSoftLocationNotice() {
+    softLocationNoticeStreamValue.addValue('');
+  }
+
   Future<void> ensureMapReady() async {
     if (_isMapCameraReady() || _hasObservedMapEvent) {
       return;
@@ -371,7 +397,8 @@ class MapScreenController implements Disposable {
   }
 
   PoiQuery _resolveRuntimeQuery(PoiQuery query) {
-    final origin = userLocationStreamValue.value ?? query.origin;
+    final origin =
+        _forcedEntryOrigin ?? userLocationStreamValue.value ?? query.origin;
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,
@@ -1336,6 +1363,7 @@ class MapScreenController implements Disposable {
     await _mapEventSubscription?.cancel();
     await _filteredPoisSubscription?.cancel();
     statusMessageStreamValue.dispose();
+    softLocationNoticeStreamValue.dispose();
     mapStatusStreamValue.dispose();
     isLoading.dispose();
     errorMessage.dispose();

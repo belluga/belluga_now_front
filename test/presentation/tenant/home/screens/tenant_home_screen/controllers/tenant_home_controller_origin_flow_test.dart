@@ -55,6 +55,7 @@ void main() {
     final controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
@@ -95,6 +96,7 @@ void main() {
     final controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
@@ -329,7 +331,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> stopTracking() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
       : maxRadiusMetersStreamValue =
             StreamValue<DistanceInMetersValue>(

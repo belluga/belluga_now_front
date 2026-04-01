@@ -3,13 +3,20 @@ import 'dart:async';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -18,15 +25,19 @@ void main() {
   late TenantHomeController controller;
   late _FakeUserEventsRepository userEventsRepository;
   late _FakeUserLocationRepository userLocationRepository;
+  late _FakeAppDataRepository appDataRepository;
 
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<AppData>(_buildAppData());
+    final appData = _buildAppData();
+    GetIt.I.registerSingleton<AppData>(appData);
     userEventsRepository = _FakeUserEventsRepository();
     userLocationRepository = _FakeUserLocationRepository();
+    appDataRepository = _FakeAppDataRepository(appData);
     controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
   });
 
@@ -97,13 +108,13 @@ void main() {
     );
   });
 
-  test('init does not hang when location warm-up stalls', () async {
+  test('init continues when confirmed ids refresh fails', () async {
     controller.onDispose();
-    userLocationRepository.neverCompleteWarmUp = true;
+    userEventsRepository.throwOnRefreshConfirmedIds = true;
     controller = TenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
-      locationWarmUpTimeout: const Duration(milliseconds: 20),
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
@@ -111,17 +122,46 @@ void main() {
     expect(userEventsRepository.fetchMyEventsCallCount, 1);
   });
 
-  test('init continues when confirmed ids refresh fails', () async {
-    controller.onDispose();
-    userEventsRepository.throwOnRefreshConfirmedIds = true;
-    controller = TenantHomeController(
-      userEventsRepository: userEventsRepository,
-      userLocationRepository: userLocationRepository,
-    );
-
+  test('publishes live location status copy from repository-owned origin mode',
+      () async {
     await controller.init();
 
-    expect(userEventsRepository.fetchMyEventsCallCount, 1);
+    await appDataRepository.setHomeLocationOriginSettings(
+      HomeLocationOriginSettings.live(),
+    );
+
+    expect(
+      controller.homeLocationStatusStreamValue.value?.statusText,
+      'Usando sua localização.',
+    );
+    expect(
+      controller.homeLocationStatusStreamValue.value?.dialogMessage,
+      'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
+    );
+  });
+
+  test('publishes fixed location status copy from repository-owned origin mode',
+      () async {
+    await controller.init();
+
+    await appDataRepository.setHomeLocationOriginSettings(
+      HomeLocationOriginSettings.fixed(
+        fixedLocationReference: CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.671339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+        reason: HomeLocationOriginReason.outsideRange,
+      ),
+    );
+
+    expect(
+      controller.homeLocationStatusStreamValue.value?.statusText,
+      'Usando localização fixa.',
+    );
+    expect(
+      controller.homeLocationStatusStreamValue.value?.dialogMessage,
+      'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, a estamos usando uma localização de referência para mostrar resultados mais úteis.',
+    );
   });
 }
 
@@ -215,6 +255,54 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
         defaultValue: false,
         isRequired: true,
       );
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+  );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
+
+  @override
+  Future<void> setHomeLocationOriginSettings(
+    HomeLocationOriginSettings settings,
+  ) async {
+    homeLocationOriginSettingsStreamValue.addValue(settings);
+  }
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {

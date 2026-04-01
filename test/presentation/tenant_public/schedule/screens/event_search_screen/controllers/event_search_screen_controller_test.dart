@@ -215,7 +215,7 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
       remoteData: remoteData, localInfo: localInfo);
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
       : maxRadiusMetersStreamValue =
             StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(_appData.mapRadiusMaxMeters, defaultValue: _appData.mapRadiusMaxMeters));

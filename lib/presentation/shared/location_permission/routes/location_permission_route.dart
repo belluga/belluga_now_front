@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
@@ -11,10 +12,12 @@ class LocationPermissionRoutePage extends StatelessWidget {
     super.key,
     this.initialState,
     this.allowContinueWithoutLocation = true,
+    this.onResult,
   });
 
   final LocationPermissionState? initialState;
   final bool allowContinueWithoutLocation;
+  final ValueChanged<LocationPermissionGateResult>? onResult;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +26,7 @@ class LocationPermissionRoutePage extends StatelessWidget {
       child: LocationPermissionScreen(
         initialState: resolvedInitialState,
         allowContinueWithoutLocation: allowContinueWithoutLocation,
+        onResult: onResult,
       ),
     );
   }

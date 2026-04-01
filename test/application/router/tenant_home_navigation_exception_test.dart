@@ -48,6 +48,7 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
@@ -339,8 +340,14 @@ void _registerTenantBootstrapDependencies({
 
   when(mockController.appData).thenReturn(appData);
   when(mockController.init()).thenAnswer((_) async {});
-  when(mockController.userAddressStreamValue).thenReturn(
-    StreamValue<String?>(defaultValue: 'Rua Teste, 123'),
+  when(mockController.homeLocationStatusStreamValue).thenReturn(
+    StreamValue<HomeLocationStatusState?>(
+      defaultValue: const HomeLocationStatusState(
+        statusText: 'Usando sua localização.',
+        dialogTitle: 'Usando sua localização',
+        dialogMessage: 'Dialogo teste',
+      ),
+    ),
   );
   when(mockController.myEventsFilteredStreamValue).thenReturn(
     StreamValue<List<VenueEventResume>>(defaultValue: const []),
@@ -594,7 +601,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
       telemetryRepoBool(true);
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this.appData);
 
   @override

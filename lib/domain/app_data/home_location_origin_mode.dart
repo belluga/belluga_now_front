@@ -1,0 +1,4 @@
+enum HomeLocationOriginMode {
+  live,
+  fixed,
+}
