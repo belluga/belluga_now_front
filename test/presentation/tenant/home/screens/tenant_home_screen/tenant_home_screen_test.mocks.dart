@@ -60,6 +60,8 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
     as _i40;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart'
     as _i27;
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart'
+    as _i43;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart'
     as _i31;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart'
@@ -530,6 +532,21 @@ class MockTenantHomeController extends _i1.Mock
           Invocation.getter(#userAddressStreamValue),
         ),
       ) as _i2.StreamValue<String?>);
+
+  @override
+  _i2.StreamValue<_i43.HomeLocationStatusState?>
+      get homeLocationStatusStreamValue => (super.noSuchMethod(
+            Invocation.getter(#homeLocationStatusStreamValue),
+            returnValue: _FakeStreamValue_0<_i43.HomeLocationStatusState?>(
+              this,
+              Invocation.getter(#homeLocationStatusStreamValue),
+            ),
+            returnValueForMissingStub:
+                _FakeStreamValue_0<_i43.HomeLocationStatusState?>(
+              this,
+              Invocation.getter(#homeLocationStatusStreamValue),
+            ),
+          ) as _i2.StreamValue<_i43.HomeLocationStatusState?>);
 
   @override
   _i2.StreamValue<List<_i28.VenueEventResume>>
