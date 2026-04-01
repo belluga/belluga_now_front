@@ -55,7 +55,7 @@ class TenantAdminStaticProfileTypeDTO {
       type: json['type']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
-      poiVisual: TenantAdminPoiVisual.tryFromJson(json['poi_visual']),
+      poiVisual: tenantAdminPoiVisualFromRaw(json['poi_visual']),
       isPoiEnabled: isPoiEnabled,
       hasBio: hasBio,
       hasTaxonomies: hasTaxonomies,
@@ -76,18 +76,18 @@ class TenantAdminStaticProfileTypeDTO {
   }
 
   TenantAdminStaticProfileTypeDefinition toDomain() {
-    return TenantAdminStaticProfileTypeDefinition(
+    return tenantAdminStaticProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       poiVisual: poiVisual,
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: isPoiEnabled,
-        hasBio: hasBio,
-        hasTaxonomies: hasTaxonomies,
-        hasAvatar: hasAvatar,
-        hasCover: hasCover,
-        hasContent: hasContent,
+        isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
+        hasBio: TenantAdminFlagValue(hasBio),
+        hasTaxonomies: TenantAdminFlagValue(hasTaxonomies),
+        hasAvatar: TenantAdminFlagValue(hasAvatar),
+        hasCover: TenantAdminFlagValue(hasCover),
+        hasContent: TenantAdminFlagValue(hasContent),
       ),
     );
   }

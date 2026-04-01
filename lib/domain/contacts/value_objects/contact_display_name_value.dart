@@ -1,5 +1,11 @@
-class ContactDisplayNameValue {
-  const ContactDisplayNameValue(String raw) : value = raw;
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
+class ContactDisplayNameValue extends GenericStringValue {
+  ContactDisplayNameValue([String raw = ''])
+      : super(defaultValue: '', isRequired: false) {
+    parse(raw);
+  }
+
+  @override
+  String doParse(String? parseValue) => (parseValue ?? '').trim();
 }

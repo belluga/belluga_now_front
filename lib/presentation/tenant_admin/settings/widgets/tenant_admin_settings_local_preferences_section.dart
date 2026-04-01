@@ -257,7 +257,7 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                     child: _buildMapFilterRow(
                       context,
                       index: index,
-                      item: filters[index],
+                      item: filters.elementAt(index),
                       hasPrevious: index > 0,
                       hasNext: index < filters.length - 1,
                     ),

@@ -1,9 +1,12 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:intl/intl.dart';
 
 extension EventDateFormatting on DateTime {
-  String get monthLabel => DateFormat.MMM().format(this).toUpperCase();
+  DateTime get _localValue => TimezoneConverter.utcToLocal(this);
 
-  String get dayLabel => DateFormat.d().format(this);
+  String get monthLabel => DateFormat.MMM().format(_localValue).toUpperCase();
 
-  String get timeLabel => DateFormat('HH:mm').format(this);
+  String get dayLabel => DateFormat.d().format(_localValue);
+
+  String get timeLabel => DateFormat('HH:mm').format(_localValue);
 }

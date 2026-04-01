@@ -1,10 +1,15 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
@@ -187,9 +192,11 @@ void main() {
     }
     final label = defaultOrigin['label']?.toString().trim();
     return TenantAdminMapDefaultOrigin(
-      lat: lat,
-      lng: lng,
-      label: label == null || label.isEmpty ? null : label,
+      lat: LatitudeValue()..parse(lat.toString()),
+      lng: LongitudeValue()..parse(lng.toString()),
+      label: label == null || label.isEmpty
+          ? null
+          : (TenantAdminOptionalTextValue()..parse(label)),
     );
   }
 
@@ -266,7 +273,10 @@ void main() {
 
       try {
         await authRepository.init();
-        await authRepository.loginWithEmailPassword(adminEmail, adminPassword);
+        await authRepository.loginWithEmailPassword(
+          landlordAuthRepoString(adminEmail),
+          landlordAuthRepoString(adminPassword),
+        );
         expect(authRepository.hasValidSession, isTrue);
 
         final tenantsRepository = LandlordTenantsRepository(
@@ -429,12 +439,12 @@ void main() {
   );
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000));
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
 
@@ -445,14 +455,17 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
 
   @override
-  double get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadiusMetersStreamValue.addValue(meters);
   }
 
@@ -463,8 +476,8 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 }
 

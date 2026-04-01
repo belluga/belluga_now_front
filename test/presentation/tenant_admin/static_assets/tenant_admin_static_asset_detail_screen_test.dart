@@ -12,7 +12,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: TenantAdminStaticAssetDetailScreen(
-          asset: TenantAdminStaticAsset(
+          asset: tenantAdminStaticAssetFromRaw(
             id: 'asset-1',
             profileType: 'beach',
             displayName: 'Praia do Morro',

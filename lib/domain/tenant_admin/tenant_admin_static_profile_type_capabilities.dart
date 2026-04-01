@@ -1,20 +1,21 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 
 class TenantAdminStaticProfileTypeCapabilities {
   TenantAdminStaticProfileTypeCapabilities({
-    required Object isPoiEnabled,
-    required Object hasBio,
-    required Object hasTaxonomies,
-    required Object hasAvatar,
-    required Object hasCover,
-    required Object hasContent,
-  })  : isPoiEnabledValue = tenantAdminFlag(isPoiEnabled),
-        hasBioValue = tenantAdminFlag(hasBio),
-        hasTaxonomiesValue = tenantAdminFlag(hasTaxonomies),
-        hasAvatarValue = tenantAdminFlag(hasAvatar),
-        hasCoverValue = tenantAdminFlag(hasCover),
-        hasContentValue = tenantAdminFlag(hasContent);
+    required TenantAdminFlagValue isPoiEnabled,
+    required TenantAdminFlagValue hasBio,
+    required TenantAdminFlagValue hasTaxonomies,
+    required TenantAdminFlagValue hasAvatar,
+    required TenantAdminFlagValue hasCover,
+    required TenantAdminFlagValue hasContent,
+  })  : isPoiEnabledValue = isPoiEnabled,
+        hasBioValue = hasBio,
+        hasTaxonomiesValue = hasTaxonomies,
+        hasAvatarValue = hasAvatar,
+        hasCoverValue = hasCover,
+        hasContentValue = hasContent;
 
   final TenantAdminFlagValue isPoiEnabledValue;
   final TenantAdminFlagValue hasBioValue;

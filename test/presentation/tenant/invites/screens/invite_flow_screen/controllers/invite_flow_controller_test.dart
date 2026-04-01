@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -9,13 +8,16 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,48 +43,55 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   int _seed = 0;
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     startedEvents.add(
       _TrackedEvent(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
     return EventTrackerTimedEventHandle('handle-${_seed++}');
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> flushTimedEvents() async {
-    return true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true);
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async =>
+      telemetryRepoBool(true);
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -102,7 +111,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteModel>> fetchInvites(
-          {int page = 1, int pageSize = 20}) async =>
+          {InvitesRepositoryContractPrimInt? page,
+          InvitesRepositoryContractPrimInt? pageSize}) async =>
       List<InviteModel>.from(_invites);
 
   @override
@@ -115,12 +125,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async => (() {
-        acceptedInviteIds.add(inviteId);
-        _removeInvite(inviteId);
+  Future<InviteAcceptResult> acceptInvite(
+          InvitesRepositoryContractPrimString inviteId) async =>
+      (() {
+        acceptedInviteIds.add(inviteId.value);
+        _removeInvite(inviteId.value);
         pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
         return buildInviteAcceptResult(
-          inviteId: inviteId,
+          inviteId: inviteId.value,
           status: 'accepted',
           creditedAcceptance: true,
           attendancePolicy: 'free_confirmation_only',
@@ -130,20 +142,39 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       })();
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
-        declinedInviteIds.add(inviteId);
-        _removeInvite(inviteId);
+  Future<InviteAcceptResult> acceptInviteByCode(
+          InvitesRepositoryContractPrimString code) async =>
+      (() {
+        acceptedInviteIds.add('mock-${code.value}');
+        return buildInviteAcceptResult(
+          inviteId: 'mock-${code.value}',
+          status: 'accepted',
+          creditedAcceptance: true,
+          attendancePolicy: 'free_confirmation_only',
+          nextStep: InviteNextStep.freeConfirmationCreated,
+          supersededInviteIds: const [],
+        );
+      })();
+
+  @override
+  Future<InviteDeclineResult> declineInvite(
+          InvitesRepositoryContractPrimString inviteId) async =>
+      (() {
+        declinedInviteIds.add(inviteId.value);
+        _removeInvite(inviteId.value);
         pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
         return buildInviteDeclineResult(
-          inviteId: inviteId,
+          inviteId: inviteId.value,
           status: 'declined',
           groupHasOtherPending: false,
         );
       })();
 
   @override
-  Future<InviteMaterializeResult> materializeShareCode(String code) async {
-    materializedShareCodes.add(code);
+  Future<InviteMaterializeResult> materializeShareCode(
+    InvitesRepositoryContractPrimString code,
+  ) async {
+    materializedShareCodes.add(code.value);
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
       status: materializedInviteId == null ? 'expired' : 'pending',
@@ -153,53 +184,61 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<InviteModel?> previewShareCode(String code) async {
-    previewedShareCodes.add(code);
+  Future<InviteModel?> previewShareCode(
+    InvitesRepositoryContractPrimString code,
+  ) async {
+    previewedShareCodes.add(code.value);
     return previewInvite;
   }
 
   void _removeInvite(String inviteId) {
+    final inviteIdValue = InviteIdValue()..parse(inviteId);
     _invites.removeWhere(
-      (invite) => invite.id == inviteId || invite.containsInviteId(inviteId),
+      (invite) =>
+          invite.id == inviteId || invite.containsInviteId(inviteIdValue),
     );
   }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-          List<ContactModel> contacts) async =>
+    InviteContacts contacts,
+  ) async =>
       const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   }) async =>
       buildInviteShareCodeResult(
         code: 'CODE123',
-        eventId: eventId,
-        occurrenceId: occurrenceId,
+        eventId: eventId.value,
+        occurrenceId: occurrenceId?.value,
       );
 
   @override
   Future<void> sendInvites(
-    String eventSlug,
-    List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
+    InvitesRepositoryContractPrimString eventSlug,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
   }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
-    String eventSlug,
+    InvitesRepositoryContractPrimString eventSlug,
   ) async =>
       const [];
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: const {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+        defaultValue: const {},
+      );
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
@@ -208,16 +247,23 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {}
+  Future<void> confirmEventAttendance(
+    UserEventsRepositoryContractPrimString eventId,
+  ) async {}
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {}
+  Future<void> unconfirmEventAttendance(
+    UserEventsRepositoryContractPrimString eventId,
+  ) async {}
 
   @override
   Future<void> refreshConfirmedEventIds() async {}
 
   @override
-  bool isEventConfirmed(String eventId) => false;
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+    UserEventsRepositoryContractPrimString eventId,
+  ) =>
+      userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract {
@@ -229,7 +275,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Object get backend => Object();
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   String get userToken => authorized ? 'token' : '';
@@ -253,19 +299,22 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
   ) async {}
 
   @override
@@ -273,15 +322,17 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 InviteModel _buildInvite(String id) {
@@ -376,7 +427,30 @@ void main() {
     expect(repository.materializedShareCodes, isEmpty);
     expect(controller.displayInvitesStreamValue.value, hasLength(1));
     expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
-    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+    await controller.onDispose();
+  });
+
+  test('unauthenticated decision uses canonical invite accept (anonymous conversion)',
+      () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: [_buildInvite('preview')],
+      previewInvite: _buildInvite('preview'),
+      materializedInviteId: 'preview',
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+    await controller.requestDecision(InviteDecision.accepted);
+
+    expect(repository.previewedShareCodes, ['SHARE-ABC']);
+    // Repository.acceptInvite should be called even while unauthorized
+    expect(repository.acceptedInviteIds, ['preview']);
     await controller.onDispose();
   });
 

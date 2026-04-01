@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:dio/dio.dart';
@@ -30,7 +31,10 @@ void main() {
       tenantScope: scope,
     );
 
-    final result = await repository.fetchTaxonomiesPage(page: 1, pageSize: 2);
+    final result = await repository.fetchTaxonomiesPage(
+      page: tenantAdminTaxRepoInt(1),
+      pageSize: tenantAdminTaxRepoInt(2),
+    );
 
     expect(result.items, hasLength(2));
     expect(result.hasMore, isTrue);
@@ -50,12 +54,16 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'taxonomies',
-      loadFirstPage: () => repository.loadTaxonomies(pageSize: 2),
-      loadNextPage: () => repository.loadNextTaxonomiesPage(pageSize: 2),
+      loadFirstPage: () => repository.loadTaxonomies(
+        pageSize: tenantAdminTaxRepoInt(2),
+      ),
+      loadNextPage: () => repository.loadNextTaxonomiesPage(
+        pageSize: tenantAdminTaxRepoInt(2),
+      ),
       resetState: repository.resetTaxonomiesState,
       readItems: () => repository.taxonomiesStreamValue.value,
-      readHasMore: () => repository.hasMoreTaxonomiesStreamValue.value,
-      readError: () => repository.taxonomiesErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreTaxonomiesStreamValue.value.value,
+      readError: () => repository.taxonomiesErrorStreamValue.value?.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
     );
@@ -73,13 +81,17 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'taxonomy terms',
-      loadFirstPage: () =>
-          repository.loadTerms(taxonomyId: 'tax-1', pageSize: 2),
-      loadNextPage: () => repository.loadNextTermsPage(pageSize: 2),
+      loadFirstPage: () => repository.loadTerms(
+        taxonomyId: tenantAdminTaxRepoString('tax-1'),
+        pageSize: tenantAdminTaxRepoInt(2),
+      ),
+      loadNextPage: () => repository.loadNextTermsPage(
+        pageSize: tenantAdminTaxRepoInt(2),
+      ),
       resetState: repository.resetTermsState,
       readItems: () => repository.termsStreamValue.value,
-      readHasMore: () => repository.hasMoreTermsStreamValue.value,
-      readError: () => repository.termsErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreTermsStreamValue.value.value,
+      readError: () => repository.termsErrorStreamValue.value?.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
     );
@@ -95,7 +107,10 @@ void main() {
       tenantScope: scope,
     );
 
-    final result = await repository.fetchTaxonomiesPage(page: 1, pageSize: 2);
+    final result = await repository.fetchTaxonomiesPage(
+      page: tenantAdminTaxRepoInt(1),
+      pageSize: tenantAdminTaxRepoInt(2),
+    );
 
     expect(result.items, isNotEmpty);
     expect(result.items.first.appliesTo, isEmpty);
@@ -113,7 +128,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -143,8 +160,11 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

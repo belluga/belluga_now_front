@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
@@ -48,12 +47,13 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
-    String? accountId,
+    TenantAdminAccountProfilesRepoString? accountId,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
-        queryParameters: accountId == null ? null : {'account_id': accountId},
+        queryParameters:
+            accountId == null ? null : {'account_id': accountId.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeAccountProfileList(response.data);
@@ -65,11 +65,11 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
@@ -81,29 +81,30 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
-    required String accountId,
-    required String profileType,
-    required String displayName,
+    required TenantAdminAccountProfilesRepoString accountId,
+    required TenantAdminAccountProfilesRepoString profileType,
+    required TenantAdminAccountProfilesRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeCreateAccountProfile(
-        accountId: accountId,
-        profileType: profileType,
-        displayName: displayName,
+        accountId: accountId.value,
+        profileType: profileType.value,
+        displayName: displayName.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
-        avatarUrl: avatarUrl,
-        coverUrl: coverUrl,
+        bio: bio?.value,
+        content: content?.value,
+        avatarUrl: avatarUrl?.value,
+        coverUrl: coverUrl?.value,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -129,34 +130,34 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> updateAccountProfile({
-    required String accountProfileId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? displayName,
+    TenantAdminAccountProfilesRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
+    TenantAdminAccountProfilesRepoBool? removeAvatar,
+    TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccountProfile(
-        profileType: profileType,
-        displayName: displayName,
-        slug: slug,
+        profileType: profileType?.value,
+        displayName: displayName?.value,
+        slug: slug?.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
-        avatarUrl: avatarUrl,
-        coverUrl: coverUrl,
-        removeAvatar: removeAvatar,
-        removeCover: removeCover,
+        bio: bio?.value,
+        content: content?.value,
+        avatarUrl: avatarUrl?.value,
+        coverUrl: coverUrl?.value,
+        removeAvatar: removeAvatar?.value,
+        removeCover: removeCover?.value,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -165,12 +166,12 @@ class TenantAdminAccountProfilesRepository
       );
       final response = uploadPayload == null
           ? await _dio.patch(
-              '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+              '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
               data: payload,
               options: Options(headers: _buildHeaders()),
             )
           : await _dio.post(
-              '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+              '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
               data: uploadPayload
                 ..fields.add(const MapEntry('_method', 'PATCH')),
               options: Options(
@@ -186,10 +187,12 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<void> deleteAccountProfile(String accountProfileId) async {
+  Future<void> deleteAccountProfile(
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -199,11 +202,11 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
-    String accountProfileId,
+    TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
     try {
       final response = await _dio.post(
-        '$_apiBaseUrl/v1/account_profiles/$accountProfileId/restore',
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/restore',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
@@ -214,10 +217,12 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<void> forceDeleteAccountProfile(String accountProfileId) async {
+  Future<void> forceDeleteAccountProfile(
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     try {
       await _dio.post(
-        '$_apiBaseUrl/v1/account_profiles/$accountProfileId/force_delete',
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/force_delete',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -234,8 +239,14 @@ class TenantAdminAccountProfilesRepository
 
     while (hasMore) {
       final result = await fetchProfileTypesPage(
-        page: page,
-        pageSize: pageSize,
+        page: tenantAdminAccountProfilesRepoInt(
+          page,
+          defaultValue: 1,
+        ),
+        pageSize: tenantAdminAccountProfilesRepoInt(
+          pageSize,
+          defaultValue: pageSize,
+        ),
       );
       types.addAll(result.items);
       hasMore = result.hasMore;
@@ -248,24 +259,24 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profile_types',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeProfileTypeList(response.data);
-      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -275,18 +286,20 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profile_types',
         data: _requestEncoder.encodeCreateProfileType(
-          type: type,
-          label: label,
-          allowedTaxonomies: allowedTaxonomies,
+          type: type.value,
+          label: label.value,
+          allowedTaxonomies: allowedTaxonomies
+              .map((entry) => entry.value)
+              .toList(growable: false),
           capabilities: capabilities,
         ),
         options: Options(headers: _buildHeaders()),
@@ -300,9 +313,9 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? poiVisual,
   }) async {
@@ -310,9 +323,11 @@ class TenantAdminAccountProfilesRepository
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profile_types',
         data: _requestEncoder.encodeCreateProfileType(
-          type: type,
-          label: label,
-          allowedTaxonomies: allowedTaxonomies,
+          type: type.value,
+          label: label.value,
+          allowedTaxonomies: allowedTaxonomies
+              .map((entry) => entry.value)
+              .toList(growable: false),
           capabilities: capabilities,
           poiVisual: poiVisual,
           includePoiVisual: true,
@@ -328,18 +343,20 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final payload = _requestEncoder.encodeUpdateProfileType(
-        newType: newType,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        newType: newType?.value,
+        label: label?.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
       );
       final response = await _dio.patch(
@@ -356,19 +373,21 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? poiVisual,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final payload = _requestEncoder.encodeUpdateProfileType(
-        newType: newType,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        newType: newType?.value,
+        label: label?.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
         poiVisual: poiVisual,
         includePoiVisual: true,
@@ -386,25 +405,30 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<int> fetchProfileTypeMapPoiProjectionImpact({
-    required String type,
+  Future<TenantAdminAccountProfilesRepoInt>
+      fetchProfileTypeMapPoiProjectionImpact({
+    required TenantAdminAccountProfilesRepoString type,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profile_types/$encodedType/map_poi_projection_impact',
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeProjectionImpactCount(response.data);
+      return tenantAdminAccountProfilesRepoInt(
+        _responseDecoder.decodeProjectionImpactCount(response.data),
+        defaultValue: 0,
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load profile type projection impact');
     }
   }
 
   @override
-  Future<void> deleteProfileType(String type) async {
+  Future<void> deleteProfileType(
+      TenantAdminAccountProfilesRepoString type) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       await _dio.delete(
         '$_apiBaseUrl/v1/account_profile_types/$encodedType',
         options: Options(headers: _buildHeaders()),

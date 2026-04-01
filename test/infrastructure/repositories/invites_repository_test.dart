@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +14,9 @@ void main() {
       ),
     );
 
-    final preview = await repository.previewShareCode('ABCD1234');
+    final preview = await repository.previewShareCode(
+      invitesRepoString('ABCD1234', defaultValue: '', isRequired: true),
+    );
 
     expect(preview, isNotNull);
     expect(preview!.id, 'share:ABCD1234');
@@ -34,7 +37,9 @@ void main() {
     );
 
     await expectLater(
-      repository.previewShareCode('BROKEN'),
+      repository.previewShareCode(
+        invitesRepoString('BROKEN', defaultValue: '', isRequired: true),
+      ),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -62,12 +67,42 @@ void main() {
       ),
     );
 
-    final result = await repository.acceptInvite('invite-1');
+    final result = await repository.acceptInvite(
+      invitesRepoString('invite-1', defaultValue: '', isRequired: true),
+    );
 
     expect(result.inviteId, 'invite-1');
     expect(result.isAccepted, isTrue);
     expect(result.nextStep, InviteNextStep.freeConfirmationCreated);
-    expect(result.supersededInviteIds, ['invite-2']);
+    expect(
+      result.supersededInviteIds.map((inviteId) => inviteId.value).toList(),
+      ['invite-2'],
+    );
+  });
+
+  test('acceptInviteByCode routes to share accept endpoint',
+      () async {
+    final backend = _FakeInvitesBackend(
+      acceptResponse: {
+        'invite_id': 'invite-from-share',
+        'status': 'accepted',
+        'credited_acceptance': true,
+        'attendance_policy': 'free_confirmation_only',
+        'next_step': 'free_confirmation_created',
+        'superseded_invite_ids': [],
+        'accepted_at': null,
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+
+    final result = await repository.acceptInviteByCode(
+      invitesRepoString('ABCD1234'),
+    );
+
+    expect(result.inviteId, 'invite-from-share');
+    expect(result.isAccepted, isTrue);
+    expect(backend.acceptShareCodeCalls, ['ABCD1234']);
+    expect(backend.acceptInviteCalls, isEmpty);
   });
 
   test('materializeShareCode maps pending state from canonical payload',
@@ -84,7 +119,9 @@ void main() {
       ),
     );
 
-    final result = await repository.materializeShareCode('ABCD1234');
+    final result = await repository.materializeShareCode(
+      invitesRepoString('ABCD1234', defaultValue: '', isRequired: true),
+    );
 
     expect(result.inviteId, 'invite-1');
     expect(result.isPending, isTrue);
@@ -103,7 +140,9 @@ void main() {
     );
     final repository = InvitesRepository(backend: backend);
 
-    final result = await repository.declineInvite('invite-1');
+    final result = await repository.declineInvite(
+      invitesRepoString('invite-1', defaultValue: '', isRequired: true),
+    );
 
     expect(result.inviteId, 'invite-1');
     expect(result.isDeclined, isTrue);
@@ -175,10 +214,20 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _declineResponse;
 
   int fetchInvitesCalls = 0;
+  final List<String> acceptInviteCalls = <String>[];
+  final List<String> acceptShareCodeCalls = <String>[];
 
   @override
-  Future<Map<String, dynamic>> acceptInvite(String inviteId) async =>
-      _acceptResponse;
+  Future<Map<String, dynamic>> acceptInvite(String inviteId) async {
+    acceptInviteCalls.add(inviteId);
+    return _acceptResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> acceptShareCode(String code) async {
+    acceptShareCodeCalls.add(code);
+    return _acceptResponse;
+  }
 
   @override
   Future<Map<String, dynamic>> createShareCode(

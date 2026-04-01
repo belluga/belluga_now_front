@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/home_agenda_cache_snapshot.dart';
@@ -8,15 +9,20 @@ import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/schedule/home_agenda_cache_snapshot.dart';
 
-typedef ScheduleRepoString = String;
-typedef ScheduleRepoInt = int;
-typedef ScheduleRepoBool = bool;
-typedef ScheduleRepoDouble = double;
-typedef ScheduleRepoDateTime = DateTime;
-typedef ScheduleRepoDynamic = dynamic;
+typedef ScheduleRepoString = ScheduleRepositoryContractTextValue;
+typedef ScheduleRepoInt = ScheduleRepositoryContractIntValue;
+typedef ScheduleRepoBool = ScheduleRepositoryContractBoolValue;
+typedef ScheduleRepoDouble = ScheduleRepositoryContractDoubleValue;
+typedef ScheduleRepoDateTime = ScheduleRepositoryContractDateTimeValue;
+typedef ScheduleRepoTaxonomyEntry = ScheduleRepositoryContractTaxonomyEntry;
+typedef ScheduleRepoTaxonomyEntries = ScheduleTaxonomyEntries;
 
 abstract class ScheduleRepositoryContract {
-  static const ScheduleRepoInt _defaultPagedEventsPageSize = 25;
+  static final ScheduleRepoInt _defaultPagedEventsPageSize =
+      ScheduleRepoInt.fromRaw(
+    25,
+    defaultValue: 25,
+  );
   static final Expando<_SchedulePagedEventsState>
       _pagedEventsStateByRepository = Expando<_SchedulePagedEventsState>();
 
@@ -26,6 +32,8 @@ abstract class ScheduleRepositoryContract {
   StreamValue<List<EventModel>?> get homeAgendaEventsStreamValue;
   StreamValue<HomeAgendaCacheSnapshot?> get homeAgendaCacheStreamValue;
   final eventSearchDisplayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  final discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   final eventsByDateStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
@@ -47,6 +55,9 @@ abstract class ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   });
 
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot);
@@ -80,37 +91,40 @@ abstract class ScheduleRepositoryContract {
     required ScheduleRepoInt page,
     required ScheduleRepoInt pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString searchQuery = '',
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   });
 
   Future<void> loadEventsPage({
-    ScheduleRepoInt pageSize = _defaultPagedEventsPageSize,
+    ScheduleRepoInt? pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString searchQuery = '',
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (_pagedEventsState.isFetching) {
+    if (_pagedEventsState.isFetching.value) {
       return;
     }
     _resetPagedEventsState();
     pagedEventsStreamValue.addValue(null);
     await _fetchPagedEvents(
-      page: 1,
-      pageSize: pageSize,
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: pageSize ?? _defaultPagedEventsPageSize,
       showPastOnly: showPastOnly,
+      liveNowOnly: liveNowOnly,
       searchQuery: searchQuery,
       categories: categories,
       tags: tags,
@@ -123,24 +137,30 @@ abstract class ScheduleRepositoryContract {
   }
 
   Future<void> loadNextEventsPage({
-    ScheduleRepoInt pageSize = _defaultPagedEventsPageSize,
+    ScheduleRepoInt? pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString searchQuery = '',
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (_pagedEventsState.isFetching || !_pagedEventsState.hasMore) {
+    if (_pagedEventsState.isFetching.value ||
+        !_pagedEventsState.hasMore.value) {
       return;
     }
     await _fetchPagedEvents(
-      page: _pagedEventsState.currentPage + 1,
-      pageSize: pageSize,
+      page: ScheduleRepoInt.fromRaw(
+        _pagedEventsState.currentPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: pageSize ?? _defaultPagedEventsPageSize,
       showPastOnly: showPastOnly,
+      liveNowOnly: liveNowOnly,
       searchQuery: searchQuery,
       categories: categories,
       tags: tags,
@@ -162,11 +182,12 @@ abstract class ScheduleRepositoryContract {
     required ScheduleRepoInt page,
     required ScheduleRepoInt pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString searchQuery = '',
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -175,6 +196,7 @@ abstract class ScheduleRepositoryContract {
       page: page,
       pageSize: pageSize,
       showPastOnly: showPastOnly,
+      liveNowOnly: liveNowOnly,
       searchQuery: searchQuery,
       categories: categories,
       tags: tags,
@@ -187,109 +209,203 @@ abstract class ScheduleRepositoryContract {
     pagedEventsStreamValue.addValue(pageResult);
   }
 
-  Future<void> _fetchPagedEvents({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
-    required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString searchQuery = '',
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+  Future<void> refreshDiscoveryLiveNowEvents({
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (_pagedEventsState.isFetching) return;
-    if (page > 1 && !_pagedEventsState.hasMore) return;
+    final page = await getEventsPage(
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(10, defaultValue: 10),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    discoveryLiveNowEventsStreamValue.addValue(page.events);
+  }
 
-    _pagedEventsState.isFetching = true;
-    if (page > 1) {
-      isPagedEventsPageLoadingStreamValue.addValue(true);
+  Future<void> _fetchPagedEvents({
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    if (_pagedEventsState.isFetching.value) return;
+    if (page.value > 1 && !_pagedEventsState.hasMore.value) return;
+
+    _pagedEventsState.isFetching = ScheduleRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    if (page.value > 1) {
+      isPagedEventsPageLoadingStreamValue.addValue(
+        ScheduleRepoBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
+      );
     }
     try {
       final pageResult = await getEventsPage(
         page: page,
         pageSize: pageSize,
         showPastOnly: showPastOnly,
-        searchQuery: searchQuery,
+        liveNowOnly: liveNowOnly ??
+            ScheduleRepoBool.fromRaw(
+              false,
+              defaultValue: false,
+            ),
+        searchQuery: searchQuery ??
+            ScheduleRepoString.fromRaw(
+              '',
+              defaultValue: '',
+            ),
         categories: categories,
         tags: tags,
         taxonomy: taxonomy,
-        confirmedOnly: confirmedOnly,
+        confirmedOnly: confirmedOnly ??
+            ScheduleRepoBool.fromRaw(
+              false,
+              defaultValue: false,
+            ),
         originLat: originLat,
         originLng: originLng,
         maxDistanceMeters: maxDistanceMeters,
       );
       _pagedEventsState.currentPage = page;
-      _pagedEventsState.hasMore = pageResult.hasMore;
-      hasMorePagedEventsStreamValue.addValue(pageResult.hasMore);
+      _pagedEventsState.hasMore = ScheduleRepoBool.fromRaw(
+        pageResult.hasMore,
+        defaultValue: true,
+      );
+      hasMorePagedEventsStreamValue.addValue(_pagedEventsState.hasMore);
       pagedEventsStreamValue.addValue(pageResult);
       pagedEventsErrorStreamValue.addValue(null);
     } catch (error) {
-      pagedEventsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      pagedEventsErrorStreamValue.addValue(
+        ScheduleRepoString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         pagedEventsStreamValue.addValue(
-            const PagedEventsResult(events: <EventModel>[], hasMore: false));
-        hasMorePagedEventsStreamValue.addValue(false);
+          pagedEventsResultFromRaw(events: <EventModel>[], hasMore: false),
+        );
+        hasMorePagedEventsStreamValue.addValue(
+          ScheduleRepoBool.fromRaw(
+            false,
+            defaultValue: false,
+          ),
+        );
       }
     } finally {
-      _pagedEventsState.isFetching = false;
-      isPagedEventsPageLoadingStreamValue.addValue(false);
+      _pagedEventsState.isFetching = ScheduleRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isPagedEventsPageLoadingStreamValue.addValue(
+        ScheduleRepoBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
   void _resetPagedEventsState() {
-    _pagedEventsState.currentPage = 0;
-    _pagedEventsState.hasMore = true;
-    _pagedEventsState.isFetching = false;
-    hasMorePagedEventsStreamValue.addValue(true);
-    isPagedEventsPageLoadingStreamValue.addValue(false);
+    _pagedEventsState.currentPage = ScheduleRepoInt.fromRaw(
+      0,
+      defaultValue: 0,
+    );
+    _pagedEventsState.hasMore = ScheduleRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _pagedEventsState.isFetching = ScheduleRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMorePagedEventsStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+    isPagedEventsPageLoadingStreamValue.addValue(
+      ScheduleRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
   }
 
-  /// Returns the events for [date] already projected for presentation flows
-  /// that require [VenueEventResume] rather than the raw [EventModel].
   Future<List<VenueEventResume>> getEventResumesByDate(
       ScheduleRepoDateTime date);
 
   Future<List<VenueEventResume>> fetchUpcomingEvents();
 
   Stream<EventDeltaModel> watchEventsStream({
-    ScheduleRepoString searchQuery = '',
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
     ScheduleRepoString? lastEventId,
-    ScheduleRepoBool showPastOnly = false,
+    ScheduleRepoBool? showPastOnly,
   });
 
   Stream<void> watchEventsSignal({
-    required void Function(EventDeltaModel delta) onDelta,
-    ScheduleRepoString searchQuery = '',
+    required ScheduleRepositoryContractDeltaHandler onDelta,
+    ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
     List<ScheduleRepoString>? tags,
-    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
-    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
     ScheduleRepoString? lastEventId,
-    ScheduleRepoBool showPastOnly = false,
+    ScheduleRepoBool? showPastOnly,
   });
 }
 
 class _SchedulePagedEventsState {
   final StreamValue<ScheduleRepoBool> hasMoreStreamValue =
-      StreamValue<ScheduleRepoBool>(defaultValue: true);
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    ),
+  );
   final StreamValue<ScheduleRepoBool> isPageLoadingStreamValue =
-      StreamValue<ScheduleRepoBool>(defaultValue: false);
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
   final StreamValue<ScheduleRepoString?> errorStreamValue =
       StreamValue<ScheduleRepoString?>();
-  ScheduleRepoInt currentPage = 0;
-  ScheduleRepoBool hasMore = true;
-  ScheduleRepoBool isFetching = false;
+  ScheduleRepoInt currentPage = ScheduleRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
+  ScheduleRepoBool hasMore = ScheduleRepoBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  ScheduleRepoBool isFetching = ScheduleRepoBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
 }

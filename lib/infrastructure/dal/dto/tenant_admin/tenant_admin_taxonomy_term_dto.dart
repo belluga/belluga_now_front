@@ -17,7 +17,7 @@ class TenantAdminTaxonomyTermDTO {
   }
 
   TenantAdminTaxonomyTerm toDomain() {
-    return TenantAdminTaxonomyTerm(
+    return tenantAdminTaxonomyTermFromRaw(
       type: type,
       value: value,
     );

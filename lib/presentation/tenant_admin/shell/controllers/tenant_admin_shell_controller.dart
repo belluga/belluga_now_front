@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -53,15 +54,16 @@ class TenantAdminShellController implements Disposable {
   bool get isTenantEnvironment =>
       _appDataRepository.appData.typeValue.value == EnvironmentType.tenant;
 
-  bool get hasLocalLandlordSession =>
-      _landlordAuthRepository.hasValidSession;
+  bool get hasLocalLandlordSession => _landlordAuthRepository.hasValidSession;
 
   Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
 
   void init() {
     final tenantHostSelection = _resolveTenantHostSelection();
     if (!_hasSelectedTenantDomain() && tenantHostSelection != null) {
-      _selectedTenantRepository.selectTenantDomain(tenantHostSelection);
+      _selectedTenantRepository.selectTenantDomain(
+        TenantLookupDomainValue.fromRaw(tenantHostSelection),
+      );
     }
 
     final bootstrapTenants = _resolveBootstrapTenants();
@@ -84,7 +86,9 @@ class TenantAdminShellController implements Disposable {
     if (normalized == null) {
       return;
     }
-    _selectedTenantRepository.selectTenantDomain(normalized);
+    _selectedTenantRepository.selectTenantDomain(
+      TenantLookupDomainValue.fromRaw(normalized),
+    );
   }
 
   void clearTenantSelection() {
@@ -113,7 +117,7 @@ class TenantAdminShellController implements Disposable {
         if (host.isEmpty || host == landlordHost) {
           continue;
         }
-        tenantsByDomain[host] = LandlordTenantOption(
+        tenantsByDomain[host] = landlordTenantOptionFromRaw(
           id: host,
           name: host,
           mainDomain: host,

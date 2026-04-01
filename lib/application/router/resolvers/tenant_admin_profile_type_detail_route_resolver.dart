@@ -27,6 +27,12 @@ class TenantAdminProfileTypeDetailRouteResolver
       );
     }
 
-    return _accountProfilesRepository.fetchProfileType(profileType.trim());
+    return _accountProfilesRepository.fetchProfileType(
+      tenantAdminAccountProfilesRepoString(
+        profileType.trim(),
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 }

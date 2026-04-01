@@ -131,12 +131,12 @@ void main() {
         coverUrl: coverUrl,
       ),
       profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: false,
-        hasBio: false,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: true,
-        hasContent: false,
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(false),
       ),
     );
     await _pumpScreen(
@@ -165,12 +165,12 @@ void main() {
         coverUrl: 'https://tenant-a.test/media/static-assets/cover.png',
       ),
       profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: false,
-        hasBio: false,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: true,
-        hasContent: false,
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(false),
       ),
     );
     await _pumpScreen(
@@ -248,7 +248,7 @@ TenantAdminStaticAsset _sampleAsset({
   String? avatarUrl,
   String? coverUrl,
 }) {
-  return TenantAdminStaticAsset(
+  return tenantAdminStaticAssetFromRaw(
     id: 'asset-1',
     profileType: 'poi',
     displayName: 'Praia da Serra',
@@ -256,7 +256,7 @@ TenantAdminStaticAsset _sampleAsset({
     isActive: true,
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
-    taxonomyTerms: [],
+    taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
   );
 }
 
@@ -267,7 +267,7 @@ bool _chipSelected(WidgetTester tester, Finder chipFinder) {
 
 class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
   @override
-  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+  Future<Uint8List> fetchExternalImageBytes({required Object imageUrl}) async {
     throw UnimplementedError();
   }
 }
@@ -282,12 +282,12 @@ class _FakeStaticAssetsRepository
     TenantAdminStaticProfileTypeCapabilities? profileTypeCapabilities,
   }) : profileTypeCapabilities = profileTypeCapabilities ??
             TenantAdminStaticProfileTypeCapabilities(
-              isPoiEnabled: false,
-              hasBio: false,
-              hasTaxonomies: true,
-              hasAvatar: false,
-              hasCover: false,
-              hasContent: false,
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(true),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
             );
 
   TenantAdminStaticAsset asset;
@@ -302,14 +302,15 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
-    required String profileType,
-    required String displayName,
+    required TenantAdminStaticAssetsRepoString profileType,
+    required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -318,26 +319,30 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteStaticAsset(String assetId) async {
+  Future<void> deleteStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteStaticProfileType(String type) async {
+  Future<void> deleteStaticProfileType(
+      TenantAdminStaticAssetsRepoString type) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     return asset;
   }
 
@@ -348,20 +353,21 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final assets = await fetchStaticAssets();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= assets.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < assets.length ? start + pageSize : assets.length;
-    return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    final end = start + pageSize.value < assets.length
+        ? start + pageSize.value
+        : assets.length;
+    return tenantAdminPagedResultFromRaw(
       items: assets.sublist(start, end),
       hasMore: end < assets.length,
     );
@@ -371,7 +377,7 @@ class _FakeStaticAssetsRepository
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
     return [
-      TenantAdminStaticProfileTypeDefinition(
+      tenantAdminStaticProfileTypeDefinitionFromRaw(
         type: 'poi',
         label: 'POI',
         allowedTaxonomies: ['genre'],
@@ -383,79 +389,88 @@ class _FakeStaticAssetsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 ||
+        pageSize.value <= 0 ||
+        start >= profileTypes.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
-    final end = start + pageSize < profileTypes.length
-        ? start + pageSize
+    final end = start + pageSize.value < profileTypes.length
+        ? start + pageSize.value
         : profileTypes.length;
-    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: profileTypes.sublist(start, end),
       hasMore: end < profileTypes.length,
     );
   }
 
   @override
-  Future<void> forceDeleteStaticAsset(String assetId) async {
+  Future<void> forceDeleteStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<TenantAdminStaticAsset> restoreStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> restoreStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminStaticAsset> updateStaticAsset({
-    required String assetId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminStaticAssetsRepoString assetId,
+    TenantAdminStaticAssetsRepoString? profileType,
+    TenantAdminStaticAssetsRepoString? displayName,
+    TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
+    TenantAdminStaticAssetsRepoBool? removeAvatar,
+    TenantAdminStaticAssetsRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    lastRemoveAvatar = removeAvatar;
-    lastRemoveCover = removeCover;
+    lastRemoveAvatar = removeAvatar?.value;
+    lastRemoveCover = removeCover?.value;
     if (slug != null) {
       if (failSlugUpdate) {
         throw const FormatException('slug already exists');
       }
-      lastUpdatedSlug = slug;
+      lastUpdatedSlug = slug.value;
     }
     if (taxonomyTerms != null) {
       if (failTaxonomyUpdate) {
         throw Exception('taxonomy update failed');
       }
-      lastUpdatedTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
-        taxonomyTerms,
-      );
+      lastUpdatedTaxonomyTerms =
+          List<TenantAdminTaxonomyTerm>.from(taxonomyTerms.items);
     }
-    asset = TenantAdminStaticAsset(
+    asset = tenantAdminStaticAssetFromRaw(
       id: asset.id,
-      profileType: profileType ?? asset.profileType,
-      displayName: displayName ?? asset.displayName,
-      slug: slug ?? asset.slug,
+      profileType: profileType?.value ?? asset.profileType,
+      displayName: displayName?.value ?? asset.displayName,
+      slug: slug?.value ?? asset.slug,
       isActive: asset.isActive,
-      avatarUrl: removeAvatar == true ? null : (avatarUrl ?? asset.avatarUrl),
-      coverUrl: removeCover == true ? null : (coverUrl ?? asset.coverUrl),
-      bio: bio ?? asset.bio,
-      content: content ?? asset.content,
+      avatarUrl: removeAvatar?.value == true
+          ? null
+          : (avatarUrl?.value ?? asset.avatarUrl),
+      coverUrl: removeCover?.value == true
+          ? null
+          : (coverUrl?.value ?? asset.coverUrl),
+      bio: bio?.value ?? asset.bio,
+      content: content?.value ?? asset.content,
       taxonomyTerms: taxonomyTerms ?? asset.taxonomyTerms,
       location: location ?? asset.location,
     );
@@ -464,10 +479,10 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
     throw UnimplementedError();
@@ -479,33 +494,33 @@ class _FakeTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {
     throw UnimplementedError();
   }
@@ -513,7 +528,7 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
     return [
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-1',
         slug: 'genre',
         name: 'Genero',
@@ -527,21 +542,21 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final taxonomies = await fetchTaxonomies();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= taxonomies.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
     }
-    final end = start + pageSize < taxonomies.length
-        ? start + pageSize
+    final end = start + pageSize.value < taxonomies.length
+        ? start + pageSize.value
         : taxonomies.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: taxonomies.sublist(start, end),
       hasMore: end < taxonomies.length,
     );
@@ -549,13 +564,13 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
-    if (taxonomyId != 'tax-1') {
+    if (taxonomyId.value != 'tax-1') {
       return [];
     }
     return [
-      TenantAdminTaxonomyTermDefinition(
+      tenantAdminTaxonomyTermDefinitionFromRaw(
         id: 'term-1',
         taxonomyId: 'tax-1',
         slug: 'rock',
@@ -567,21 +582,22 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= terms.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < terms.length ? start + pageSize : terms.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final end = start + pageSize.value < terms.length
+        ? start + pageSize.value
+        : terms.length;
+    return tenantAdminPagedResultFromRaw(
       items: terms.sublist(start, end),
       hasMore: end < terms.length,
     );
@@ -589,22 +605,22 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) async {
     throw UnimplementedError();
   }

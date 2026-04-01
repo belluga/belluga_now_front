@@ -15,7 +15,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -250,14 +249,14 @@ void main() {
     );
     final staticAssetsRepository = _FakeStaticAssetsRepository(
       seededAssets: [
-        TenantAdminStaticAsset(
+        tenantAdminStaticAssetFromRaw(
           id: 'asset-1',
           profileType: 'beach',
           displayName: 'Praia do Morro',
           slug: 'praia-do-morro',
           isActive: true,
         ),
-        TenantAdminStaticAsset(
+        tenantAdminStaticAssetFromRaw(
           id: 'asset-2',
           profileType: 'museum',
           displayName: 'Museu Vale',
@@ -381,7 +380,7 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
       _FakeStaticAssetsRepository(
         seededAssets: [
-          TenantAdminStaticAsset(
+          tenantAdminStaticAssetFromRaw(
             id: 'asset-1',
             profileType: 'beach',
             displayName: 'Praia do Morro',
@@ -482,7 +481,7 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
       _FakeStaticAssetsRepository(
         seededAssets: [
-          TenantAdminStaticAsset(
+          tenantAdminStaticAssetFromRaw(
             id: 'asset-1',
             profileType: 'beach',
             displayName: 'Praia do Morro',
@@ -568,7 +567,10 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -582,7 +584,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   Future<String> getDeviceId() async => 'integration-device';
@@ -603,35 +605,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> createNewPassword(
-    String newPassword,
-    String confirmPassword,
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
   ) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }
 
 class _FakeLandlordTenantsRepository
@@ -639,7 +643,7 @@ class _FakeLandlordTenantsRepository
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
     return [
-      LandlordTenantOption(
+      landlordTenantOptionFromRaw(
         id: 'tenant-guarappari',
         name: 'Guarappari',
         mainDomain: 'guarappari.local.test',
@@ -703,34 +707,37 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final assets = await fetchStaticAssets();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= assets.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < assets.length ? start + pageSize : assets.length;
-    return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    final end = start + pageSize.value < assets.length
+        ? start + pageSize.value
+        : assets.length;
+    return tenantAdminPagedResultFromRaw(
       items: assets.sublist(start, end),
       hasMore: end < assets.length,
     );
   }
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     for (final asset in _assets) {
-      if (asset.id == assetId) {
+      if (asset.id == assetId.value) {
         return asset;
       }
     }
-    return TenantAdminStaticAsset(
-      id: assetId,
+    return tenantAdminStaticAssetFromRaw(
+      id: assetId.value,
       profileType: 'beach',
       displayName: 'Praia',
       slug: 'praia',
@@ -740,31 +747,32 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
-    required String profileType,
-    required String displayName,
+    required TenantAdminStaticAssetsRepoString profileType,
+    required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     final resolvedAvatarUrl =
-        avatarUpload != null ? generatedAvatarUploadUrl : avatarUrl;
+        avatarUpload != null ? generatedAvatarUploadUrl : avatarUrl?.value;
     final resolvedCoverUrl =
-        coverUpload != null ? generatedCoverUploadUrl : coverUrl;
-    final asset = TenantAdminStaticAsset(
+        coverUpload != null ? generatedCoverUploadUrl : coverUrl?.value;
+    final asset = tenantAdminStaticAssetFromRaw(
       id: 'asset-1',
-      profileType: profileType,
-      displayName: displayName,
+      profileType: profileType.value,
+      displayName: displayName.value,
       slug: 'asset-1',
       isActive: true,
       location: location,
       taxonomyTerms: taxonomyTerms,
-      bio: bio,
-      content: content,
+      bio: bio?.value,
+      content: content?.value,
       avatarUrl: resolvedAvatarUrl,
       coverUrl: resolvedCoverUrl,
     );
@@ -775,48 +783,48 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> updateStaticAsset({
-    required String assetId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminStaticAssetsRepoString assetId,
+    TenantAdminStaticAssetsRepoString? profileType,
+    TenantAdminStaticAssetsRepoString? displayName,
+    TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
+    TenantAdminStaticAssetsRepoBool? removeAvatar,
+    TenantAdminStaticAssetsRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     TenantAdminStaticAsset? existing;
     for (final asset in _assets) {
-      if (asset.id == assetId) {
+      if (asset.id == assetId.value) {
         existing = asset;
         break;
       }
     }
     final resolvedAvatarUrl = avatarUpload != null
         ? generatedAvatarUploadUrl
-        : avatarUrl ?? existing?.avatarUrl;
+        : avatarUrl?.value ?? existing?.avatarUrl;
     final resolvedCoverUrl = coverUpload != null
         ? generatedCoverUploadUrl
-        : coverUrl ?? existing?.coverUrl;
-    final updated = TenantAdminStaticAsset(
-      id: assetId,
-      profileType: profileType ?? existing?.profileType ?? 'beach',
-      displayName: displayName ?? existing?.displayName ?? 'Praia',
-      slug: slug ?? existing?.slug ?? 'praia',
+        : coverUrl?.value ?? existing?.coverUrl;
+    final updated = tenantAdminStaticAssetFromRaw(
+      id: assetId.value,
+      profileType: profileType?.value ?? existing?.profileType ?? 'beach',
+      displayName: displayName?.value ?? existing?.displayName ?? 'Praia',
+      slug: slug?.value ?? existing?.slug ?? 'praia',
       isActive: true,
       location: location ?? existing?.location,
-      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? [],
-      bio: bio ?? existing?.bio,
-      content: content ?? existing?.content,
+      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
+      bio: bio?.value ?? existing?.bio,
+      content: content?.value ?? existing?.content,
       avatarUrl: resolvedAvatarUrl,
       coverUrl: resolvedCoverUrl,
     );
-    final index = _assets.indexWhere((asset) => asset.id == assetId);
+    final index = _assets.indexWhere((asset) => asset.id == assetId.value);
     if (index >= 0) {
       _assets[index] = updated;
     } else {
@@ -826,12 +834,15 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<void> deleteStaticAsset(String assetId) async {}
+  Future<void> deleteStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId) async {}
 
   @override
-  Future<TenantAdminStaticAsset> restoreStaticAsset(String assetId) async {
-    return TenantAdminStaticAsset(
-      id: assetId,
+  Future<TenantAdminStaticAsset> restoreStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
+    return tenantAdminStaticAssetFromRaw(
+      id: assetId.value,
       profileType: 'beach',
       displayName: 'Praia',
       slug: 'praia',
@@ -840,23 +851,25 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<void> forceDeleteStaticAsset(String assetId) async {}
+  Future<void> forceDeleteStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {}
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
     return [
-      TenantAdminStaticProfileTypeDefinition(
+      tenantAdminStaticProfileTypeDefinitionFromRaw(
         type: 'beach',
         label: 'Praia',
         allowedTaxonomies: ['beach_style'],
         capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: true,
-          hasBio: true,
-          hasTaxonomies: true,
-          hasAvatar: true,
-          hasCover: true,
-          hasContent: true,
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
         ),
       ),
     ];
@@ -865,21 +878,23 @@ class _FakeStaticAssetsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 ||
+        pageSize.value <= 0 ||
+        start >= profileTypes.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
-    final end = start + pageSize < profileTypes.length
-        ? start + pageSize
+    final end = start + pageSize.value < profileTypes.length
+        ? start + pageSize.value
         : profileTypes.length;
-    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: profileTypes.sublist(start, end),
       hasMore: end < profileTypes.length,
     );
@@ -887,45 +902,53 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) async {
-    return TenantAdminStaticProfileTypeDefinition(
-      type: type,
-      label: label,
-      allowedTaxonomies: allowedTaxonomies,
+    return tenantAdminStaticProfileTypeDefinitionFromRaw(
+      type: type.value,
+      label: label.value,
+      allowedTaxonomies: allowedTaxonomies
+              ?.map((entry) => entry.value)
+              .toList(growable: false) ??
+          const [],
       capabilities: capabilities,
     );
   }
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
-    return TenantAdminStaticProfileTypeDefinition(
-      type: type,
-      label: label ?? 'Praia',
-      allowedTaxonomies: allowedTaxonomies ?? [],
+    return tenantAdminStaticProfileTypeDefinitionFromRaw(
+      type: type.value,
+      label: label?.value ?? 'Praia',
+      allowedTaxonomies: allowedTaxonomies
+              ?.map((entry) => entry.value)
+              .toList(growable: false) ??
+          const [],
       capabilities: capabilities ??
           TenantAdminStaticProfileTypeCapabilities(
-            isPoiEnabled: true,
-            hasBio: true,
-            hasTaxonomies: true,
-            hasAvatar: true,
-            hasCover: true,
-            hasContent: true,
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
           ),
     );
   }
 
   @override
-  Future<void> deleteStaticProfileType(String type) async {}
+  Future<void> deleteStaticProfileType(
+    TenantAdminStaticAssetsRepoString type,
+  ) async {}
 }
 
 class _FakeTaxonomiesRepository
@@ -934,7 +957,7 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
     return [
-      TenantAdminTaxonomyDefinition(
+      tenantAdminTaxonomyDefinitionFromRaw(
         id: 'taxonomy-1',
         slug: 'beach_style',
         name: 'Estilo da praia',
@@ -948,21 +971,21 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final taxonomies = await fetchTaxonomies();
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= taxonomies.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
     }
-    final end = start + pageSize < taxonomies.length
-        ? start + pageSize
+    final end = start + pageSize.value < taxonomies.length
+        ? start + pageSize.value
         : taxonomies.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: taxonomies.sublist(start, end),
       hasMore: end < taxonomies.length,
     );
@@ -970,13 +993,13 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
-    return TenantAdminTaxonomyDefinition(
+    return tenantAdminTaxonomyDefinitionFromRaw(
       id: 'taxonomy-2',
       slug: slug,
       name: name,
@@ -988,14 +1011,14 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
-    return TenantAdminTaxonomyDefinition(
+    return tenantAdminTaxonomyDefinitionFromRaw(
       id: taxonomyId,
       slug: slug ?? 'beach_style',
       name: name ?? 'Estilo da praia',
@@ -1006,14 +1029,14 @@ class _FakeTaxonomiesRepository
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {}
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {}
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return [
-      TenantAdminTaxonomyTermDefinition(
+      tenantAdminTaxonomyTermDefinitionFromRaw(
         id: 'term-1',
         taxonomyId: 'taxonomy-1',
         slug: 'urbana',
@@ -1025,21 +1048,22 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
-    final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= terms.length) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < terms.length ? start + pageSize : terms.length;
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    final end = start + pageSize.value < terms.length
+        ? start + pageSize.value
+        : terms.length;
+    return tenantAdminPagedResultFromRaw(
       items: terms.sublist(start, end),
       hasMore: end < terms.length,
     );
@@ -1047,11 +1071,11 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) async {
-    return TenantAdminTaxonomyTermDefinition(
+    return tenantAdminTaxonomyTermDefinitionFromRaw(
       id: 'term-2',
       taxonomyId: taxonomyId,
       slug: slug,
@@ -1061,12 +1085,12 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) async {
-    return TenantAdminTaxonomyTermDefinition(
+    return tenantAdminTaxonomyTermDefinitionFromRaw(
       id: termId,
       taxonomyId: taxonomyId,
       slug: slug ?? 'urbana',
@@ -1076,7 +1100,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {}
 }

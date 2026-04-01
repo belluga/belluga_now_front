@@ -30,9 +30,8 @@ class InviteAcceptResult {
   String get status => statusValue.value;
   bool get creditedAcceptance => creditedAcceptanceValue.value;
   String get attendancePolicy => attendancePolicyValue.value;
-  List<String> get supersededInviteIds => supersededInviteIdValues
-      .map((inviteIdValue) => inviteIdValue.value)
-      .toList(growable: false);
+  List<InviteIdValue> get supersededInviteIds =>
+      List<InviteIdValue>.unmodifiable(supersededInviteIdValues);
   DateTime? get acceptedAt => acceptedAtValue.value;
 
   bool get isAccepted => status == 'accepted' || status == 'already_accepted';

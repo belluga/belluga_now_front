@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('invite routes require tenant and auth guards', () {
+  test('invite routes keep anonymous entry and auth-protected share flow', () {
     final module = InvitesModule();
     final routes = module.routes;
 
@@ -30,11 +31,11 @@ void main() {
 
     expect(
       flowRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [TenantRouteGuard, AuthRouteGuard],
+      [TenantRouteGuard, WebAnonymousFallbackGuard],
     );
     expect(
       inviteAliasRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [TenantRouteGuard],
+      [TenantRouteGuard, WebAnonymousFallbackGuard],
     );
     expect(
       shareRoute.guards.map((guard) => guard.runtimeType).toList(),
@@ -49,6 +50,48 @@ void main() {
 
     expect(inviteRoute, isNot(isA<RedirectRoute>()));
   });
+
+  test('anonymous invite preview allowance requires a non-empty code', () {
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(
+          fullPath: '/convites',
+          queryParams: const {'code': 'ABC123'},
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(fullPath: '/convites'),
+      ),
+      isFalse,
+    );
+    expect(
+      InvitesModule.allowAnonymousInvitePreviewForTesting(
+        _FakeRouteMatch(
+          fullPath: '/invite',
+          queryParams: const {'code': '   '},
+        ),
+      ),
+      isFalse,
+    );
+  });
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const {},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  final String fullPath;
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract {
@@ -59,7 +102,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   String get userToken => '';
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(AuthRepositoryContractParamString? token) {}
 
   @override
   bool get isUserLoggedIn => false;
@@ -80,31 +123,33 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString password) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
   ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-    String email,
-    String codigoEnviado,
-  ) async {}
+      AuthRepositoryContractParamString email,
+      AuthRepositoryContractParamString codigoEnviado) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
+      AuthRepositoryContractParamString confirmPassword) async {}
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(
+      AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) async {}
+  Future<void> updateUser(
+      UserCustomData data) async {}
 }

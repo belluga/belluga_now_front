@@ -188,7 +188,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {
     _hasValidSession = true;
   }
 
@@ -203,7 +205,7 @@ class _FakeLandlordTenantsRepository
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
     return [
-      LandlordTenantOption(
+      landlordTenantOptionFromRaw(
         id: 'tenant-guarappari',
         name: 'Guarappari',
         mainDomain: 'guarappari.local.test',
@@ -218,13 +220,15 @@ class _FakeTenantAdminEventsRepository
   _FakeTenantAdminEventsRepository()
       : _events = <TenantAdminEvent>[
           TenantAdminEvent(
-            eventId: 'event-delete-1',
-            slug: 'delete-visibility-event',
-            title: 'Delete Visibility Event',
-            content: 'Event used to validate soft delete visibility.',
+            eventIdValue: tenantAdminRequiredText('event-delete-1'),
+            slugValue: tenantAdminRequiredText('delete-visibility-event'),
+            titleValue: tenantAdminRequiredText('Delete Visibility Event'),
+            contentValue: tenantAdminOptionalText(
+              'Event used to validate soft delete visibility.',
+            ),
             type: TenantAdminEventType(
-              name: 'Show',
-              slug: 'show',
+              nameValue: tenantAdminRequiredText('Show'),
+              slugValue: tenantAdminRequiredText('show'),
             ),
             occurrences: [
               TenantAdminEventOccurrence(
@@ -235,7 +239,7 @@ class _FakeTenantAdminEventsRepository
             publication: TenantAdminEventPublication(
               statusValue: tenantAdminRequiredText('published'),
             ),
-            deletedAt: null,
+            deletedAtValue: tenantAdminOptionalDateTime(null),
           ),
         ];
 
@@ -250,7 +254,7 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
@@ -258,79 +262,79 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {
-    final index = _events.indexWhere((event) => event.eventId == eventId);
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {
+    final index = _events.indexWhere((event) => event.eventId == eventId.value);
     if (index < 0) {
       return;
     }
     final current = _events[index];
     _events[index] = TenantAdminEvent(
-      eventId: current.eventId,
-      slug: current.slug,
-      title: current.title,
-      content: current.content,
+      eventIdValue: tenantAdminRequiredText(current.eventId),
+      slugValue: tenantAdminRequiredText(current.slug),
+      titleValue: tenantAdminRequiredText(current.title),
+      contentValue: tenantAdminOptionalText(current.content),
       type: current.type,
       occurrences: current.occurrences,
       publication: current.publication,
       location: current.location,
       placeRef: current.placeRef,
-      artistIds: current.artistIds,
+      artistIdValues: current.artistIds,
       eventParties: current.eventParties,
       taxonomyTerms: current.taxonomyTerms,
-      createdAt: current.createdAt,
-      updatedAt: DateTime.now().toUtc(),
-      deletedAt: DateTime.now().toUtc(),
+      createdAtValue: tenantAdminOptionalDateTime(current.createdAt),
+      updatedAtValue: tenantAdminOptionalDateTime(DateTime.now().toUtc()),
+      deletedAtValue: tenantAdminOptionalDateTime(DateTime.now().toUtc()),
     );
   }
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     return _filterEvents(
-      status: status,
-      archived: archived,
+      status: status?.value,
+      archived: archived?.value ?? false,
     );
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     final filtered = _filterEvents(
-      status: status,
-      archived: archived,
+      status: status?.value,
+      archived: archived?.value ?? false,
     );
-    if (page <= 0 || pageSize <= 0) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+    if (page.value <= 0 || pageSize.value <= 0) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
-    final start = (page - 1) * pageSize;
+    final start = (page.value - 1) * pageSize.value;
     if (start >= filtered.length) {
-      return TenantAdminPagedResult<TenantAdminEvent>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
-    final end = (start + pageSize) > filtered.length
+    final end = (start + pageSize.value) > filtered.length
         ? filtered.length
-        : (start + pageSize);
-    return TenantAdminPagedResult<TenantAdminEvent>(
+        : (start + pageSize.value);
+    return tenantAdminPagedResultFromRaw(
       items: filtered.sublist(start, end),
       hasMore: end < filtered.length,
     );
@@ -357,14 +361,15 @@ class _FakeTenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+  Future<TenantAdminEvent> fetchEvent(
+      TenantAdminEventsRepoString eventIdOrSlug) async {
     return _events.first;
   }
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
@@ -378,31 +383,31 @@ class _NoopTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {}
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {}
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {}
 
   @override
@@ -413,10 +418,10 @@ class _NoopTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -424,7 +429,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return <TenantAdminTaxonomyTermDefinition>[];
   }
@@ -432,11 +437,11 @@ class _NoopTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -444,22 +449,22 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) async {
     throw UnimplementedError();
   }

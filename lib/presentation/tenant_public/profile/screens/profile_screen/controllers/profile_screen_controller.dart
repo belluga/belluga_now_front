@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
+import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,12 +25,14 @@ class ProfileScreenController implements Disposable {
         _avatarStorage =
             avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>() {
     _bindUserStream();
+    _bindMaxRadiusStream();
   }
 
   final AuthRepositoryContract _authRepository;
   final AppDataRepositoryContract _appDataRepository;
   final ProfileAvatarStorageContract _avatarStorage;
   StreamSubscription<UserContract?>? _userSubscription;
+  StreamSubscription<DistanceInMetersValue>? _maxRadiusSubscription;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -40,8 +44,8 @@ class ProfileScreenController implements Disposable {
       StreamValue<String?>();
   final StreamValue<int> formVersionStreamValue =
       StreamValue<int>(defaultValue: 0);
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      _appDataRepository.maxRadiusMetersStreamValue;
+  final StreamValue<double> maxRadiusMetersStreamValue =
+      StreamValue<double>(defaultValue: 50000);
 
   String? _syncedUserId;
   String _initialName = '';
@@ -56,7 +60,7 @@ class ProfileScreenController implements Disposable {
       _appDataRepository.themeModeStreamValue;
   ThemeMode get themeMode => _appDataRepository.themeMode;
   Future<void> setThemeMode(ThemeMode mode) =>
-      _appDataRepository.setThemeMode(mode);
+      _appDataRepository.setThemeMode(AppThemeModeValue.fromRaw(mode));
 
   bool syncFromUser(UserContract? user) {
     if (user == null) return false;
@@ -85,19 +89,29 @@ class ProfileScreenController implements Disposable {
     }
   }
 
+  void _bindMaxRadiusStream() {
+    _maxRadiusSubscription?.cancel();
+    maxRadiusMetersStreamValue.addValue(_appDataRepository.maxRadiusMeters.value);
+    _maxRadiusSubscription =
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
+      maxRadiusMetersStreamValue.addValue(value.value);
+    });
+  }
+
   Future<void> loadAvatarPath() async {
     final stored = await _avatarStorage.readAvatarPath();
-    if (stored == null || stored.trim().isEmpty) {
+    final storedPath = stored?.value.trim();
+    if (storedPath == null || storedPath.isEmpty) {
       localAvatarPathStreamValue.addValue(null);
       return;
     }
-    final file = File(stored);
+    final file = File(storedPath);
     if (!await file.exists()) {
       await _avatarStorage.clearAvatarPath();
       localAvatarPathStreamValue.addValue(null);
       return;
     }
-    localAvatarPathStreamValue.addValue(stored);
+    localAvatarPathStreamValue.addValue(storedPath);
   }
 
   bool get hasPendingChanges {
@@ -112,7 +126,7 @@ class ProfileScreenController implements Disposable {
   }
 
   Future<void> setMaxRadiusMeters(double meters) =>
-      _appDataRepository.setMaxRadiusMeters(meters);
+      _appDataRepository.setMaxRadiusMeters(_distanceInMetersValue(meters));
 
   Future<void> requestAvatarUpdate() async {
     debugPrint('[Profile] Avatar update requested');
@@ -141,7 +155,7 @@ class ProfileScreenController implements Disposable {
       }
     }
 
-    await _avatarStorage.writeAvatarPath(saved.path);
+    await _avatarStorage.writeAvatarPath(_profileAvatarPathValue(saved.path));
     localAvatarPathStreamValue.addValue(saved.path);
   }
 
@@ -156,9 +170,22 @@ class ProfileScreenController implements Disposable {
 
   Future<void> logout() => _authRepository.logout();
 
+  DistanceInMetersValue _distanceInMetersValue(double raw) {
+    final value = DistanceInMetersValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  ProfileAvatarPathValue _profileAvatarPathValue(String raw) {
+    final value = ProfileAvatarPathValue();
+    value.parse(raw);
+    return value;
+  }
+
   @override
   void onDispose() {
     _userSubscription?.cancel();
+    _maxRadiusSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
     emailController.dispose();
@@ -167,5 +194,6 @@ class ProfileScreenController implements Disposable {
     radiusKmController.dispose();
     localAvatarPathStreamValue.dispose();
     formVersionStreamValue.dispose();
+    maxRadiusMetersStreamValue.dispose();
   }
 }

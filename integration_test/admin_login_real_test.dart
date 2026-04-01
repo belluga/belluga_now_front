@@ -151,7 +151,7 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    app.appRouter.replaceAll([const AuthLoginRoute()]);
+    app.appRouter.replaceAll([AuthLoginRoute()]);
     await _pumpFor(tester, const Duration(seconds: 1));
 
     await _waitForFinder(tester, find.text('Entrar como Admin'));
@@ -303,7 +303,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {
     _hasValidSession = true;
   }
 
@@ -317,8 +319,8 @@ class _FakeLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
-    return const [
-      LandlordTenantOption(
+    return [
+      landlordTenantOptionFromRaw(
         id: 'tenant-guarappari',
         name: 'Guarappari',
         mainDomain: 'guarappari.local.test',

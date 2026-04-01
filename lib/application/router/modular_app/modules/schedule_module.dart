@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
 import 'package:belluga_now/application/router/resolvers/immersive_event_detail_route_resolver.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
@@ -29,10 +31,12 @@ class ScheduleModule extends ModuleContract {
         AutoRoute(
           path: '/agenda',
           page: EventSearchRoute.page,
+          guards: [TenantRouteGuard(), WebAnonymousFallbackGuard()],
         ),
         AutoRoute(
           path: '/agenda/evento/:slug',
           page: ImmersiveEventDetailRoute.page,
+          guards: [TenantRouteGuard()],
         ),
       ];
 }

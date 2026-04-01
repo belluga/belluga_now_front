@@ -2,12 +2,11 @@ part of '../tenant_admin_event.dart';
 
 class TenantAdminEventOnlineLocation {
   TenantAdminEventOnlineLocation({
-    required Object url,
-    Object? platform,
-    Object? label,
-  })  : urlValue = tenantAdminRequiredText(url),
-        platformValue = tenantAdminOptionalText(platform),
-        labelValue = tenantAdminOptionalText(label);
+    required this.urlValue,
+    TenantAdminOptionalTextValue? platformValue,
+    TenantAdminOptionalTextValue? labelValue,
+  })  : platformValue = platformValue ?? TenantAdminOptionalTextValue(),
+        labelValue = labelValue ?? TenantAdminOptionalTextValue();
 
   final TenantAdminRequiredTextValue urlValue;
   final TenantAdminOptionalTextValue platformValue;

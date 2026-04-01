@@ -1,27 +1,48 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
-  LaravelAccountProfilesBackend({Dio? dio}) : _dio = dio ?? Dio();
+  LaravelAccountProfilesBackend({
+    Dio? dio,
+    LocationOriginServiceContract? locationOriginService,
+  })  : _dio = dio ?? Dio(),
+        _locationOriginService = locationOriginService;
 
   static const int _defaultPageSize = 30;
   static const int _maxPages = 10;
 
   final Dio _dio;
+  LocationOriginServiceContract? _locationOriginService;
 
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
+
+  LocationOriginServiceContract? get _resolvedLocationOriginService {
+    if (_locationOriginService != null) {
+      return _locationOriginService;
+    }
+    if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+      return null;
+    }
+    _locationOriginService = GetIt.I.get<LocationOriginServiceContract>();
+    return _locationOriginService;
+  }
 
   Future<Map<String, String>> _buildHeaders({bool includeJsonAccept = false}) {
     return TenantPublicAuthHeaders.build(
@@ -46,6 +67,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     try {
       final queryParameters = <String, dynamic>{
@@ -59,6 +81,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final trimmedType = typeFilter?.trim();
       if (trimmedType != null && trimmedType.isNotEmpty) {
         queryParameters['profile_type'] = trimmedType;
+        queryParameters['filter'] = <String, dynamic>{
+          'profile_type': trimmedType,
+        };
       }
 
       final headers = await _buildHeaders(includeJsonAccept: true);
@@ -71,10 +96,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (raw is! Map<String, dynamic>) {
         throw Exception('Unexpected account profiles response shape.');
       }
-      final data = raw['data'];
-      if (data is! List) {
-        throw Exception('Account profiles payload missing data list.');
-      }
+      final data = _extractDataList(raw);
 
       final currentPage = _parsePageValue(raw['current_page']) ?? page;
       final lastPage = _parsePageValue(raw['last_page']);
@@ -82,8 +104,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           ? currentPage < lastPage
           : raw['next_page_url'] != null;
 
-      return PagedAccountProfilesResult(
-        profiles: _parseProfiles(data),
+      final distanceOrigin = await _resolveDistanceOrigin();
+      return pagedAccountProfilesResultFromRaw(
+        profiles: _parseProfiles(data, distanceOrigin: distanceOrigin),
         hasMore: hasMore,
       );
     } on DioException catch (error) {
@@ -99,9 +122,51 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    final origin = await _resolveEffectiveOriginCoordinate();
+    if (origin == null) {
+      return const <AccountProfileModel>[];
+    }
+
+    final safePageSize = pageSize <= 0 ? 10 : pageSize.clamp(1, 50);
+    try {
+      final headers = await _buildHeaders(includeJsonAccept: true);
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles/near',
+        queryParameters: <String, dynamic>{
+          'origin_lat': origin.latitude,
+          'origin_lng': origin.longitude,
+          'page': 1,
+          'page_size': safePageSize,
+        },
+        options: Options(headers: headers),
+      );
+      final raw = response.data;
+      if (raw is! Map<String, dynamic>) {
+        throw Exception('Unexpected account profiles near response shape.');
+      }
+
+      final data = _extractDataList(raw);
+      return _parseProfiles(data, distanceOrigin: origin);
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      throw Exception(
+        'Failed to load nearby account profiles '
+        '[status=$statusCode] '
+        '(${error.requestOptions.uri}): '
+        '${data ?? error.message}',
+      );
+    }
+  }
+
+  @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     final profiles = <AccountProfileModel>[];
     var page = 1;
@@ -113,6 +178,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         pageSize: _defaultPageSize,
         query: query,
         typeFilter: typeFilter,
+        allowedTypes: allowedTypes,
       );
       profiles.addAll(result.profiles);
       hasMore = result.hasMore;
@@ -132,7 +198,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
   }
 
-  List<AccountProfileModel> _parseProfiles(List<dynamic> raw) {
+  List<AccountProfileModel> _parseProfiles(
+    List<dynamic> raw, {
+    required CityCoordinate? distanceOrigin,
+  }) {
     final profiles = <AccountProfileModel>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
@@ -147,6 +216,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final trimmedType = typeRaw.trim();
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
+      final distanceMeters = _resolveDistanceMeters(
+        json,
+        distanceOrigin: distanceOrigin,
+      );
       ThumbUriValue? avatarValue;
       final avatarUrl = json['avatar_url']?.toString();
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -173,11 +246,29 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           avatarValue: avatarValue,
           coverValue: coverValue,
           bioValue: bioValue,
-          tagsValue: AccountProfileTagsValue(tags),
+          tagValues: tags
+              .map(AccountProfileTagValue.new)
+              .toList(growable: false),
+          distanceMetersValue:
+              AccountProfileDistanceMetersValue(distanceMeters),
         ),
       );
     }
     return profiles;
+  }
+
+  List<dynamic> _extractDataList(Map<String, dynamic> payload) {
+    final data = payload['data'];
+    if (data is List) {
+      return data;
+    }
+
+    final items = payload['items'];
+    if (items is List) {
+      return items;
+    }
+
+    throw Exception('Account profiles payload missing data list.');
   }
 
   List<String> _extractTags(dynamic raw) {
@@ -197,6 +288,152 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   int? _parsePageValue(dynamic raw) {
     if (raw is int) return raw;
     if (raw is String) return int.tryParse(raw);
+    return null;
+  }
+
+  double? _resolveDistanceMeters(
+    Map<String, dynamic> json, {
+    required CityCoordinate? distanceOrigin,
+  }) {
+    final directDistance = _parseDirectDistanceMeters(json);
+    if (directDistance != null) {
+      return directDistance;
+    }
+
+    final location =
+        _parseLocationLatLng(json['location']) ?? _parseTopLevelLatLng(json);
+    if (location == null) {
+      return null;
+    }
+
+    if (distanceOrigin == null) {
+      return null;
+    }
+
+    return haversineDistanceMeters(
+      coordinateA: distanceOrigin,
+      coordinateB: CityCoordinate.fromLatLng(
+        LatLng(location.$1, location.$2),
+      ),
+    ).value;
+  }
+
+  double? _parseDirectDistanceMeters(Map<String, dynamic> json) {
+    const meterKeys = <String>[
+      'distance_meters',
+      'distanceMeters',
+      'distance_in_meters',
+      'distanceMetersValue',
+    ];
+    for (final key in meterKeys) {
+      final value = _parseDouble(json[key]);
+      if (value != null) {
+        return value;
+      }
+    }
+
+    final distanceKm =
+        _parseDouble(json['distance_km']) ?? _parseDouble(json['distanceKm']);
+    if (distanceKm != null) {
+      return distanceKm * 1000;
+    }
+    return null;
+  }
+
+  Future<CityCoordinate?> _resolveEffectiveOriginCoordinate() async {
+    final locationOriginService = _resolvedLocationOriginService;
+    if (locationOriginService == null) {
+      return null;
+    }
+    final resolution = await locationOriginService.resolve(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: true,
+      ),
+    );
+    return resolution.effectiveCoordinate;
+  }
+
+  Future<CityCoordinate?> _resolveDistanceOrigin() async {
+    return _resolveEffectiveOriginCoordinate();
+  }
+
+  (double, double)? _parseLocationLatLng(dynamic rawLocation) {
+    if (rawLocation is List) {
+      return _parseCoordinatesPayload(rawLocation);
+    }
+    if (rawLocation is! Map) {
+      return null;
+    }
+    final location = Map<String, dynamic>.from(rawLocation);
+    final directLatLng = _parseLatLngFromMap(location);
+    if (directLatLng != null) {
+      return directLatLng;
+    }
+
+    final geoLatLng = _parseCoordinatesPayload(location['geo']);
+    if (geoLatLng != null) {
+      return geoLatLng;
+    }
+
+    final locationCoordinates =
+        _parseCoordinatesPayload(location['coordinates']);
+    if (locationCoordinates != null) {
+      return locationCoordinates;
+    }
+
+    return null;
+  }
+
+  (double, double)? _parseTopLevelLatLng(Map<String, dynamic> json) {
+    final topLevelLatLng = _parseLatLngFromMap(json);
+    if (topLevelLatLng != null) {
+      return topLevelLatLng;
+    }
+    return _parseCoordinatesPayload(json['coordinates']);
+  }
+
+  (double, double)? _parseLatLngFromMap(Map<String, dynamic> map) {
+    final lat = _parseDouble(map['lat']) ?? _parseDouble(map['latitude']);
+    final lng = _parseDouble(map['lng']) ??
+        _parseDouble(map['lon']) ??
+        _parseDouble(map['longitude']);
+    if (lat != null && lng != null) {
+      return (lat, lng);
+    }
+    return null;
+  }
+
+  (double, double)? _parseCoordinatesPayload(dynamic coordinatesRaw) {
+    if (coordinatesRaw is List && coordinatesRaw.length >= 2) {
+      final coordLng = _parseDouble(coordinatesRaw[0]);
+      final coordLat = _parseDouble(coordinatesRaw[1]);
+      if (coordLat != null && coordLng != null) {
+        return (coordLat, coordLng);
+      }
+      return null;
+    }
+    if (coordinatesRaw is Map) {
+      final coordinates = Map<String, dynamic>.from(coordinatesRaw);
+      final latLng = _parseLatLngFromMap(coordinates);
+      if (latLng != null) {
+        return latLng;
+      }
+      return _parseCoordinatesPayload(coordinates['coordinates']);
+    }
+    return null;
+  }
+
+  double? _parseDouble(dynamic raw) {
+    if (raw is num) {
+      return raw.toDouble();
+    }
+    if (raw is String) {
+      final normalized = raw.trim().replaceAll(',', '.');
+      if (normalized.isEmpty) {
+        return null;
+      }
+      return double.tryParse(normalized);
+    }
     return null;
   }
 }

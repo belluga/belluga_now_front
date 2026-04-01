@@ -2,6 +2,9 @@ import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_direct_navigation_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_dispose_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_write_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_owned_streamvalue_dispose_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_async_model_fetch_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_pagination_arguments_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_streamvalue_model_ownership_forbidden_rule.dart';
@@ -11,6 +14,7 @@ import 'package:belluga_analysis_plugin/src/rules/domain_primitive_field_forbidd
 import 'package:belluga_analysis_plugin/src/rules/dto_mapper_pass_through_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/global_ui_controller_naming_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/location_origin_canonical_resolution_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/module_direct_getit_registration_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_public_class_file_warning_rule.dart';
@@ -30,6 +34,7 @@ import 'package:belluga_analysis_plugin/src/rules/route_required_non_url_args_fo
 import 'package:belluga_analysis_plugin/src/rules/screen_controller_resolution_pattern_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/service_json_parsing_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/tenant_canonical_domain_required_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/timezone_service_direct_datetime_conversion_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/ui_route_param_hydration_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/ui_build_side_effects_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/ui_cross_feature_controller_resolution_forbidden_rule.dart';
@@ -52,8 +57,12 @@ class BellugaAnalysisPlugin extends Plugin {
   @override
   void register(PluginRegistry registry) {
     registry.registerWarningRule(UiGetItNonControllerForbiddenRule());
-    registry.registerWarningRule(UiDirectRepositoryServiceResolutionForbiddenRule());
-    registry.registerWarningRule(UiCrossFeatureControllerResolutionForbiddenRule());
+    registry.registerWarningRule(
+      UiDirectRepositoryServiceResolutionForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      UiCrossFeatureControllerResolutionForbiddenRule(),
+    );
     registry.registerWarningRule(ModuleScopedControllerDisposeForbiddenRule());
     registry.registerWarningRule(UiStreamValueOwnershipForbiddenRule());
     registry.registerWarningRule(UiDtoImportForbiddenRule());
@@ -68,30 +77,65 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(UiControllerOwnershipForbiddenRule());
     registry.registerWarningRule(UiStreamValueBuilderNullCheckForbiddenRule());
     registry.registerWarningRule(RepositoryJsonParsingForbiddenRule());
-    registry.registerWarningRule(RepositoryModelStreamLifecycleMethodsRequiredRule());
-    registry.registerWarningRule(RepositoryModelStreamValueNullableRequiredRule());
+    registry.registerWarningRule(
+      RepositoryModelStreamLifecycleMethodsRequiredRule(),
+    );
+    registry.registerWarningRule(
+      RepositoryModelStreamValueNullableRequiredRule(),
+    );
     registry.registerWarningRule(RepositoryRegistrationScopeEnforcedRule());
     registry.registerWarningRule(RepositoryRegistrationLifecycleEnforcedRule());
-    registry.registerWarningRule(RepositoryServiceCatchReturnFallbackForbiddenRule());
+    registry.registerWarningRule(
+      RepositoryServiceCatchReturnFallbackForbiddenRule(),
+    );
     registry.registerWarningRule(RepositoryRawPayloadMapForbiddenRule());
     registry.registerWarningRule(RepositoryRawTransportTypingForbiddenRule());
     registry.registerWarningRule(ServiceJsonParsingForbiddenRule());
-    registry.registerWarningRule(RepositoryInlineDtoToDomainMapperForbiddenRule());
+    registry.registerWarningRule(
+      RepositoryInlineDtoToDomainMapperForbiddenRule(),
+    );
     registry.registerWarningRule(ModuleDirectGetItRegistrationForbiddenRule());
     registry.registerWarningRule(GlobalUiControllerNamingForbiddenRule());
-    registry.registerWarningRule(ControllerBuildContextDependencyForbiddenRule());
+    registry.registerWarningRule(
+      ControllerBuildContextDependencyForbiddenRule(),
+    );
     registry.registerWarningRule(ControllerDirectNavigationForbiddenRule());
-    registry.registerWarningRule(ControllerRepositoryAsyncModelFetchForbiddenRule());
-    registry.registerWarningRule(ControllerRepositoryPaginationArgumentsForbiddenRule());
-    registry.registerWarningRule(ControllerStreamValueModelOwnershipForbiddenRule());
+    registry.registerWarningRule(
+      ControllerRepositoryAsyncModelFetchForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerRepositoryPaginationArgumentsForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerDelegatedStreamValueDisposeForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerDelegatedStreamValueWriteForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerOwnedStreamValueDisposeRequiredRule(),
+    );
+    registry.registerWarningRule(
+      ControllerStreamValueModelOwnershipForbiddenRule(),
+    );
     registry.registerWarningRule(RoutePageMustLiveInRoutesFolderRule());
     registry.registerWarningRule(RoutePathParamRequiresResolverRouteRule());
     registry.registerWarningRule(RouteRequiredNonUrlArgsForbiddenRule());
-    registry.registerWarningRule(ScreenControllerResolutionPatternRequiredRule());
+    registry.registerWarningRule(
+      ScreenControllerResolutionPatternRequiredRule(),
+    );
     registry.registerWarningRule(UiRouteParamHydrationForbiddenRule());
     registry.registerWarningRule(MultiPublicClassFileWarningRule());
     registry.registerWarningRule(MultiWidgetFileWarningRule());
     registry.registerWarningRule(TenantCanonicalDomainRequiredRule());
-    registry.registerWarningRule(IntegrationAnonymousAuthIdentifiedLoginForbiddenRule());
+    registry.registerWarningRule(
+      TimezoneServiceDirectDateTimeConversionForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      IntegrationAnonymousAuthIdentifiedLoginForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      LocationOriginCanonicalResolutionRequiredRule(),
+    );
   }
 }

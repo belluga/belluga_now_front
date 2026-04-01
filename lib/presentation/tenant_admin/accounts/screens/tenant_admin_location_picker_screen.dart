@@ -48,7 +48,8 @@ class _TenantAdminLocationPickerScreenState
 
   void _onMapTap(LatLng point) {
     _controller.setLocation(
-      TenantAdminLocation(latitude: point.latitude, longitude: point.longitude),
+      tenantAdminLocationFromRaw(
+          latitude: point.latitude, longitude: point.longitude),
     );
   }
 

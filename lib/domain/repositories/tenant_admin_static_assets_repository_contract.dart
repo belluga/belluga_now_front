@@ -1,22 +1,32 @@
 import 'dart:math' as math;
 
+import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_static_assets_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
-typedef TenantAdminStaticAssetsRepoString = String;
-typedef TenantAdminStaticAssetsRepoInt = int;
-typedef TenantAdminStaticAssetsRepoBool = bool;
-typedef TenantAdminStaticAssetsRepoDouble = double;
-typedef TenantAdminStaticAssetsRepoDateTime = DateTime;
-typedef TenantAdminStaticAssetsRepoDynamic = dynamic;
+export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_static_assets_repository_contract_values.dart';
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
+
+typedef TenantAdminStaticAssetsRepoString
+    = TenantAdminStaticAssetsRepositoryContractTextValue;
+typedef TenantAdminStaticAssetsRepoInt
+    = TenantAdminStaticAssetsRepositoryContractIntValue;
+typedef TenantAdminStaticAssetsRepoBool
+    = TenantAdminStaticAssetsRepositoryContractBoolValue;
 
 abstract class TenantAdminStaticAssetsRepositoryContract {
+  static final TenantAdminStaticAssetsRepoInt _defaultPageSize =
+      TenantAdminStaticAssetsRepoInt.fromRaw(20, defaultValue: 20);
+  static final TenantAdminStaticAssetsRepoInt _defaultBulkPageSize =
+      TenantAdminStaticAssetsRepoInt.fromRaw(50, defaultValue: 50);
+
   static final Expando<_TenantAdminStaticAssetsPaginationState>
       _paginationStateByRepository =
       Expando<_TenantAdminStaticAssetsPaginationState>();
@@ -40,23 +50,33 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       get staticAssetsErrorStreamValue =>
           _paginationState.staticAssetsErrorStreamValue;
 
-  Future<void> loadStaticAssets(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
+  Future<void> loadStaticAssets({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
     await _waitForStaticAssetsFetch();
     _resetStaticAssetsPagination();
     staticAssetsStreamValue.addValue(null);
-    await _fetchStaticAssetsPage(page: 1, pageSize: pageSize);
+    await _fetchStaticAssetsPage(
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: effectivePageSize,
+    );
   }
 
-  Future<void> loadNextStaticAssetsPage(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
-    if (_paginationState.isFetchingStaticAssetsPage ||
-        !_paginationState.hasMoreStaticAssets) {
+  Future<void> loadNextStaticAssetsPage({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
+    if (_paginationState.isFetchingStaticAssetsPage.value ||
+        !_paginationState.hasMoreStaticAssets.value) {
       return;
     }
     await _fetchStaticAssetsPage(
-      page: _paginationState.currentStaticAssetsPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(
+        _paginationState.currentStaticAssetsPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
     );
   }
 
@@ -72,21 +92,21 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final assets = await fetchStaticAssets();
-    if (page <= 0 || pageSize <= 0) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    if (page.value <= 0 || pageSize.value <= 0) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
-    final startIndex = (page - 1) * pageSize;
+    final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= assets.length) {
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
-    final endIndex = math.min(startIndex + pageSize, assets.length);
-    return TenantAdminPagedResult<TenantAdminStaticAsset>(
+    final endIndex = math.min(startIndex + pageSize.value, assets.length);
+    return tenantAdminPagedResultFromRaw(
       items: assets.sublist(startIndex, endIndex),
       hasMore: endIndex < assets.length,
     );
@@ -99,7 +119,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoString profileType,
     required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -114,7 +135,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     TenantAdminStaticAssetsRepoString? displayName,
     TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminStaticAssetsRepoString? bio,
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
@@ -149,33 +170,46 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       get staticProfileTypesErrorStreamValue =>
           _paginationState.staticProfileTypesErrorStreamValue;
 
-  Future<void> loadStaticProfileTypes(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
+  Future<void> loadStaticProfileTypes({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
     await _waitForStaticProfileTypesFetch();
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
-    await _fetchStaticProfileTypesPage(page: 1, pageSize: pageSize);
-  }
-
-  Future<void> loadNextStaticProfileTypesPage(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
-    if (_paginationState.isFetchingStaticProfileTypesPage ||
-        !_paginationState.hasMoreStaticProfileTypes) {
-      return;
-    }
     await _fetchStaticProfileTypesPage(
-      page: _paginationState.currentStaticProfileTypesPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: effectivePageSize,
     );
   }
 
-  Future<void> loadAllStaticProfileTypes(
-      {TenantAdminStaticAssetsRepoInt pageSize = 50}) async {
-    await loadStaticProfileTypes(pageSize: pageSize);
+  Future<void> loadNextStaticProfileTypesPage({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
+    if (_paginationState.isFetchingStaticProfileTypesPage.value ||
+        !_paginationState.hasMoreStaticProfileTypes.value) {
+      return;
+    }
+    await _fetchStaticProfileTypesPage(
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(
+        _paginationState.currentStaticProfileTypesPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
+    );
+  }
+
+  Future<void> loadAllStaticProfileTypes({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultBulkPageSize;
+    await loadStaticProfileTypes(pageSize: effectivePageSize);
     var safetyCounter = 0;
-    while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
+    while (hasMoreStaticProfileTypesStreamValue.value.value &&
+        safetyCounter < 200) {
       safetyCounter += 1;
-      await loadNextStaticProfileTypesPage(pageSize: pageSize);
+      await loadNextStaticProfileTypesPage(pageSize: effectivePageSize);
     }
   }
 
@@ -193,21 +227,21 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
-    if (page <= 0 || pageSize <= 0) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    if (page.value <= 0 || pageSize.value <= 0) {
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
-    final startIndex = (page - 1) * pageSize;
+    final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= profileTypes.length) {
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
-    final endIndex = math.min(startIndex + pageSize, profileTypes.length);
-    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    final endIndex = math.min(startIndex + pageSize.value, profileTypes.length);
+    return tenantAdminPagedResultFromRaw(
       items: profileTypes.sublist(startIndex, endIndex),
       hasMore: endIndex < profileTypes.length,
     );
@@ -216,7 +250,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
-    List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   });
   Future<TenantAdminStaticProfileTypeDefinition>
@@ -230,7 +264,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     return createStaticProfileType(
       type: type,
       label: label,
-      allowedTaxonomies: allowedTaxonomies,
+      allowedTaxonomies: allowedTaxonomies.isEmpty ? null : allowedTaxonomies,
       capabilities: capabilities,
     );
   }
@@ -264,13 +298,13 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       fetchStaticProfileTypeMapPoiProjectionImpact({
     required TenantAdminStaticAssetsRepoString type,
   }) async {
-    return 0;
+    return TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
   }
 
   Future<void> deleteStaticProfileType(TenantAdminStaticAssetsRepoString type);
 
   Future<void> _waitForStaticAssetsFetch() async {
-    while (_paginationState.isFetchingStaticAssetsPage) {
+    while (_paginationState.isFetchingStaticAssetsPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -279,19 +313,22 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
-    if (_paginationState.isFetchingStaticAssetsPage) return;
-    if (page > 1 && !_paginationState.hasMoreStaticAssets) return;
+    if (_paginationState.isFetchingStaticAssetsPage.value) return;
+    if (page.value > 1 && !_paginationState.hasMoreStaticAssets.value) return;
 
-    _paginationState.isFetchingStaticAssetsPage = true;
-    if (page > 1) {
-      isStaticAssetsPageLoadingStreamValue.addValue(true);
+    _paginationState.isFetchingStaticAssetsPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true);
+    if (page.value > 1) {
+      isStaticAssetsPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
     try {
       final result = await fetchStaticAssetsPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _paginationState.cachedStaticAssets
           ..clear()
           ..addAll(result.items);
@@ -299,7 +336,11 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
         _paginationState.cachedStaticAssets.addAll(result.items);
       }
       _paginationState.currentStaticAssetsPage = page;
-      _paginationState.hasMoreStaticAssets = result.hasMore;
+      _paginationState.hasMoreStaticAssets =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
       hasMoreStaticAssetsStreamValue
           .addValue(_paginationState.hasMoreStaticAssets);
       staticAssetsStreamValue.addValue(
@@ -309,27 +350,51 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       );
       staticAssetsErrorStreamValue.addValue(null);
     } catch (error) {
-      staticAssetsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      staticAssetsErrorStreamValue.addValue(
+        TenantAdminStaticAssetsRepoString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         staticAssetsStreamValue.addValue(const <TenantAdminStaticAsset>[]);
       }
     } finally {
-      _paginationState.isFetchingStaticAssetsPage = false;
-      isStaticAssetsPageLoadingStreamValue.addValue(false);
+      _paginationState.isFetchingStaticAssetsPage =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isStaticAssetsPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
     }
   }
 
   void _resetStaticAssetsPagination() {
     _paginationState.cachedStaticAssets.clear();
-    _paginationState.currentStaticAssetsPage = 0;
-    _paginationState.hasMoreStaticAssets = true;
-    _paginationState.isFetchingStaticAssetsPage = false;
-    hasMoreStaticAssetsStreamValue.addValue(true);
-    isStaticAssetsPageLoadingStreamValue.addValue(false);
+    _paginationState.currentStaticAssetsPage =
+        TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
+    _paginationState.hasMoreStaticAssets =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetchingStaticAssetsPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreStaticAssetsStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+    );
+    isStaticAssetsPageLoadingStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 
   Future<void> _waitForStaticProfileTypesFetch() async {
-    while (_paginationState.isFetchingStaticProfileTypesPage) {
+    while (_paginationState.isFetchingStaticProfileTypesPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -338,19 +403,24 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
-    if (_paginationState.isFetchingStaticProfileTypesPage) return;
-    if (page > 1 && !_paginationState.hasMoreStaticProfileTypes) return;
+    if (_paginationState.isFetchingStaticProfileTypesPage.value) return;
+    if (page.value > 1 && !_paginationState.hasMoreStaticProfileTypes.value) {
+      return;
+    }
 
-    _paginationState.isFetchingStaticProfileTypesPage = true;
-    if (page > 1) {
-      isStaticProfileTypesPageLoadingStreamValue.addValue(true);
+    _paginationState.isFetchingStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true);
+    if (page.value > 1) {
+      isStaticProfileTypesPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
     try {
       final result = await fetchStaticProfileTypesPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _paginationState.cachedStaticProfileTypes
           ..clear()
           ..addAll(result.items);
@@ -358,7 +428,11 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
         _paginationState.cachedStaticProfileTypes.addAll(result.items);
       }
       _paginationState.currentStaticProfileTypesPage = page;
-      _paginationState.hasMoreStaticProfileTypes = result.hasMore;
+      _paginationState.hasMoreStaticProfileTypes =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
       hasMoreStaticProfileTypesStreamValue
           .addValue(_paginationState.hasMoreStaticProfileTypes);
       staticProfileTypesStreamValue.addValue(
@@ -368,25 +442,46 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       );
       staticProfileTypesErrorStreamValue.addValue(null);
     } catch (error) {
-      staticProfileTypesErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      staticProfileTypesErrorStreamValue.addValue(
+        TenantAdminStaticAssetsRepoString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         staticProfileTypesStreamValue.addValue(
           const <TenantAdminStaticProfileTypeDefinition>[],
         );
       }
     } finally {
-      _paginationState.isFetchingStaticProfileTypesPage = false;
-      isStaticProfileTypesPageLoadingStreamValue.addValue(false);
+      _paginationState.isFetchingStaticProfileTypesPage =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isStaticProfileTypesPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+      );
     }
   }
 
   void _resetStaticProfileTypesPagination() {
     _paginationState.cachedStaticProfileTypes.clear();
-    _paginationState.currentStaticProfileTypesPage = 0;
-    _paginationState.hasMoreStaticProfileTypes = true;
-    _paginationState.isFetchingStaticProfileTypesPage = false;
-    hasMoreStaticProfileTypesStreamValue.addValue(true);
-    isStaticProfileTypesPageLoadingStreamValue.addValue(false);
+    _paginationState.currentStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
+    _paginationState.hasMoreStaticProfileTypes =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetchingStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreStaticProfileTypesStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+    );
+    isStaticProfileTypesPageLoadingStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 }
 
@@ -395,7 +490,7 @@ extension TenantAdminStaticAssetsRepositoryLookup
   Future<TenantAdminStaticProfileTypeDefinition> fetchStaticProfileType(
     TenantAdminStaticAssetsRepoString profileType,
   ) async {
-    final normalizedType = profileType.trim();
+    final normalizedType = profileType.value.trim();
     if (normalizedType.isEmpty) {
       throw ArgumentError.value(
         profileType,
@@ -417,6 +512,11 @@ extension TenantAdminStaticAssetsRepositoryLookup
 
 mixin TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
+  static final TenantAdminStaticAssetsRepoInt _defaultPageSize =
+      TenantAdminStaticAssetsRepoInt.fromRaw(20, defaultValue: 20);
+  static final TenantAdminStaticAssetsRepoInt _defaultBulkPageSize =
+      TenantAdminStaticAssetsRepoInt.fromRaw(50, defaultValue: 50);
+
   static final Expando<_TenantAdminStaticAssetsPaginationState>
       _paginationStateByRepository =
       Expando<_TenantAdminStaticAssetsPaginationState>();
@@ -446,24 +546,34 @@ mixin TenantAdminStaticAssetsPaginationMixin
           _paginationState.staticAssetsErrorStreamValue;
 
   @override
-  Future<void> loadStaticAssets(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
+  Future<void> loadStaticAssets({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
     await _waitForStaticAssetsFetch();
     _resetStaticAssetsPagination();
     staticAssetsStreamValue.addValue(null);
-    await _fetchStaticAssetsPage(page: 1, pageSize: pageSize);
+    await _fetchStaticAssetsPage(
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: effectivePageSize,
+    );
   }
 
   @override
-  Future<void> loadNextStaticAssetsPage(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
-    if (_paginationState.isFetchingStaticAssetsPage ||
-        !_paginationState.hasMoreStaticAssets) {
+  Future<void> loadNextStaticAssetsPage({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
+    if (_paginationState.isFetchingStaticAssetsPage.value ||
+        !_paginationState.hasMoreStaticAssets.value) {
       return;
     }
     await _fetchStaticAssetsPage(
-      page: _paginationState.currentStaticAssetsPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(
+        _paginationState.currentStaticAssetsPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
     );
   }
 
@@ -495,35 +605,48 @@ mixin TenantAdminStaticAssetsPaginationMixin
           _paginationState.staticProfileTypesErrorStreamValue;
 
   @override
-  Future<void> loadStaticProfileTypes(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
+  Future<void> loadStaticProfileTypes({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
     await _waitForStaticProfileTypesFetch();
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
-    await _fetchStaticProfileTypesPage(page: 1, pageSize: pageSize);
-  }
-
-  @override
-  Future<void> loadNextStaticProfileTypesPage(
-      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
-    if (_paginationState.isFetchingStaticProfileTypesPage ||
-        !_paginationState.hasMoreStaticProfileTypes) {
-      return;
-    }
     await _fetchStaticProfileTypesPage(
-      page: _paginationState.currentStaticProfileTypesPage + 1,
-      pageSize: pageSize,
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: effectivePageSize,
     );
   }
 
   @override
-  Future<void> loadAllStaticProfileTypes(
-      {TenantAdminStaticAssetsRepoInt pageSize = 50}) async {
-    await loadStaticProfileTypes(pageSize: pageSize);
+  Future<void> loadNextStaticProfileTypesPage({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultPageSize;
+    if (_paginationState.isFetchingStaticProfileTypesPage.value ||
+        !_paginationState.hasMoreStaticProfileTypes.value) {
+      return;
+    }
+    await _fetchStaticProfileTypesPage(
+      page: TenantAdminStaticAssetsRepoInt.fromRaw(
+        _paginationState.currentStaticProfileTypesPage.value + 1,
+        defaultValue: 1,
+      ),
+      pageSize: effectivePageSize,
+    );
+  }
+
+  @override
+  Future<void> loadAllStaticProfileTypes({
+    TenantAdminStaticAssetsRepoInt? pageSize,
+  }) async {
+    final effectivePageSize = pageSize ?? _defaultBulkPageSize;
+    await loadStaticProfileTypes(pageSize: effectivePageSize);
     var safetyCounter = 0;
-    while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
+    while (hasMoreStaticProfileTypesStreamValue.value.value &&
+        safetyCounter < 200) {
       safetyCounter += 1;
-      await loadNextStaticProfileTypesPage(pageSize: pageSize);
+      await loadNextStaticProfileTypesPage(pageSize: effectivePageSize);
     }
   }
 
@@ -539,7 +662,7 @@ mixin TenantAdminStaticAssetsPaginationMixin
       createStaticProfileTypeWithPoiVisual({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
-    List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? poiVisual,
   }) {
@@ -575,12 +698,12 @@ mixin TenantAdminStaticAssetsPaginationMixin
       fetchStaticProfileTypeMapPoiProjectionImpact({
     required TenantAdminStaticAssetsRepoString type,
   }) async {
-    return 0;
+    return TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
   }
 
   @override
   Future<void> _waitForStaticAssetsFetch() async {
-    while (_paginationState.isFetchingStaticAssetsPage) {
+    while (_paginationState.isFetchingStaticAssetsPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -590,19 +713,22 @@ mixin TenantAdminStaticAssetsPaginationMixin
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
-    if (_paginationState.isFetchingStaticAssetsPage) return;
-    if (page > 1 && !_paginationState.hasMoreStaticAssets) return;
+    if (_paginationState.isFetchingStaticAssetsPage.value) return;
+    if (page.value > 1 && !_paginationState.hasMoreStaticAssets.value) return;
 
-    _paginationState.isFetchingStaticAssetsPage = true;
-    if (page > 1) {
-      isStaticAssetsPageLoadingStreamValue.addValue(true);
+    _paginationState.isFetchingStaticAssetsPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true);
+    if (page.value > 1) {
+      isStaticAssetsPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
     try {
       final result = await fetchStaticAssetsPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _paginationState.cachedStaticAssets
           ..clear()
           ..addAll(result.items);
@@ -610,7 +736,11 @@ mixin TenantAdminStaticAssetsPaginationMixin
         _paginationState.cachedStaticAssets.addAll(result.items);
       }
       _paginationState.currentStaticAssetsPage = page;
-      _paginationState.hasMoreStaticAssets = result.hasMore;
+      _paginationState.hasMoreStaticAssets =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
       hasMoreStaticAssetsStreamValue
           .addValue(_paginationState.hasMoreStaticAssets);
       staticAssetsStreamValue.addValue(
@@ -620,29 +750,50 @@ mixin TenantAdminStaticAssetsPaginationMixin
       );
       staticAssetsErrorStreamValue.addValue(null);
     } catch (error) {
-      staticAssetsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      staticAssetsErrorStreamValue.addValue(
+        TenantAdminStaticAssetsRepoString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         staticAssetsStreamValue.addValue(const <TenantAdminStaticAsset>[]);
       }
     } finally {
-      _paginationState.isFetchingStaticAssetsPage = false;
-      isStaticAssetsPageLoadingStreamValue.addValue(false);
+      _paginationState.isFetchingStaticAssetsPage =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isStaticAssetsPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+      );
     }
   }
 
   @override
   void _resetStaticAssetsPagination() {
     _paginationState.cachedStaticAssets.clear();
-    _paginationState.currentStaticAssetsPage = 0;
-    _paginationState.hasMoreStaticAssets = true;
-    _paginationState.isFetchingStaticAssetsPage = false;
-    hasMoreStaticAssetsStreamValue.addValue(true);
-    isStaticAssetsPageLoadingStreamValue.addValue(false);
+    _paginationState.currentStaticAssetsPage =
+        TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
+    _paginationState.hasMoreStaticAssets =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetchingStaticAssetsPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreStaticAssetsStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+    );
+    isStaticAssetsPageLoadingStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 
   @override
   Future<void> _waitForStaticProfileTypesFetch() async {
-    while (_paginationState.isFetchingStaticProfileTypesPage) {
+    while (_paginationState.isFetchingStaticProfileTypesPage.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -652,19 +803,24 @@ mixin TenantAdminStaticAssetsPaginationMixin
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
-    if (_paginationState.isFetchingStaticProfileTypesPage) return;
-    if (page > 1 && !_paginationState.hasMoreStaticProfileTypes) return;
+    if (_paginationState.isFetchingStaticProfileTypesPage.value) return;
+    if (page.value > 1 && !_paginationState.hasMoreStaticProfileTypes.value) {
+      return;
+    }
 
-    _paginationState.isFetchingStaticProfileTypesPage = true;
-    if (page > 1) {
-      isStaticProfileTypesPageLoadingStreamValue.addValue(true);
+    _paginationState.isFetchingStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true);
+    if (page.value > 1) {
+      isStaticProfileTypesPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
     try {
       final result = await fetchStaticProfileTypesPage(
         page: page,
         pageSize: pageSize,
       );
-      if (page == 1) {
+      if (page.value == 1) {
         _paginationState.cachedStaticProfileTypes
           ..clear()
           ..addAll(result.items);
@@ -672,7 +828,11 @@ mixin TenantAdminStaticAssetsPaginationMixin
         _paginationState.cachedStaticProfileTypes.addAll(result.items);
       }
       _paginationState.currentStaticProfileTypesPage = page;
-      _paginationState.hasMoreStaticProfileTypes = result.hasMore;
+      _paginationState.hasMoreStaticProfileTypes =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
       hasMoreStaticProfileTypesStreamValue
           .addValue(_paginationState.hasMoreStaticProfileTypes);
       staticProfileTypesStreamValue.addValue(
@@ -682,26 +842,47 @@ mixin TenantAdminStaticAssetsPaginationMixin
       );
       staticProfileTypesErrorStreamValue.addValue(null);
     } catch (error) {
-      staticProfileTypesErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      staticProfileTypesErrorStreamValue.addValue(
+        TenantAdminStaticAssetsRepoString.fromRaw(error.toString()),
+      );
+      if (page.value == 1) {
         staticProfileTypesStreamValue.addValue(
           const <TenantAdminStaticProfileTypeDefinition>[],
         );
       }
     } finally {
-      _paginationState.isFetchingStaticProfileTypesPage = false;
-      isStaticProfileTypesPageLoadingStreamValue.addValue(false);
+      _paginationState.isFetchingStaticProfileTypesPage =
+          TenantAdminStaticAssetsRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      isStaticProfileTypesPageLoadingStreamValue.addValue(
+        TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+      );
     }
   }
 
   @override
   void _resetStaticProfileTypesPagination() {
     _paginationState.cachedStaticProfileTypes.clear();
-    _paginationState.currentStaticProfileTypesPage = 0;
-    _paginationState.hasMoreStaticProfileTypes = true;
-    _paginationState.isFetchingStaticProfileTypesPage = false;
-    hasMoreStaticProfileTypesStreamValue.addValue(true);
-    isStaticProfileTypesPageLoadingStreamValue.addValue(false);
+    _paginationState.currentStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoInt.fromRaw(0, defaultValue: 0);
+    _paginationState.hasMoreStaticProfileTypes =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
+    _paginationState.isFetchingStaticProfileTypesPage =
+        TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMoreStaticProfileTypesStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(true, defaultValue: true),
+    );
+    isStaticProfileTypesPageLoadingStreamValue.addValue(
+      TenantAdminStaticAssetsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 }
 
@@ -714,10 +895,20 @@ class _TenantAdminStaticAssetsPaginationState {
       StreamValue<List<TenantAdminStaticAsset>?>();
   final StreamValue<TenantAdminStaticAssetsRepoBool>
       hasMoreStaticAssetsStreamValue =
-      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: true);
+      StreamValue<TenantAdminStaticAssetsRepoBool>(
+    defaultValue: TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    ),
+  );
   final StreamValue<TenantAdminStaticAssetsRepoBool>
       isStaticAssetsPageLoadingStreamValue =
-      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: false);
+      StreamValue<TenantAdminStaticAssetsRepoBool>(
+    defaultValue: TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
   final StreamValue<TenantAdminStaticAssetsRepoString?>
       staticAssetsErrorStreamValue =
       StreamValue<TenantAdminStaticAssetsRepoString?>();
@@ -726,17 +917,51 @@ class _TenantAdminStaticAssetsPaginationState {
       StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>();
   final StreamValue<TenantAdminStaticAssetsRepoBool>
       hasMoreStaticProfileTypesStreamValue =
-      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: true);
+      StreamValue<TenantAdminStaticAssetsRepoBool>(
+    defaultValue: TenantAdminStaticAssetsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    ),
+  );
   final StreamValue<TenantAdminStaticAssetsRepoBool>
       isStaticProfileTypesPageLoadingStreamValue =
-      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: false);
+      StreamValue<TenantAdminStaticAssetsRepoBool>(
+    defaultValue: TenantAdminStaticAssetsRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
   final StreamValue<TenantAdminStaticAssetsRepoString?>
       staticProfileTypesErrorStreamValue =
       StreamValue<TenantAdminStaticAssetsRepoString?>();
-  TenantAdminStaticAssetsRepoBool isFetchingStaticAssetsPage = false;
-  TenantAdminStaticAssetsRepoBool hasMoreStaticAssets = true;
-  TenantAdminStaticAssetsRepoInt currentStaticAssetsPage = 0;
-  TenantAdminStaticAssetsRepoBool isFetchingStaticProfileTypesPage = false;
-  TenantAdminStaticAssetsRepoBool hasMoreStaticProfileTypes = true;
-  TenantAdminStaticAssetsRepoInt currentStaticProfileTypesPage = 0;
+  TenantAdminStaticAssetsRepoBool isFetchingStaticAssetsPage =
+      TenantAdminStaticAssetsRepoBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
+  TenantAdminStaticAssetsRepoBool hasMoreStaticAssets =
+      TenantAdminStaticAssetsRepoBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  TenantAdminStaticAssetsRepoInt currentStaticAssetsPage =
+      TenantAdminStaticAssetsRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
+  TenantAdminStaticAssetsRepoBool isFetchingStaticProfileTypesPage =
+      TenantAdminStaticAssetsRepoBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
+  TenantAdminStaticAssetsRepoBool hasMoreStaticProfileTypes =
+      TenantAdminStaticAssetsRepoBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  TenantAdminStaticAssetsRepoInt currentStaticProfileTypesPage =
+      TenantAdminStaticAssetsRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
 }

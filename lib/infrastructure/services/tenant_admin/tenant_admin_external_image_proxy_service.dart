@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -32,13 +33,13 @@ class TenantAdminExternalImageProxyService
 
   @override
   Future<Uint8List> fetchExternalImageBytes({
-    required String imageUrl,
+    required TenantAdminOptionalUrlValue imageUrl,
   }) async {
     try {
       final response = await _dio.post<List<int>>(
         '$_apiBaseUrl/v1/media/external-image',
         data: {
-          'url': imageUrl.trim(),
+          'url': imageUrl.value.trim(),
         },
         options: Options(
           headers: _buildHeaders(),

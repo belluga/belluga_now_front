@@ -1,11 +1,23 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 class TenantAdminSettingsResponseDecoder {
   const TenantAdminSettingsResponseDecoder({
@@ -51,9 +63,21 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     final appDomains = Map<String, dynamic>.from(appDomainsRaw);
+    TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
+    final androidAppIdentifier = _normalizeOptionalText(appDomains['android']);
+    if (androidAppIdentifier != null && androidAppIdentifier.isNotEmpty) {
+      androidAppIdentifierValue = TenantAdminAndroidAppIdentifierValue()
+        ..parse(androidAppIdentifier);
+    }
+    TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
+    final iosBundleId = _normalizeOptionalText(appDomains['ios']);
+    if (iosBundleId != null && iosBundleId.isNotEmpty) {
+      iosBundleIdValue = TenantAdminIosBundleIdentifierValue()
+        ..parse(iosBundleId);
+    }
     return TenantAdminAppDomainIdentifiers(
-      androidAppIdentifier: _normalizeOptionalText(appDomains['android']),
-      iosBundleId: _normalizeOptionalText(appDomains['ios']),
+      androidAppIdentifierValue: androidAppIdentifierValue,
+      iosBundleIdValue: iosBundleIdValue,
     );
   }
 
@@ -85,6 +109,26 @@ class TenantAdminSettingsResponseDecoder {
       label: 'firebase settings',
     );
     return _mapFirebaseSettings(payload);
+  }
+
+  TenantAdminResendEmailSettings decodeResendEmailSettings(
+      Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'resend_email settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('resend_email')) {
+      final resendRaw = payload['resend_email'];
+      if (resendRaw is Map) {
+        return _mapResendEmailSettings(
+          Map<String, dynamic>.from(resendRaw),
+        );
+      }
+      return TenantAdminResendEmailSettings.empty();
+    }
+
+    return _mapResendEmailSettings(payload);
   }
 
   TenantAdminPushSettings decodePushSettings(Object? rawResponse) {
@@ -148,16 +192,27 @@ class TenantAdminSettingsResponseDecoder {
     );
 
     return TenantAdminBrandingSettings(
-      tenantName: tenantName,
+      tenantName: _requiredTextValue(tenantName),
       brightnessDefault: brightnessDefault,
-      primarySeedColor: primarySeedColor,
-      secondarySeedColor: secondarySeedColor,
-      lightLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
-      darkLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
-      lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
-      darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
-      faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
-      pwaIconUrl: _resolvePwaIconUrl(payload, tenantOrigin: tenantOrigin),
+      primarySeedColor: _hexColorValue(primarySeedColor),
+      secondarySeedColor: _hexColorValue(secondarySeedColor),
+      lightLogoUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'logo-light.png')),
+      darkLogoUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png')),
+      lightIconUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'icon-light.png')),
+      darkIconUrl: _optionalUrlValue(
+          _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png')),
+      faviconUrl:
+          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'favicon.ico')),
+      pwaIconUrl: (() {
+        final pwaIcon = _resolvePwaIconUrl(payload, tenantOrigin: tenantOrigin);
+        if (pwaIcon == null || pwaIcon.isEmpty) {
+          return null;
+        }
+        return _optionalUrlValue(pwaIcon);
+      })(),
     );
   }
 
@@ -253,12 +308,18 @@ class TenantAdminSettingsResponseDecoder {
         Map<String, dynamic>.unmodifiable(appLinks),
       ),
       androidAppIdentifierValue: androidAppIdentifierValue,
-      androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
-        androidFingerprintValues,
-      ),
+      androidSha256CertFingerprintValues: androidFingerprintValues
+          .map(
+            (entry) => TenantAdminSha256FingerprintValue()..parse(entry),
+          )
+          .toList(growable: false),
       iosTeamIdValue: iosTeamIdValue,
       iosBundleIdValue: iosBundleIdValue,
-      iosPathsValue: TenantAdminTrimmedStringListValue(iosPaths),
+      iosPathValues: iosPaths
+          .map(
+            (entry) => TenantAdminAppLinkPathValue()..parse(entry),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -275,9 +336,11 @@ class TenantAdminSettingsResponseDecoder {
       if (lat != null && lng != null) {
         final rawLabel = originMap['label']?.toString().trim();
         defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+          lat: _latitudeValue(lat),
+          lng: _longitudeValue(lng),
+          label: rawLabel == null || rawLabel.isEmpty
+              ? null
+              : _optionalTextValue(rawLabel),
         );
       }
     } else {
@@ -286,14 +349,16 @@ class TenantAdminSettingsResponseDecoder {
       if (lat != null && lng != null) {
         final rawLabel = mapUi['default_origin.label']?.toString().trim();
         defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+          lat: _latitudeValue(lat),
+          lng: _longitudeValue(lng),
+          label: rawLabel == null || rawLabel.isEmpty
+              ? null
+              : _optionalTextValue(rawLabel),
         );
       }
     }
 
-    final filters = <TenantAdminMapFilterCatalogItem>[];
+    final filters = TenantAdminMapFilterCatalogItems();
     final rawFilters = mapUi['filters'];
     if (rawFilters is List) {
       for (final entry in rawFilters) {
@@ -322,12 +387,17 @@ class TenantAdminSettingsResponseDecoder {
         if (key.isEmpty || label.isEmpty) {
           continue;
         }
+        final keyValue = TenantAdminLowercaseTokenValue()..parse(key);
+        final labelValue = TenantAdminRequiredTextValue()..parse(label);
+        final imageUriValue = imageUri == null || imageUri.isEmpty
+            ? null
+            : (TenantAdminOptionalUrlValue()..parse(imageUri));
         filters.add(
           TenantAdminMapFilterCatalogItem(
-            key: key,
-            label: label,
-            imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
-            overrideMarker: overrideMarker,
+            keyValue: keyValue,
+            labelValue: labelValue,
+            imageUriValue: imageUriValue,
+            overrideMarkerValue: TenantAdminFlagValue(overrideMarker),
             markerOverride: markerOverride,
             query: query,
           ),
@@ -340,7 +410,7 @@ class TenantAdminSettingsResponseDecoder {
         Map<String, dynamic>.unmodifiable(mapUi),
       ),
       defaultOrigin: defaultOrigin,
-      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
+      filters: filters,
     );
   }
 
@@ -361,9 +431,12 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return TenantAdminMapFilterQuery(
-      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
-      types: asStringList(json['types']),
-      taxonomy: asStringList(json['taxonomy']),
+      source: TenantAdminMapFilterSource.fromRaw(
+        TenantAdminLowercaseTokenValue(isRequired: false)
+          ..parse(json['source']?.toString()),
+      ),
+      typeValues: asStringList(json['types']).map(_tokenValue).toList(),
+      taxonomyValues: asStringList(json['taxonomy']).map(_tokenValue).toList(),
     );
   }
 
@@ -377,27 +450,34 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     final marker = Map<String, dynamic>.from(raw);
-    final mode = TenantAdminMapFilterMarkerOverrideMode.fromRaw(
-        marker['mode']?.toString());
+    final modeTokenValue = TenantAdminLowercaseTokenValue();
+    try {
+      modeTokenValue.parse(marker['mode']?.toString());
+    } on Object {
+      return null;
+    }
+    final mode =
+        tenantAdminMapFilterMarkerOverrideModeFromValue(modeTokenValue);
     if (mode == null) {
       return null;
     }
 
     if (mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
-      final icon = marker['icon']?.toString().trim() ?? '';
-      final color = marker['color']?.toString().trim().toUpperCase() ?? '';
-      final iconColor =
-          (marker['icon_color'] ?? '#FFFFFF').toString().trim().toUpperCase();
-      if (icon.isEmpty ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(color) ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColor)) {
+      final iconValue = TenantAdminRequiredTextValue();
+      final colorValue = TenantAdminHexColorValue();
+      final iconColorValue = TenantAdminHexColorValue();
+      try {
+        iconValue.parse(marker['icon']?.toString());
+        colorValue.parse(marker['color']?.toString());
+        iconColorValue.parse((marker['icon_color'] ?? '#FFFFFF').toString());
+      } on Object {
         return null;
       }
 
       return TenantAdminMapFilterMarkerOverride.icon(
-        icon: icon,
-        color: color,
-        iconColor: iconColor,
+        iconValue: iconValue,
+        colorValue: colorValue,
+        iconColorValue: iconColorValue,
       );
     }
 
@@ -409,8 +489,15 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
 
+    final imageUriValue = TenantAdminOptionalUrlValue();
+    try {
+      imageUriValue.parse(imageUri);
+    } on Object {
+      return null;
+    }
+
     return TenantAdminMapFilterMarkerOverride.image(
-      imageUri: imageUri,
+      imageUriValue: imageUriValue,
     );
   }
 
@@ -433,11 +520,11 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
     return TenantAdminFirebaseSettings(
-      apiKey: apiKey,
-      appId: appId,
-      projectId: projectId,
-      messagingSenderId: sender,
-      storageBucket: storageBucket,
+      apiKey: _requiredTextValue(apiKey),
+      appId: _requiredTextValue(appId),
+      projectId: _requiredTextValue(projectId),
+      messagingSenderId: _requiredTextValue(sender),
+      storageBucket: _requiredTextValue(storageBucket),
     );
   }
 
@@ -450,9 +537,27 @@ class TenantAdminSettingsResponseDecoder {
     final maxPerMinute = _parseInt(throttles['max_per_minute']) ?? 60;
     final maxPerHour = _parseInt(throttles['max_per_hour']) ?? 600;
     return TenantAdminPushSettings(
-      maxTtlDays: ttlDays,
-      maxPerMinute: maxPerMinute,
-      maxPerHour: maxPerHour,
+      maxTtlDaysValue: _positiveIntValue(ttlDays),
+      maxPerMinuteValue: _positiveIntValue(maxPerMinute),
+      maxPerHourValue: _positiveIntValue(maxPerHour),
+    );
+  }
+
+  TenantAdminResendEmailSettings _mapResendEmailSettings(
+    Map<String, dynamic> map,
+  ) {
+    final token = _normalizeOptionalText(map['token']);
+    final from = _normalizeOptionalText(map['from']);
+
+    return TenantAdminResendEmailSettings(
+      token: token == null ? null : _optionalTextValue(token),
+      from: from == null ? null : _optionalTextValue(from),
+      toRecipients: _resendEmailRecipients(_extractStringList(map['to'])),
+      ccRecipients: _resendEmailRecipients(_extractStringList(map['cc'])),
+      bccRecipients: _resendEmailRecipients(_extractStringList(map['bcc'])),
+      replyToRecipients: _resendEmailRecipients(
+        _extractStringList(map['reply_to']),
+      ),
     );
   }
 
@@ -476,13 +581,69 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return TenantAdminTelemetryIntegration(
-      type: type,
-      trackAll: trackAll,
-      events: events,
-      token: token == null || token.isEmpty ? null : token,
-      url: url == null || url.isEmpty ? null : url,
-      extra: extra.isEmpty ? null : extra,
+      type: _tokenValue(type),
+      trackAll: _booleanValue(trackAll),
+      eventValues: events.map(_tokenValue).toList(growable: false),
+      token: token == null || token.isEmpty ? null : _optionalTextValue(token),
+      url: url == null || url.isEmpty ? null : _optionalUrlValue(url),
+      rawExtraValue: extra.isEmpty
+          ? null
+          : TenantAdminDynamicMapValue(Map<String, dynamic>.from(extra)),
     );
+  }
+
+  TenantAdminRequiredTextValue _requiredTextValue(String raw) {
+    final value = TenantAdminRequiredTextValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminPositiveIntValue _positiveIntValue(int raw) {
+    final value = TenantAdminPositiveIntValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  TenantAdminHexColorValue _hexColorValue(String raw) {
+    final value = TenantAdminHexColorValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalUrlValue _optionalUrlValue(String raw) {
+    final value = TenantAdminOptionalUrlValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminOptionalTextValue _optionalTextValue(String raw) {
+    final value = TenantAdminOptionalTextValue();
+    value.parse(raw);
+    return value;
+  }
+
+  LatitudeValue _latitudeValue(double raw) {
+    final value = LatitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  LongitudeValue _longitudeValue(double raw) {
+    final value = LongitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  TenantAdminLowercaseTokenValue _tokenValue(String raw) {
+    final value = TenantAdminLowercaseTokenValue();
+    value.parse(raw);
+    return value;
+  }
+
+  TenantAdminBooleanValue _booleanValue(bool raw) {
+    final value = TenantAdminBooleanValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   List<Map<String, dynamic>> _extractDataList(Object? raw) {
@@ -503,6 +664,20 @@ class TenantAdminSettingsResponseDecoder {
           .toList(growable: false);
     }
     return const <String>[];
+  }
+
+  TenantAdminResendEmailRecipients _resendEmailRecipients(
+    Iterable<String> rawValues,
+  ) {
+    return TenantAdminResendEmailRecipients(
+      rawValues.map(_emailAddressValue),
+    );
+  }
+
+  EmailAddressValue _emailAddressValue(String raw) {
+    final value = EmailAddressValue();
+    value.parse(raw);
+    return value;
   }
 
   String _requireNonEmptyString(

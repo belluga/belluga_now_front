@@ -5,11 +5,14 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/direction_info.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/directions_destination_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/directions_fallback_url_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/ride_share_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/ride_share_uri_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
@@ -350,12 +353,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         '&dropoff[nickname]=$encodedTitle',
       ),
     ];
-    if (await _hasAnyLaunchHandler(uberUris)) {
+    final uberUriValues = _buildRideShareUriValues(uberUris);
+    if (await _hasAnyLaunchHandler(uberUriValues)) {
       options.add(
         RideShareOption(
           provider: RideShareProvider.uber,
           labelValue: _buildRideShareLabelValue('Uber'),
-          uriValues: _buildRideShareUriValues(uberUris),
+          uriValues: uberUriValues,
         ),
       );
     }
@@ -373,12 +377,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         '&dropoff_title=$encodedTitle',
       ),
     ];
-    if (await _hasAnyLaunchHandler(ninetyNineUris)) {
+    final ninetyNineUriValues = _buildRideShareUriValues(ninetyNineUris);
+    if (await _hasAnyLaunchHandler(ninetyNineUriValues)) {
       options.add(
         RideShareOption(
           provider: RideShareProvider.ninetyNine,
           labelValue: _buildRideShareLabelValue('99'),
-          uriValues: _buildRideShareUriValues(ninetyNineUris),
+          uriValues: ninetyNineUriValues,
         ),
       );
     }
@@ -498,10 +503,11 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   Future<bool> _launchFirstSupportedUri(
-    List<Uri> uris,
+    List<RideShareUriValue> uris,
     String providerName,
   ) async {
-    for (final uri in uris) {
+    for (final uriValue in uris) {
+      final uri = uriValue.value;
       if (await _safeCanLaunch(uri)) {
         final launched = await launchUrl(
           uri,
@@ -516,8 +522,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return false;
   }
 
-  Future<bool> _hasAnyLaunchHandler(List<Uri> uris) async {
-    for (final uri in uris) {
+  Future<bool> _hasAnyLaunchHandler(List<RideShareUriValue> uris) async {
+    for (final uriValue in uris) {
+      final uri = uriValue.value;
       if (await _safeCanLaunch(uri)) {
         return true;
       }
@@ -629,14 +636,32 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     final seeded = ordered
         .map(
           (item) => item.copyWith(
-            stackKey: normalizedStackKey,
-            stackCount: normalizedStackCount,
+            stackKeyValue: _parseStackKeyValue(normalizedStackKey),
+            stackCountValue: _parseStackCountValue(normalizedStackCount),
           ),
         )
         .toList(growable: false);
+    final stackItems = CityPoiStackItems();
+    for (final item in seeded) {
+      stackItems.add(item);
+    }
     return seeded
-        .map((item) => item.copyWith(stackItems: seeded))
+        .map(
+          (item) => item.copyWith(stackItems: stackItems),
+        )
         .toList(growable: false);
+  }
+
+  PoiStackKeyValue _parseStackKeyValue(String raw) {
+    final value = PoiStackKeyValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiStackCountValue _parseStackCountValue(int raw) {
+    final value = PoiStackCountValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   _SharePayload _buildSharePayload(CityPoiModel poi) {

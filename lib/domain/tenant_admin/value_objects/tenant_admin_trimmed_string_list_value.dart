@@ -1,4 +1,6 @@
-class TenantAdminTrimmedStringListValue {
+import 'dart:collection';
+
+class TenantAdminTrimmedStringListValue extends ListBase<String> {
   TenantAdminTrimmedStringListValue([Iterable<String>? rawValues])
       : _value = List<String>.unmodifiable(_sanitize(rawValues));
 
@@ -6,7 +8,24 @@ class TenantAdminTrimmedStringListValue {
 
   List<String> get value => _value;
 
+  @override
   bool get isEmpty => _value.isEmpty;
+
+  @override
+  int get length => _value.length;
+
+  @override
+  set length(int newLength) {
+    throw UnsupportedError('TenantAdminTrimmedStringListValue is immutable.');
+  }
+
+  @override
+  String operator [](int index) => _value[index];
+
+  @override
+  void operator []=(int index, String value) {
+    throw UnsupportedError('TenantAdminTrimmedStringListValue is immutable.');
+  }
 
   static List<String> _sanitize(Iterable<String>? rawValues) {
     if (rawValues == null) {

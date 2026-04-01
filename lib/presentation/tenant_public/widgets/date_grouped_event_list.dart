@@ -50,7 +50,10 @@ class DateGroupedEventList extends StatelessWidget {
 
     bool isHappeningNow(VenueEventResume event) {
       final start = event.startDateTime;
-      final end = start.add(defaultEventDuration);
+      final end = event.endDateTime ?? start.add(defaultEventDuration);
+      if (end.isBefore(start)) {
+        return false;
+      }
       return start.isBefore(now) || start.isAtSameMomentAs(now)
           ? now.isBefore(end) || now.isAtSameMomentAs(end)
           : false;

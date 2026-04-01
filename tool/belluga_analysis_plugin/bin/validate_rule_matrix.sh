@@ -13,6 +13,14 @@ if [[ ! -d "$fixture_dir" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$fixture_dir/.dart_tool/package_config.json" ]]; then
+  echo "[validate_rule_matrix] fixture package_config missing; running pub get..."
+  (
+    cd "$fixture_dir"
+    fvm flutter pub get
+  )
+fi
+
 analysis_backup="$(mktemp)"
 output_file="$(mktemp)"
 expected_codes_file="$(mktemp)"
@@ -38,6 +46,7 @@ YAML
 mkdir -p "$fixture_dir/integration_test"
 mkdir -p "$fixture_dir/lib/infrastructure/repositories"
 mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/routes"
+mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/widgets"
 
 integration_case="$fixture_dir/integration_test/anonymous_auth_identified_login_case_test.dart"
 cat > "$integration_case" <<'DART'
@@ -95,6 +104,17 @@ class RoutePage {
 }
 DART
 temp_files+=("$route_case")
+
+timezone_case="$fixture_dir/lib/presentation/tenant_public/home/widgets/timezone_conversion_case.dart"
+cat > "$timezone_case" <<'DART'
+class TimezoneConversionCase {
+  DateTime normalize(DateTime input) {
+    // expect_lint: timezone_service_direct_datetime_conversion_forbidden
+    return input.toLocal();
+  }
+}
+DART
+temp_files+=("$timezone_case")
 
 mapfile -t fixture_dart_files < <(
   find "$fixture_dir/lib" "$fixture_dir/integration_test" -type f -name '*.dart' |

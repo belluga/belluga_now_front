@@ -1,14 +1,14 @@
 part of '../partner_profile_module_data.dart';
 
-typedef PartnerRecommendationTitle = String;
-typedef PartnerRecommendationType = String;
-
 class PartnerRecommendationView {
-  const PartnerRecommendationView({
-    required this.title,
-    required this.type,
+  PartnerRecommendationView({
+    required this.titleValue,
+    required this.typeValue,
   });
 
-  final PartnerRecommendationTitle title;
-  final PartnerRecommendationType type;
+  final PartnerProjectionRequiredTextValue titleValue;
+  final PartnerProjectionRequiredTextValue typeValue;
+
+  String get title => titleValue.value;
+  String get type => typeValue.value;
 }

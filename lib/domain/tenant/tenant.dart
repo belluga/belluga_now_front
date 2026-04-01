@@ -5,17 +5,12 @@ import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_domain_match_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/subdomain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_name_value.dart';
 import 'package:get_it/get_it.dart';
-
-typedef TenantPrimString = String;
-typedef TenantPrimInt = int;
-typedef TenantPrimBool = bool;
-typedef TenantPrimDouble = double;
-typedef TenantPrimDateTime = DateTime;
-typedef TenantPrimDynamic = dynamic;
 
 class Tenant {
   final TenantNameValue name;
@@ -38,41 +33,63 @@ class Tenant {
 
   AppData get appData => GetIt.I.get<AppData>();
 
-  TenantPrimString get landlordUrl => BellugaConstants.landlordDomain;
+  TenantLookupDomainValue get landlordUrlValue {
+    final value = TenantLookupDomainValue();
+    value.parse(BellugaConstants.landlordDomain);
+    return value;
+  }
 
-  TenantPrimString get subdomainFull => "${subdomain.value}.$landlordUrl";
+  TenantLookupDomainValue get subdomainFullValue {
+    final value = TenantLookupDomainValue();
+    value.parse('${subdomain.value}.${landlordUrlValue.value}');
+    return value;
+  }
 
-  TenantPrimBool hasDomain(TenantPrimString domainTry) {
+  TenantDomainMatchValue hasDomain(TenantLookupDomainValue domainTryValue) {
     switch (appData.appType) {
       case AppType.web:
-        return hasWebDomain(domainTry);
+        return hasWebDomain(domainTryValue);
       case AppType.mobile:
       case AppType.desktop:
-        return hasAppDomain(domainTry);
+        return hasAppDomain(domainTryValue);
     }
   }
 
-  TenantPrimBool hasAppDomain(TenantPrimString domainTry) {
-    return appDomains?.any((appDomain) {
-          return appDomain.value == domainTry;
+  TenantDomainMatchValue hasAppDomain(TenantLookupDomainValue domainTryValue) {
+    final normalizedTry = domainTryValue.value;
+    final hasMatch = appDomains?.any((appDomain) {
+          return appDomain.value.toLowerCase() == normalizedTry;
         }) ??
         false;
+    final value = TenantDomainMatchValue();
+    value.parse(hasMatch.toString());
+    return value;
   }
 
-  TenantPrimBool hasWebDomain(TenantPrimString domainTry) {
-    final List<TenantPrimString> _splitted = domainTry.split(".$landlordUrl");
+  TenantDomainMatchValue hasWebDomain(TenantLookupDomainValue domainTryValue) {
+    final domainTry = domainTryValue.value;
+    final landlordUrl = landlordUrlValue.value;
+    final subdomainFull = subdomainFullValue.value;
+    final splitDomain = domainTry.split('.$landlordUrl');
 
-    if (_splitted.length == 1) {
-      return domains?.any((domain) {
-            return domain.value!.host == _splitted.first;
+    if (splitDomain.length == 1) {
+      final hasMatch = domains?.any((domain) {
+            return domain.value!.host.toLowerCase() == splitDomain.first;
           }) ??
           false;
+      final value = TenantDomainMatchValue();
+      value.parse(hasMatch.toString());
+      return value;
     }
 
-    if (_splitted.length > 1) {
-      return subdomainFull == domainTry;
+    if (splitDomain.length > 1) {
+      final value = TenantDomainMatchValue();
+      value.parse((subdomainFull == domainTry).toString());
+      return value;
     }
 
-    return true;
+    final fallback = TenantDomainMatchValue();
+    fallback.parse('true');
+    return fallback;
   }
 }

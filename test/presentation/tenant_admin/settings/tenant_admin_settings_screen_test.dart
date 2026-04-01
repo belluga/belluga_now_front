@@ -6,6 +6,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
@@ -15,6 +18,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
@@ -35,6 +45,75 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
+
+TenantAdminRequiredTextValue _requiredText(String raw) {
+  final value = TenantAdminRequiredTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminHexColorValue _hexColor(String raw) {
+  final value = TenantAdminHexColorValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminOptionalUrlValue _optionalUrl(String raw) {
+  final value = TenantAdminOptionalUrlValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminLowercaseTokenValue _token(String raw) {
+  final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
+
+LatitudeValue _lat(double raw) {
+  final value = LatitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+LongitudeValue _lng(double raw) {
+  final value = LongitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminOptionalTextValue _optionalText(String raw) {
+  final value = TenantAdminOptionalTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminResendEmailRecipients _resendRecipients(Iterable<String> values) {
+  return TenantAdminResendEmailRecipients(
+    values.map(_emailAddressValue),
+  );
+}
+
+List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
+  return values.values.map((entry) => entry.value).toList(growable: false);
+}
+
+EmailAddressValue _emailAddressValue(String raw) {
+  final value = EmailAddressValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
+  Iterable<TenantAdminMapFilterCatalogItem> items,
+) {
+  final collection = TenantAdminMapFilterCatalogItems();
+  for (final item in items) {
+    collection.add(item);
+  }
+  return collection;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -109,6 +188,10 @@ void main() {
     );
     expect(
       find.byKey(TenantAdminSettingsKeys.hubIntegrationFirebase),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationResend),
       findsOneWidget,
     );
     expect(
@@ -429,23 +512,24 @@ void main() {
             },
           }),
           defaultOrigin: TenantAdminMapDefaultOrigin(
-            lat: -20.6736,
-            lng: -40.4976,
-            label: 'Centro',
+            lat: _lat(-20.6736),
+            lng: _lng(-40.4976),
+            label: _optionalText('Centro'),
           ),
-          filters: [
+          filters: _mapFilterCatalogItems([
             TenantAdminMapFilterCatalogItem(
-              key: 'events',
-              label: 'Eventos',
-              imageUri: 'https://tenant.test/legacy-events.png',
-              overrideMarker: true,
+              keyValue: _token('events'),
+              labelValue: _requiredText('Eventos'),
+              imageUriValue:
+                  _optionalUrl('https://tenant.test/legacy-events.png'),
+              overrideMarkerValue: TenantAdminFlagValue(true),
               markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-                icon: 'music',
-                color: '#C6141F',
-                iconColor: '#FFFFFF',
+                iconValue: _requiredText('music'),
+                colorValue: _hexColor('#C6141F'),
+                iconColorValue: _hexColor('#FFFFFF'),
               ),
             ),
-          ],
+          ]),
         ),
       );
       GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -495,30 +579,30 @@ void main() {
   testWidgets('map filter rule sheet is query-only (without visual fields)',
       (tester) async {
     final filter = TenantAdminMapFilterCatalogItem(
-      key: 'events',
-      label: 'Eventos',
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
       query:
           TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
     );
     final catalog = TenantAdminMapFilterRuleCatalog(
-      typesBySource: {
+      typesBySource: TenantAdminMapFilterTypeOptionsBySourceValue({
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTypeOption(
-            slug: 'show',
-            label: 'Show',
+            slugValue: _token('show'),
+            labelValue: _requiredText('Show'),
           ),
         ],
-      },
-      taxonomyTermsBySource: {
+      }),
+      taxonomyTermsBySource: TenantAdminMapFilterTaxonomyOptionsBySourceValue({
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTaxonomyTermOption(
-            token: 'rock',
-            label: 'Rock',
-            taxonomySlug: 'genre',
-            taxonomyLabel: 'Gênero',
+            tokenValue: _token('rock'),
+            labelValue: _requiredText('Rock'),
+            taxonomySlugValue: _token('genre'),
+            taxonomyLabelValue: _requiredText('Gênero'),
           ),
         ],
-      },
+      }),
     );
 
     await tester.pumpWidget(
@@ -723,12 +807,12 @@ void main() {
   testWidgets('Visual sheet validates image url when override mode is image',
       (tester) async {
     final filter = TenantAdminMapFilterCatalogItem(
-      key: 'events',
-      label: 'Eventos',
-      imageUri: 'https://tenant.test/filter.png',
-      overrideMarker: true,
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
+      imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
+      overrideMarkerValue: TenantAdminFlagValue(true),
       markerOverride: TenantAdminMapFilterMarkerOverride.image(
-        imageUri: 'https://tenant.test/filter.png',
+        imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
       ),
       query:
           TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
@@ -816,20 +900,6 @@ void main() {
         ),
       ),
     );
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsScopedAppBar,
-        skipOffstage: false,
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsBackButton,
-        skipOffstage: false,
-      ),
-      findsOneWidget,
-    );
 
     final projectIdRow = find.byKey(
       const ValueKey('tenant_admin_settings_firebase_project_id_edit'),
@@ -871,6 +941,121 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
+  });
+
+  testWidgets('saves resend email settings via remote repository',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.resend,
+        ),
+      ),
+    );
+
+    final tokenRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendTokenEdit,
+      skipOffstage: false,
+    );
+    final fromRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendFromEdit,
+      skipOffstage: false,
+    );
+    final toRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendToEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveResend,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      tokenRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: tokenRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'API Token'),
+      're_token_updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: fromRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'From'),
+      'Belluga <noreply@belluga.space>',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: toRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'To'),
+      'owner@belluga.space, ops@belluga.space',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedResendEmailSettings, isNotNull);
+    expect(
+      settingsRepository.updatedResendEmailSettings!.token,
+      're_token_updated',
+    );
+    expect(
+      settingsRepository.updatedResendEmailSettings!.from,
+      'Belluga <noreply@belluga.space>',
+    );
+    expect(
+      _recipientStrings(settingsRepository.updatedResendEmailSettings!.to),
+      equals(['owner@belluga.space', 'ops@belluga.space']),
+    );
   });
 
   testWidgets('saves app links settings via remote repository', (tester) async {
@@ -1400,7 +1585,7 @@ void main() {
 
     controller.bindLocalPreferencesFlow();
     locationSelection.setInitialLocation(
-      TenantAdminLocation(
+      tenantAdminLocationFromRaw(
         latitude: -20.612345,
         longitude: -40.487654,
       ),
@@ -1443,7 +1628,7 @@ Future<void> _pumpWithAutoRoute(
   await tester.pumpAndSettle();
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
@@ -1453,13 +1638,18 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 1000);
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+          defaultValue:
+              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
 
   @override
   StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
@@ -1475,13 +1665,13 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadiusMetersStreamValue.addValue(meters);
   }
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeModeStreamValue.addValue(mode);
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
   }
 }
 
@@ -1492,15 +1682,21 @@ class _FakeTenantAdminSettingsRepository
     String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
     TenantAdminMapUiSettings? initialMapUiSettings,
   }) : _brandingSettings = TenantAdminBrandingSettings(
-          tenantName: 'Tenant Test',
+          tenantName: _requiredText('Tenant Test'),
           brightnessDefault: TenantAdminBrandingBrightness.light,
-          primarySeedColor: '#009688',
-          secondarySeedColor: '#673AB7',
-          lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
-          darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
-          lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
-          darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
-          pwaIconUrl: initialPwaIconUrl,
+          primarySeedColor: _hexColor('#009688'),
+          secondarySeedColor: _hexColor('#673AB7'),
+          lightLogoUrl:
+              _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+          darkLogoUrl:
+              _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+          lightIconUrl:
+              _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+          darkIconUrl:
+              _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+          pwaIconUrl: initialPwaIconUrl == null
+              ? null
+              : _optionalUrl(initialPwaIconUrl),
         ) {
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
@@ -1509,6 +1705,7 @@ class _FakeTenantAdminSettingsRepository
 
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
+  TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
   TenantAdminAppLinksSettings? updatedAppLinksSettings;
@@ -1526,11 +1723,11 @@ class _FakeTenantAdminSettingsRepository
       },
     }),
     defaultOrigin: TenantAdminMapDefaultOrigin(
-      lat: -20.6736,
-      lng: -40.4976,
-      label: 'Centro',
+      lat: _lat(-20.6736),
+      lng: _lng(-40.4976),
+      label: _optionalText('Centro'),
     ),
-    filters: [],
+    filters: TenantAdminMapFilterCatalogItems(),
   );
   TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
@@ -1554,6 +1751,15 @@ class _FakeTenantAdminSettingsRepository
     iosBundleId: 'com.guarappari.app',
     iosPaths: ['/invite*', '/convites*'],
   );
+  TenantAdminResendEmailSettings _resendEmailSettings =
+      TenantAdminResendEmailSettings(
+    token: _optionalText('re_fixture_token'),
+    from: _optionalText('Belluga <noreply@belluga.space>'),
+    toRecipients: _resendRecipients(['admin@belluga.space']),
+    ccRecipients: _resendRecipients(['ops@belluga.space']),
+    bccRecipients: TenantAdminResendEmailRecipients(),
+    replyToRecipients: _resendRecipients(['reply@belluga.space']),
+  );
 
   @override
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
@@ -1576,7 +1782,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
-    required String type,
+    required Object type,
   }) async {
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
@@ -1587,12 +1793,17 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
     return TenantAdminFirebaseSettings(
-      apiKey: 'apikey',
-      appId: 'appid',
-      projectId: 'project-test',
-      messagingSenderId: 'sender',
-      storageBucket: 'bucket',
+      apiKey: _requiredText('apikey'),
+      appId: _requiredText('appid'),
+      projectId: _requiredText('project-test'),
+      messagingSenderId: _requiredText('sender'),
+      storageBucket: _requiredText('bucket'),
     );
+  }
+
+  @override
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings() async {
+    return _resendEmailSettings;
   }
 
   @override
@@ -1632,12 +1843,13 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<String> uploadMapFilterImage({
-    required String key,
+    required Object key,
     required TenantAdminMediaUpload upload,
   }) async {
-    uploadedMapFilterKey = key;
+    uploadedMapFilterKey =
+        key is String ? key : (key as dynamic).value as String;
     uploadedMapFilterPayload = upload;
-    return 'https://guarappari.test/api/v1/media/map-filters/$key?v=1';
+    return 'https://guarappari.test/api/v1/media/map-filters/$uploadedMapFilterKey?v=1';
   }
 
   @override
@@ -1659,6 +1871,15 @@ class _FakeTenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
+  }) async {
+    updatedResendEmailSettings = settings;
+    _resendEmailSettings = settings;
+    return settings;
+  }
+
+  @override
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   }) async {
@@ -1671,15 +1892,19 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     lastBrandingInput = input;
     _brandingSettings = TenantAdminBrandingSettings(
-      tenantName: input.tenantName,
+      tenantName: _requiredText(input.tenantName),
       brightnessDefault: input.brightnessDefault,
-      primarySeedColor: input.primarySeedColor,
-      secondarySeedColor: input.secondarySeedColor,
-      lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
-      darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
-      lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
-      darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
-      pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
+      primarySeedColor: _hexColor(input.primarySeedColor),
+      secondarySeedColor: _hexColor(input.secondarySeedColor),
+      lightLogoUrl:
+          _optionalUrl('https://guarappari.test/storage/light-logo.png'),
+      darkLogoUrl:
+          _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
+      lightIconUrl:
+          _optionalUrl('https://guarappari.test/storage/light-icon.png'),
+      darkIconUrl:
+          _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;
@@ -1690,7 +1915,7 @@ class _FakeTenantAdminExternalImageProxy
     implements TenantAdminExternalImageProxyContract {
   @override
   Future<Uint8List> fetchExternalImageBytes({
-    required String imageUrl,
+    required Object imageUrl,
   }) async {
     return Uint8List(0);
   }
@@ -1720,8 +1945,11 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 

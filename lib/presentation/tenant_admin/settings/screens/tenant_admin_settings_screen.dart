@@ -250,6 +250,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                     .withValues(alpha: 0.6),
               ),
               KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationResend,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.mark_email_read_outlined,
+                  title: 'Resend',
+                  subtitle: 'Disparo de e-mail transacional do site',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.resend,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
                 key: TenantAdminSettingsKeys.hubIntegrationAppLinks,
                 child: TenantAdminHubIntegrationRow(
                   icon: Icons.link_outlined,

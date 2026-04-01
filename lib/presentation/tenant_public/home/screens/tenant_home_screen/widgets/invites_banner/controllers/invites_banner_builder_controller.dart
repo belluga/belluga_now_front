@@ -14,5 +14,5 @@ class InvitesBannerBuilderController {
   StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
       _invitesRepository.pendingInvitesStreamValue;
 
-  bool get hasPendingInvites => _invitesRepository.hasPendingInvites;
+  bool get hasPendingInvites => _invitesRepository.hasPendingInvites.value;
 }

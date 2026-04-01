@@ -1,3 +1,7 @@
+import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_name_value.dart';
+
 typedef LandlordTenantOptionPrimString = String;
 typedef LandlordTenantOptionPrimInt = int;
 typedef LandlordTenantOptionPrimBool = bool;
@@ -6,25 +10,17 @@ typedef LandlordTenantOptionPrimDateTime = DateTime;
 typedef LandlordTenantOptionPrimDynamic = dynamic;
 
 class LandlordTenantOption {
-  const LandlordTenantOption({
-    required this.id,
-    required this.name,
-    required this.mainDomain,
+  LandlordTenantOption({
+    required this.idValue,
+    required this.nameValue,
+    required this.mainDomainValue,
   });
 
-  final LandlordTenantOptionPrimString id;
-  final LandlordTenantOptionPrimString name;
-  final LandlordTenantOptionPrimString mainDomain;
+  final TenantIdValue idValue;
+  final TenantNameValue nameValue;
+  final AppDomainValue mainDomainValue;
 
-  @override
-  LandlordTenantOptionPrimBool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is LandlordTenantOption &&
-        other.id == id &&
-        other.name == name &&
-        other.mainDomain == mainDomain;
-  }
-
-  @override
-  LandlordTenantOptionPrimInt get hashCode => Object.hash(id, name, mainDomain);
+  LandlordTenantOptionPrimString get id => idValue.value;
+  LandlordTenantOptionPrimString get name => nameValue.value;
+  LandlordTenantOptionPrimString get mainDomain => mainDomainValue.value;
 }

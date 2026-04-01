@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -66,8 +67,10 @@ class InviteShareFooter extends StatelessWidget {
             onPressed: shareUri == null
                 ? null
                 : () {
+                    final localEventDate =
+                        TimezoneConverter.utcToLocal(invite.eventDateTime);
                     final text =
-                        'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime.toLocal()}.'
+                        'Bora? ${invite.eventName} em ${invite.location} no dia $localEventDate.'
                         '\nDetalhes: $shareUri';
                     SharePlus.instance.share(
                       ShareParams(

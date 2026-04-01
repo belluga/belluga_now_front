@@ -1,14 +1,31 @@
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+TenantLookupDomainValue _tenantDomainValue(String raw) {
+  return TenantLookupDomainValue.fromRaw(raw);
+}
+
+LandlordTenantOption _tenantOption({
+  required String id,
+  required String name,
+  required String mainDomain,
+}) {
+  return landlordTenantOptionFromRaw(
+    id: id,
+    name: name,
+    mainDomain: mainDomain,
+  );
+}
 
 void main() {
   test('auto-selects the only tenant when available list has one item', () {
     final repository = TenantAdminSelectedTenantRepository();
 
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
@@ -24,13 +41,13 @@ void main() {
   test('selectTenantDomain preserves explicit origin and resolves tenant', () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
         ),
-        LandlordTenantOption(
+        _tenantOption(
           id: 'tenant-b',
           name: 'Tenant B',
           mainDomain: 'tenant-b.example.com',
@@ -38,7 +55,8 @@ void main() {
       ],
     );
 
-    repository.selectTenantDomain('https://tenant-b.example.com');
+    repository
+        .selectTenantDomain(_tenantDomainValue('https://tenant-b.example.com'));
 
     expect(repository.selectedTenantDomain, 'https://tenant-b.example.com');
     expect(repository.selectedTenant?.id, 'tenant-b');
@@ -49,8 +67,8 @@ void main() {
       () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
@@ -58,7 +76,8 @@ void main() {
       ],
     );
 
-    repository.selectTenantDomain('http://tenant-a.example.com:8081');
+    repository.selectTenantDomain(
+        _tenantDomainValue('http://tenant-a.example.com:8081'));
 
     expect(
       repository.selectedTenantDomain,
@@ -75,11 +94,12 @@ void main() {
       'single-tenant sync does not override explicit selected origin with host-only value',
       () {
     final repository = TenantAdminSelectedTenantRepository();
-    repository.selectTenantDomain('http://tenant-a.example.com:8081');
+    repository.selectTenantDomain(
+        _tenantDomainValue('http://tenant-a.example.com:8081'));
 
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
@@ -98,13 +118,13 @@ void main() {
       () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
         ),
-        LandlordTenantOption(
+        _tenantOption(
           id: 'tenant-b',
           name: 'Tenant B',
           mainDomain: 'tenant-b.example.com',
@@ -112,10 +132,10 @@ void main() {
       ],
     );
 
-    repository.selectTenantDomain('tenant-b.example.com');
+    repository.selectTenantDomain(_tenantDomainValue('tenant-b.example.com'));
     repository.setAvailableTenants(
-      const [
-        LandlordTenantOption(
+      [
+        _tenantOption(
           id: 'tenant-a',
           name: 'Tenant A',
           mainDomain: 'tenant-a.example.com',
@@ -139,7 +159,7 @@ void main() {
   test('clearSelectedTenantDomain clears both selected domain and option', () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.selectTenant(
-      const LandlordTenantOption(
+      _tenantOption(
         id: 'tenant-c',
         name: 'Tenant C',
         mainDomain: 'tenant-c.example.com',

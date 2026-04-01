@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_static_assets_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
@@ -50,13 +49,14 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async {
     var page = 1;
-    const pageSize = 100;
+    final pageSize =
+        TenantAdminStaticAssetsRepoInt.fromRaw(100, defaultValue: 100);
     var hasMore = true;
     final assets = <TenantAdminStaticAsset>[];
 
     while (hasMore) {
       final result = await fetchStaticAssetsPage(
-        page: page,
+        page: TenantAdminStaticAssetsRepoInt.fromRaw(page, defaultValue: page),
         pageSize: pageSize,
       );
       assets.addAll(result.items);
@@ -69,20 +69,20 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_assets',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticAssetList(response.data);
-      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos
             .map(
               (dto) => _normalizeStaticAssetMediaUrls(dto).toDomain(),
@@ -90,7 +90,7 @@ class TenantAdminStaticAssetsRepository
             .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -99,10 +99,12 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/static_assets/$assetId',
+        '$_apiBaseUrl/v1/static_assets/${assetId.value}',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
@@ -114,27 +116,28 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
-    required String profileType,
-    required String displayName,
+    required TenantAdminStaticAssetsRepoString profileType,
+    required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeStaticAssetPayload(
-        profileType: profileType,
-        displayName: displayName,
+        profileType: profileType.value,
+        displayName: displayName.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
-        avatarUrl: avatarUrl,
-        coverUrl: coverUrl,
+        bio: bio?.value,
+        content: content?.value,
+        avatarUrl: avatarUrl?.value,
+        coverUrl: coverUrl?.value,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -155,34 +158,34 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> updateStaticAsset({
-    required String assetId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminStaticAssetsRepoString assetId,
+    TenantAdminStaticAssetsRepoString? profileType,
+    TenantAdminStaticAssetsRepoString? displayName,
+    TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    bool? removeAvatar,
-    bool? removeCover,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
+    TenantAdminStaticAssetsRepoBool? removeAvatar,
+    TenantAdminStaticAssetsRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeStaticAssetPayload(
-        profileType: profileType,
-        displayName: displayName,
-        slug: slug,
+        profileType: profileType?.value,
+        displayName: displayName?.value,
+        slug: slug?.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
-        avatarUrl: avatarUrl,
-        coverUrl: coverUrl,
-        removeAvatar: removeAvatar,
-        removeCover: removeCover,
+        bio: bio?.value,
+        content: content?.value,
+        avatarUrl: avatarUrl?.value,
+        coverUrl: coverUrl?.value,
+        removeAvatar: removeAvatar?.value,
+        removeCover: removeCover?.value,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -191,12 +194,12 @@ class TenantAdminStaticAssetsRepository
       );
       final response = uploadPayload == null
           ? await _dio.patch(
-              '$_apiBaseUrl/v1/static_assets/$assetId',
+              '$_apiBaseUrl/v1/static_assets/${assetId.value}',
               data: payload,
               options: Options(headers: _buildHeaders()),
             )
           : await _dio.post(
-              '$_apiBaseUrl/v1/static_assets/$assetId',
+              '$_apiBaseUrl/v1/static_assets/${assetId.value}',
               data: uploadPayload
                 ..fields.add(const MapEntry('_method', 'PATCH')),
               options: Options(
@@ -212,10 +215,11 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<void> deleteStaticAsset(String assetId) async {
+  Future<void> deleteStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/static_assets/$assetId',
+        '$_apiBaseUrl/v1/static_assets/${assetId.value}',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -224,10 +228,12 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<TenantAdminStaticAsset> restoreStaticAsset(String assetId) async {
+  Future<TenantAdminStaticAsset> restoreStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     try {
       final response = await _dio.post(
-        '$_apiBaseUrl/v1/static_assets/$assetId/restore',
+        '$_apiBaseUrl/v1/static_assets/${assetId.value}/restore',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
@@ -238,10 +244,12 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<void> forceDeleteStaticAsset(String assetId) async {
+  Future<void> forceDeleteStaticAsset(
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/static_assets/$assetId/force_delete',
+        '$_apiBaseUrl/v1/static_assets/${assetId.value}/force_delete',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
@@ -253,13 +261,14 @@ class TenantAdminStaticAssetsRepository
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
     var page = 1;
-    const pageSize = 100;
+    final pageSize =
+        TenantAdminStaticAssetsRepoInt.fromRaw(100, defaultValue: 100);
     var hasMore = true;
     final types = <TenantAdminStaticProfileTypeDefinition>[];
 
     while (hasMore) {
       final result = await fetchStaticProfileTypesPage(
-        page: page,
+        page: TenantAdminStaticAssetsRepoInt.fromRaw(page, defaultValue: page),
         pageSize: pageSize,
       );
       types.addAll(result.items);
@@ -273,24 +282,24 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_profile_types',
         queryParameters: {
-          'page': page,
-          'page_size': pageSize,
+          'page': page.value,
+          'page_size': pageSize.value,
         },
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
-      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return tenantAdminPagedResultFromRaw(
         items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
-          requestedPage: page,
+          requestedPage: page.value,
         ),
       );
     } on DioException catch (error) {
@@ -300,16 +309,18 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) async {
     try {
       final payload = _requestEncoder.encodeStaticProfileTypePayload(
-        type: type,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        type: type.value,
+        label: label.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
       );
       final response = await _dio.post(
@@ -327,17 +338,19 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
       createStaticProfileTypeWithPoiVisual({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? poiVisual,
   }) async {
     try {
       final payload = _requestEncoder.encodeStaticProfileTypePayload(
-        type: type,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        type: type.value,
+        label: label.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
         poiVisual: poiVisual,
         includePoiVisual: true,
@@ -356,18 +369,20 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final payload = _requestEncoder.encodeStaticProfileTypePayload(
-        type: newType,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        type: newType?.value,
+        label: label?.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
       );
       final response = await _dio.patch(
@@ -385,19 +400,21 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
       updateStaticProfileTypeWithPoiVisual({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? poiVisual,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final payload = _requestEncoder.encodeStaticProfileTypePayload(
-        type: newType,
-        label: label,
-        allowedTaxonomies: allowedTaxonomies,
+        type: newType?.value,
+        label: label?.value,
+        allowedTaxonomies: allowedTaxonomies
+            ?.map((entry) => entry.value)
+            .toList(growable: false),
         capabilities: capabilities,
         poiVisual: poiVisual,
         includePoiVisual: true,
@@ -415,25 +432,30 @@ class TenantAdminStaticAssetsRepository
   }
 
   @override
-  Future<int> fetchStaticProfileTypeMapPoiProjectionImpact({
-    required String type,
+  Future<TenantAdminStaticAssetsRepoInt>
+      fetchStaticProfileTypeMapPoiProjectionImpact({
+    required TenantAdminStaticAssetsRepoString type,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_profile_types/$encodedType/map_poi_projection_impact',
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeProjectionImpactCount(response.data);
+      return TenantAdminStaticAssetsRepoInt.fromRaw(
+        _responseDecoder.decodeProjectionImpactCount(response.data),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load static profile type projection impact');
     }
   }
 
   @override
-  Future<void> deleteStaticProfileType(String type) async {
+  Future<void> deleteStaticProfileType(
+    TenantAdminStaticAssetsRepoString type,
+  ) async {
     try {
-      final encodedType = Uri.encodeComponent(type);
+      final encodedType = Uri.encodeComponent(type.value);
       await _dio.delete(
         '$_apiBaseUrl/v1/static_profile_types/$encodedType',
         options: Options(headers: _buildHeaders()),

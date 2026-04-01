@@ -5,25 +5,22 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
-
-typedef CityMapRepositoryContractPrimString = String;
-typedef CityMapRepositoryContractPrimInt = int;
-typedef CityMapRepositoryContractPrimBool = bool;
-typedef CityMapRepositoryContractPrimDouble = double;
-typedef CityMapRepositoryContractPrimDateTime = DateTime;
-typedef CityMapRepositoryContractPrimDynamic = dynamic;
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 
 abstract class CityMapRepositoryContract {
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query);
 
   Future<List<CityPoiModel>> fetchStackItems({
     required PoiQuery query,
-    required CityMapRepositoryContractPrimString stackKey,
+    required PoiStackKeyValue stackKey,
   });
 
   Future<CityPoiModel?> fetchPoiByReference({
-    required CityMapRepositoryContractPrimString refType,
-    required CityMapRepositoryContractPrimString refId,
+    required PoiReferenceTypeValue refType,
+    required PoiReferenceIdValue refId,
   });
 
   Future<PoiFilterOptions> fetchFilters();
@@ -32,7 +29,7 @@ abstract class CityMapRepositoryContract {
 
   Future<List<MapRegionDefinition>> fetchRegions();
 
-  Future<CityMapRepositoryContractPrimString> fetchFallbackEventImage();
+  Future<ThumbUriValue> fetchFallbackEventImage();
 
   Stream<PoiUpdateEvent?> get poiEvents;
 

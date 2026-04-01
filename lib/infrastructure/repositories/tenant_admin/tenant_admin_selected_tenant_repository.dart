@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -51,8 +52,8 @@ class TenantAdminSelectedTenantRepository
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    final normalized = _normalizeTenantDomain(tenantDomain);
+  void selectTenantDomain(TenantLookupDomainValue tenantDomain) {
+    final normalized = _normalizeTenantDomain(tenantDomain.value);
     if (normalized == null) {
       return;
     }
@@ -107,7 +108,7 @@ class TenantAdminSelectedTenantRepository
       if (normalizedDomain == null || identity == null) {
         continue;
       }
-      tenantsByDomain[identity] = LandlordTenantOption(
+      tenantsByDomain[identity] = landlordTenantOptionFromRaw(
         id: tenant.id,
         name: tenant.name,
         mainDomain: normalizedDomain,

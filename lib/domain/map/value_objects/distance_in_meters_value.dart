@@ -18,4 +18,21 @@ class DistanceInMetersValue extends ValueObject<double> {
     }
     return parsed;
   }
+
+  factory DistanceInMetersValue.fromRaw(
+    Object? raw, {
+    double defaultValue = 0,
+    bool isRequired = false,
+  }) {
+    final value = DistanceInMetersValue(
+      defaultValue: defaultValue,
+      isRequired: isRequired,
+    );
+    if (raw is num) {
+      value.parse('${raw.toDouble()}');
+      return value;
+    }
+    value.parse(raw?.toString());
+    return value;
+  }
 }

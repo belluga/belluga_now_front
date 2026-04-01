@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_request_encoder.dart';
@@ -132,12 +133,13 @@ class TenantAdminSettingsRepository
 
   @override
   Future<String> uploadMapFilterImage({
-    required String key,
+    required TenantAdminLowercaseTokenValue key,
     required TenantAdminMediaUpload upload,
   }) async {
+    final normalizedKey = key.value.trim();
     try {
       final payload = FormData.fromMap({
-        'key': key.trim(),
+        'key': normalizedKey,
       });
       _appendUpload(
         payload,
@@ -155,7 +157,7 @@ class TenantAdminSettingsRepository
       );
       return _responseDecoder.decodeMapFilterImageUpload(
         response.data,
-        key: key,
+        key: normalizedKey,
         tenantOrigin: _resolveTenantOriginUri(),
       );
     } on DioException catch (error) {
@@ -213,6 +215,35 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeResendEmailSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load resend_email settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'resend_email'),
+        data: _requestEncoder.encodeResendEmailSettingsPatch(settings),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeResendEmailSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update resend_email settings');
+    }
+  }
+
+  @override
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   }) async {
@@ -259,10 +290,10 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
-    required String type,
+    required TenantAdminLowercaseTokenValue type,
   }) async {
     try {
-      final encodedType = Uri.encodeComponent(type.trim());
+      final encodedType = Uri.encodeComponent(type.value.trim());
       final response = await _dio.delete(
         '$_apiBaseUrl/v1/settings/telemetry/$encodedType',
         options: Options(headers: _buildHeaders()),

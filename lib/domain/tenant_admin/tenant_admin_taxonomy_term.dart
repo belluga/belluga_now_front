@@ -1,12 +1,12 @@
+export 'value_objects/tenant_admin_taxonomy_values.dart';
+
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 
 class TenantAdminTaxonomyTerm {
   TenantAdminTaxonomyTerm({
-    required Object type,
-    required Object value,
-  })  : typeValue = tenantAdminRequiredText(type),
-        valueField = tenantAdminRequiredText(value);
+    required this.typeValue,
+    required this.valueField,
+  });
 
   final TenantAdminRequiredTextValue typeValue;
   final TenantAdminRequiredTextValue valueField;
