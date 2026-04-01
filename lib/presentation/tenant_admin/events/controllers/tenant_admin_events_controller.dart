@@ -4,6 +4,7 @@ export 'tenant_admin_event_type_form_state.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -11,7 +12,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
@@ -46,6 +47,7 @@ class TenantAdminEventsController implements Disposable {
                 ? GetIt.I.get<TenantAdminImageIngestionService>()
                 : TenantAdminImageIngestionService()) {
     _bindTenantScope();
+    _bindRepositoryStreams();
   }
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
@@ -56,12 +58,11 @@ class TenantAdminEventsController implements Disposable {
 
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsRepository.eventsStreamValue;
-  StreamValue<bool> get hasMoreEventsStreamValue =>
-      _eventsRepository.hasMoreEventsStreamValue;
-  StreamValue<bool> get isEventsPageLoadingStreamValue =>
-      _eventsRepository.isEventsPageLoadingStreamValue;
-  StreamValue<String?> get eventsErrorStreamValue =>
-      _eventsRepository.eventsErrorStreamValue;
+  final StreamValue<bool> hasMoreEventsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> isEventsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> eventsErrorStreamValue = StreamValue<String?>();
 
   final StreamValue<String?> statusFilterStreamValue =
       StreamValue<String?>(defaultValue: null);
@@ -148,6 +149,10 @@ class TenantAdminEventsController implements Disposable {
   bool _isDisposed = false;
   bool _submitInFlight = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
+  StreamSubscription<TenantAdminEventsRepoBool>?
+      _isEventsPageLoadingSubscription;
+  StreamSubscription<TenantAdminEventsRepoString?>? _eventsErrorSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
 
@@ -176,18 +181,74 @@ class TenantAdminEventsController implements Disposable {
     });
   }
 
+  void _bindRepositoryStreams() {
+    hasMoreEventsStreamValue
+        .addValue(_eventsRepository.hasMoreEventsStreamValue.value.value);
+    isEventsPageLoadingStreamValue.addValue(
+      _eventsRepository.isEventsPageLoadingStreamValue.value.value,
+    );
+    eventsErrorStreamValue.addValue(
+      _eventsRepository.eventsErrorStreamValue.value?.value,
+    );
+
+    _hasMoreEventsSubscription =
+        _eventsRepository.hasMoreEventsStreamValue.stream.listen((value) {
+      if (_isDisposed) {
+        return;
+      }
+      hasMoreEventsStreamValue.addValue(value.value);
+    });
+
+    _isEventsPageLoadingSubscription =
+        _eventsRepository.isEventsPageLoadingStreamValue.stream.listen((value) {
+      if (_isDisposed) {
+        return;
+      }
+      isEventsPageLoadingStreamValue.addValue(value.value);
+    });
+
+    _eventsErrorSubscription =
+        _eventsRepository.eventsErrorStreamValue.stream.listen((value) {
+      if (_isDisposed) {
+        return;
+      }
+      eventsErrorStreamValue.addValue(value?.value);
+    });
+  }
+
+  TenantAdminEventsRepoString _toEventsText(String value) {
+    return TenantAdminEventsRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  TenantAdminEventsRepoString? _toNullableEventsText(String? value) {
+    if (value == null) {
+      return null;
+    }
+    return _toEventsText(value);
+  }
+
+  TenantAdminEventsRepoBool _toEventsBool(bool value) {
+    return TenantAdminEventsRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
   Future<void> loadEvents() async {
     if (_isDisposed) {
       return;
     }
     if (!_hasLandlordToken()) {
       _eventsRepository.resetEventsState();
-      eventsStreamValue.addValue(const <TenantAdminEvent>[]);
+      _eventsRepository.setEventsState(const <TenantAdminEvent>[]);
       return;
     }
     await _eventsRepository.loadEvents(
-      status: statusFilterStreamValue.value,
-      archived: archivedFilterStreamValue.value,
+      status: _toNullableEventsText(statusFilterStreamValue.value),
+      archived: _toEventsBool(archivedFilterStreamValue.value),
     );
   }
 
@@ -199,8 +260,8 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadNextEventsPage(
-      status: statusFilterStreamValue.value,
-      archived: archivedFilterStreamValue.value,
+      status: _toNullableEventsText(statusFilterStreamValue.value),
+      archived: _toEventsBool(archivedFilterStreamValue.value),
     );
   }
 
@@ -226,22 +287,28 @@ class TenantAdminEventsController implements Disposable {
   }) {
     final firstOccurrence = existingEvent?.occurrences.firstOrNull;
     final selectedTaxonomyTerms = <String, Set<String>>{};
-    for (final term
-        in existingEvent?.taxonomyTerms ?? const <TenantAdminTaxonomyTerm>[]) {
+    for (final term in existingEvent?.taxonomyTerms ??
+        const TenantAdminTaxonomyTerms.empty()) {
       final bucket =
           selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
     }
     final nextState = TenantAdminEventFormState(
-      startAt: firstOccurrence?.dateTimeStart.toLocal(),
-      endAt: firstOccurrence?.dateTimeEnd?.toLocal(),
-      publishAt: existingEvent?.publication.publishAt?.toLocal(),
+      startAt: firstOccurrence?.dateTimeStart == null
+          ? null
+          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeStart),
+      endAt: firstOccurrence?.dateTimeEnd == null
+          ? null
+          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeEnd!),
+      publishAt: existingEvent?.publication.publishAt == null
+          ? null
+          : TimezoneConverter.utcToLocal(existingEvent!.publication.publishAt!),
       locationMode: existingEvent?.location?.mode ?? 'physical',
       publicationStatus: existingEvent?.publication.status ?? 'draft',
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedArtistIds: {
-        ...?existingEvent?.artistIds,
+        ...?existingEvent?.artistIds.map((artistId) => artistId.value),
       },
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
@@ -564,15 +631,15 @@ class TenantAdminEventsController implements Disposable {
 
     final saved = isEdit
         ? await _eventsRepository.updateEventType(
-            eventTypeId: eventTypeId,
-            name: normalizedName,
-            slug: normalizedSlug,
-            description: descriptionForUpdate,
+            eventTypeId: _toEventsText(eventTypeId),
+            name: _toEventsText(normalizedName),
+            slug: _toEventsText(normalizedSlug),
+            description: _toNullableEventsText(descriptionForUpdate),
           )
         : await _eventsRepository.createEventType(
-            name: normalizedName,
-            slug: normalizedSlug,
-            description: descriptionForCreate,
+            name: _toEventsText(normalizedName),
+            slug: _toEventsText(normalizedSlug),
+            description: _toNullableEventsText(descriptionForCreate),
           );
 
     await _loadEventTypeCatalog();
@@ -587,7 +654,7 @@ class TenantAdminEventsController implements Disposable {
       );
     }
 
-    await _eventsRepository.deleteEventType(eventTypeId);
+    await _eventsRepository.deleteEventType(_toEventsText(eventTypeId));
     await _loadEventTypeCatalog();
   }
 
@@ -595,7 +662,9 @@ class TenantAdminEventsController implements Disposable {
     eventDetailLoadingStreamValue.addValue(true);
     eventDetailErrorStreamValue.addValue(null);
     try {
-      final event = await _eventsRepository.fetchEvent(eventIdOrSlug);
+      final event = await _eventsRepository.fetchEvent(
+        _toEventsText(eventIdOrSlug),
+      );
       if (_isDisposed) {
         return;
       }
@@ -653,7 +722,7 @@ class TenantAdminEventsController implements Disposable {
       final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
-          .where((taxonomy) => taxonomy.appliesToTarget('event'))
+          .where((taxonomy) => taxonomy.appliesToEvent())
           .toList(growable: false);
       if (_isDisposed) {
         return;
@@ -663,7 +732,9 @@ class TenantAdminEventsController implements Disposable {
       final entries =
           <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
       for (final taxonomy in filtered) {
-        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        await _taxonomiesRepository.loadAllTerms(
+            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
+                defaultValue: '', isRequired: true));
         final terms = _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         entries.add(
@@ -699,7 +770,7 @@ class TenantAdminEventsController implements Disposable {
     partyCandidatesLoadingStreamValue.addValue(true);
     try {
       final candidates = await _eventsRepository.fetchPartyCandidates(
-        accountSlug: accountSlug,
+        accountSlug: _toNullableEventsText(accountSlug),
       );
       if (_isDisposed) {
         return;
@@ -736,7 +807,7 @@ class TenantAdminEventsController implements Disposable {
           normalizedAccountSlug != null && normalizedAccountSlug.isNotEmpty;
       final created = isAccountScoped
           ? await _eventsRepository.createOwnEvent(
-              accountSlug: normalizedAccountSlug,
+              accountSlug: _toEventsText(normalizedAccountSlug),
               draft: draft,
             )
           : await _eventsRepository.createEvent(draft: draft);
@@ -775,7 +846,7 @@ class TenantAdminEventsController implements Disposable {
     submitSuccessMessageStreamValue.addValue(null);
     try {
       final updated = await _eventsRepository.updateEvent(
-        eventId: eventId,
+        eventId: _toEventsText(eventId),
         draft: draft,
       );
       if (_isDisposed) {
@@ -802,7 +873,7 @@ class TenantAdminEventsController implements Disposable {
 
   Future<void> deleteEvent(String eventId) async {
     try {
-      await _eventsRepository.deleteEvent(eventId);
+      await _eventsRepository.deleteEvent(_toEventsText(eventId));
       if (_isDisposed) {
         return;
       }
@@ -907,7 +978,7 @@ class TenantAdminEventsController implements Disposable {
     if (dateTime == null) {
       return '';
     }
-    final local = dateTime.toLocal();
+    final local = TimezoneConverter.utcToLocal(dateTime);
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
     final hour = local.hour.toString().padLeft(2, '0');
@@ -938,11 +1009,17 @@ class TenantAdminEventsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
-    _tenantScopeSubscription?.cancel();
+    unawaited(_tenantScopeSubscription?.cancel());
+    unawaited(_hasMoreEventsSubscription?.cancel());
+    unawaited(_isEventsPageLoadingSubscription?.cancel());
+    unawaited(_eventsErrorSubscription?.cancel());
     if (_eventTypeNameSyncListener != null) {
       eventTypeNameController.removeListener(_eventTypeNameSyncListener!);
       _eventTypeNameSyncListener = null;
     }
+    hasMoreEventsStreamValue.dispose();
+    isEventsPageLoadingStreamValue.dispose();
+    eventsErrorStreamValue.dispose();
     statusFilterStreamValue.dispose();
     archivedFilterStreamValue.dispose();
     eventDetailStreamValue.dispose();

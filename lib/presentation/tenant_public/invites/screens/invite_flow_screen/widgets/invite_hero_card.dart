@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/swipeable_card/swipeable_card.dart';
@@ -34,8 +35,9 @@ class InviteHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final heroImage = invite.eventImageUrl;
-    final dateLabel = DateFormat('EEE, d MMM - HH:mm', 'pt_BR')
-        .format(invite.eventDateTime.toLocal());
+    final localEventDate = TimezoneConverter.utcToLocal(invite.eventDateTime);
+    final dateLabel =
+        DateFormat('EEE, d MMM - HH:mm', 'pt_BR').format(localEventDate);
     final host = invite.hostName.isNotEmpty ? invite.hostName : 'Belluga Now';
     final location =
         invite.location.isNotEmpty ? invite.location : 'Local a definir';

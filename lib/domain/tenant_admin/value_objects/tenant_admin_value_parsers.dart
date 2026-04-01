@@ -67,10 +67,10 @@ TenantAdminFlagValue tenantAdminFlag(Object? raw, {bool fallback = false}) {
   }
 
   if (normalized == 'true' || normalized == '1') {
-    return const TenantAdminFlagValue(true);
+    return TenantAdminFlagValue(true);
   }
   if (normalized == 'false' || normalized == '0') {
-    return const TenantAdminFlagValue(false);
+    return TenantAdminFlagValue(false);
   }
 
   throw FormatException('Invalid boolean value: $raw');
@@ -98,7 +98,7 @@ TenantAdminOptionalDateTimeValue tenantAdminOptionalDateTime(Object? raw) {
   }
 
   if (raw == null) {
-    return const TenantAdminOptionalDateTimeValue(null);
+    return TenantAdminOptionalDateTimeValue(null);
   }
 
   if (raw is DateTime) {
@@ -107,7 +107,7 @@ TenantAdminOptionalDateTimeValue tenantAdminOptionalDateTime(Object? raw) {
 
   final parsed = DateTime.tryParse(raw.toString());
   if (parsed == null) {
-    return const TenantAdminOptionalDateTimeValue(null);
+    return TenantAdminOptionalDateTimeValue(null);
   }
   return TenantAdminOptionalDateTimeValue(parsed);
 }
@@ -118,7 +118,7 @@ TenantAdminOptionalDoubleValue tenantAdminOptionalDouble(Object? raw) {
   }
 
   if (raw == null) {
-    return const TenantAdminOptionalDoubleValue(null);
+    return TenantAdminOptionalDoubleValue(null);
   }
 
   if (raw is num) {
@@ -127,7 +127,7 @@ TenantAdminOptionalDoubleValue tenantAdminOptionalDouble(Object? raw) {
 
   final parsed = double.tryParse(raw.toString());
   if (parsed == null) {
-    return const TenantAdminOptionalDoubleValue(null);
+    return TenantAdminOptionalDoubleValue(null);
   }
   return TenantAdminOptionalDoubleValue(parsed);
 }

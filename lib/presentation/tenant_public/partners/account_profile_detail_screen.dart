@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -9,6 +10,7 @@ import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -203,7 +205,7 @@ class _AccountProfileDetailScreenState
               runSpacing: 8,
               children: accountProfile.tags
                   .map((t) => Chip(
-                        label: Text(t),
+                        label: Text(t.value),
                         backgroundColor: colorScheme.secondaryContainer,
                       ))
                   .toList(),
@@ -250,13 +252,50 @@ class _AccountProfileDetailScreenState
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkPendingIntent();
+  }
+
+  void _checkPendingIntent() {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final action = AuthWallTelemetry.consumePendingAction(redirectPath);
+    if (action != null && action.actionType == AuthWallActionType.favorite) {
+      final partnerId = action.payload?['partnerId'] as String?;
+      if (partnerId != null) {
+        _controller.toggleFavorite(partnerId);
+      }
+    }
+  }
+
   void _handleFavoriteTap(String accountProfileId) {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      AuthWallTelemetry.trackTriggered(
+        actionType: AuthWallActionType.favorite,
+        redirectPath: redirectPath,
+        payload: {'partnerId': accountProfileId},
+      );
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final result = _controller.toggleFavorite(accountProfileId);
     if (result != AccountProfileFavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    AuthWallTelemetry.trackTriggered(
+      actionType: AuthWallActionType.favorite,
+      redirectPath: redirectPath,
+      payload: {'partnerId': accountProfileId},
+    );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }

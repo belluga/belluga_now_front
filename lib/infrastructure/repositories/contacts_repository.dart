@@ -1,8 +1,9 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_avatar_bytes_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_display_name_value.dart';
+import 'package:belluga_now/domain/contacts/value_objects/contact_email_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_id_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_string_list_value.dart';
+import 'package:belluga_now/domain/contacts/value_objects/contact_phone_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -51,10 +52,12 @@ class ContactsRepository implements ContactsRepositoryContract {
           .map((c) => ContactModel(
                 idValue: ContactIdValue(c.id),
                 displayNameValue: ContactDisplayNameValue(c.displayName),
-                phoneValues:
-                    ContactStringListValue(c.phones.map((p) => p.number).toList()),
-                emailValues:
-                    ContactStringListValue(c.emails.map((e) => e.address).toList()),
+                phoneValues: c.phones
+                    .map((phone) => ContactPhoneValue(raw: phone.number))
+                    .toList(growable: false),
+                emailValues: c.emails
+                    .map((email) => ContactEmailValue(raw: email.address))
+                    .toList(growable: false),
                 avatarValue: ContactAvatarBytesValue(c.photo),
               ))
           .toList(growable: false);

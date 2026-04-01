@@ -55,7 +55,7 @@ class CarouselSection<T> extends StatelessWidget {
             padding: headerPadding,
             child: SectionHeader(
               title: title,
-              onPressed: onSeeAll ?? () {},
+              onPressed: onSeeAll,
               onTitleTap: onTitleTap,
             ),
           ),

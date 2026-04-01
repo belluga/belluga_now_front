@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 
 class TenantAdminProfileTypeDTO {
@@ -5,6 +6,7 @@ class TenantAdminProfileTypeDTO {
     required this.type,
     required this.label,
     required this.allowedTaxonomies,
+    this.poiVisual,
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.hasBio,
@@ -18,6 +20,7 @@ class TenantAdminProfileTypeDTO {
   final String type;
   final String label;
   final List<String> allowedTaxonomies;
+  final TenantAdminPoiVisual? poiVisual;
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool hasBio;
@@ -60,6 +63,7 @@ class TenantAdminProfileTypeDTO {
       type: json['type']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
+      poiVisual: tenantAdminPoiVisualFromRaw(json['poi_visual']),
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
       hasBio: hasBio,
@@ -82,19 +86,20 @@ class TenantAdminProfileTypeDTO {
   }
 
   TenantAdminProfileTypeDefinition toDomain() {
-    return TenantAdminProfileTypeDefinition(
+    return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
+      poiVisual: poiVisual,
       capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: isFavoritable,
-        isPoiEnabled: isPoiEnabled,
-        hasBio: hasBio,
-        hasContent: hasContent,
-        hasTaxonomies: hasTaxonomies,
-        hasAvatar: hasAvatar,
-        hasCover: hasCover,
-        hasEvents: hasEvents,
+        isFavoritable: TenantAdminFlagValue(isFavoritable),
+        isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
+        hasBio: TenantAdminFlagValue(hasBio),
+        hasContent: TenantAdminFlagValue(hasContent),
+        hasTaxonomies: TenantAdminFlagValue(hasTaxonomies),
+        hasAvatar: TenantAdminFlagValue(hasAvatar),
+        hasCover: TenantAdminFlagValue(hasCover),
+        hasEvents: TenantAdminFlagValue(hasEvents),
       ),
     );
   }

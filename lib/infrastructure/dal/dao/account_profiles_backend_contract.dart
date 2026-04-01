@@ -9,12 +9,18 @@ abstract class AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   });
 
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   });
 
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug);
+
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  });
 }

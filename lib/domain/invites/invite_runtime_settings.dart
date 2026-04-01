@@ -17,7 +17,7 @@ class InviteRuntimeSettings {
   final InviteMessageValue? overQuotaMessageValue;
 
   String? get tenantId => tenantIdValue?.value;
-  Map<String, int> get limits => limitValues.value;
-  Map<String, int> get cooldowns => cooldownValues.value;
+  InviteRateLimitsValue get limits => limitValues;
+  InviteCooldownsValue get cooldowns => cooldownValues;
   String? get overQuotaMessage => overQuotaMessageValue?.value;
 }

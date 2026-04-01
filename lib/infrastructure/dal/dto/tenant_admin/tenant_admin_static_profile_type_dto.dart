@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 
 class TenantAdminStaticProfileTypeDTO {
@@ -5,6 +6,7 @@ class TenantAdminStaticProfileTypeDTO {
     required this.type,
     required this.label,
     required this.allowedTaxonomies,
+    this.poiVisual,
     required this.isPoiEnabled,
     required this.hasBio,
     required this.hasTaxonomies,
@@ -16,6 +18,7 @@ class TenantAdminStaticProfileTypeDTO {
   final String type;
   final String label;
   final List<String> allowedTaxonomies;
+  final TenantAdminPoiVisual? poiVisual;
   final bool isPoiEnabled;
   final bool hasBio;
   final bool hasTaxonomies;
@@ -52,6 +55,7 @@ class TenantAdminStaticProfileTypeDTO {
       type: json['type']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
+      poiVisual: tenantAdminPoiVisualFromRaw(json['poi_visual']),
       isPoiEnabled: isPoiEnabled,
       hasBio: hasBio,
       hasTaxonomies: hasTaxonomies,
@@ -72,17 +76,18 @@ class TenantAdminStaticProfileTypeDTO {
   }
 
   TenantAdminStaticProfileTypeDefinition toDomain() {
-    return TenantAdminStaticProfileTypeDefinition(
+    return tenantAdminStaticProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
+      poiVisual: poiVisual,
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: isPoiEnabled,
-        hasBio: hasBio,
-        hasTaxonomies: hasTaxonomies,
-        hasAvatar: hasAvatar,
-        hasCover: hasCover,
-        hasContent: hasContent,
+        isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
+        hasBio: TenantAdminFlagValue(hasBio),
+        hasTaxonomies: TenantAdminFlagValue(hasTaxonomies),
+        hasAvatar: TenantAdminFlagValue(hasAvatar),
+        hasCover: TenantAdminFlagValue(hasCover),
+        hasContent: TenantAdminFlagValue(hasContent),
       ),
     );
   }

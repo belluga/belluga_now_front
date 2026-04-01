@@ -14,5 +14,5 @@ class TenantAdminTelemetrySettingsSnapshot {
   final List<TenantAdminTelemetryIntegration> integrations;
   final TenantAdminTrimmedStringListValue availableEventValues;
 
-  List<String> get availableEvents => availableEventValues.value;
+  TenantAdminTrimmedStringListValue get availableEvents => availableEventValues;
 }

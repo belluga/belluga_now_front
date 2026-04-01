@@ -160,9 +160,11 @@ class InviteCardInviterBanner extends StatelessWidget {
       );
     }
     fallback.addAll(
-      invite.additionalInviters.where((name) => name.isNotEmpty).map(
-            (name) => _InviteSummary(
-              name: name,
+      invite.additionalInviters
+          .where((nameValue) => nameValue.value.isNotEmpty)
+          .map(
+            (nameValue) => _InviteSummary(
+              name: nameValue.value,
               type: InviteInviterType.user,
             ),
           ),

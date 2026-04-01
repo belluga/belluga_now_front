@@ -3,12 +3,21 @@ import 'dart:async';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -17,15 +26,19 @@ void main() {
   late TenantHomeController controller;
   late _FakeUserEventsRepository userEventsRepository;
   late _FakeUserLocationRepository userLocationRepository;
+  late _FakeAppDataRepository appDataRepository;
 
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<AppData>(_buildAppData());
+    final appData = _buildAppData();
+    GetIt.I.registerSingleton<AppData>(appData);
     userEventsRepository = _FakeUserEventsRepository();
     userLocationRepository = _FakeUserLocationRepository();
-    controller = TenantHomeController(
+    appDataRepository = _FakeAppDataRepository(appData);
+    controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
   });
 
@@ -74,32 +87,99 @@ void main() {
     );
   });
 
-  test('init does not hang when location warm-up stalls', () async {
-    controller.onDispose();
-    userLocationRepository.neverCompleteWarmUp = true;
-    controller = TenantHomeController(
-      userEventsRepository: userEventsRepository,
-      userLocationRepository: userLocationRepository,
-      locationWarmUpTimeout: const Duration(milliseconds: 20),
+  test('keeps ongoing events when explicit end date is in the future', () async {
+    final now = DateTime.now();
+    const ongoingId = '507f1f77bcf86cd799439013';
+    final ongoingLongEvent = buildVenueEventResume(
+      id: ongoingId,
+      slug: 'ongoing-long-event',
+      title: 'Ongoing Long Event Title',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.subtract(const Duration(hours: 18)),
+      endDateTime: now.add(const Duration(hours: 8)),
+      location: 'Valid Ongoing Location Name',
     );
 
+    userEventsRepository.setEvents([ongoingLongEvent]);
     await controller.init();
 
-    expect(userEventsRepository.fetchMyEventsCallCount, 1);
+    expect(
+      controller.myEventsFilteredStreamValue.value.map((e) => e.id),
+      contains(ongoingId),
+    );
   });
 
   test('init continues when confirmed ids refresh fails', () async {
     controller.onDispose();
     userEventsRepository.throwOnRefreshConfirmedIds = true;
-    controller = TenantHomeController(
+    controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
     );
 
     await controller.init();
 
     expect(userEventsRepository.fetchMyEventsCallCount, 1);
   });
+
+  test('publishes live location status copy from repository-owned origin mode',
+      () async {
+    await controller.init();
+
+    await appDataRepository.setLocationOriginSettings(
+      LocationOriginSettings.userLiveLocation(),
+    );
+
+    expect(
+      controller.homeLocationStatusStreamValue.value?.statusText,
+      'Usando sua localização.',
+    );
+    expect(
+      controller.homeLocationStatusStreamValue.value?.dialogMessage,
+      'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
+    );
+  });
+
+  test('publishes fixed location status copy from repository-owned origin mode',
+      () async {
+    await controller.init();
+
+    await appDataRepository.setLocationOriginSettings(
+      LocationOriginSettings.tenantDefaultLocation(
+        fixedLocationReference: CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.671339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+        reason: LocationOriginReason.outsideRange,
+      ),
+    );
+
+    expect(
+      controller.homeLocationStatusStreamValue.value?.statusText,
+      'Usando localização fixa.',
+    );
+    expect(
+      controller.homeLocationStatusStreamValue.value?.dialogMessage,
+      'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
+    );
+  });
+}
+
+TenantHomeController _buildTenantHomeController({
+  required UserEventsRepositoryContract userEventsRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+}) {
+  return TenantHomeController(
+    userEventsRepository: userEventsRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+  );
 }
 
 AppData _buildAppData() {
@@ -148,8 +228,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       : _events = events ?? [];
 
   @override
-  final StreamValue<Set<String>> confirmedEventIdsStream =
-      StreamValue<Set<String>>(defaultValue: {});
+  final StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      confirmedEventIdsStream =
+      StreamValue<Set<UserEventsRepositoryContractPrimString>>(
+          defaultValue: {});
   List<VenueEventResume> _events;
   int fetchMyEventsCallCount = 0;
   bool throwOnRefreshConfirmedIds = false;
@@ -168,10 +250,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<void> confirmEventAttendance(String eventId) async {}
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
-  Future<void> unconfirmEventAttendance(String eventId) async {}
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId) async {}
 
   @override
   Future<void> refreshConfirmedEventIds() async {
@@ -181,8 +265,61 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  bool isEventConfirmed(String eventId) =>
-      confirmedEventIdsStream.value.contains(eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+          UserEventsRepositoryContractPrimString eventId) =>
+      userEventsRepoBool(
+        confirmedEventIdsStream.value.contains(eventId),
+        defaultValue: false,
+        isRequired: true,
+      );
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+  );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
+
+  @override
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
+  ) async {
+    locationOriginSettingsStreamValue.addValue(settings);
+  }
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -219,8 +356,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<void> setLastKnownAddress(String? address) async {
-    lastKnownAddressStreamValue.addValue(address);
+  Future<void> setLastKnownAddress(Object? address) async {
+    lastKnownAddressStreamValue.addValue(address as dynamic);
   }
 
   @override
@@ -232,9 +369,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<bool> refreshIfPermitted(
-          {Duration minInterval = const Duration(seconds: 30)}) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation() async => null;

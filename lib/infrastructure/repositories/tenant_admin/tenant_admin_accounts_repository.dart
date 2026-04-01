@@ -8,15 +8,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_accounts_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_pagination_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_accounts_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
@@ -37,70 +36,10 @@ class TenantAdminAccountsRepository
       const TenantAdminMediaFormDataBuilder();
   final TenantAdminPaginationDecoder _paginationDecoder =
       const TenantAdminPaginationDecoder();
-  static const int _defaultPageSize = 20;
-  bool _isFetchingAccountsPage = false;
-  bool _hasMoreAccounts = true;
-  int _currentAccountsPage = 0;
-
-  @override
-  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>?>();
-
-  @override
-  final StreamValue<bool> hasMoreAccountsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-
-  @override
-  final StreamValue<bool> isAccountsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-
-  @override
-  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
           .selectedTenantAdminBaseUrl;
-
-  @override
-  Future<void> loadAccounts({
-    int pageSize = _defaultPageSize,
-    TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
-  }) async {
-    await _waitForAccountsFetch();
-    _resetAccountsPagination();
-    accountsStreamValue.addValue(null);
-    await _fetchAccountsPage(
-      page: 1,
-      pageSize: pageSize,
-      ownershipState: ownershipState,
-      searchQuery: searchQuery,
-    );
-  }
-
-  @override
-  Future<void> loadNextAccountsPage({
-    int pageSize = _defaultPageSize,
-    TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
-  }) async {
-    if (_isFetchingAccountsPage || !_hasMoreAccounts) {
-      return;
-    }
-    await _fetchAccountsPage(
-      page: _currentAccountsPage + 1,
-      pageSize: pageSize,
-      ownershipState: ownershipState,
-      searchQuery: searchQuery,
-    );
-  }
-
-  @override
-  void resetAccountsState() {
-    _resetAccountsPagination();
-    accountsStreamValue.addValue(null);
-    accountsErrorStreamValue.addValue(null);
-  }
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -119,8 +58,14 @@ class TenantAdminAccountsRepository
 
     while (hasMore) {
       final pageResult = await fetchAccountsPage(
-        page: page,
-        pageSize: pageSize,
+        page: TenantAdminAccountsRepositoryContractPrimInt.fromRaw(
+          page,
+          defaultValue: 1,
+        ),
+        pageSize: TenantAdminAccountsRepositoryContractPrimInt.fromRaw(
+          pageSize,
+          defaultValue: pageSize,
+        ),
       );
       accounts.addAll(pageResult.accounts);
       hasMore = pageResult.hasMore;
@@ -132,10 +77,10 @@ class TenantAdminAccountsRepository
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     return _fetchFilteredAccountsPage(
       page: page,
@@ -146,18 +91,18 @@ class TenantAdminAccountsRepository
   }
 
   Future<TenantAdminPagedAccountsResult> _fetchFilteredAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
-    final normalizedSearch = searchQuery?.trim() ?? '';
+    final normalizedSearch = searchQuery?.value.trim() ?? '';
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/accounts',
         queryParameters: {
-          'page': page,
-          'per_page': pageSize,
+          'page': page.value,
+          'per_page': pageSize.value,
           if (ownershipState != null)
             'ownership_state': ownershipState.apiValue,
           if (normalizedSearch.isNotEmpty) 'search': normalizedSearch,
@@ -167,17 +112,20 @@ class TenantAdminAccountsRepository
       final dtos = _responseDecoder.decodeAccountList(response.data);
       final currentPage = _extractCurrentPage(
             rawResponse: response.data,
-            fallback: page,
+            fallback: page.value,
           ) ??
-          page;
+          page.value;
       final lastPage = _extractLastPage(
             rawResponse: response.data,
-            fallback: page,
+            fallback: page.value,
           ) ??
           currentPage;
       final hasMore = currentPage < lastPage;
-      return TenantAdminPagedAccountsResult(
-        accounts: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+      return tenantAdminPagedAccountsResultFromRaw(
+        accounts: dtos
+            .map(_normalizeAccountMediaUrls)
+            .map((dto) => dto.toDomain())
+            .toList(growable: false),
         hasMore: hasMore,
       );
     } on DioException catch (error) {
@@ -186,18 +134,20 @@ class TenantAdminAccountsRepository
   }
 
   @override
-  Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
+  Future<TenantAdminAccount> fetchAccountBySlug(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     final loaded = findLoadedAccount(accountSlug: accountSlug);
     if (loaded != null) {
       return loaded;
     }
     try {
       final response = await _dio.get(
-        '$_apiBaseUrl/v1/accounts/$accountSlug',
+        '$_apiBaseUrl/v1/accounts/${accountSlug.value}',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final account = dto.toDomain();
+      final account = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(account);
       return account;
     } on DioException catch (error) {
@@ -207,15 +157,15 @@ class TenantAdminAccountsRepository
 
   @override
   Future<TenantAdminAccount> createAccount({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
-    String? organizationId,
+    TenantAdminAccountsRepositoryContractPrimString? organizationId,
   }) async {
     final payload = _requestEncoder.encodeCreateAccount(
-      name: name,
+      name: name.value,
       ownershipState: ownershipState,
-      organizationId: organizationId,
+      organizationId: organizationId?.value,
       document: document,
     );
     try {
@@ -225,7 +175,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeCreateAccountItem(response.data);
-      final created = dto.toDomain();
+      final created = _normalizeAccountMediaUrls(dto).toDomain();
       _appendLoadedAccount(created);
       return created;
     } on DioException catch (error) {
@@ -235,25 +185,26 @@ class TenantAdminAccountsRepository
 
   @override
   Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     required TenantAdminOwnershipState ownershipState,
-    required String profileType,
+    required TenantAdminAccountsRepositoryContractPrimString profileType,
     TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
+    TenantAdminAccountsRepositoryContractPrimString? bio,
+    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeCreateOnboarding(
-        name: name,
+        name: name.value,
         ownershipState: ownershipState,
-        profileType: profileType,
+        profileType: profileType.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
-        bio: bio,
-        content: content,
+        bio: bio?.value,
+        content: content?.value,
       );
 
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
@@ -265,10 +216,16 @@ class TenantAdminAccountsRepository
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_onboardings',
         data: uploadPayload ?? payload,
-        options: Options(headers: _buildHeaders()),
+        options: uploadPayload == null
+            ? Options(headers: _buildHeaders())
+            : Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       final onboardingData = _responseDecoder.decodeOnboarding(response.data);
-      final account = onboardingData.account.toDomain();
+      final account =
+          _normalizeAccountMediaUrls(onboardingData.account).toDomain();
       final accountProfile = onboardingData.accountProfile.toDomain();
       _appendLoadedAccount(account);
       return TenantAdminAccountOnboardingResult(
@@ -282,26 +239,26 @@ class TenantAdminAccountsRepository
 
   @override
   Future<TenantAdminAccount> updateAccount({
-    required String accountSlug,
-    String? name,
-    String? slug,
+    required TenantAdminAccountsRepositoryContractPrimString accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? name,
+    TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccount(
-        name: name,
-        slug: slug,
+        name: name?.value,
+        slug: slug?.value,
         document: document,
         ownershipState: ownershipState,
       );
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/accounts/$accountSlug',
+        '$_apiBaseUrl/v1/accounts/${accountSlug.value}',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final updated = dto.toDomain();
+      final updated = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(updated);
       return updated;
     } on DioException catch (error) {
@@ -310,27 +267,31 @@ class TenantAdminAccountsRepository
   }
 
   @override
-  Future<void> deleteAccount(String accountSlug) async {
+  Future<void> deleteAccount(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     try {
       await _dio.delete(
-        '$_apiBaseUrl/v1/accounts/$accountSlug',
+        '$_apiBaseUrl/v1/accounts/${accountSlug.value}',
         options: Options(headers: _buildHeaders()),
       );
-      _removeLoadedAccountBySlug(accountSlug);
+      _removeLoadedAccountBySlug(accountSlug.value);
     } on DioException catch (error) {
       throw _wrapError(error, 'delete account');
     }
   }
 
   @override
-  Future<TenantAdminAccount> restoreAccount(String accountSlug) async {
+  Future<TenantAdminAccount> restoreAccount(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     try {
       final response = await _dio.post(
-        '$_apiBaseUrl/v1/accounts/$accountSlug/restore',
+        '$_apiBaseUrl/v1/accounts/${accountSlug.value}/restore',
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final restored = dto.toDomain();
+      final restored = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(restored);
       return restored;
     } on DioException catch (error) {
@@ -339,75 +300,18 @@ class TenantAdminAccountsRepository
   }
 
   @override
-  Future<void> forceDeleteAccount(String accountSlug) async {
+  Future<void> forceDeleteAccount(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
     try {
       await _dio.post(
-        '$_apiBaseUrl/v1/accounts/$accountSlug/force_delete',
+        '$_apiBaseUrl/v1/accounts/${accountSlug.value}/force_delete',
         options: Options(headers: _buildHeaders()),
       );
-      _removeLoadedAccountBySlug(accountSlug);
+      _removeLoadedAccountBySlug(accountSlug.value);
     } on DioException catch (error) {
       throw _wrapError(error, 'force delete account');
     }
-  }
-
-  Future<void> _waitForAccountsFetch() async {
-    while (_isFetchingAccountsPage) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchAccountsPage({
-    required int page,
-    required int pageSize,
-    TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
-  }) async {
-    if (_isFetchingAccountsPage) return;
-    if (page > 1 && !_hasMoreAccounts) return;
-
-    _isFetchingAccountsPage = true;
-    if (page > 1) {
-      isAccountsPageLoadingStreamValue.addValue(true);
-    }
-    try {
-      final result = await fetchAccountsPage(
-        page: page,
-        pageSize: pageSize,
-        ownershipState: ownershipState,
-        searchQuery: searchQuery,
-      );
-      final currentAccounts = accountsStreamValue.value;
-      final nextAccounts = page == 1
-          ? result.accounts
-          : <TenantAdminAccount>[
-              ...?currentAccounts,
-              ...result.accounts,
-            ];
-      _currentAccountsPage = page;
-      _hasMoreAccounts = result.hasMore;
-      hasMoreAccountsStreamValue.addValue(_hasMoreAccounts);
-      accountsStreamValue.addValue(
-        List<TenantAdminAccount>.unmodifiable(nextAccounts),
-      );
-      accountsErrorStreamValue.addValue(null);
-    } catch (error) {
-      accountsErrorStreamValue.addValue(error.toString());
-      if (page == 1 && accountsStreamValue.value == null) {
-        accountsStreamValue.addValue(const <TenantAdminAccount>[]);
-      }
-    } finally {
-      _isFetchingAccountsPage = false;
-      isAccountsPageLoadingStreamValue.addValue(false);
-    }
-  }
-
-  void _resetAccountsPagination() {
-    _currentAccountsPage = 0;
-    _hasMoreAccounts = true;
-    _isFetchingAccountsPage = false;
-    hasMoreAccountsStreamValue.addValue(true);
-    isAccountsPageLoadingStreamValue.addValue(false);
   }
 
   void _appendLoadedAccount(TenantAdminAccount account) {
@@ -487,6 +391,58 @@ class TenantAdminAccountsRepository
           'last_page',
         ) ??
         fallback;
+  }
+
+  TenantAdminAccountDTO _normalizeAccountMediaUrls(TenantAdminAccountDTO dto) {
+    return TenantAdminAccountDTO(
+      id: dto.id,
+      name: dto.name,
+      slug: dto.slug,
+      documentType: dto.documentType,
+      documentNumber: dto.documentNumber,
+      organizationId: dto.organizationId,
+      ownershipState: dto.ownershipState,
+      avatarUrl: _normalizeAccountAvatarUrl(dto.avatarUrl),
+    );
+  }
+
+  String? _normalizeAccountAvatarUrl(String? rawUrl) {
+    final value = rawUrl?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+
+    final path = parsed.path.trim();
+    final tenantOrigin = _resolveTenantOriginUri();
+
+    if (path.startsWith('/')) {
+      final canonical = tenantOrigin.resolve(path);
+      return canonical
+          .replace(
+            query: parsed.hasQuery ? parsed.query : null,
+            fragment: parsed.hasFragment ? parsed.fragment : null,
+          )
+          .toString();
+    }
+
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  Uri _resolveTenantOriginUri() {
+    final parsed = Uri.tryParse(_apiBaseUrl);
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      throw Exception('Invalid tenant admin base URL: $_apiBaseUrl');
+    }
+    return parsed.replace(path: '/', query: null, fragment: null);
   }
 
   Exception _wrapError(DioException error, String label) {

@@ -5,8 +5,10 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -16,6 +18,16 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'support/tenant_admin_paged_stream_contract.dart';
+
+TenantAdminStaticAssetsRepoString _staticText(String value) =>
+    TenantAdminStaticAssetsRepoString.fromRaw(value);
+TenantAdminStaticAssetsRepoInt _staticInt(int value) =>
+    TenantAdminStaticAssetsRepoInt.fromRaw(value, defaultValue: value);
+List<TenantAdminStaticAssetsRepoString> _staticTextList(
+  Iterable<String> values,
+) {
+  return values.map(_staticText).toList(growable: false);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,15 +52,15 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticProfileType(
-      type: 'poi/type',
-      label: 'POI Type',
+      type: _staticText('poi/type'),
+      label: _staticText('POI Type'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: true,
-        hasBio: true,
-        hasTaxonomies: true,
-        hasAvatar: true,
-        hasCover: false,
-        hasContent: false,
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
       ),
     );
 
@@ -66,7 +78,7 @@ void main() {
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
-    await repository.deleteStaticProfileType('poi/type');
+    await repository.deleteStaticProfileType(_staticText('poi/type'));
 
     expect(adapter.lastRequest?.method, 'DELETE');
     expect(
@@ -82,8 +94,8 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticProfileType(
-      type: 'poi',
-      newType: 'landmark',
+      type: _staticText('poi'),
+      newType: _staticText('landmark'),
     );
 
     expect(adapter.lastRequest?.method, 'PATCH');
@@ -94,6 +106,79 @@ void main() {
     final data = adapter.lastRequest?.data;
     expect(data, isA<Map<String, dynamic>>());
     expect((data as Map<String, dynamic>)['type'], 'landmark');
+  });
+
+  test('createStaticProfileTypeWithPoiVisual sends poi_visual image payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.createStaticProfileTypeWithPoiVisual(
+      type: _staticText('beach'),
+      label: _staticText('Beach'),
+      allowedTaxonomies: _staticTextList(const ['region']),
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+      ),
+      poiVisual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.cover,
+      ),
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['poi_visual'], <String, dynamic>{
+      'mode': 'image',
+      'image_source': 'cover',
+    });
+  });
+
+  test('updateStaticProfileTypeWithPoiVisual sends nullable poi_visual payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticProfileTypeWithPoiVisual(
+      type: _staticText('beach'),
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+      ),
+      poiVisual: null,
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('poi_visual'), isTrue);
+    expect(payload['poi_visual'], isNull);
+  });
+
+  test('fetchStaticProfileTypeMapPoiProjectionImpact returns projection count',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    final count = await repository.fetchStaticProfileTypeMapPoiProjectionImpact(
+      type: _staticText('beach'),
+    );
+
+    expect(count.value, 42);
+    expect(
+      adapter.lastRequest?.path,
+      contains(
+        '/admin/api/v1/static_profile_types/beach/map_poi_projection_impact',
+      ),
+    );
   });
 
   test('fetchStaticAssets switches request host after tenant selection changes',
@@ -150,7 +235,10 @@ void main() {
       tenantScope: tenantScope,
     );
 
-    final page = await repository.fetchStaticAssetsPage(page: 1, pageSize: 20);
+    final page = await repository.fetchStaticAssetsPage(
+      page: _staticInt(1),
+      pageSize: _staticInt(20),
+    );
 
     expect(page.items, hasLength(2));
     expect(
@@ -190,7 +278,7 @@ void main() {
       tenantScope: tenantScope,
     );
 
-    final asset = await repository.fetchStaticAsset('asset-1');
+    final asset = await repository.fetchStaticAsset(_staticText('asset-1'));
 
     expect(
       asset.avatarUrl,
@@ -208,14 +296,14 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.createStaticAsset(
-      profileType: 'poi',
-      displayName: 'Asset Name',
-      avatarUpload: TenantAdminMediaUpload(
+      profileType: _staticText('poi'),
+      displayName: _staticText('Asset Name'),
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3]),
         fileName: 'avatar.jpg',
         mimeType: 'image/jpeg',
       ),
-      coverUpload: TenantAdminMediaUpload(
+      coverUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([4, 5, 6]),
         fileName: 'cover.jpg',
         mimeType: 'image/jpeg',
@@ -236,9 +324,9 @@ void main() {
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
     await repository.updateStaticAsset(
-      assetId: 'asset-1',
-      displayName: 'Updated Name',
-      avatarUpload: TenantAdminMediaUpload(
+      assetId: _staticText('asset-1'),
+      displayName: _staticText('Updated Name'),
+      avatarUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([7, 8, 9]),
         fileName: 'avatar.jpg',
         mimeType: 'image/jpeg',
@@ -260,6 +348,67 @@ void main() {
       isTrue,
     );
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+  });
+
+  test('updateStaticAsset sends explicit remove avatar/cover flags', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticAsset(
+      assetId: _staticText('asset-1'),
+      removeAvatar: TenantAdminStaticAssetsRepoBool.fromRaw(true),
+      removeCover: TenantAdminStaticAssetsRepoBool.fromRaw(true),
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    final payload = data as Map<String, dynamic>;
+    expect(payload['remove_avatar'], isTrue);
+    expect(payload['remove_cover'], isTrue);
+  });
+
+  test('fetchStaticProfileTypesPage parses poi_visual contract', () async {
+    final adapter = _CaptureAdapter(
+      staticProfileTypesByPage: {
+        1: [
+          {
+            'id': 'type-1',
+            'type': 'beach',
+            'label': 'Beach',
+            'allowed_taxonomies': <String>[],
+            'poi_visual': {
+              'mode': 'image',
+              'image_source': 'avatar',
+            },
+            'capabilities': {
+              'is_poi_enabled': true,
+              'has_bio': true,
+              'has_taxonomies': true,
+              'has_avatar': true,
+              'has_cover': true,
+              'has_content': true,
+            },
+          },
+        ],
+      },
+      staticProfileTypesLastPage: 1,
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    final page = await repository.fetchStaticProfileTypesPage(
+      page: _staticInt(1),
+      pageSize: _staticInt(20),
+    );
+
+    expect(page.items, hasLength(1));
+    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.image);
+    expect(
+      page.items.first.poiVisual?.imageSource,
+      TenantAdminPoiVisualImageSource.avatar,
+    );
   });
 
   test('load/reset/next follow paged stream contract for static assets',
@@ -299,12 +448,13 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'static assets',
-      loadFirstPage: () => repository.loadStaticAssets(pageSize: 2),
-      loadNextPage: () => repository.loadNextStaticAssetsPage(pageSize: 2),
+      loadFirstPage: () => repository.loadStaticAssets(pageSize: _staticInt(2)),
+      loadNextPage: () =>
+          repository.loadNextStaticAssetsPage(pageSize: _staticInt(2)),
       resetState: repository.resetStaticAssetsState,
       readItems: () => repository.staticAssetsStreamValue.value,
-      readHasMore: () => repository.hasMoreStaticAssetsStreamValue.value,
-      readError: () => repository.staticAssetsErrorStreamValue.value,
+      readHasMore: () => repository.hasMoreStaticAssetsStreamValue.value.value,
+      readError: () => repository.staticAssetsErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
@@ -368,13 +518,16 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'static profile types',
-      loadFirstPage: () => repository.loadStaticProfileTypes(pageSize: 2),
+      loadFirstPage: () =>
+          repository.loadStaticProfileTypes(pageSize: _staticInt(2)),
       loadNextPage: () =>
-          repository.loadNextStaticProfileTypesPage(pageSize: 2),
+          repository.loadNextStaticProfileTypesPage(pageSize: _staticInt(2)),
       resetState: repository.resetStaticProfileTypesState,
       readItems: () => repository.staticProfileTypesStreamValue.value,
-      readHasMore: () => repository.hasMoreStaticProfileTypesStreamValue.value,
-      readError: () => repository.staticProfileTypesErrorStreamValue.value,
+      readHasMore: () =>
+          repository.hasMoreStaticProfileTypesStreamValue.value.value,
+      readError: () =>
+          repository.staticProfileTypesErrorStreamValue.value?.value,
       expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
@@ -392,7 +545,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -420,8 +575,10 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomain = tenantDomain;
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomain = tenantDomain is String
+        ? tenantDomain
+        : (tenantDomain as dynamic).value as String;
   }
 }
 
@@ -451,12 +608,32 @@ class _CaptureAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     requests.add(options);
-    if (options.method == 'PATCH' &&
+    if (options.path.endsWith('/map_poi_projection_impact')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'profile_type': 'beach',
+            'projection_count': 42,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    if ((options.method == 'POST' || options.method == 'PATCH') &&
         options.path.contains('/v1/static_profile_types')) {
       final payload = jsonEncode({
         'data': {
           'type': 'poi/type',
           'label': 'POI Type',
+          'poi_visual': {
+            'mode': 'icon',
+            'icon': 'place',
+            'color': '#00AAFF',
+            'icon_color': '#FFFFFF',
+          },
           'allowed_taxonomies': <String>[],
           'capabilities': {
             'is_poi_enabled': true,

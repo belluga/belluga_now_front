@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_accounts_repository_contract_values.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
@@ -17,7 +18,9 @@ class TenantAdminAccountsController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null);
+                : null) {
+    _bindRepositoryStateStreams();
+  }
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -26,12 +29,12 @@ class TenantAdminAccountsController implements Disposable {
 
   StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
       _accountsRepository.accountsStreamValue;
-  StreamValue<bool> get hasMoreAccountsStreamValue =>
-      _accountsRepository.hasMoreAccountsStreamValue;
-  StreamValue<bool> get isAccountsPageLoadingStreamValue =>
-      _accountsRepository.isAccountsPageLoadingStreamValue;
-  StreamValue<String?> get errorStreamValue =>
-      _accountsRepository.accountsErrorStreamValue;
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> errorStreamValue =
+      StreamValue<String?>(defaultValue: null);
 
   final StreamValue<TenantAdminOwnershipState> selectedOwnershipStreamValue =
       StreamValue<TenantAdminOwnershipState>(
@@ -48,6 +51,12 @@ class TenantAdminAccountsController implements Disposable {
   bool _accountsListScrollBound = false;
   String? _initializedTenantDomain;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminAccountsRepositoryContractPrimBool>?
+      _hasMoreAccountsSubscription;
+  StreamSubscription<TenantAdminAccountsRepositoryContractPrimBool>?
+      _accountsLoadingSubscription;
+  StreamSubscription<TenantAdminAccountsRepositoryContractPrimString?>?
+      _accountsErrorSubscription;
   Timer? _searchDebounceTimer;
 
   Future<void> init() async {
@@ -62,7 +71,37 @@ class TenantAdminAccountsController implements Disposable {
     }
     _initialized = true;
     _initializedTenantDomain = normalizedTenantDomain;
+    _bindRepositoryStateStreams();
     await loadAccounts(ownershipState: selectedOwnershipStreamValue.value);
+  }
+
+  void _bindRepositoryStateStreams() {
+    _hasMoreAccountsSubscription ??=
+        _accountsRepository.hasMoreAccountsStreamValue.stream.listen((value) {
+      hasMoreAccountsStreamValue.addValue(value.value);
+    });
+    _accountsLoadingSubscription ??= _accountsRepository
+        .isAccountsPageLoadingStreamValue.stream
+        .listen((value) {
+      isAccountsPageLoadingStreamValue.addValue(value.value);
+    });
+    _accountsErrorSubscription ??=
+        _accountsRepository.accountsErrorStreamValue.stream.listen((value) {
+      errorStreamValue.addValue(value?.value);
+    });
+    _syncRepositoryStateSnapshot();
+  }
+
+  void _syncRepositoryStateSnapshot() {
+    hasMoreAccountsStreamValue.addValue(
+      _accountsRepository.hasMoreAccountsStreamValue.value.value,
+    );
+    isAccountsPageLoadingStreamValue.addValue(
+      _accountsRepository.isAccountsPageLoadingStreamValue.value.value,
+    );
+    errorStreamValue.addValue(
+      _accountsRepository.accountsErrorStreamValue.value?.value,
+    );
   }
 
   void _bindTenantScope() {
@@ -105,6 +144,7 @@ class TenantAdminAccountsController implements Disposable {
         searchQuery ?? searchQueryStreamValue.value,
       ),
     );
+    _syncRepositoryStateSnapshot();
   }
 
   Future<void> loadNextAccountsPage({
@@ -120,6 +160,7 @@ class TenantAdminAccountsController implements Disposable {
         searchQuery ?? searchQueryStreamValue.value,
       ),
     );
+    _syncRepositoryStateSnapshot();
   }
 
   void bindAccountsListScrollPagination() {
@@ -187,12 +228,18 @@ class TenantAdminAccountsController implements Disposable {
     showSearchFieldStreamValue.addValue(false);
   }
 
-  String? _normalizeSearchQuery(String? value) {
+  TenantAdminAccountsRepositoryContractPrimString? _normalizeSearchQuery(
+    String? value,
+  ) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) {
       return null;
     }
-    return trimmed;
+    return tenantAdminAccountsRepoString(
+      trimmed,
+      defaultValue: '',
+      isRequired: false,
+    );
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -212,10 +259,16 @@ class TenantAdminAccountsController implements Disposable {
     _isDisposed = true;
     unbindAccountsListScrollPagination();
     _tenantScopeSubscription?.cancel();
+    _hasMoreAccountsSubscription?.cancel();
+    _accountsLoadingSubscription?.cancel();
+    _accountsErrorSubscription?.cancel();
     _searchDebounceTimer?.cancel();
     selectedOwnershipStreamValue.dispose();
     searchQueryStreamValue.dispose();
     showSearchFieldStreamValue.dispose();
+    hasMoreAccountsStreamValue.dispose();
+    isAccountsPageLoadingStreamValue.dispose();
+    errorStreamValue.dispose();
     accountsListScrollController.dispose();
   }
 

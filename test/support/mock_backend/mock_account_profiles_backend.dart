@@ -21,13 +21,14 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final filtered =
         _database.searchAccountProfiles(query: query, typeFilter: typeFilter);
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || startIndex < 0) {
-      return const PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
@@ -35,7 +36,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
 
     final endIndex = (startIndex + pageSize).clamp(0, filtered.length);
     final pageItems = filtered.sublist(startIndex, endIndex);
-    return PagedAccountProfilesResult(
+    return pagedAccountProfilesResultFromRaw(
       profiles: pageItems,
       hasMore: endIndex < filtered.length,
     );
@@ -45,6 +46,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.searchAccountProfiles(
@@ -55,5 +57,17 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.getAccountProfileBySlug(slug);
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final all = _database.allAccountProfiles;
+    if (all.isEmpty) {
+      return const <AccountProfileModel>[];
+    }
+    return all.take(pageSize).toList(growable: false);
   }
 }

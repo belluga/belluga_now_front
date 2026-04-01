@@ -25,6 +25,10 @@ class TenantAdminAccountBySlugRouteResolver
       );
     }
 
-    return _accountsRepository.fetchAccountBySlug(accountSlug.trim());
+    return _accountsRepository.fetchAccountBySlug(
+      TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+        accountSlug.trim(),
+      ),
+    );
   }
 }

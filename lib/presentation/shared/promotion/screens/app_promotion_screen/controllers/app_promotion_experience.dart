@@ -1,0 +1,4 @@
+enum AppPromotionExperience {
+  testerWaitlist,
+  appDownload,
+}

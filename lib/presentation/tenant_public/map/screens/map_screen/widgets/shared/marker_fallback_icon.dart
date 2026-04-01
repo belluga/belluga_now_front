@@ -11,7 +11,7 @@ class MarkerFallbackIcon extends StatelessWidget {
       color: color.withValues(alpha: 0.1),
       alignment: Alignment.center,
       child: Icon(
-        Icons.music_note,
+        Icons.place,
         color: color,
         size: 28,
       ),

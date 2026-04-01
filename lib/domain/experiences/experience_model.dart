@@ -9,15 +9,19 @@ class ExperienceModel {
     required this.providerIdValue,
     ExperienceDescriptionValue? descriptionValue,
     ExperienceImageUrlValue? imageUrlValue,
-    ExperienceStringListValue? highlightItemValues,
-    ExperienceStringListValue? tagValues,
+    List<ExperienceHighlightItemValue>? highlightItemValues,
+    List<ExperienceTagValue>? tagValues,
     ExperienceOptionalTextValue? durationValue,
     ExperienceOptionalTextValue? priceLabelValue,
     ExperienceOptionalTextValue? meetingPointValue,
   })  : descriptionValue = descriptionValue ?? ExperienceDescriptionValue(),
         imageUrlValue = imageUrlValue ?? ExperienceImageUrlValue(),
-        highlightItemValues = highlightItemValues ?? ExperienceStringListValue(),
-        tagValues = tagValues ?? ExperienceStringListValue(),
+        highlightItemValues = List<ExperienceHighlightItemValue>.unmodifiable(
+          highlightItemValues ?? const <ExperienceHighlightItemValue>[],
+        ),
+        tagValues = List<ExperienceTagValue>.unmodifiable(
+          tagValues ?? const <ExperienceTagValue>[],
+        ),
         durationValue = durationValue ?? ExperienceOptionalTextValue(),
         priceLabelValue = priceLabelValue ?? ExperienceOptionalTextValue(),
         meetingPointValue = meetingPointValue ?? ExperienceOptionalTextValue();
@@ -29,8 +33,8 @@ class ExperienceModel {
   final ExperienceProviderIdValue providerIdValue;
   final ExperienceDescriptionValue descriptionValue;
   final ExperienceImageUrlValue imageUrlValue;
-  final ExperienceStringListValue highlightItemValues;
-  final ExperienceStringListValue tagValues;
+  final List<ExperienceHighlightItemValue> highlightItemValues;
+  final List<ExperienceTagValue> tagValues;
   final ExperienceOptionalTextValue durationValue;
   final ExperienceOptionalTextValue priceLabelValue;
   final ExperienceOptionalTextValue meetingPointValue;
@@ -41,10 +45,12 @@ class ExperienceModel {
   String get providerName => providerNameValue.value;
   String get providerId => providerIdValue.value;
   String get description => descriptionValue.value;
-  String? get imageUrl => imageUrlValue.value;
-  List<String> get highlightItems => highlightItemValues.value;
-  List<String> get tags => tagValues.value;
-  String? get duration => durationValue.value;
-  String? get priceLabel => priceLabelValue.value;
-  String? get meetingPoint => meetingPointValue.value;
+  String? get imageUrl => imageUrlValue.nullableValue;
+  List<ExperienceHighlightItemValue> get highlightItems =>
+      List<ExperienceHighlightItemValue>.unmodifiable(highlightItemValues);
+  List<ExperienceTagValue> get tags =>
+      List<ExperienceTagValue>.unmodifiable(tagValues);
+  String? get duration => durationValue.nullableValue;
+  String? get priceLabel => priceLabelValue.nullableValue;
+  String? get meetingPoint => meetingPointValue.nullableValue;
 }

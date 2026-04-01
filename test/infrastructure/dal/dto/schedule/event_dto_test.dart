@@ -71,7 +71,9 @@ void main() {
     expect(dto.id, 'occ-42');
   });
 
-  test('derives latitude and longitude from location.geo when root keys are absent', () {
+  test(
+      'derives latitude and longitude from location.geo when root keys are absent',
+      () {
     final dto = EventDTO.fromJson({
       'event_id': 'evt-geo',
       'slug': 'evt-geo',
@@ -96,5 +98,80 @@ void main() {
 
     expect(dto.latitude, closeTo(-20.671339, 0.000001));
     expect(dto.longitude, closeTo(-40.495395, 0.000001));
+  });
+
+  test('maps live_now agenda payload shape from production-compatible contract',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909080f',
+      'occurrence_id': '69a77aa3680219d569090810',
+      'slug': 'karaoke',
+      'type': {
+        'id': '69aac4ddd37046e0fe017c86',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': 'Feira comercial',
+        'icon': null,
+        'color': null,
+        'icon_color': null,
+      },
+      'title': 'Karaokê',
+      'content': 'Evento de karaokê pra você cantar.',
+      'location': {
+        'mode': 'physical',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.498859, -20.673704],
+        },
+      },
+      'place_ref': {
+        'type': 'account_profile',
+        'metadata': {'display_name': 'Carvoeiro'},
+        'id': '69c558629b497835b900ac86',
+      },
+      'venue': {
+        'id': '69c558629b497835b900ac86',
+        'display_name': 'Carvoeiro',
+        'tagline': null,
+        'hero_image_url': null,
+        'logo_url': null,
+      },
+      'latitude': -20.673704,
+      'longitude': -40.498859,
+      'thumb': null,
+      'date_time_start': '2026-03-29T01:00:00+00:00',
+      'date_time_end': null,
+      'artists': [
+        {
+          'id': '69949486be6cd999250a2507',
+          'display_name': 'Ananda Torres',
+          'avatar_url':
+              'https://guarappari.belluga.space/account-profiles/69949486be6cd999250a2507/avatar?v=1771359996',
+          'highlight': false,
+          'genres': ['brasilidades', 'samba'],
+        },
+      ],
+      'tags': const [],
+      'taxonomy_terms': [
+        {'type': 'genre', 'value': 'brasilidades'},
+        {'type': 'genre', 'value': 'rock'},
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(dto.id, '69a77aa3680219d56909080f');
+    expect(dto.location, 'Carvoeiro');
+    expect(dto.latitude, closeTo(-20.673704, 0.000001));
+    expect(dto.longitude, closeTo(-40.498859, 0.000001));
+    expect(dto.artists, hasLength(1));
+    expect(domain.slug, 'karaoke');
+    expect(domain.title.value, 'Karaokê');
+    expect(domain.location.value, 'Carvoeiro');
+    expect(domain.coordinate, isNotNull);
+    expect(
+      domain.artists.first.displayName,
+      'Ananda Torres',
+    );
   });
 }

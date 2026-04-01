@@ -1,12 +1,13 @@
+export 'value_objects/tenant_admin_location_values.dart';
+
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 
 class TenantAdminLocation {
   TenantAdminLocation({
-    required Object latitude,
-    required Object longitude,
-  })  : latitudeValue = LatitudeValue()..parse(latitude.toString()),
-        longitudeValue = LongitudeValue()..parse(longitude.toString());
+    required this.latitudeValue,
+    required this.longitudeValue,
+  });
 
   final LatitudeValue latitudeValue;
   final LongitudeValue longitudeValue;

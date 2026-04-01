@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/marker_fallback_icon.dart';
 import 'package:flutter/material.dart';
 
 class PoiMarker extends StatelessWidget {
@@ -8,116 +10,53 @@ class PoiMarker extends StatelessWidget {
     required this.poi,
     required this.isSelected,
     this.isHovered = false,
+    this.overrideVisual,
   });
 
   final CityPoiModel poi;
   final bool isSelected;
   final bool isHovered;
+  final CityPoiVisual? overrideVisual;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final theme = categoryTheme(poi.category, scheme);
     final hasStack = poi.stackCount > 1;
     final stackLabel = '+${poi.stackCount - 1}';
-    final markerColor = poi.isDynamic ? const Color(0xFFE53935) : theme.color;
+    final visual = _resolvedVisual();
 
-    if (poi.assetPath != null) {
-      final isDynamicSponsor = poi.isDynamic;
-      final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
-      final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    if (visual?.isImage == true) {
+      return _buildImageMarker(
+        context,
+        imageProvider: NetworkImage(visual!.imageUri!),
+        hasStack: hasStack,
+        stackLabel: stackLabel,
+      );
+    }
 
-      return AnimatedScale(
-        duration: const Duration(milliseconds: 200),
-        scale: scale,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final side = constraints.biggest.shortestSide;
-            final imageDiameter = side * (isDynamicSponsor ? 0.82 : 0.9);
-            final badgeDiameter =
-                (side * (isDynamicSponsor ? 0.32 : 0.28)).clamp(12.0, 24.0);
-            final badgeColor =
-                isDynamicSponsor ? theme.color.withValues(alpha: 0.85) : theme.color;
-            final badgeIcon =
-                isDynamicSponsor ? Icons.shopping_bag_outlined : Icons.storefront;
-
-            return SizedBox(
-              width: side,
-              height: side,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: side,
-                    height: side,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: shadowOpacity),
-                          blurRadius: (side * 0.18).clamp(6.0, 12.0),
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Center(
-                      child: Container(
-                        width: imageDiameter,
-                        height: imageDiameter,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: AssetImage(poi.assetPath!),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 2,
-                    bottom: 2,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: scheme.surface,
-                          width: 2,
-                        ),
-                      ),
-                      child: SizedBox(
-                        width: badgeDiameter,
-                        height: badgeDiameter,
-                        child: Icon(
-                          badgeIcon,
-                          size: badgeDiameter * 0.55,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (hasStack)
-                    Positioned(
-                      top: -2,
-                      left: -2,
-                      child: _buildStackBadge(
-                        context: context,
-                        label: stackLabel,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
+    final legacyAssetPath = poi.assetPath?.trim();
+    if (legacyAssetPath != null && legacyAssetPath.isNotEmpty) {
+      return _buildImageMarker(
+        context,
+        imageProvider: AssetImage(legacyAssetPath),
+        hasStack: hasStack,
+        stackLabel: stackLabel,
       );
     }
 
     final scale = isSelected ? 1.12 : (isHovered ? 1.06 : 1.0);
     final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final icon = visual?.isIcon == true
+        ? MapMarkerIconResolver.resolve(visual?.icon)
+        : MapMarkerIconResolver.fallbackIcon;
+    final markerColor = visual?.isIcon == true
+        ? (MapMarkerIconResolver.tryParseHexColor(visual?.colorHex) ??
+            scheme.primary)
+        : scheme.primary;
+    final iconColor = visual?.isIcon == true
+        ? (MapMarkerIconResolver.tryParseHexColor(visual?.iconColorHex) ??
+            Colors.white)
+        : Colors.white;
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 180),
@@ -146,9 +85,9 @@ class PoiMarker extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(padding),
                   child: Icon(
-                    poi.isDynamic ? Icons.local_activity : theme.icon,
+                    icon,
                     size: iconSize,
-                    color: Colors.white,
+                    color: iconColor,
                   ),
                 ),
               ),
@@ -162,6 +101,116 @@ class PoiMarker extends StatelessWidget {
                   ),
                 ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  CityPoiVisual? _resolvedVisual() {
+    final override = overrideVisual;
+    if (override != null && override.isValid) {
+      return override;
+    }
+
+    final ownVisual = poi.visual;
+    if (ownVisual != null && ownVisual.isValid) {
+      return ownVisual;
+    }
+
+    return null;
+  }
+
+  Widget _buildImageMarker(
+    BuildContext context, {
+    required ImageProvider<Object> imageProvider,
+    required bool hasStack,
+    required String stackLabel,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
+    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+
+    return AnimatedScale(
+      duration: const Duration(milliseconds: 200),
+      scale: scale,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final side = constraints.biggest.shortestSide;
+          final imageDiameter = side * 0.9;
+          final badgeDiameter = (side * 0.28).clamp(12.0, 24.0);
+
+          return SizedBox(
+            width: side,
+            height: side,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomRight,
+              children: [
+                Container(
+                  width: side,
+                  height: side,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: shadowOpacity),
+                        blurRadius: (side * 0.18).clamp(6.0, 12.0),
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Center(
+                    child: SizedBox(
+                      width: imageDiameter,
+                      height: imageDiameter,
+                      child: ClipOval(
+                        child: Image(
+                          image: imageProvider,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => MarkerFallbackIcon(
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.85),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: scheme.surface,
+                        width: 2,
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: badgeDiameter,
+                      height: badgeDiameter,
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: badgeDiameter * 0.55,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                if (hasStack)
+                  Positioned(
+                    top: -2,
+                    left: -2,
+                    child: _buildStackBadge(
+                      context: context,
+                      label: stackLabel,
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),

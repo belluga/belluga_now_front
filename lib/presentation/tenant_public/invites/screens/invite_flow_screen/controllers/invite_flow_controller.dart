@@ -6,13 +6,16 @@ import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_decision_result.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -49,7 +52,7 @@ class InviteFlowScreenController with Disposable {
   final redirectPathStreamValue = StreamValue<String?>(defaultValue: null);
 
   StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
-      _repository.pendingInvitesStreamValue;
+      _repository.inviteFlowPendingInvitesStreamValue;
 
   InviteModel? get currentInvite => displayInvitesStreamValue.value.isNotEmpty
       ? displayInvitesStreamValue.value.first
@@ -82,16 +85,30 @@ class InviteFlowScreenController with Disposable {
     String? redirectPath,
   }) async {
     initializedStreamValue.addValue(false);
-    displayInvitesStreamValue.addValue(const <InviteModel>[]);
+    _repository.clearInviteFlowState();
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
 
-    if (!_isAuthorized) {
-      authRequiredForDecisionStreamValue.addValue(true);
+    if (kIsWeb) {
+      // Web policy: keep invite landing preview-only and avoid mutation/materialization.
+      authRequiredForDecisionStreamValue.addValue(false);
       _finishActiveInviteTimedEvent();
       final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
-      displayInvitesStreamValue.addValue(preview);
+      _setPendingInvites(preview);
+      _setDisplayInvites(preview);
+      _ensureTopIndexBounds(preview.length);
+      initializedStreamValue.addValue(true);
+      return;
+    }
+
+    if (!_isAuthorized) {
+      // Allow anonymous invite acceptance (invert auth-first to anonymous-first)
+      authRequiredForDecisionStreamValue.addValue(false);
+      _finishActiveInviteTimedEvent();
+      final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
+      _setPendingInvites(preview);
+      _setDisplayInvites(preview);
       _ensureTopIndexBounds(preview.length);
       initializedStreamValue.addValue(true);
       return;
@@ -110,8 +127,7 @@ class InviteFlowScreenController with Disposable {
           await fetchPendingInvites();
           _prioritizeInvite(materializedInviteId);
         } else {
-          pendingInvitesStreamValue.addValue(const <InviteModel>[]);
-          displayInvitesStreamValue.addValue(const <InviteModel>[]);
+          _repository.clearInviteFlowState();
           _ensureTopIndexBounds(0);
         }
       } else {
@@ -126,10 +142,32 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  Future<void> trackWebLanding(String? shareCode) async {
+    if (!kIsWeb) {
+      return;
+    }
+    final normalizedCode = shareCode?.trim();
+    final hasCode = normalizedCode != null && normalizedCode.isNotEmpty;
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.viewContent,
+      eventName: telemetryRepoString('web_invite_landing_opened'),
+      properties: telemetryRepoMap(<String, dynamic>{
+        'store_channel': 'web',
+        'has_code': hasCode,
+      }),
+    );
+  }
+
   Future<InviteMaterializeResult?> _materializeShareCode(
       String shareCode) async {
     try {
-      return await _repository.materializeShareCode(shareCode);
+      return await _repository.materializeShareCode(
+        invitesRepoString(
+          shareCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
     } catch (_) {
       return null;
     }
@@ -144,23 +182,37 @@ class InviteFlowScreenController with Disposable {
     redirectPathStreamValue.addValue(normalized);
   }
 
+  void _setPendingInvites(List<InviteModel> invites) {
+    _repository.setInviteFlowPendingInvites(invites);
+  }
+
+  void _setDisplayInvites(List<InviteModel> invites) {
+    _repository.setInviteFlowDisplayInvites(invites);
+  }
+
   Future<List<InviteModel>> _fetchAnonymousPreviewInvites(
       String shareCode) async {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
-      _repository.shareCodePreviewInviteStreamValue.addValue(null);
+      _repository.clearShareCodePreview();
       return const <InviteModel>[];
     }
 
     try {
-      await _repository.loadShareCodePreview(normalizedCode);
+      await _repository.loadShareCodePreview(
+        invitesRepoString(
+          normalizedCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       final preview = _repository.shareCodePreviewInviteStreamValue.value;
       if (preview == null) {
         return const <InviteModel>[];
       }
       return <InviteModel>[preview];
     } catch (_) {
-      _repository.shareCodePreviewInviteStreamValue.addValue(null);
+      _repository.clearShareCodePreview();
       return const <InviteModel>[];
     }
   }
@@ -168,12 +220,13 @@ class InviteFlowScreenController with Disposable {
   Future<void> fetchPendingInvites() async {
     try {
       await _repository.refreshPendingInvites();
-      final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
-      pendingInvitesStreamValue.addValue(invites);
-      _ensureTopIndexBounds(invites.length);
+      final invites =
+          List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+      _setPendingInvites(invites);
       _syncDisplayInvitesWithPending();
+      _ensureTopIndexBounds(invites.length);
     } catch (_) {
-      pendingInvitesStreamValue.addValue(const <InviteModel>[]);
+      _setPendingInvites(const <InviteModel>[]);
       _syncDisplayInvitesWithPending();
       _ensureTopIndexBounds(0);
     }
@@ -183,22 +236,23 @@ class InviteFlowScreenController with Disposable {
     if (authRequiredForDecisionStreamValue.value) {
       return;
     }
-    displayInvitesStreamValue.addValue(
+    _setDisplayInvites(
       List<InviteModel>.from(pendingInvitesStreamValue.value),
     );
   }
 
   void _prioritizeInvite(String inviteId) {
+    final inviteIdValue = _inviteIdValue(inviteId);
     final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
     final index =
-        invites.indexWhere((invite) => invite.containsInviteId(inviteId));
+        invites.indexWhere((invite) => invite.containsInviteId(inviteIdValue));
     if (index < 0) {
       return;
     }
 
-    final invite = invites.removeAt(index).prioritizeInviter(inviteId);
+    final invite = invites.removeAt(index).prioritizeInviter(inviteIdValue);
     invites.insert(0, invite);
-    pendingInvitesStreamValue.addValue(invites);
+    _setPendingInvites(invites);
     _syncDisplayInvitesWithPending();
     _ensureTopIndexBounds(invites.length);
   }
@@ -212,7 +266,7 @@ class InviteFlowScreenController with Disposable {
     }
 
     pendingInvites.removeAt(0);
-    pendingInvitesStreamValue.addValue(pendingInvites);
+    _setPendingInvites(pendingInvites);
     _syncDisplayInvitesWithPending();
     _ensureTopIndexBounds(pendingInvites.length);
   }
@@ -221,7 +275,7 @@ class InviteFlowScreenController with Disposable {
     final pendingInvites =
         List<InviteModel>.from(pendingInvitesStreamValue.value)..add(invite);
 
-    pendingInvitesStreamValue.addValue(pendingInvites);
+    _setPendingInvites(pendingInvites);
     _syncDisplayInvitesWithPending();
     _ensureTopIndexBounds(pendingInvites.length);
   }
@@ -266,13 +320,13 @@ class InviteFlowScreenController with Disposable {
     InviteDecision decision, {
     String? inviteId,
   }) async {
+    // Allow decision even if not authorized (anonymous acceptance flow)
     if (authRequiredForDecisionStreamValue.value) {
       return null;
     }
 
-    final pendingInvites =
-        List<InviteModel>.from(pendingInvitesStreamValue.value);
-    final current = pendingInvites.isEmpty ? null : pendingInvites.first;
+    final invites = List<InviteModel>.from(displayInvitesStreamValue.value);
+    final current = invites.isEmpty ? null : invites.first;
     if (current == null) {
       return null;
     }
@@ -284,7 +338,7 @@ class InviteFlowScreenController with Disposable {
     if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
         materializedInviteId.isNotEmpty &&
         (current.id == materializedInviteId ||
-            current.containsInviteId(materializedInviteId))) {
+            current.containsInviteId(_inviteIdValue(materializedInviteId)))) {
       resolvedInviteId = materializedInviteId;
     }
 
@@ -297,17 +351,48 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      final result = await _repository.acceptInvite(resolvedInviteId);
+      final isAnonymousDecision = !_isAuthorized;
+      final acceptedInviteId = resolvedInviteId;
+      final result = await _repository.acceptInvite(
+        invitesRepoString(
+          resolvedInviteId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      if (isAnonymousDecision) {
+        unawaited(
+          _trackAnonymousInviteAccepted(
+            invite: current,
+            inviteId: acceptedInviteId,
+          ),
+        );
+      }
+      final updatedInvites =
+          List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+      _setPendingInvites(updatedInvites);
       _syncDisplayInvitesWithPending();
+      _ensureTopIndexBounds(updatedInvites.length);
+      final resolvedInviteIdValue = _inviteIdValue(resolvedInviteId);
       return InviteDecisionResult(
-        invite: current.prioritizeInviter(resolvedInviteId),
+        invite: current.prioritizeInviter(resolvedInviteIdValue),
         queued: false,
         nextStep: result.nextStep,
       );
     }
 
-    await _repository.declineInvite(resolvedInviteId);
+    await _repository.declineInvite(
+      invitesRepoString(
+        resolvedInviteId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    final updatedInvites =
+        List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+    _setPendingInvites(updatedInvites);
     _syncDisplayInvitesWithPending();
+    _ensureTopIndexBounds(updatedInvites.length);
     return const InviteDecisionResult(invite: null, queued: false);
   }
 
@@ -455,8 +540,8 @@ class InviteFlowScreenController with Disposable {
     if (_openedInviteIds.add(current.id)) {
       _activeInviteTimedEventFuture = _telemetryRepository.startTimedEvent(
         EventTrackerEvents.inviteOpened,
-        eventName: 'invite_opened',
-        properties: _buildInviteTelemetryProperties(current),
+        eventName: telemetryRepoString('invite_opened'),
+        properties: telemetryRepoMap(_buildInviteTelemetryProperties(current)),
       );
       _activeInviteId = current.id;
     }
@@ -480,6 +565,53 @@ class InviteFlowScreenController with Disposable {
     return properties;
   }
 
+  Future<void> _trackAnonymousInviteAccepted({
+    required InviteModel invite,
+    required String inviteId,
+  }) async {
+    final properties = <String, dynamic>{
+      'event_id': invite.eventId,
+      'invite_id': inviteId,
+      'source': 'invite_flow',
+    };
+
+    final shareCode = _extractShareCode(inviteId);
+    if (shareCode != null) {
+      properties['code'] = shareCode;
+    }
+
+    final inviterPrincipal = invite.inviterPrincipal;
+    if (inviterPrincipal != null) {
+      properties['inviter_kind'] = inviterPrincipal.type.name;
+      properties['inviter_id'] = inviterPrincipal.id;
+    }
+
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.buttonClick,
+      eventName: telemetryRepoString('app_anonymous_invite_accepted'),
+      properties: telemetryRepoMap(properties),
+    );
+  }
+
+  InviteIdValue _inviteIdValue(String raw) {
+    final value = InviteIdValue();
+    value.parse(raw);
+    return value;
+  }
+
+  String? _extractShareCode(String inviteId) {
+    final normalized = inviteId.trim();
+    const prefix = 'share:';
+    if (!normalized.startsWith(prefix)) {
+      return null;
+    }
+    final code = normalized.substring(prefix.length).trim();
+    if (code.isEmpty) {
+      return null;
+    }
+    return code;
+  }
+
   void syncTopCardIndex(int invitesLength) {
     _ensureTopIndexBounds(invitesLength);
   }
@@ -490,6 +622,7 @@ class InviteFlowScreenController with Disposable {
     _pendingInvitesSubscription = null;
     _finishActiveInviteTimedEvent();
     decisionsStreamValue.dispose();
+    _repository.clearInviteFlowState();
     authRequiredForDecisionStreamValue.dispose();
     initializedStreamValue.dispose();
     redirectPathStreamValue.dispose();

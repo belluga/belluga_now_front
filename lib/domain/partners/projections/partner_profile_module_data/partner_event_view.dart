@@ -1,17 +1,17 @@
 part of '../partner_profile_module_data.dart';
 
-typedef PartnerEventTitle = String;
-typedef PartnerEventDate = String;
-typedef PartnerEventLocation = String;
-
 class PartnerEventView {
-  const PartnerEventView({
-    required this.title,
-    required this.date,
-    required this.location,
+  PartnerEventView({
+    required this.titleValue,
+    required this.dateValue,
+    required this.locationValue,
   });
 
-  final PartnerEventTitle title;
-  final PartnerEventDate date;
-  final PartnerEventLocation location;
+  final PartnerProjectionRequiredTextValue titleValue;
+  final PartnerProjectionRequiredTextValue dateValue;
+  final PartnerProjectionRequiredTextValue locationValue;
+
+  String get title => titleValue.value;
+  String get date => dateValue.value;
+  String get location => locationValue.value;
 }

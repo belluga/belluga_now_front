@@ -119,7 +119,8 @@ void main() {
     expect(router.replaceAllCalled, isFalse);
   });
 
-  test('allows tenant admin route on tenant host when landlord session is missing',
+  test(
+      'allows tenant admin route on tenant host when landlord session is missing',
       () {
     _registerAppData(_buildAppData(
       hostname: 'tenant.test',
@@ -141,7 +142,8 @@ void main() {
     expect(router.replaceAllCalled, isFalse);
   });
 
-  test('blocks tenant admin route on landlord host when landlord session is missing',
+  test(
+      'blocks tenant admin route on landlord host when landlord session is missing',
       () {
     _registerAppData(_buildAppData(
       hostname: _landlordHostForTest(),
@@ -262,7 +264,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}

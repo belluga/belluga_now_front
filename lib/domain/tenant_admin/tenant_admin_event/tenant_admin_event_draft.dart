@@ -2,23 +2,24 @@ part of '../tenant_admin_event.dart';
 
 class TenantAdminEventDraft {
   TenantAdminEventDraft({
-    required Object title,
-    required Object content,
+    required this.titleValue,
+    required this.contentValue,
     required this.type,
     required this.occurrences,
     required this.publication,
     this.location,
     this.placeRef,
-    Object? coverUrl,
+    TenantAdminOptionalUrlValue? coverUrlValue,
     this.coverUpload,
-    Object? removeCover,
-    Object? artistIds,
-    this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
-  })  : titleValue = tenantAdminRequiredText(title),
-        contentValue = tenantAdminOptionalText(content),
-        coverUrlValue = tenantAdminOptionalUrl(coverUrl),
-        removeCoverValue = tenantAdminFlag(removeCover),
-        artistIdValues = tenantAdminTrimmedStringList(artistIds);
+    TenantAdminFlagValue? removeCoverValue,
+    List<TenantAdminArtistIdValue>? artistIdValues,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
+  })  : coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
+        removeCoverValue = removeCoverValue ?? TenantAdminFlagValue(false),
+        artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
+          artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        ),
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
   final TenantAdminRequiredTextValue titleValue;
   final TenantAdminOptionalTextValue contentValue;
@@ -30,12 +31,12 @@ class TenantAdminEventDraft {
   final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminMediaUpload? coverUpload;
   final TenantAdminFlagValue removeCoverValue;
-  final TenantAdminTrimmedStringListValue artistIdValues;
-  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final List<TenantAdminArtistIdValue> artistIdValues;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
 
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get coverUrl => coverUrlValue.nullableValue;
   bool get removeCover => removeCoverValue.value;
-  List<String> get artistIds => artistIdValues.value;
+  List<TenantAdminArtistIdValue> get artistIds => artistIdValues;
 }

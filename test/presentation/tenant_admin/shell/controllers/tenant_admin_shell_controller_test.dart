@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
@@ -13,6 +14,18 @@ import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_a
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+LandlordTenantOption _tenantOption({
+  required String id,
+  required String name,
+  required String mainDomain,
+}) {
+  return landlordTenantOptionFromRaw(
+    id: id,
+    name: name,
+    mainDomain: mainDomain,
+  );
+}
 
 void main() {
   test('auto-selects the tenant when only one is available in bootstrap',
@@ -24,7 +37,7 @@ void main() {
         domains: ['tenant-one.example.com'],
       ),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -49,8 +62,8 @@ void main() {
         domains: ['tenant-a.example.com', 'tenant-b.example.com'],
       ),
       landlordTenantsRepository: _FakeLandlordTenantsRepository(
-        remoteTenants: const [
-          LandlordTenantOption(
+        remoteTenants: [
+          _tenantOption(
             id: 'tenant-a',
             name: 'Tenant A',
             mainDomain: 'tenant-a.example.com',
@@ -80,7 +93,7 @@ void main() {
     final backendRepository = _ControllableLandlordTenantsRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository: backendRepository,
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
@@ -90,8 +103,8 @@ void main() {
     expect(controller.isTenantSelectionResolvingStreamValue.value, isTrue);
     expect(selectedTenantRepository.selectedTenantDomain, isNull);
 
-    backendRepository.complete(const [
-      LandlordTenantOption(
+    backendRepository.complete([
+      _tenantOption(
         id: 'tenant-x',
         name: 'Tenant X',
         mainDomain: 'tenant-x.example.com',
@@ -111,9 +124,9 @@ void main() {
     final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -130,11 +143,11 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(
-        domains: const [],
+        domains: [],
         appDomains: ['com.tenant.app'],
       ),
       landlordTenantsRepository:
-          _FakeLandlordTenantsRepository(remoteTenants: const []),
+          _FakeLandlordTenantsRepository(remoteTenants: []),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -150,7 +163,7 @@ void main() {
     final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: _FakeAppDataRepository(domains: []),
       landlordTenantsRepository: _ThrowingLandlordTenantsRepository(),
       landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
@@ -196,13 +209,15 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
 }
 
-class _FakeAppDataRepository implements AppDataRepositoryContract {
+class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required List<String> domains,
     List<String> appDomains = const [],
@@ -214,11 +229,14 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   AppData get appData => _appData;
 
   @override
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      StreamValue<double>(defaultValue: 1000);
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
-  double get maxRadiusMeters => 1000;
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
 
   @override
   ThemeMode get themeMode => ThemeMode.light;
@@ -231,10 +249,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> setMaxRadiusMeters(double meters) async {}
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 
   @override
-  Future<void> setThemeMode(ThemeMode mode) async {}
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -307,7 +325,7 @@ class _ThrowingLandlordTenantsRepository
 class _FakeSelectedTenantRepository
     implements TenantAdminSelectedTenantRepositoryContract {
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
-      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
+      StreamValue<List<LandlordTenantOption>>(defaultValue: []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =
@@ -356,8 +374,12 @@ class _FakeSelectedTenantRepository
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    final normalizedDomain = _normalizeTenantDomain(tenantDomain);
+  void selectTenantDomain(Object tenantDomain) {
+    final normalizedDomain = _normalizeTenantDomain(
+      tenantDomain is String
+          ? tenantDomain
+          : (tenantDomain as dynamic).value as String,
+    );
     if (normalizedDomain == null) {
       return;
     }

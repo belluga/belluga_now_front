@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -16,6 +17,7 @@ class ProfileModule extends ModuleContract {
         AutoRoute(
           path: '/profile',
           page: ProfileRoute.page,
+          guards: [AuthRouteGuard()],
         ),
       ];
 }

@@ -1,12 +1,17 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_text_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+
+LandlordAuthRepositoryContractTextValue _textValue(String raw) {
+  return LandlordAuthRepositoryContractTextValue.fromRaw(raw);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,10 +52,15 @@ void main() {
     adapter.enqueueGet(path: '/v1/auth/token_validate', response: {'data': {}});
     adapter.enqueueGet(
       path: '/v1/me',
-      response: {'data': {'user_id': '507f1f77bcf86cd799439011'}},
+      response: {
+        'data': {'user_id': '507f1f77bcf86cd799439011'}
+      },
     );
 
-    await repository.loginWithEmailPassword('admin@test.com', 'Secret!234');
+    await repository.loginWithEmailPassword(
+      _textValue('admin@test.com'),
+      _textValue('Secret!234'),
+    );
 
     final storedToken =
         await LandlordAuthRepository.storage.read(key: 'landlord_token');
@@ -116,10 +126,15 @@ void main() {
     adapter.enqueueGet(path: '/v1/auth/token_validate', response: {'data': {}});
     adapter.enqueueGet(
       path: '/v1/me',
-      response: {'data': {'user_id': '507f1f77bcf86cd799439099'}},
+      response: {
+        'data': {'user_id': '507f1f77bcf86cd799439099'}
+      },
     );
 
-    await repository.loginWithEmailPassword('admin@test.com', 'Secret!234');
+    await repository.loginWithEmailPassword(
+      _textValue('admin@test.com'),
+      _textValue('Secret!234'),
+    );
 
     expect(
       capturedBaseUrls,

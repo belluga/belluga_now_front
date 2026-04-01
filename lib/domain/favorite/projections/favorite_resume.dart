@@ -1,23 +1,21 @@
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:flutter/material.dart';
 
-typedef FavoriteResumeSlug = String;
-typedef FavoriteResumePrimaryFlag = bool;
-typedef FavoriteResumeIconImageUrl = String;
-
 class FavoriteResume {
   FavoriteResume({
     required this.titleValue,
-    this.slug,
+    this.slugValue,
     this.imageUriValue,
     this.assetPathValue,
     this.badge,
-    this.isPrimary = false,
-    this.iconImageUrl,
+    FavoritePrimaryFlagValue? isPrimaryValue,
+    this.iconImageUriValue,
     this.primaryColor,
   })  : assert(
           imageUriValue != null || assetPathValue != null,
@@ -26,17 +24,22 @@ class FavoriteResume {
         assert(
           imageUriValue == null || assetPathValue == null,
           'Only one of image or asset path can be provided.',
-        );
+        ),
+        isPrimaryValue =
+            isPrimaryValue ?? (FavoritePrimaryFlagValue()..parse('false'));
 
   final TitleValue titleValue;
-  final FavoriteResumeSlug? slug;
+  final SlugValue? slugValue;
   final ThumbUriValue? imageUriValue;
   final AssetPathValue? assetPathValue;
   final FavoriteBadge? badge;
-  final FavoriteResumePrimaryFlag isPrimary;
-  final FavoriteResumeIconImageUrl? iconImageUrl;
+  final FavoritePrimaryFlagValue isPrimaryValue;
+  final ThumbUriValue? iconImageUriValue;
   final Color? primaryColor;
 
+  String? get slug => slugValue?.value;
+  bool get isPrimary => isPrimaryValue.value;
+  String? get iconImageUrl => iconImageUriValue?.value.toString();
   String get title => titleValue.value;
   Uri? get imageUri => imageUriValue?.value;
   String? get assetPath => assetPathValue?.value;
@@ -44,11 +47,11 @@ class FavoriteResume {
   factory FavoriteResume.fromFavorite(Favorite favorite) {
     return FavoriteResume(
       titleValue: favorite.titleValue,
-      slug: favorite.slug,
+      slugValue: favorite.slugValue,
       imageUriValue: favorite.imageUriValue,
       assetPathValue: favorite.assetPathValue,
       badge: favorite.badge,
-      isPrimary: favorite.isPrimary,
+      isPrimaryValue: favorite.isPrimaryValue,
     );
   }
 }

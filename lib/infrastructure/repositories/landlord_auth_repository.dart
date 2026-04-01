@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/landlord/landlord_auth_response_decoder.dart';
@@ -65,11 +66,14 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
   }
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractTextValue email,
+    LandlordAuthRepositoryContractTextValue password,
+  ) async {
     final deviceName = await _resolveDeviceName();
     final payload = {
-      'email': email,
-      'password': password,
+      'email': email.value,
+      'password': password.value,
       'device_name': deviceName,
     };
     final dio = await _resolveDio();

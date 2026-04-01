@@ -1,16 +1,18 @@
 part of 'belluga_auth_errors.dart';
 
-typedef AuthValidationErrorPayload = Map<String, dynamic>;
-
 class AuthErrorValidationError extends BellugaAuthError {
-  AuthErrorValidationError({super.message = 'Erro de validação'});
+  AuthErrorValidationError({AuthErrorMessageValue? message})
+      : super(
+            message:
+                message ?? AuthErrorMessageValue(raw: 'Erro de validação'));
 
   factory AuthErrorValidationError.fromErrors({
-    AuthValidationErrorPayload errors = const <String, dynamic>{},
+    AuthErrorFieldIssue? fieldIssue,
   }) {
-    final message = errors.values.first.first;
+    final message =
+        fieldIssue?.primaryMessageValue ?? AuthErrorMessageValue(raw: 'Erro de validação');
 
-    final AuthErrorValidationError error = switch (errors.keys.first) {
+    final AuthErrorValidationError error = switch (fieldIssue?.fieldName) {
       'password' => AuthErrorPassword(message: message),
       'email' => AuthErrorEmail(message: message),
       _ => AuthErrorValidationError(message: message),

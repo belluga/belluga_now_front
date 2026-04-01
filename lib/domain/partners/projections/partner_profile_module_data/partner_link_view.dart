@@ -1,17 +1,17 @@
 part of '../partner_profile_module_data.dart';
 
-typedef PartnerLinkTitle = String;
-typedef PartnerLinkSubtitle = String;
-typedef PartnerLinkIcon = String;
-
 class PartnerLinkView {
-  const PartnerLinkView({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
+  PartnerLinkView({
+    required this.titleValue,
+    required this.subtitleValue,
+    required this.iconValue,
   });
 
-  final PartnerLinkTitle title;
-  final PartnerLinkSubtitle subtitle;
-  final PartnerLinkIcon icon;
+  final PartnerProjectionRequiredTextValue titleValue;
+  final PartnerProjectionRequiredTextValue subtitleValue;
+  final PartnerProjectionRequiredTextValue iconValue;
+
+  String get title => titleValue.value;
+  String get subtitle => subtitleValue.value;
+  String get icon => iconValue.value;
 }

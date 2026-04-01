@@ -1,12 +1,11 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef UserEventsRepositoryContractPrimString = String;
-typedef UserEventsRepositoryContractPrimInt = int;
-typedef UserEventsRepositoryContractPrimBool = bool;
-typedef UserEventsRepositoryContractPrimDouble = double;
-typedef UserEventsRepositoryContractPrimDateTime = DateTime;
-typedef UserEventsRepositoryContractPrimDynamic = dynamic;
+typedef UserEventsRepositoryContractPrimString
+    = UserEventsRepositoryContractTextValue;
+typedef UserEventsRepositoryContractPrimBool
+    = UserEventsRepositoryContractBoolValue;
 
 /// Repository contract for user-specific event relationships
 /// Handles confirmed events, featured events, and user event actions

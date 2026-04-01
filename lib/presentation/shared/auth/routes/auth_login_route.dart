@@ -6,7 +6,12 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 
 @RoutePage(name: 'AuthLoginRoute')
 class AuthLoginRoutePage extends StatelessWidget {
-  const AuthLoginRoutePage({super.key});
+  const AuthLoginRoutePage({
+    super.key,
+    @QueryParam('redirect') this.redirectPath,
+  });
+
+  final String? redirectPath;
 
   @override
   Widget build(BuildContext context) {

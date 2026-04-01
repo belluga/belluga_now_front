@@ -3,7 +3,10 @@ import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
@@ -51,6 +54,40 @@ void main() {
     expect(profiles.first.type, 'artist');
   });
 
+  test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist Two',
+          slug: 'artist-two',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      typeFilter: null,
+    );
+
+    expect(backend.lastAllowedTypes, isNull);
+    expect(page.profiles, hasLength(2));
+  });
+
   test('init loads favorite ids from backend favorites source', () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
@@ -84,7 +121,9 @@ void main() {
     await repository.init();
 
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       contains('profile-fav-1'),
     );
   });
@@ -114,17 +153,25 @@ void main() {
       telemetryRepository: telemetry,
     );
 
-    await repository.toggleFavorite(validId);
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
     expect(favoritesBackend.favoritedIds, contains(validId));
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       contains(validId),
     );
 
-    await repository.toggleFavorite(validId);
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
     expect(favoritesBackend.unfavoritedIds, contains(validId));
     expect(
-      repository.favoriteAccountProfileIdsStreamValue.value,
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
       isNot(contains(validId)),
     );
 
@@ -157,12 +204,154 @@ void main() {
     );
     expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
   });
+
+  test('fetchNearbyAccountProfiles keeps only favoritable registry types',
+      () async {
+    final artistId = _generateMongoId();
+    final curatorId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: artistId,
+          name: 'Nearby Artist',
+          slug: 'nearby-artist',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: curatorId,
+          name: 'Nearby Curator',
+          slug: 'nearby-curator',
+          type: 'curator',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final nearby = await repository.fetchNearbyAccountProfiles(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+    );
+
+    expect(nearby, hasLength(1));
+    expect(nearby.first.type, 'artist');
+  });
+
+  test('paged account profiles stream accumulates loaded pages canonically',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist Two',
+          slug: 'artist-two',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+    );
+    expect(repository.currentPagedAccountProfilesPage.value, 1);
+    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(1));
+    expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value, isTrue);
+
+    await repository.loadNextAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+    );
+    expect(repository.currentPagedAccountProfilesPage.value, 2);
+    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(2));
+    expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value, isFalse);
+  });
+
+  test(
+      'discovery nearby stream uses dedicated near endpoint even with paged cache',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Curator One',
+          slug: 'curator-one',
+          type: 'curator',
+        ),
+      ],
+      nearbyProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Nearest Venue',
+          slug: 'nearest-venue',
+          type: 'artist',
+          distanceMeters: 120,
+        ),
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Second Venue',
+          slug: 'second-venue',
+          type: 'artist',
+          distanceMeters: 340,
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+    );
+    await repository.syncDiscoveryNearbyAccountProfiles(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+    );
+
+    expect(backend.fetchNearbyCalls, 1);
+    expect(repository.discoveryNearbyAccountProfilesStreamValue.value,
+        hasLength(2));
+    expect(
+      repository.discoveryNearbyAccountProfilesStreamValue.value
+          .map((profile) => profile.name)
+          .toList(),
+      ['Nearest Venue', 'Second Venue'],
+    );
+  });
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
-  _StubAccountProfilesBackend({required this.accountProfiles});
+  _StubAccountProfilesBackend({
+    required this.accountProfiles,
+    this.nearbyProfiles = const <AccountProfileModel>[],
+  });
 
   final List<AccountProfileModel> accountProfiles;
+  final List<AccountProfileModel> nearbyProfiles;
+  List<String>? lastAllowedTypes;
+  int fetchNearbyCalls = 0;
 
   @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() async =>
@@ -174,16 +363,18 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async {
+    lastAllowedTypes = allowedTypes;
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
-      return const PagedAccountProfilesResult(
+      return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
       );
     }
     final end = (start + pageSize).clamp(0, accountProfiles.length);
-    return PagedAccountProfilesResult(
+    return pagedAccountProfilesResultFromRaw(
       profiles: accountProfiles.sublist(start, end),
       hasMore: end < accountProfiles.length,
     );
@@ -194,45 +385,60 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
       accountProfiles.firstWhere((profile) => profile.slug == slug);
 
   @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    int pageSize = 10,
+  }) async {
+    fetchNearbyCalls += 1;
+    final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
+    return source.take(pageSize).toList(growable: false);
+  }
+
+  @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
+    List<String>? allowedTypes,
   }) async =>
       accountProfiles;
 }
 
 class _NoopTelemetry implements TelemetryRepositoryContract {
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
-      true;
+      telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       null;
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 }
 
 class _TelemetryCall {
@@ -251,44 +457,51 @@ class _SpyTelemetry implements TelemetryRepositoryContract {
   final List<_TelemetryCall> calls = <_TelemetryCall>[];
 
   @override
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async {
     calls.add(
       _TelemetryCall(
         event: event,
-        eventName: eventName,
-        properties: properties,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
       ),
     );
-    return true;
+    return telemetryRepoBool(true);
   }
 
   @override
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
-      true;
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+          EventTrackerTimedEventHandle handle) async =>
+      telemetryRepoBool(true);
 
   @override
-  Future<bool> flushTimedEvents() async => true;
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
   }) async =>
       null;
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {}
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
 
   @override
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
+          {required TelemetryRepositoryContractPrimString
+              previousUserId}) async =>
+      telemetryRepoBool(true);
 }
 
 class _StubFavoriteBackend extends FavoriteBackendContract {

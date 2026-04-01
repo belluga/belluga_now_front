@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
+
 part 'partner_profile_module_data/partner_event_view.dart';
 part 'partner_profile_module_data/partner_experience_view.dart';
 part 'partner_profile_module_data/partner_faq_view.dart';

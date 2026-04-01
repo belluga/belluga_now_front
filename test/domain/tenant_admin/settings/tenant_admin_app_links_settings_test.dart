@@ -1,4 +1,9 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_links_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
@@ -77,18 +82,23 @@ void main() {
       () {
     final current =
         TenantAdminAppLinksSettings.empty().withAppDomainIdentifiers(
-      androidAppIdentifier: 'com.guarappari.app',
-      iosBundleId: 'com.guarappari.app',
+      androidAppIdentifier: _androidAppIdentifier('com.guarappari.app'),
+      iosBundleId: _iosBundleId('com.guarappari.app'),
     );
 
     final updated = current.applyValues(
-      androidAppIdentifier: 'com.guarappari.app',
-      androidSha256CertFingerprints: const [
-        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
+      androidAppIdentifier: _androidAppIdentifier('com.guarappari.app'),
+      androidSha256CertFingerprintValues: [
+        _sha256Fingerprint(
+          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
+        ),
       ],
-      iosTeamId: 'ABCDE12345',
-      iosBundleId: 'com.guarappari.app',
-      iosPaths: const ['/invite*', '/convites*'],
+      iosTeamId: _iosTeamId('ABCDE12345'),
+      iosBundleId: _iosBundleId('com.guarappari.app'),
+      iosPathValues: [
+        _appLinkPath('/invite*'),
+        _appLinkPath('/convites*'),
+      ],
     );
 
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
@@ -107,4 +117,34 @@ void main() {
     );
     expect(updated.iosPaths, equals(const ['/invite*', '/convites*']));
   });
+}
+
+TenantAdminAndroidAppIdentifierValue _androidAppIdentifier(String raw) {
+  final value = TenantAdminAndroidAppIdentifierValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminIosBundleIdentifierValue _iosBundleId(String raw) {
+  final value = TenantAdminIosBundleIdentifierValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminIosTeamIdValue _iosTeamId(String raw) {
+  final value = TenantAdminIosTeamIdValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminSha256FingerprintValue _sha256Fingerprint(String raw) {
+  final value = TenantAdminSha256FingerprintValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminAppLinkPathValue _appLinkPath(String raw) {
+  final value = TenantAdminAppLinkPathValue();
+  value.parse(raw);
+  return value;
 }

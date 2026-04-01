@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_types_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -53,10 +54,10 @@ void main() {
 
     controller.eventTypeCatalogStreamValue.addValue([
       TenantAdminEventType(
-        id: '507f1f77bcf86cd799439021',
-        name: 'Festival',
-        slug: 'festival',
-        description: 'Tipo de evento: Festival',
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439021'),
+        nameValue: tenantAdminRequiredText('Festival'),
+        slugValue: tenantAdminRequiredText('festival'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Festival'),
       ),
     ]);
 
@@ -77,38 +78,39 @@ class _NoopEventsRepository
 
   @override
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEvent(String eventId) async {}
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {}
 
   @override
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) {
+  Future<TenantAdminEvent> fetchEvent(
+      TenantAdminEventsRepoString eventIdOrSlug) {
     throw UnimplementedError();
   }
 
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
     return <TenantAdminEvent>[];
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool? archived,
   }) async {
-    return TenantAdminPagedResult<TenantAdminEvent>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -116,8 +118,8 @@ class _NoopEventsRepository
 
   @override
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   }) async {
     return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
@@ -127,7 +129,7 @@ class _NoopEventsRepository
 
   @override
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   }) {
     throw UnimplementedError();
@@ -139,31 +141,31 @@ class _NoopTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
+    required List<TenantAdminTaxRepoString> appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString slug,
+    required TenantAdminTaxRepoString name,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {}
+  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {}
 
   @override
   Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
   }) async {}
 
   @override
@@ -174,10 +176,10 @@ class _NoopTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
       fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -185,7 +187,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
+    required TenantAdminTaxRepoString taxonomyId,
   }) async {
     return <TenantAdminTaxonomyTermDefinition>[];
   }
@@ -193,11 +195,11 @@ class _NoopTaxonomiesRepository
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
       fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -205,22 +207,22 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
+    List<TenantAdminTaxRepoString>? appliesTo,
+    TenantAdminTaxRepoString? icon,
+    TenantAdminTaxRepoString? color,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
+    required TenantAdminTaxRepoString taxonomyId,
+    required TenantAdminTaxRepoString termId,
+    TenantAdminTaxRepoString? slug,
+    TenantAdminTaxRepoString? name,
   }) {
     throw UnimplementedError();
   }

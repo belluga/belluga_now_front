@@ -1,5 +1,12 @@
-class VenueEventTagValue {
-  const VenueEventTagValue(String raw) : value = raw;
+import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
-  final String value;
+class VenueEventTagValue extends GenericStringValue {
+  VenueEventTagValue([
+    Object? raw,
+  ]) : super(defaultValue: '', isRequired: false, minLenght: 0) {
+    parse(raw?.toString());
+  }
+
+  @override
+  String doParse(String? parseValue) => (parseValue ?? '').trim();
 }

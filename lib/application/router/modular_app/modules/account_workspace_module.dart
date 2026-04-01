@@ -8,6 +8,7 @@ import 'package:belluga_now/application/router/resolvers/tenant_admin_account_by
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_lookup_domain_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -58,7 +59,9 @@ class AccountWorkspaceModule extends ModuleContract {
       return;
     }
 
-    resolvedTenantRepository.selectTenantDomain(tenantHost);
+    resolvedTenantRepository.selectTenantDomain(
+      TenantLookupDomainValue.fromRaw(tenantHost),
+    );
   }
 
   @override

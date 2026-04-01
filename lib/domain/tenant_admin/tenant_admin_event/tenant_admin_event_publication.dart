@@ -1,11 +1,11 @@
 part of '../tenant_admin_event.dart';
 
 class TenantAdminEventPublication {
-  const TenantAdminEventPublication({
+  TenantAdminEventPublication({
     required this.statusValue,
     TenantAdminOptionalDateTimeValue? publishAtValue,
   }) : publishAtValue =
-            publishAtValue ?? const TenantAdminOptionalDateTimeValue(null);
+            publishAtValue ?? TenantAdminOptionalDateTimeValue(null);
 
   final TenantAdminRequiredTextValue statusValue;
   final TenantAdminOptionalDateTimeValue publishAtValue;

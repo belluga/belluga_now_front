@@ -1,14 +1,14 @@
 part of '../partner_profile_module_data.dart';
 
-typedef PartnerFaqQuestion = String;
-typedef PartnerFaqAnswer = String;
-
 class PartnerFaqView {
-  const PartnerFaqView({
-    required this.question,
-    required this.answer,
+  PartnerFaqView({
+    required this.questionValue,
+    required this.answerValue,
   });
 
-  final PartnerFaqQuestion question;
-  final PartnerFaqAnswer answer;
+  final PartnerProjectionRequiredTextValue questionValue;
+  final PartnerProjectionRequiredTextValue answerValue;
+
+  String get question => questionValue.value;
+  String get answer => answerValue.value;
 }

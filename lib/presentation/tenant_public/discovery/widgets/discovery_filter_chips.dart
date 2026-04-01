@@ -24,7 +24,7 @@ class DiscoveryFilterChips extends StatelessWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: items
             .map(
@@ -33,6 +33,10 @@ class DiscoveryFilterChips extends StatelessWidget {
                 child: ChoiceChip(
                   label: Text(item.label),
                   selected: selectedType == item.type,
+                  showCheckmark: false,
+                  labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                   onSelected: (_) => onSelectType(item.type),
                 ),
               ),

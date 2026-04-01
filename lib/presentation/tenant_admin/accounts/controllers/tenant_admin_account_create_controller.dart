@@ -146,7 +146,7 @@ class TenantAdminAccountCreateController implements Disposable {
           const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       final filtered = taxonomies
-          .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
+          .where((taxonomy) => taxonomy.appliesToAccountProfile())
           .toList(growable: false);
       taxonomiesStreamValue.addValue(filtered);
       taxonomiesErrorStreamValue.addValue(null);
@@ -228,10 +228,12 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void updateCreateAvatarWebUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
-        avatarFile: null,
+        avatarWebUrl: normalized,
+        avatarFile:
+            normalized == null ? createStateStreamValue.value.avatarFile : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
@@ -239,10 +241,12 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void updateCreateCoverWebUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
-        coverFile: null,
+        coverWebUrl: normalized,
+        coverFile:
+            normalized == null ? createStateStreamValue.value.coverFile : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
@@ -320,18 +324,37 @@ class TenantAdminAccountCreateController implements Disposable {
     TenantAdminLocation? location,
     String? bio,
     String? content,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    TenantAdminTaxonomyTerms taxonomyTerms =
+        const TenantAdminTaxonomyTerms.empty(),
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
     return _accountsRepository.createAccountOnboarding(
-      name: name.trim(),
+      name: TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+        name.trim(),
+        defaultValue: '',
+        isRequired: true,
+      ),
       ownershipState: ownershipState,
-      profileType: profileType,
+      profileType: TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+        profileType,
+        defaultValue: '',
+        isRequired: true,
+      ),
       location: location,
       taxonomyTerms: taxonomyTerms,
-      bio: bio,
-      content: content,
+      bio: bio == null
+          ? null
+          : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+              bio,
+              defaultValue: '',
+            ),
+      content: content == null
+          ? null
+          : TenantAdminAccountsRepositoryContractPrimString.fromRaw(
+              content,
+              defaultValue: '',
+            ),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -345,7 +368,7 @@ class TenantAdminAccountCreateController implements Disposable {
     final capabilities = _capabilitiesForProfileType(selectedProfileType);
     final filteredTaxonomyTerms = capabilities?.hasTaxonomies == true
         ? _buildTaxonomyTerms()
-        : const <TenantAdminTaxonomyTerm>[];
+        : const TenantAdminTaxonomyTerms.empty();
     final filteredBio = capabilities?.hasBio == true
         ? _normalizeOptionalString(bioController.text)
         : null;
@@ -607,7 +630,13 @@ extension on TenantAdminAccountCreateController {
       }
       final taxonomyId = taxonomy.first.id;
       try {
-        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomyId);
+        await _taxonomiesRepository.loadAllTerms(
+          taxonomyId: TenantAdminTaxRepoString.fromRaw(
+            taxonomyId,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
         final terms = _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         if (_isDisposed) return;
@@ -624,15 +653,20 @@ extension on TenantAdminAccountCreateController {
     taxonomyTermsStreamValue.addValue(map);
   }
 
-  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
+  TenantAdminTaxonomyTerms _buildTaxonomyTerms() {
     final terms = <TenantAdminTaxonomyTerm>[];
     final selected = selectedTaxonomyTermsStreamValue.value;
     for (final entry in selected.entries) {
       for (final value in entry.value) {
-        terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
+        terms
+            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
       }
     }
-    return terms;
+    final taxonomyTerms = TenantAdminTaxonomyTerms();
+    for (final term in terms) {
+      taxonomyTerms.add(term);
+    }
+    return taxonomyTerms;
   }
 
   String? _normalizeOptionalString(String value) {

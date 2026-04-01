@@ -1,15 +1,15 @@
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+export 'value_objects/tenant_admin_document_values.dart';
+
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 
 class TenantAdminDocument {
   TenantAdminDocument({
-    required Object type,
-    required Object number,
-  })  : typeValue = tenantAdminRequiredText(type),
-        numberValue = tenantAdminRequiredText(number);
+    required this.typeValue,
+    required this.numberValue,
+  });
 
-  final TenantAdminRequiredTextValue typeValue;
-  final TenantAdminRequiredTextValue numberValue;
+  final TenantAdminOptionalTextValue typeValue;
+  final TenantAdminOptionalTextValue numberValue;
 
   String get type => typeValue.value;
   String get number => numberValue.value;

@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -24,6 +27,7 @@ class TenantAdminProfileTypesController implements Disposable {
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
                 : null) {
+    _bindRepositoryStreams();
     _bindTenantScope();
   }
 
@@ -32,12 +36,11 @@ class TenantAdminProfileTypesController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   StreamValue<List<TenantAdminProfileTypeDefinition>?> get typesStreamValue =>
       _repository.profileTypesStreamValue;
-  StreamValue<bool> get hasMoreTypesStreamValue =>
-      _repository.hasMoreProfileTypesStreamValue;
-  StreamValue<bool> get isTypesPageLoadingStreamValue =>
-      _repository.isProfileTypesPageLoadingStreamValue;
-  StreamValue<String?> get errorStreamValue =>
-      _repository.profileTypesErrorStreamValue;
+  final StreamValue<bool> hasMoreTypesStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> isTypesPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<List<TenantAdminTaxonomyDefinition>>
       availableTaxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
@@ -49,14 +52,14 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<String?>();
   static final TenantAdminProfileTypeCapabilities _emptyCapabilities =
       TenantAdminProfileTypeCapabilities(
-    isFavoritable: false,
-    isPoiEnabled: false,
-    hasBio: false,
-    hasContent: false,
-    hasTaxonomies: true,
-    hasAvatar: false,
-    hasCover: false,
-    hasEvents: false,
+    isFavoritable: TenantAdminFlagValue(false),
+    isPoiEnabled: TenantAdminFlagValue(false),
+    hasBio: TenantAdminFlagValue(false),
+    hasContent: TenantAdminFlagValue(false),
+    hasTaxonomies: TenantAdminFlagValue(true),
+    hasAvatar: TenantAdminFlagValue(false),
+    hasCover: TenantAdminFlagValue(false),
+    hasEvents: TenantAdminFlagValue(false),
   );
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
   final StreamValue<String?> actionErrorMessageStreamValue =
@@ -71,16 +74,63 @@ class TenantAdminProfileTypesController implements Disposable {
   );
   final StreamValue<bool> isSlugAutoEnabledStreamValue =
       StreamValue<bool>(defaultValue: true);
+  final StreamValue<TenantAdminPoiVisualMode> poiVisualModeStreamValue =
+      StreamValue<TenantAdminPoiVisualMode>(
+    defaultValue: TenantAdminPoiVisualMode.icon,
+  );
+  final StreamValue<TenantAdminPoiVisualImageSource>
+      poiVisualImageSourceStreamValue =
+      StreamValue<TenantAdminPoiVisualImageSource>(
+    defaultValue: TenantAdminPoiVisualImageSource.avatar,
+  );
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController typeController = TextEditingController();
   final TextEditingController labelController = TextEditingController();
   final TextEditingController taxonomiesController = TextEditingController();
+  final TextEditingController poiVisualIconController = TextEditingController();
+  final TextEditingController poiVisualColorController =
+      TextEditingController();
+  final TextEditingController poiVisualIconColorController =
+      TextEditingController();
   final ScrollController typesListScrollController = ScrollController();
 
   bool _isDisposed = false;
   bool _typesListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminAccountProfilesRepoBool>?
+      _hasMoreTypesSubscription;
+  StreamSubscription<TenantAdminAccountProfilesRepoBool>?
+      _isTypesPageLoadingSubscription;
+  StreamSubscription<TenantAdminAccountProfilesRepoString?>?
+      _typesErrorSubscription;
   String? _lastTenantDomain;
+
+  void _bindRepositoryStreams() {
+    hasMoreTypesStreamValue
+        .addValue(_repository.hasMoreProfileTypesStreamValue.value.value);
+    isTypesPageLoadingStreamValue
+        .addValue(_repository.isProfileTypesPageLoadingStreamValue.value.value);
+    errorStreamValue
+        .addValue(_repository.profileTypesErrorStreamValue.value?.value);
+
+    _hasMoreTypesSubscription =
+        _repository.hasMoreProfileTypesStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      hasMoreTypesStreamValue.addValue(value.value);
+    });
+
+    _isTypesPageLoadingSubscription =
+        _repository.isProfileTypesPageLoadingStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      isTypesPageLoadingStreamValue.addValue(value.value);
+    });
+
+    _typesErrorSubscription =
+        _repository.profileTypesErrorStreamValue.stream.listen((value) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(value?.value);
+    });
+  }
 
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
@@ -115,21 +165,39 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void initForm(TenantAdminProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
+    final poiVisual = definition?.poiVisual;
     capabilitiesStreamValue.addValue(
       TenantAdminProfileTypeCapabilities(
-        isFavoritable: capabilities.isFavoritable,
-        isPoiEnabled: capabilities.isPoiEnabled,
-        hasBio: capabilities.hasBio,
-        hasContent: capabilities.hasContent,
-        hasTaxonomies: true,
-        hasAvatar: capabilities.hasAvatar,
-        hasCover: capabilities.hasCover,
-        hasEvents: capabilities.hasEvents,
+        isFavoritable: TenantAdminFlagValue(capabilities.isFavoritable),
+        isPoiEnabled: TenantAdminFlagValue(capabilities.isPoiEnabled),
+        hasBio: TenantAdminFlagValue(capabilities.hasBio),
+        hasContent: TenantAdminFlagValue(capabilities.hasContent),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(capabilities.hasAvatar),
+        hasCover: TenantAdminFlagValue(capabilities.hasCover),
+        hasEvents: TenantAdminFlagValue(capabilities.hasEvents),
       ),
     );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
     setAllowedTaxonomies(definition?.allowedTaxonomies ?? const []);
+    if (poiVisual == null || poiVisual.mode == TenantAdminPoiVisualMode.icon) {
+      poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
+      poiVisualIconController.text = poiVisual?.icon ?? 'place';
+      poiVisualColorController.text = poiVisual?.color ?? '#2563EB';
+      poiVisualIconColorController.text = poiVisual?.iconColor ?? '#FFFFFF';
+      poiVisualImageSourceStreamValue.addValue(
+        TenantAdminPoiVisualImageSource.avatar,
+      );
+    } else {
+      poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.image);
+      poiVisualIconController.text = 'place';
+      poiVisualColorController.text = '#2563EB';
+      poiVisualIconColorController.text = '#FFFFFF';
+      poiVisualImageSourceStreamValue.addValue(
+        poiVisual.imageSource ?? TenantAdminPoiVisualImageSource.avatar,
+      );
+    }
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -139,6 +207,13 @@ class TenantAdminProfileTypesController implements Disposable {
     labelController.clear();
     taxonomiesController.clear();
     selectedAllowedTaxonomiesStreamValue.addValue(const []);
+    poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
+    poiVisualImageSourceStreamValue.addValue(
+      TenantAdminPoiVisualImageSource.avatar,
+    );
+    poiVisualIconController.text = 'place';
+    poiVisualColorController.text = '#2563EB';
+    poiVisualIconColorController.text = '#FFFFFF';
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -146,6 +221,45 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void setSlugAutoEnabled(bool enabled) {
     isSlugAutoEnabledStreamValue.addValue(enabled);
+  }
+
+  TenantAdminPoiVisualMode get currentPoiVisualMode =>
+      poiVisualModeStreamValue.value;
+
+  TenantAdminPoiVisualImageSource get currentPoiVisualImageSource =>
+      poiVisualImageSourceStreamValue.value;
+
+  void updatePoiVisualMode(TenantAdminPoiVisualMode mode) {
+    poiVisualModeStreamValue.addValue(mode);
+  }
+
+  void updatePoiVisualImageSource(TenantAdminPoiVisualImageSource source) {
+    poiVisualImageSourceStreamValue.addValue(source);
+  }
+
+  TenantAdminPoiVisual? buildCurrentPoiVisual() {
+    if (currentPoiVisualMode == TenantAdminPoiVisualMode.icon) {
+      try {
+        final iconValue = TenantAdminRequiredTextValue()
+          ..parse(poiVisualIconController.text);
+        final colorValue = TenantAdminHexColorValue()
+          ..parse(poiVisualColorController.text);
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(poiVisualIconColorController.text);
+        final candidate = TenantAdminPoiVisual.icon(
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
+        );
+        return candidate.isValid ? candidate : null;
+      } on Object {
+        return null;
+      }
+    }
+
+    return TenantAdminPoiVisual.image(
+      imageSource: currentPoiVisualImageSource,
+    );
   }
 
   void updateCapabilities({
@@ -161,14 +275,16 @@ class TenantAdminProfileTypesController implements Disposable {
     final current = currentCapabilities;
     capabilitiesStreamValue.addValue(
       TenantAdminProfileTypeCapabilities(
-        isFavoritable: isFavoritable ?? current.isFavoritable,
-        isPoiEnabled: isPoiEnabled ?? current.isPoiEnabled,
-        hasBio: hasBio ?? current.hasBio,
-        hasContent: hasContent ?? current.hasContent,
-        hasTaxonomies: true,
-        hasAvatar: hasAvatar ?? current.hasAvatar,
-        hasCover: hasCover ?? current.hasCover,
-        hasEvents: hasEvents ?? current.hasEvents,
+        isFavoritable:
+            TenantAdminFlagValue(isFavoritable ?? current.isFavoritable),
+        isPoiEnabled:
+            TenantAdminFlagValue(isPoiEnabled ?? current.isPoiEnabled),
+        hasBio: TenantAdminFlagValue(hasBio ?? current.hasBio),
+        hasContent: TenantAdminFlagValue(hasContent ?? current.hasContent),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(hasAvatar ?? current.hasAvatar),
+        hasCover: TenantAdminFlagValue(hasCover ?? current.hasCover),
+        hasEvents: TenantAdminFlagValue(hasEvents ?? current.hasEvents),
       ),
     );
   }
@@ -192,7 +308,7 @@ class TenantAdminProfileTypesController implements Disposable {
           const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       final filtered = loaded
-          .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
+          .where((taxonomy) => taxonomy.appliesToAccountProfile())
           .toList(growable: false)
         ..sort(
           (left, right) =>
@@ -278,13 +394,43 @@ class TenantAdminProfileTypesController implements Disposable {
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
-    final created = await _repository.createProfileType(
-      type: type,
-      label: label,
-      allowedTaxonomies: allowedTaxonomies,
-      capabilities: capabilities,
+    final typeValue = tenantAdminAccountProfilesRepoString(
+      type,
+      defaultValue: '',
+      isRequired: true,
     );
+    final labelValue = tenantAdminAccountProfilesRepoString(
+      label,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final allowedTaxonomyValues = allowedTaxonomies
+        .map(
+          (entry) => tenantAdminAccountProfilesRepoString(
+            entry,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        )
+        .toList(growable: false);
+
+    final created = includePoiVisual
+        ? await _repository.createProfileTypeWithPoiVisual(
+            type: typeValue,
+            label: labelValue,
+            allowedTaxonomies: allowedTaxonomyValues,
+            capabilities: capabilities,
+            poiVisual: poiVisual,
+          )
+        : await _repository.createProfileType(
+            type: typeValue,
+            label: labelValue,
+            allowedTaxonomies: allowedTaxonomyValues,
+            capabilities: capabilities,
+          );
     await loadTypes();
     return created;
   }
@@ -295,21 +441,78 @@ class TenantAdminProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
-    final updated = await _repository.updateProfileType(
-      type: type,
-      newType: newType,
-      label: label,
-      allowedTaxonomies: allowedTaxonomies,
-      capabilities: capabilities,
+    final typeValue = tenantAdminAccountProfilesRepoString(
+      type,
+      defaultValue: '',
+      isRequired: true,
     );
+    final newTypeValue = newType == null
+        ? null
+        : tenantAdminAccountProfilesRepoString(
+            newType,
+            defaultValue: '',
+            isRequired: false,
+          );
+    final labelValue = label == null
+        ? null
+        : tenantAdminAccountProfilesRepoString(
+            label,
+            defaultValue: '',
+            isRequired: false,
+          );
+    final allowedTaxonomyValues = allowedTaxonomies
+        ?.map(
+          (entry) => tenantAdminAccountProfilesRepoString(
+            entry,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        )
+        .toList(growable: false);
+
+    final updated = includePoiVisual
+        ? await _repository.updateProfileTypeWithPoiVisual(
+            type: typeValue,
+            newType: newTypeValue,
+            label: labelValue,
+            allowedTaxonomies: allowedTaxonomyValues,
+            capabilities: capabilities,
+            poiVisual: poiVisual,
+          )
+        : await _repository.updateProfileType(
+            type: typeValue,
+            newType: newTypeValue,
+            label: labelValue,
+            allowedTaxonomies: allowedTaxonomyValues,
+            capabilities: capabilities,
+          );
     await loadTypes();
     return updated;
   }
 
   Future<void> deleteType(String type) async {
-    await _repository.deleteProfileType(type);
+    await _repository.deleteProfileType(
+      tenantAdminAccountProfilesRepoString(
+        type,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
     await loadTypes();
+  }
+
+  Future<int> previewDisableProjectionCount(String type) async {
+    final count = await _repository.fetchProfileTypeMapPoiProjectionImpact(
+      type: tenantAdminAccountProfilesRepoString(
+        type,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    return count.value;
   }
 
   Future<void> submitCreateType({
@@ -317,6 +520,8 @@ class TenantAdminProfileTypesController implements Disposable {
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
     try {
       await createType(
@@ -324,6 +529,8 @@ class TenantAdminProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: includePoiVisual,
       );
       if (_isDisposed) return;
       actionErrorMessageStreamValue.addValue(null);
@@ -340,6 +547,8 @@ class TenantAdminProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+    bool includePoiVisual = false,
   }) async {
     try {
       final updated = await updateType(
@@ -348,6 +557,8 @@ class TenantAdminProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: includePoiVisual,
       );
       if (_isDisposed) return;
       final currentDetail = detailTypeStreamValue.value;
@@ -428,7 +639,6 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void _resetTenantScopedState() {
     _repository.resetProfileTypesState();
-    typesStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
     availableTaxonomiesStreamValue.addValue(const []);
@@ -483,10 +693,19 @@ class TenantAdminProfileTypesController implements Disposable {
     _isDisposed = true;
     unbindTypesListScrollPagination();
     _tenantScopeSubscription?.cancel();
+    _hasMoreTypesSubscription?.cancel();
+    _isTypesPageLoadingSubscription?.cancel();
+    _typesErrorSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
     taxonomiesController.dispose();
+    poiVisualIconController.dispose();
+    poiVisualColorController.dispose();
+    poiVisualIconColorController.dispose();
     typesListScrollController.dispose();
+    hasMoreTypesStreamValue.dispose();
+    isTypesPageLoadingStreamValue.dispose();
+    errorStreamValue.dispose();
     availableTaxonomiesStreamValue.dispose();
     selectedAllowedTaxonomiesStreamValue.dispose();
     isTaxonomiesLoadingStreamValue.dispose();
@@ -497,6 +716,8 @@ class TenantAdminProfileTypesController implements Disposable {
     detailSavingStreamValue.dispose();
     capabilitiesStreamValue.dispose();
     isSlugAutoEnabledStreamValue.dispose();
+    poiVisualModeStreamValue.dispose();
+    poiVisualImageSourceStreamValue.dispose();
   }
 
   @override

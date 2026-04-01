@@ -1,80 +1,68 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_query.dart';
+import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
-typedef TenantAdminMapFilterCatalogItemPrimString = String;
-typedef TenantAdminMapFilterCatalogItemPrimInt = int;
-typedef TenantAdminMapFilterCatalogItemPrimBool = bool;
-typedef TenantAdminMapFilterCatalogItemPrimDouble = double;
-typedef TenantAdminMapFilterCatalogItemPrimDateTime = DateTime;
-typedef TenantAdminMapFilterCatalogItemPrimDynamic = dynamic;
-
 class TenantAdminMapFilterCatalogItem {
   TenantAdminMapFilterCatalogItem({
-    required TenantAdminMapFilterCatalogItemPrimString key,
-    required TenantAdminMapFilterCatalogItemPrimString label,
-    TenantAdminMapFilterCatalogItemPrimString? imageUri,
+    required this.keyValue,
+    required this.labelValue,
+    this.imageUriValue,
+    TenantAdminFlagValue? overrideMarkerValue,
+    this.markerOverride,
     TenantAdminMapFilterQuery? query,
-  })  : keyValue = _buildKeyValue(key),
-        labelValue = _buildLabelValue(label),
-        imageUriValue = _buildImageUriValue(imageUri),
+  })  : overrideMarkerValue =
+            overrideMarkerValue ?? TenantAdminFlagValue(false),
         query = query ?? TenantAdminMapFilterQuery();
 
   final TenantAdminLowercaseTokenValue keyValue;
   final TenantAdminRequiredTextValue labelValue;
   final TenantAdminOptionalUrlValue? imageUriValue;
+  final TenantAdminFlagValue overrideMarkerValue;
+  final TenantAdminMapFilterMarkerOverride? markerOverride;
   final TenantAdminMapFilterQuery query;
 
-  TenantAdminMapFilterCatalogItemPrimString get key => keyValue.value;
-  TenantAdminMapFilterCatalogItemPrimString get label => labelValue.value;
-  TenantAdminMapFilterCatalogItemPrimString? get imageUri =>
-      imageUriValue?.nullableValue;
+  String get key => keyValue.value;
+  String get label => labelValue.value;
+  String? get imageUri => imageUriValue?.nullableValue;
+  bool get overrideMarker => overrideMarkerValue.value;
 
   TenantAdminMapFilterCatalogItem copyWith({
-    TenantAdminMapFilterCatalogItemPrimString? key,
-    TenantAdminMapFilterCatalogItemPrimString? label,
-    TenantAdminMapFilterCatalogItemPrimString? imageUri,
-    TenantAdminMapFilterCatalogItemPrimBool clearImageUri = false,
+    TenantAdminLowercaseTokenValue? keyValue,
+    TenantAdminRequiredTextValue? labelValue,
+    TenantAdminOptionalUrlValue? imageUriValue,
+    TenantAdminFlagValue? clearImageUriValue,
+    TenantAdminFlagValue? overrideMarkerValue,
+    TenantAdminMapFilterMarkerOverride? markerOverride,
+    TenantAdminFlagValue? clearMarkerOverrideValue,
     TenantAdminMapFilterQuery? query,
   }) {
+    final clearImageUri = clearImageUriValue?.value ?? false;
+    final clearMarkerOverride = clearMarkerOverrideValue?.value ?? false;
     return TenantAdminMapFilterCatalogItem(
-      key: key ?? this.key,
-      label: label ?? this.label,
-      imageUri: clearImageUri ? null : (imageUri ?? this.imageUri),
+      keyValue: keyValue ?? this.keyValue,
+      labelValue: labelValue ?? this.labelValue,
+      imageUriValue:
+          clearImageUri ? null : (imageUriValue ?? this.imageUriValue),
+      overrideMarkerValue: overrideMarkerValue ?? this.overrideMarkerValue,
+      markerOverride:
+          clearMarkerOverride ? null : (markerOverride ?? this.markerOverride),
       query: query ?? this.query,
     );
   }
 
-  Map<TenantAdminMapFilterCatalogItemPrimString,
-      TenantAdminMapFilterCatalogItemPrimDynamic> toJson() {
-    return {
+  TenantAdminDynamicMapValue toJson() {
+    return TenantAdminDynamicMapValue({
       'key': key,
       'label': label,
       if (imageUri != null) 'image_uri': imageUri,
-      if (!query.isEmpty) 'query': query.toJson(),
-    };
-  }
-
-  static TenantAdminLowercaseTokenValue _buildKeyValue(
-      TenantAdminMapFilterCatalogItemPrimString raw) {
-    final value = TenantAdminLowercaseTokenValue()..parse(raw);
-    return value;
-  }
-
-  static TenantAdminRequiredTextValue _buildLabelValue(
-      TenantAdminMapFilterCatalogItemPrimString raw) {
-    final value = TenantAdminRequiredTextValue()..parse(raw);
-    return value;
-  }
-
-  static TenantAdminOptionalUrlValue? _buildImageUriValue(
-      TenantAdminMapFilterCatalogItemPrimString? raw) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = TenantAdminOptionalUrlValue()..parse(normalized);
-    return value;
+      'override_marker': overrideMarker,
+      if (overrideMarker && markerOverride?.isValid == true)
+        'marker_override': markerOverride!.toJson().value,
+      if (!query.isEmpty) 'query': query.toJson().value,
+    });
   }
 }

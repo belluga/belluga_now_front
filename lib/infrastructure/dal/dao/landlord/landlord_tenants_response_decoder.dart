@@ -47,7 +47,7 @@ class LandlordTenantsResponseDecoder {
         : tenantName;
 
     final tenantId = (slug == null || slug.isEmpty) ? mainDomain : slug;
-    return LandlordTenantOption(
+    return landlordTenantOptionFromRaw(
       id: tenantId,
       name: normalizedName,
       mainDomain: mainDomain,

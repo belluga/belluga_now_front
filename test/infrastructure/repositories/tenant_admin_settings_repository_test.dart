@@ -2,17 +2,27 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 void main() {
   setUp(() async {
@@ -40,6 +50,39 @@ void main() {
     expect(adapter.requests.single.path, contains('tenant-a.test/admin/api'));
   });
 
+  test('fetchResendEmailSettings parses resend_email namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchResendEmailSettings();
+
+    expect(settings.token, 're_live_token');
+    expect(settings.from, 'Belluga <noreply@belluga.space>');
+    expect(
+      _recipientStrings(settings.to),
+      equals(['admin@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.cc),
+      equals(['ops@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.bcc),
+      equals(['audit@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.replyTo),
+      equals(['reply@bellugasolutions.com.br']),
+    );
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
   test('updatePushSettings sends payload and parses response', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -51,9 +94,9 @@ void main() {
 
     final updated = await repository.updatePushSettings(
       settings: TenantAdminPushSettings(
-        maxTtlDays: 14,
-        maxPerMinute: 20,
-        maxPerHour: 120,
+        maxTtlDaysValue: _positiveIntValue(14),
+        maxPerMinuteValue: _positiveIntValue(20),
+        maxPerHourValue: _positiveIntValue(120),
       ),
     );
 
@@ -62,6 +105,55 @@ void main() {
     expect(updated.maxTtlDays, 14);
     expect(updated.maxPerMinute, 20);
     expect(updated.maxPerHour, 120);
+  });
+
+  test('updateResendEmailSettings patches resend_email namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateResendEmailSettings(
+      settings: TenantAdminResendEmailSettings(
+        token: _optionalTextValue('re_live_token'),
+        from: _optionalTextValue('Belluga <noreply@belluga.space>'),
+        toRecipients: _recipients(['admin@bellugasolutions.com.br']),
+        ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
+        bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
+        replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/resend_email');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['token'], 're_live_token');
+    expect(payload['from'], 'Belluga <noreply@belluga.space>');
+    expect(
+      payload['to'],
+      equals(['admin@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['cc'],
+      equals(['ops@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['bcc'],
+      equals(['audit@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['reply_to'],
+      equals(['reply@bellugasolutions.com.br']),
+    );
+    expect(updated.from, 'Belluga <noreply@belluga.space>');
+    expect(
+      _recipientStrings(updated.to),
+      equals(['admin@bellugasolutions.com.br']),
+    );
   });
 
   test('fetchMapUiSettings parses default origin from settings values',
@@ -91,9 +183,14 @@ void main() {
       settings.filters.first.query.source,
       TenantAdminMapFilterSource.event,
     );
-    expect(settings.filters.first.query.types, equals(['show']));
     expect(
-      settings.filters.first.query.taxonomy,
+      settings.filters.first.query.types.map((entry) => entry.value).toList(),
+      equals(['show']),
+    );
+    expect(
+      settings.filters.first.query.taxonomy
+          .map((entry) => entry.value)
+          .toList(),
       equals(['music_genre:rock']),
     );
     final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
@@ -194,23 +291,24 @@ void main() {
         ],
       }),
       defaultOrigin: TenantAdminMapDefaultOrigin(
-        lat: -20.611111,
-        lng: -40.422222,
-        label: 'Praia do Morro',
+        lat: _latitudeValue(-20.611111),
+        lng: _longitudeValue(-40.422222),
+        label: _optionalTextValue('Praia do Morro'),
       ),
-      filters: [
+      filters: _mapFilterCatalogItems([
         TenantAdminMapFilterCatalogItem(
-          key: 'events',
-          label: 'Eventos',
-          imageUri:
-              'https://tenant-a.test/map-filters/events/image?v=1710000000',
+          keyValue: TenantAdminLowercaseTokenValue()..parse('events'),
+          labelValue: TenantAdminRequiredTextValue()..parse('Eventos'),
+          imageUriValue: TenantAdminOptionalUrlValue()
+            ..parse(
+                'https://tenant-a.test/map-filters/events/image?v=1710000000'),
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
-            types: ['show'],
-            taxonomy: ['music_genre:rock'],
+            typeValues: [_tokenValue('show')],
+            taxonomyValues: [_tokenValue('music_genre:rock')],
           ),
         ),
-      ],
+      ]),
     );
 
     final updated = await repository.updateMapUiSettings(settings: mapUi);
@@ -246,9 +344,12 @@ void main() {
     );
     expect(
         updated.filters.first.query.source, TenantAdminMapFilterSource.event);
-    expect(updated.filters.first.query.types, equals(['show']));
     expect(
-      updated.filters.first.query.taxonomy,
+      updated.filters.first.query.types.map((entry) => entry.value).toList(),
+      equals(['show']),
+    );
+    expect(
+      updated.filters.first.query.taxonomy.map((entry) => entry.value).toList(),
       equals(['music_genre:rock']),
     );
   });
@@ -467,8 +568,8 @@ void main() {
     );
 
     final imageUri = await repository.uploadMapFilterImage(
-      key: 'events',
-      upload: TenantAdminMediaUpload(
+      key: _tokenValue('events'),
+      upload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([1, 2, 3, 4]),
         fileName: 'events.png',
         mimeType: 'image/png',
@@ -522,9 +623,9 @@ void main() {
     final updated = await repository.updateMapUiSettings(
       settings: fetched.applyDefaultOrigin(
         TenantAdminMapDefaultOrigin(
-          lat: -20.611111,
-          lng: -40.422222,
-          label: 'Praia do Morro',
+          lat: _latitudeValue(-20.611111),
+          lng: _longitudeValue(-40.422222),
+          label: _optionalTextValue('Praia do Morro'),
         ),
       ),
     );
@@ -559,10 +660,10 @@ void main() {
 
     final snapshot = await repository.upsertTelemetryIntegration(
       integration: TenantAdminTelemetryIntegration(
-        type: 'mixpanel',
-        trackAll: false,
-        events: ['app_opened'],
-        token: 'token-a',
+        type: _tokenValue('mixpanel'),
+        trackAll: _booleanValue(false),
+        eventValues: [_tokenValue('app_opened')],
+        token: _optionalTextValue('token-a'),
       ),
     );
 
@@ -600,11 +701,11 @@ void main() {
 
     final updated = await repository.updateBranding(
       input: TenantAdminBrandingUpdateInput(
-        tenantName: 'Guarappari',
+        tenantName: _requiredTextValue('Guarappari'),
         brightnessDefault: TenantAdminBrandingBrightness.dark,
-        primarySeedColor: '#112233',
-        secondarySeedColor: '#445566',
-        lightLogoUpload: TenantAdminMediaUpload(
+        primarySeedColor: _hexColorValue('#112233'),
+        secondarySeedColor: _hexColorValue('#445566'),
+        lightLogoUpload: tenantAdminMediaUploadFromRaw(
           bytes: Uint8List.fromList([1, 2, 3]),
           fileName: 'light_logo.png',
           mimeType: 'image/png',
@@ -664,16 +765,16 @@ void main() {
     await expectLater(
       repository.updateBranding(
         input: TenantAdminBrandingUpdateInput(
-          tenantName: 'Guarappari',
+          tenantName: _requiredTextValue('Guarappari'),
           brightnessDefault: TenantAdminBrandingBrightness.dark,
-          primarySeedColor: '#112233',
-          secondarySeedColor: '#445566',
-          lightLogoUpload: TenantAdminMediaUpload(
+          primarySeedColor: _hexColorValue('#112233'),
+          secondarySeedColor: _hexColorValue('#445566'),
+          lightLogoUpload: tenantAdminMediaUploadFromRaw(
             bytes: Uint8List.fromList([1, 2, 3]),
             fileName: 'light_logo.png',
             mimeType: 'image/png',
           ),
-          pwaIconUpload: TenantAdminMediaUpload(
+          pwaIconUpload: tenantAdminMediaUploadFromRaw(
             bytes: Uint8List.fromList([4, 5, 6]),
             fileName: 'pwa_icon.png',
             mimeType: 'image/png',
@@ -916,6 +1017,80 @@ void main() {
   });
 }
 
+TenantAdminPositiveIntValue _positiveIntValue(int raw) {
+  final value = TenantAdminPositiveIntValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminResendEmailRecipients _recipients(Iterable<String> values) {
+  return TenantAdminResendEmailRecipients(
+    values.map(_emailAddressValue),
+  );
+}
+
+List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
+  return values.values.map((entry) => entry.value).toList(growable: false);
+}
+
+EmailAddressValue _emailAddressValue(String raw) {
+  final value = EmailAddressValue();
+  value.parse(raw);
+  return value;
+}
+
+LatitudeValue _latitudeValue(double raw) {
+  final value = LatitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+LongitudeValue _longitudeValue(double raw) {
+  final value = LongitudeValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminOptionalTextValue _optionalTextValue(String raw) {
+  final value = TenantAdminOptionalTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminBooleanValue _booleanValue(bool raw) {
+  final value = TenantAdminBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+TenantAdminLowercaseTokenValue _tokenValue(String raw) {
+  final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminRequiredTextValue _requiredTextValue(String raw) {
+  final value = TenantAdminRequiredTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
+  Iterable<TenantAdminMapFilterCatalogItem> items,
+) {
+  final collection = TenantAdminMapFilterCatalogItems();
+  for (final item in items) {
+    collection.add(item);
+  }
+  return collection;
+}
+
+TenantAdminHexColorValue _hexColorValue(String raw) {
+  final value = TenantAdminHexColorValue();
+  value.parse(raw);
+  return value;
+}
+
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
   @override
   bool get hasValidSession => true;
@@ -927,7 +1102,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
   Future<void> init() async {}
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
+  Future<void> loginWithEmailPassword(
+      LandlordAuthRepositoryContractPrimString email,
+      LandlordAuthRepositoryContractPrimString password) async {}
 
   @override
   Future<void> logout() async {}
@@ -958,8 +1135,11 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 
@@ -992,8 +1172,11 @@ class _FixedTenantScopeForOriginRead implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 
@@ -1018,8 +1201,11 @@ class _NoTenantScope implements TenantAdminTenantScopeContract {
   }
 
   @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
+            ? tenantDomain
+            : (tenantDomain as dynamic).value as String)
+        .trim());
   }
 }
 
@@ -1111,6 +1297,14 @@ class _RoutingAdapter implements HttpClientAdapter {
                     'team_id': 'TEAMID1234',
                     'paths': ['/invite*', '/convites*'],
                   },
+                },
+                'resend_email': {
+                  'token': 're_live_token',
+                  'from': 'Belluga <noreply@belluga.space>',
+                  'to': ['admin@bellugasolutions.com.br'],
+                  'cc': ['ops@bellugasolutions.com.br'],
+                  'bcc': ['audit@bellugasolutions.com.br'],
+                  'reply_to': ['reply@bellugasolutions.com.br'],
                 },
                 'map_ui': {
                   'radius': {
@@ -1214,6 +1408,15 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'app_links': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/resend_email') && method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'resend_email': _expandDotPayload(request),
         },
       });
     }

@@ -24,12 +24,15 @@ class TenantAdminOrganizationsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   StreamValue<List<TenantAdminOrganization>?> get organizationsStreamValue =>
       _organizationsRepository.organizationsStreamValue;
-  StreamValue<bool> get hasMoreOrganizationsStreamValue =>
-      _organizationsRepository.hasMoreOrganizationsStreamValue;
-  StreamValue<bool> get isOrganizationsPageLoadingStreamValue =>
-      _organizationsRepository.isOrganizationsPageLoadingStreamValue;
-  StreamValue<String?> get errorStreamValue =>
-      _organizationsRepository.organizationsErrorStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get hasMoreOrganizationsStreamValue =>
+          _organizationsRepository.hasMoreOrganizationsStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get isOrganizationsPageLoadingStreamValue =>
+          _organizationsRepository.isOrganizationsPageLoadingStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>
+      get errorStreamValue =>
+          _organizationsRepository.organizationsErrorStreamValue;
   final StreamValue<TenantAdminOrganization?> organizationDetailStreamValue =
       StreamValue<TenantAdminOrganization?>();
   final StreamValue<bool> organizationDetailLoadingStreamValue =
@@ -124,8 +127,12 @@ class TenantAdminOrganizationsController implements Disposable {
     String? description,
   }) async {
     final org = await _organizationsRepository.createOrganization(
-      name: name,
-      description: description,
+      name: TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(name),
+      description: description == null
+          ? null
+          : TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+              description,
+            ),
     );
     await loadOrganizations();
     resetCreateForm();
@@ -136,8 +143,11 @@ class TenantAdminOrganizationsController implements Disposable {
     organizationDetailLoadingStreamValue.addValue(true);
     organizationDetailErrorStreamValue.addValue(null);
     try {
-      final organization =
-          await _organizationsRepository.fetchOrganization(organizationId);
+      final organization = await _organizationsRepository.fetchOrganization(
+        TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+          organizationId,
+        ),
+      );
       if (_isDisposed) return;
       organizationDetailStreamValue.addValue(organization);
     } catch (error) {
@@ -165,10 +175,23 @@ class TenantAdminOrganizationsController implements Disposable {
     organizationUpdatingStreamValue.addValue(true);
     try {
       final updated = await _organizationsRepository.updateOrganization(
-        organizationId: organizationId,
-        name: name,
-        slug: slug,
-        description: description,
+        organizationId:
+            TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+          organizationId,
+        ),
+        name: name == null
+            ? null
+            : TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+                name),
+        slug: slug == null
+            ? null
+            : TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+                slug),
+        description: description == null
+            ? null
+            : TenantAdminOrganizationsRepositoryContractPrimString.fromRaw(
+                description,
+              ),
       );
       if (_isDisposed) {
         return null;

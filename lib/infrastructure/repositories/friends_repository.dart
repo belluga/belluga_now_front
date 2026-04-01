@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/friends_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/user/friend.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -17,9 +18,13 @@ class FriendsRepository extends FriendsRepositoryContract {
   );
 
   @override
-  Future<void> fetchAndCacheFriends({bool forceRefresh = false}) async {
+  Future<void> fetchAndCacheFriends({
+    FriendsRepositoryContractBoolValue? forceRefresh,
+  }) async {
+    final shouldForceRefresh = forceRefresh?.value ?? false;
+
     // Skip if already cached and not forcing refresh
-    if (!forceRefresh && friendsStreamValue.value.isNotEmpty) {
+    if (!shouldForceRefresh && friendsStreamValue.value.isNotEmpty) {
       return;
     }
 

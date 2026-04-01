@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 
 enum CityEventTemporalState { upcoming, now, past }
@@ -7,8 +8,11 @@ CityEventTemporalState resolveEventTemporalState(
   DateTime? reference,
 }) {
   final now = reference ?? DateTime.now();
-  final start = event.dateTimeStart.value;
-  final end = event.dateTimeEnd?.value;
+  final startRaw = event.dateTimeStart.value;
+  final endRaw = event.dateTimeEnd?.value;
+  final start =
+      startRaw == null ? null : TimezoneConverter.utcToLocal(startRaw);
+  final end = endRaw == null ? null : TimezoneConverter.utcToLocal(endRaw);
 
   if (start == null) {
     return CityEventTemporalState.upcoming;

@@ -100,7 +100,7 @@ class _TenantAdminAccountCreateScreenState
     if (lat == null || lng == null) {
       return null;
     }
-    return TenantAdminLocation(latitude: lat, longitude: lng);
+    return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {

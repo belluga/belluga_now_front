@@ -1,7 +1,10 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 
@@ -116,6 +119,7 @@ class TenantAdminEventsResponseDecoder {
         .map(_asString)
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
+        .map(TenantAdminArtistIdValue.new)
         .toList(growable: false);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
@@ -125,7 +129,7 @@ class TenantAdminEventsResponseDecoder {
         .map((term) {
           final type = _asString(term['type']) ?? '';
           final value = _asString(term['value']) ?? '';
-          return TenantAdminTaxonomyTerm(type: type, value: value);
+          return tenantAdminTaxonomyTermFromRaw(type: type, value: value);
         })
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
         .toList(
@@ -147,7 +151,6 @@ class TenantAdminEventsResponseDecoder {
               _asString(party['party_ref_id']) ?? '',
             ),
             canEditValue: tenantAdminFlag(canEdit),
-            metadataValue: tenantAdminDynamicMap(_asMap(party['metadata'])),
           );
         })
         .where((party) =>
@@ -164,15 +167,21 @@ class TenantAdminEventsResponseDecoder {
     final location = mode.isEmpty
         ? null
         : TenantAdminEventLocation(
-            mode: mode,
-            latitude: latitude,
-            longitude: longitude,
+            modeValue: tenantAdminRequiredText(mode),
+            latitudeValue: tenantAdminOptionalDouble(latitude),
+            longitudeValue: tenantAdminOptionalDouble(longitude),
             online: onlineRow.isEmpty
                 ? null
                 : TenantAdminEventOnlineLocation(
-                    url: _asString(onlineRow['url']) ?? '',
-                    platform: _asString(onlineRow['platform']),
-                    label: _asString(onlineRow['label']),
+                    urlValue: tenantAdminRequiredText(
+                      _asString(onlineRow['url']) ?? '',
+                    ),
+                    platformValue: tenantAdminOptionalText(
+                      _asString(onlineRow['platform']),
+                    ),
+                    labelValue: tenantAdminOptionalText(
+                      _asString(onlineRow['label']),
+                    ),
                   ),
           );
 
@@ -185,8 +194,6 @@ class TenantAdminEventsResponseDecoder {
             idValue: tenantAdminRequiredText(
               _asString(placeRefRow['id']) ?? '',
             ),
-            metadataValue:
-                tenantAdminDynamicMap(_asMap(placeRefRow['metadata'])),
           );
 
     final dateTimeStart = _parseDate(row['date_time_start']);
@@ -198,21 +205,24 @@ class TenantAdminEventsResponseDecoder {
         ),
       );
       return TenantAdminEvent(
-        eventId: _asString(row['event_id']) ?? _asString(row['id']) ?? '',
-        slug: _asString(row['slug']) ?? '',
-        title: _asString(row['title']) ?? '',
-        content: _asString(row['content']) ?? '',
+        eventIdValue: tenantAdminRequiredText(
+            _asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+        slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+        titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
+        contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
         type: TenantAdminEventType(
-          id: _asString(typeRow['id']),
-          name: _asString(typeRow['name']) ?? '',
-          slug: _asString(typeRow['slug']) ?? '',
-          description: _asString(typeRow['description']),
-          icon: _asString(typeRow['icon']),
-          color: _asString(typeRow['color']),
+          idValue: tenantAdminOptionalText(_asString(typeRow['id'])),
+          nameValue: tenantAdminRequiredText(_asString(typeRow['name']) ?? ''),
+          slugValue: tenantAdminRequiredText(_asString(typeRow['slug']) ?? ''),
+          descriptionValue: tenantAdminOptionalText(
+            _asString(typeRow['description']),
+          ),
+          iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
+          colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
         ),
         location: location,
         placeRef: placeRef,
-        thumbUrl: thumbUrl,
+        thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(
@@ -221,31 +231,42 @@ class TenantAdminEventsResponseDecoder {
             _parseDate(publicationRow['publish_at']),
           ),
         ),
-        artistIds: artistIds,
+        artistIdValues: artistIds,
         eventParties: eventParties,
-        taxonomyTerms: taxonomyTerms,
-        createdAt: _parseDate(row['created_at']),
-        updatedAt: _parseDate(row['updated_at']),
-        deletedAt: _parseDate(row['deleted_at']),
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          for (final taxonomyTerm in taxonomyTerms) {
+            terms.add(taxonomyTerm);
+          }
+          return terms;
+        })(),
+        createdAtValue:
+            tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
+        updatedAtValue:
+            tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
+        deletedAtValue:
+            tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
       );
     }
 
     return TenantAdminEvent(
-      eventId: _asString(row['event_id']) ?? _asString(row['id']) ?? '',
-      slug: _asString(row['slug']) ?? '',
-      title: _asString(row['title']) ?? '',
-      content: _asString(row['content']) ?? '',
+      eventIdValue: tenantAdminRequiredText(
+          _asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+      slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+      titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
+      contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
       type: TenantAdminEventType(
-        id: _asString(typeRow['id']),
-        name: _asString(typeRow['name']) ?? '',
-        slug: _asString(typeRow['slug']) ?? '',
-        description: _asString(typeRow['description']),
-        icon: _asString(typeRow['icon']),
-        color: _asString(typeRow['color']),
+        idValue: tenantAdminOptionalText(_asString(typeRow['id'])),
+        nameValue: tenantAdminRequiredText(_asString(typeRow['name']) ?? ''),
+        slugValue: tenantAdminRequiredText(_asString(typeRow['slug']) ?? ''),
+        descriptionValue:
+            tenantAdminOptionalText(_asString(typeRow['description'])),
+        iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
+        colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
       ),
       location: location,
       placeRef: placeRef,
-      thumbUrl: thumbUrl,
+      thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         statusValue: tenantAdminRequiredText(
@@ -254,23 +275,32 @@ class TenantAdminEventsResponseDecoder {
           _parseDate(publicationRow['publish_at']),
         ),
       ),
-      artistIds: artistIds,
+      artistIdValues: artistIds,
       eventParties: eventParties,
-      taxonomyTerms: taxonomyTerms,
-      createdAt: _parseDate(row['created_at']),
-      updatedAt: _parseDate(row['updated_at']),
-      deletedAt: _parseDate(row['deleted_at']),
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        for (final taxonomyTerm in taxonomyTerms) {
+          terms.add(taxonomyTerm);
+        }
+        return terms;
+      })(),
+      createdAtValue:
+          tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
+      updatedAtValue:
+          tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
+      deletedAtValue:
+          tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
     );
   }
 
   TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
     return TenantAdminEventType(
-      id: _asString(row['id']),
-      name: _asString(row['name']) ?? '',
-      slug: _asString(row['slug']) ?? '',
-      description: _asString(row['description']),
-      icon: _asString(row['icon']),
-      color: _asString(row['color']),
+      idValue: tenantAdminOptionalText(_asString(row['id'])),
+      nameValue: tenantAdminRequiredText(_asString(row['name']) ?? ''),
+      slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
+      descriptionValue: tenantAdminOptionalText(_asString(row['description'])),
+      iconValue: tenantAdminOptionalText(_asString(row['icon'])),
+      colorValue: tenantAdminOptionalText(_asString(row['color'])),
     );
   }
 
@@ -282,14 +312,14 @@ class TenantAdminEventsResponseDecoder {
     final taxonomyTerms = _asList(row['taxonomy_terms'])
         .map(_asMap)
         .where((term) => term.isNotEmpty)
-        .map((term) => TenantAdminTaxonomyTerm(
+        .map((term) => tenantAdminTaxonomyTermFromRaw(
               type: _asString(term['type']) ?? '',
               value: _asString(term['value']) ?? '',
             ))
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
         .toList(growable: false);
 
-    return TenantAdminAccountProfile(
+    return tenantAdminAccountProfileFromRaw(
       id: _asString(row['id']) ?? '',
       accountId: _asString(row['account_id']) ?? '',
       profileType: _asString(row['profile_type']) ?? '',
@@ -300,9 +330,15 @@ class TenantAdminEventsResponseDecoder {
       bio: _asString(row['bio']),
       content: _asString(row['content']),
       location: lat != null && lng != null
-          ? TenantAdminLocation(latitude: lat, longitude: lng)
+          ? tenantAdminLocationFromRaw(latitude: lat, longitude: lng)
           : null,
-      taxonomyTerms: taxonomyTerms,
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        for (final taxonomyTerm in taxonomyTerms) {
+          terms.add(taxonomyTerm);
+        }
+        return terms;
+      })(),
     );
   }
 
@@ -356,10 +392,14 @@ class TenantAdminEventsResponseDecoder {
 
   DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
-      return value;
+      return TimezoneConverter.utcToLocal(value);
     }
     if (value is String && value.trim().isNotEmpty) {
-      return DateTime.tryParse(value)?.toLocal();
+      final parsed = DateTime.tryParse(value);
+      if (parsed == null) {
+        return null;
+      }
+      return TimezoneConverter.utcToLocal(parsed);
     }
     return null;
   }

@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
@@ -16,6 +18,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -33,6 +36,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -85,11 +89,17 @@ class _ImmersiveEventDetailScreenState
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
-                return StreamValueBuilder<Map<String, List<SentInviteStatus>>>(
+                return StreamValueBuilder<
+                    Map<InvitesRepositoryContractPrimString,
+                        List<SentInviteStatus>>>(
                   streamValue: _controller.sentInvitesByEventStreamValue,
                   builder: (context, sentInvitesByEvent) {
-                    final sentForEvent =
-                        sentInvitesByEvent[resolvedEvent.id.value] ?? const [];
+                    final sentForEvent = sentInvitesByEvent[invitesRepoString(
+                          resolvedEvent.id.value,
+                          defaultValue: '',
+                          isRequired: true,
+                        )] ??
+                        const [];
 
                     final Widget? topBanner = receivedInvites.isNotEmpty
                         ? Padding(
@@ -200,18 +210,42 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleConfirmAttendance() async {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final result = await _controller.confirmAttendance();
     if (!mounted ||
         result != AttendanceConfirmationResult.requiresAuthentication) {
       return;
     }
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   void _openInviteFlow(EventModel event) {
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    if (kIsWeb) {
+      AuthWallTelemetry.trackTriggered(
+        actionType: AuthWallActionType.sendInvite,
+        redirectPath: redirectPath,
+      );
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: redirectPath,
+        ),
+      );
+      return;
+    }
+
     final invite = _buildInviteFromEvent(event);
     context.router.push(InviteShareRoute(invite: invite));
   }
@@ -238,7 +272,9 @@ class _ImmersiveEventDetailScreenState
         }
 
         router.push(
-          InviteShareRoute(invite: invite.prioritizeInviter(inviteId)),
+          InviteShareRoute(
+            invite: invite.prioritizeInviter(InviteIdValue()..parse(inviteId)),
+          ),
         );
       });
     });
@@ -276,7 +312,10 @@ class _ImmersiveEventDetailScreenState
 
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
-    final eventDate = event.dateTimeStart.value ?? DateTime.now();
+    final rawEventDate = event.dateTimeStart.value;
+    final eventDate = rawEventDate == null
+        ? DateTime.now()
+        : TimezoneConverter.utcToLocal(rawEventDate);
     final fallbackImageValue = ThumbUriValue(
       defaultValue: _controller.defaultEventImageUri,
       isRequired: true,
@@ -293,9 +332,11 @@ class _ImmersiveEventDetailScreenState
     final tags = event.taxonomyTags;
     final eventId = event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
-    final parsedTags = (tags.isEmpty ? const ['belluga'] : tags)
-        .map((tag) => InviteTagValue()..parse(tag))
-        .toList(growable: false);
+    final parsedTags = tags.isEmpty
+        ? <InviteTagValue>[InviteTagValue()..parse('belluga')]
+        : tags
+            .map((tag) => InviteTagValue()..parse(tag.value))
+            .toList(growable: false);
 
     return InviteModel(
       idValue: InviteIdValue()..parse(inviteId),
@@ -309,8 +350,8 @@ class _ImmersiveEventDetailScreenState
       )..parse(imageUrl),
       locationValue: InviteLocationValue()..parse(locationLabel),
       hostNameValue: InviteHostNameValue()..parse(hostName),
-      messageValue:
-          InviteMessageValue()..parse(description.isEmpty ? 'Partiu $eventName?' : description),
+      messageValue: InviteMessageValue()
+        ..parse(description.isEmpty ? 'Partiu $eventName?' : description),
       tagValues: parsedTags,
       occurrenceIdValue: InviteOccurrenceIdValue(),
       attendancePolicyValue: InviteAttendancePolicyValue(

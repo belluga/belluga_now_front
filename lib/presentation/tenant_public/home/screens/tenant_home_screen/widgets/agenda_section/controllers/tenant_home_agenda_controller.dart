@@ -1,16 +1,30 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_search_query_value.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -22,6 +36,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    AuthRepositoryContract? authRepository,
+    LocationOriginServiceContract? locationOriginService,
+    bool isWebRuntime = kIsWeb,
     Duration locationWarmUpTimeout = const Duration(seconds: 4),
     Duration locationPermissionTimeout = const Duration(seconds: 8),
     Duration radiusRefreshDebounce = const Duration(milliseconds: 250),
@@ -37,6 +54,13 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
                 : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>(),
+        _isWebRuntime = isWebRuntime,
         _locationWarmUpTimeout = locationWarmUpTimeout,
         _locationPermissionTimeout = locationPermissionTimeout,
         _radiusRefreshDebounce = radiusRefreshDebounce;
@@ -46,6 +70,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final AuthRepositoryContract? _authRepository;
+  final LocationOriginServiceContract _locationOriginService;
+  final bool _isWebRuntime;
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
   final Duration _radiusRefreshDebounce;
@@ -81,10 +108,12 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final radiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  final StreamValue<double> _maxRadiusMetersStreamValue =
+      StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
-      _appDataRepository.maxRadiusMetersStreamValue;
+      _maxRadiusMetersStreamValue;
 
   @override
   double get minRadiusMeters => _resolveMinRadiusMeters();
@@ -104,6 +133,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
 
   Uri get defaultEventImageUri {
@@ -114,9 +144,44 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     return _localEventPlaceholderUri;
   }
 
+  StreamValue<UserContract?>? get authUserStreamValue =>
+      _authRepository?.userStreamValue;
+
+  bool get isAuthorized => _authRepository?.isAuthorized ?? true;
+
+  bool get shouldShowInviteFilterAction => !_isWebRuntime || isAuthorized;
+
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;
     stream.addValue(value);
+  }
+
+  ScheduleRepoBool _toScheduleBool(bool value) {
+    return ScheduleRepoBool.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoString _toScheduleText(String value) {
+    return ScheduleRepoString.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble _toScheduleDouble(double value) {
+    return ScheduleRepoDouble.fromRaw(
+      value,
+      defaultValue: value,
+    );
+  }
+
+  ScheduleRepoDouble? _toNullableScheduleDouble(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return _toScheduleDouble(value);
   }
 
   Future<void> init({bool startWithHistory = false}) async {
@@ -144,6 +209,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     if (restored) {
       _setValue(isInitialLoadingStreamValue, false);
       _setValue(initialLoadingLabelStreamValue, '');
+      unawaited(_reconcileEffectiveOriginAfterCacheRestore());
       return;
     }
 
@@ -182,9 +248,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       _setValue(initialLoadingLabelStreamValue, _loadingLocationLabel);
     }
     try {
-      await _resolveEffectiveOrigin(
-        warmUpIfPossible: shouldShowInitialLoading,
-      );
+      final stopwatch = Stopwatch()..start();
+      if (shouldShowInitialLoading) {
+        initialLoadingLabelStreamValue.addValue('Localizando...');
+        await _resolveEffectiveOrigin(
+          warmUpIfPossible: shouldShowInitialLoading,
+        );
+      }
+      final locationElapsed = stopwatch.elapsedMilliseconds;
+
       if (shouldShowInitialLoading) {
         _setValue(initialLoadingLabelStreamValue, _loadingNearbyEventsLabel);
       }
@@ -194,6 +266,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         page: 1,
         showPageLoadingForFirstPage: preserveCurrentResults,
       );
+      final totalElapsed = stopwatch.elapsedMilliseconds;
+      debugPrint('TenantHomeAgendaController._refresh: '
+          'Location resolution took ${locationElapsed}ms, '
+          'API fetch took ${totalElapsed - locationElapsed}ms. '
+          'Total: ${totalElapsed}ms.');
     } catch (error) {
       debugPrint('TenantHomeAgendaController._refresh failed: $error');
       if (shouldShowInitialLoading) {
@@ -274,23 +351,25 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       if (page <= 1) {
         await _scheduleRepository.loadEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       } else {
         await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: showHistoryStreamValue.value,
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _effectiveOriginLat,
-          originLng: _effectiveOriginLng,
-          maxDistanceMeters: radiusMetersStreamValue.value,
+          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+          searchQuery: _toScheduleText(searchController.text),
+          confirmedOnly: _toScheduleBool(
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          ),
+          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
+          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
+          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
         );
       }
 
@@ -298,17 +377,21 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       if (result == null) {
         final firstPageError =
             _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
-          throw Exception(firstPageError);
+        if (page == 1 &&
+            firstPageError != null &&
+            firstPageError.value.isNotEmpty) {
+          throw Exception(firstPageError.value);
         }
         return;
       }
-      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
       if (loadedPage <= 0) {
         final firstPageError =
             _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
-          throw Exception(firstPageError);
+        if (page == 1 &&
+            firstPageError != null &&
+            firstPageError.value.isNotEmpty) {
+          throw Exception(firstPageError.value);
         }
         return;
       }
@@ -376,7 +459,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
+    final clamped = _clampRadiusMeters(meters);
+    _pendingPersistedRadiusEchoMeters = clamped;
+    _setValue(radiusMetersStreamValue, clamped);
+    unawaited(_persistSelectedRadiusPreference(clamped));
     _scheduleRadiusRefresh();
   }
 
@@ -403,7 +489,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         .map((invite) => invite.eventId)
         .toSet();
 
-    bool isConfirmed(String id) => confirmedIds.contains(id);
+    bool isConfirmed(String id) =>
+        confirmedIds.any((confirmed) => confirmed.value == id);
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
@@ -425,11 +512,16 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   List<EventModel> _currentCanonicalEvents() {
+    final cacheOrigin = _currentCacheReferenceOrigin();
     final cache = _scheduleRepository.readHomeAgendaCache(
-      showPastOnly: showHistoryStreamValue.value,
-      searchQuery: searchController.text.trim(),
-      confirmedOnly:
-          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
+      searchQuery: _toScheduleText(searchController.text.trim()),
+      confirmedOnly: _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      ),
+      originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
+      originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
     );
     if (cache == null) {
       return const <EventModel>[];
@@ -438,14 +530,18 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   bool _restoreFromRepositoryCache() {
+    final cacheOrigin = _currentCacheReferenceOrigin();
     final showPastOnly = showHistoryStreamValue.value;
     final searchQuery = searchController.text.trim();
     final confirmedOnly =
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly;
     final cache = _scheduleRepository.readHomeAgendaCache(
-      showPastOnly: showPastOnly,
-      searchQuery: searchQuery,
-      confirmedOnly: confirmedOnly,
+      showPastOnly: _toScheduleBool(showPastOnly),
+      searchQuery: _toScheduleText(searchQuery),
+      confirmedOnly: _toScheduleBool(confirmedOnly),
+      originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
+      originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
+      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
     );
     if (cache == null) {
       return false;
@@ -464,22 +560,47 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _scheduleRepository.writeHomeAgendaCache(
       HomeAgendaCacheSnapshot(
         events: List<EventModel>.unmodifiable(events),
-        hasMore: _hasMore,
-        page: _currentPage,
-        showPastOnly: showHistoryStreamValue.value,
-        searchQuery: searchController.text.trim(),
-        confirmedOnly:
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        capturedAt: DateTime.now(),
-        originLat: _effectiveOriginLat,
-        originLng: _effectiveOriginLng,
-        maxDistanceMeters: radiusMetersStreamValue.value,
+        hasMoreValue: HomeAgendaBooleanValue(defaultValue: _hasMore)
+          ..parse(_hasMore.toString()),
+        pageValue: HomeAgendaPageValue(defaultValue: _currentPage)
+          ..parse(_currentPage.toString()),
+        showPastOnlyValue:
+            HomeAgendaBooleanValue(defaultValue: showHistoryStreamValue.value)
+              ..parse(showHistoryStreamValue.value.toString()),
+        searchQueryValue: HomeAgendaSearchQueryValue(
+          defaultValue: searchController.text.trim(),
+        )..parse(searchController.text.trim()),
+        confirmedOnlyValue: HomeAgendaBooleanValue(
+          defaultValue:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+        )..parse(
+            (inviteFilterStreamValue.value == InviteFilter.confirmedOnly)
+                .toString(),
+          ),
+        capturedAtValue: HomeAgendaCapturedAtValue(defaultValue: DateTime.now())
+          ..parse(DateTime.now().toIso8601String()),
+        originLatValue: _effectiveOriginLat == null
+            ? null
+            : (LatitudeValue()..parse(_effectiveOriginLat.toString())),
+        originLngValue: _effectiveOriginLng == null
+            ? null
+            : (LongitudeValue()..parse(_effectiveOriginLng.toString())),
+        maxDistanceMetersValue: DistanceInMetersValue(
+          defaultValue: radiusMetersStreamValue.value,
+        )..parse(radiusMetersStreamValue.value.toString()),
       ),
     );
   }
 
-  bool isEventConfirmed(String eventId) =>
-      _userEventsRepository.isEventConfirmed(eventId);
+  bool isEventConfirmed(String eventId) => _userEventsRepository
+      .isEventConfirmed(
+        userEventsRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      )
+      .value;
 
   int pendingInviteCount(String eventId) =>
       _invitesRepository.pendingInvitesStreamValue.value
@@ -487,20 +608,26 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
           .length;
 
   String? distanceLabelFor(VenueEventResume event) {
-    final userCoordinate =
-        _userLocationRepository?.userLocationStreamValue.value ??
-            _userLocationRepository?.lastKnownLocationStreamValue.value;
+    final userCoordinate = _currentCacheReferenceOrigin();
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
+  }
+
+  CityCoordinate? _currentCacheReferenceOrigin() {
+    if (_effectiveOriginLat != null && _effectiveOriginLng != null) {
+      return CityCoordinate(
+        latitudeValue: _parseLatitude(_effectiveOriginLat!),
+        longitudeValue: _parseLongitude(_effectiveOriginLng!),
+      );
+    }
+    return _locationOriginService.resolveCached().effectiveCoordinate;
   }
 
   String _formatDistanceLabel(double meters) {
@@ -535,13 +662,39 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
+    _setValue(_maxRadiusMetersStreamValue, _configuredMaxRadiusMeters());
     _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((_) {
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
+      _setValue(_maxRadiusMetersStreamValue, _configuredMaxRadiusMeters());
+      final clamped = _clampRadiusMeters(value.value);
+      final pendingEcho = _pendingPersistedRadiusEchoMeters;
+      if (pendingEcho != null) {
+        if ((pendingEcho - clamped).abs() < 0.001) {
+          _pendingPersistedRadiusEchoMeters = null;
+        }
+        return;
+      }
       final current = radiusMetersStreamValue.value;
-      final clamped = _clampRadiusMeters(current);
+      if ((current - clamped).abs() < 0.001) {
+        return;
+      }
       _setValue(radiusMetersStreamValue, clamped);
       _scheduleRadiusRefresh();
     });
+  }
+
+  Future<void> _persistSelectedRadiusPreference(double meters) async {
+    final value = DistanceInMetersValue(
+      defaultValue: meters,
+    )..parse(meters.toString());
+    try {
+      await _appDataRepository.setMaxRadiusMeters(value);
+    } catch (_) {
+      if ((_pendingPersistedRadiusEchoMeters ?? -1) == meters) {
+        _pendingPersistedRadiusEchoMeters = null;
+      }
+      rethrow;
+    }
   }
 
   void _scheduleRadiusRefresh() {
@@ -555,6 +708,27 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   Future<void> _handleLocationUpdate() async {
+    final previousOriginLat = _effectiveOriginLat;
+    final previousOriginLng = _effectiveOriginLng;
+    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    if (!changed) {
+      return;
+    }
+    if (!_shouldRefreshForLocationJump(
+      previousOriginLat: previousOriginLat,
+      previousOriginLng: previousOriginLng,
+      nextOriginLat: _effectiveOriginLat,
+      nextOriginLng: _effectiveOriginLng,
+    )) {
+      return;
+    }
+    await _refresh(preserveCurrentResults: true);
+  }
+
+  Future<void> _reconcileEffectiveOriginAfterCacheRestore() async {
+    if (_isDisposed) {
+      return;
+    }
     final previousOriginLat = _effectiveOriginLat;
     final previousOriginLng = _effectiveOriginLng;
     final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
@@ -586,34 +760,47 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
 
     final jumpMeters = haversineDistanceMeters(
-      lat1: previousOriginLat,
-      lon1: previousOriginLng,
-      lat2: nextOriginLat,
-      lon2: nextOriginLng,
+      coordinateA: CityCoordinate(
+        latitudeValue: _parseLatitude(previousOriginLat),
+        longitudeValue: _parseLongitude(previousOriginLng),
+      ),
+      coordinateB: CityCoordinate(
+        latitudeValue: _parseLatitude(nextOriginLat),
+        longitudeValue: _parseLongitude(nextOriginLng),
+      ),
     );
-    return jumpMeters >= _locationRefreshMinJumpMeters;
+    return jumpMeters.value >= _locationRefreshMinJumpMeters;
   }
+
+  LatitudeValue _parseLatitude(double raw) =>
+      LatitudeValue()..parse(raw.toString());
+
+  LongitudeValue _parseLongitude(double raw) =>
+      LongitudeValue()..parse(raw.toString());
 
   Future<bool> _resolveEffectiveOrigin({
     required bool warmUpIfPossible,
   }) async {
     final currentLat = _effectiveOriginLat;
     final currentLng = _effectiveOriginLng;
-
-    final userCoordinate = await _resolveUserCoordinate(
-      warmUpIfPossible: warmUpIfPossible,
-    );
-    if (userCoordinate != null) {
-      _effectiveOriginLat = userCoordinate.latitude;
-      _effectiveOriginLng = userCoordinate.longitude;
-      return _effectiveOriginLat != currentLat ||
-          _effectiveOriginLng != currentLng;
+    final shouldRequestPermission =
+        warmUpIfPossible && !_locationPermissionRequested;
+    if (shouldRequestPermission) {
+      _locationPermissionRequested = true;
     }
-
-    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
-    if (tenantDefaultOrigin != null) {
-      _effectiveOriginLat = tenantDefaultOrigin.latitude;
-      _effectiveOriginLng = tenantDefaultOrigin.longitude;
+    final resolution = await _locationOriginService.resolveAndPersist(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: warmUpIfPossible,
+        requestPermissionIfNeeded: shouldRequestPermission,
+        warmUpTimeout: _locationWarmUpTimeout,
+        permissionTimeout: _locationPermissionTimeout,
+      ),
+    );
+    await _seedInitialRadiusPreferenceIfNeeded(resolution);
+    final effectiveOrigin = resolution.effectiveCoordinate;
+    if (effectiveOrigin != null) {
+      _effectiveOriginLat = effectiveOrigin.latitude;
+      _effectiveOriginLng = effectiveOrigin.longitude;
       return _effectiveOriginLat != currentLat ||
           _effectiveOriginLng != currentLng;
     }
@@ -623,84 +810,35 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     return currentLat != null || currentLng != null;
   }
 
-  Future<CityCoordinate?> _resolveUserCoordinate({
-    required bool warmUpIfPossible,
-  }) async {
-    final repository = _userLocationRepository;
-    if (repository == null) {
-      return null;
+  Future<void> _seedInitialRadiusPreferenceIfNeeded(
+    LocationOriginResolution resolution,
+  ) async {
+    if (_appDataRepository.hasPersistedMaxRadiusPreference ||
+        resolution.liveUserCoordinate == null ||
+        resolution.tenantDefaultCoordinate == null ||
+        resolution.distanceFromTenantDefaultOriginMeters == null) {
+      return;
     }
 
-    final preWarmUpCoordinate = _resolveFreshLocationCoordinate(repository);
-    if (preWarmUpCoordinate != null) {
-      return preWarmUpCoordinate;
+    final suggestedRadiusMeters = _clampRadiusMeters(
+      resolution.distanceFromTenantDefaultOriginMeters!,
+    );
+
+    if ((radiusMetersStreamValue.value - suggestedRadiusMeters).abs() >=
+        0.001) {
+      _setValue(radiusMetersStreamValue, suggestedRadiusMeters);
     }
 
-    if (warmUpIfPossible) {
-      try {
-        await repository.warmUpIfPermitted().timeout(
-              _locationWarmUpTimeout,
-              onTimeout: () => false,
-            );
-      } on Object {
-        // Best-effort warm up.
-      }
-    }
-
-    final warmUpCoordinate = _resolveFreshLocationCoordinate(repository);
-    if (warmUpCoordinate != null) {
-      return warmUpCoordinate;
-    }
-
-    if (warmUpIfPossible && !_locationPermissionRequested) {
-      _locationPermissionRequested = true;
-      try {
-        await repository.resolveUserLocation().timeout(
-              _locationPermissionTimeout,
-              onTimeout: () => null,
-            );
-      } on Object {
-        // Best-effort permission prompt.
-      }
-    }
-
-    return _resolveFreshLocationCoordinate(repository);
-  }
-
-  CityCoordinate? _resolveFreshLocationCoordinate(
-    UserLocationRepositoryContract repository,
-  ) {
-    final coordinate = repository.userLocationStreamValue.value ??
-        repository.lastKnownLocationStreamValue.value;
-    if (coordinate == null) {
-      return null;
-    }
-
-    final capturedAt = repository.lastKnownCapturedAtStreamValue.value;
-    if (capturedAt == null) {
-      return coordinate;
-    }
-
-    Duration freshnessWindow;
+    _pendingPersistedRadiusEchoMeters = suggestedRadiusMeters;
     try {
-      freshnessWindow =
-          _appDataRepository.appData.telemetryContextSettings.locationFreshness;
+      await _persistSelectedRadiusPreference(suggestedRadiusMeters);
     } on Object {
-      freshnessWindow = const Duration(minutes: 5);
-    }
-
-    if (DateTime.now().difference(capturedAt) > freshnessWindow) {
-      return null;
-    }
-
-    return coordinate;
-  }
-
-  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
-    try {
-      return _appDataRepository.appData.tenantDefaultOrigin;
-    } on Object {
-      return null;
+      if ((_pendingPersistedRadiusEchoMeters ?? -1) == suggestedRadiusMeters) {
+        _pendingPersistedRadiusEchoMeters = null;
+      }
+      debugPrint(
+        'TenantHomeAgendaController._seedInitialRadiusPreferenceIfNeeded failed',
+      );
     }
   }
 
@@ -710,11 +848,18 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   double _resolveDefaultRadiusMeters() {
+    if (_appDataRepository.hasPersistedMaxRadiusPreference) {
+      final preferred = _appDataRepository.maxRadiusMeters;
+      if (preferred.value > 0) {
+        return _clampRadiusMeters(preferred.value);
+      }
+    }
+
     final configured = _configuredDefaultRadiusMeters();
     if (configured > 0) {
       return _clampRadiusMeters(configured);
     }
-    return _clampRadiusMeters(_appDataRepository.maxRadiusMeters);
+    return _clampRadiusMeters(_configuredMaxRadiusMeters());
   }
 
   double _configuredMinRadiusMeters() {
@@ -729,13 +874,21 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       return _appDataRepository.appData.mapRadiusDefaultMeters;
     } on Object {
-      return _appDataRepository.maxRadiusMeters;
+      return _configuredMaxRadiusMeters();
+    }
+  }
+
+  double _configuredMaxRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusMaxMeters;
+    } on Object {
+      return _appDataRepository.maxRadiusMeters.value;
     }
   }
 
   double _clampRadiusMeters(double meters) {
     final min = _resolveMinRadiusMeters();
-    final max = _appDataRepository.maxRadiusMeters;
+    final max = _configuredMaxRadiusMeters();
     final effectiveMax = max < min ? min : max;
     return meters.clamp(min, effectiveMax).toDouble();
   }
@@ -756,6 +909,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
+    _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();
   }
