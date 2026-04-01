@@ -29,6 +29,7 @@ import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,7 +40,7 @@ void main() {
     'stream disconnect triggers deterministic page-1 rehydrate and reconnect',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository();
-      final controller = EventSearchScreenController(
+      final controller = _buildEventSearchController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -78,7 +79,7 @@ void main() {
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository()
         ..failOnPageFetch = true;
-      final controller = EventSearchScreenController(
+      final controller = _buildEventSearchController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -100,7 +101,7 @@ void main() {
     'does not fetch or subscribe stream when effective origin is missing',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository();
-      final controller = EventSearchScreenController(
+      final controller = _buildEventSearchController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -135,7 +136,7 @@ void main() {
         ..lastKnownCapturedAtStreamValue.addValue(
           DateTime.now().subtract(const Duration(hours: 2)),
         );
-      final controller = EventSearchScreenController(
+      final controller = _buildEventSearchController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -152,6 +153,26 @@ void main() {
       controller.onDispose();
       scheduleRepository.dispose();
     },
+  );
+}
+
+EventSearchScreenController _buildEventSearchController({
+  required ScheduleRepositoryContract scheduleRepository,
+  required UserEventsRepositoryContract userEventsRepository,
+  required InvitesRepositoryContract invitesRepository,
+  required UserLocationRepositoryContract? userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+}) {
+  return EventSearchScreenController(
+    scheduleRepository: scheduleRepository,
+    userEventsRepository: userEventsRepository,
+    invitesRepository: invitesRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
   );
 }
 

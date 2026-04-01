@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
@@ -27,6 +28,7 @@ import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
@@ -62,7 +64,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -85,7 +87,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: false),
     );
@@ -115,7 +117,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -160,7 +162,7 @@ void main() {
       ],
     );
 
-    final firstController = DiscoveryScreenController(
+    final firstController = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
@@ -168,7 +170,7 @@ void main() {
     await firstController.init();
     firstController.onDispose();
 
-    final secondController = DiscoveryScreenController(
+    final secondController = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
@@ -197,14 +199,14 @@ void main() {
       },
     );
 
-    final firstController = DiscoveryScreenController(
+    final firstController = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     await firstController.init();
     firstController.onDispose();
 
-    final secondController = DiscoveryScreenController(
+    final secondController = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -261,7 +263,7 @@ void main() {
       ],
     );
 
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -293,7 +295,7 @@ void main() {
         ),
       ],
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -318,7 +320,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -350,7 +352,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -379,7 +381,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -437,7 +439,7 @@ void main() {
         ),
       ],
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
@@ -500,7 +502,7 @@ void main() {
       requireOriginForLiveNow: true,
       liveNowFetchDelay: const Duration(milliseconds: 80),
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
@@ -563,7 +565,7 @@ void main() {
       },
     );
 
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -632,7 +634,7 @@ void main() {
         ),
       ],
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
@@ -716,7 +718,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -772,7 +774,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -847,7 +849,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -909,7 +911,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -947,7 +949,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -971,7 +973,7 @@ void main() {
       'discovery stops loading and keeps favoritable chips when first page fails',
       () async {
     final repository = _FailingAccountProfilesRepository();
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -994,7 +996,7 @@ void main() {
         hasMore: false,
       ),
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -1021,7 +1023,7 @@ void main() {
         ),
       },
     );
-    final controller = DiscoveryScreenController(
+    final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
@@ -1035,6 +1037,38 @@ void main() {
     expect(controller.favoriteIdsStreamValue.value.contains(artist.id), isTrue);
     controller.onDispose();
   });
+}
+
+DiscoveryScreenController _buildDiscoveryController({
+  required AccountProfilesRepositoryContract accountProfilesRepository,
+  required AuthRepositoryContract authRepository,
+  ScheduleRepositoryContract? scheduleRepository,
+}) {
+  if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+      ),
+    );
+  }
+  if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+    GetIt.I.registerSingleton<LocationOriginServiceContract>(
+      LocationOriginService(
+        appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+        userLocationRepository:
+            GetIt.I.isRegistered<UserLocationRepositoryContract>()
+                ? GetIt.I.get<UserLocationRepositoryContract>()
+                : null,
+      ),
+    );
+  }
+  return DiscoveryScreenController(
+    accountProfilesRepository: accountProfilesRepository,
+    authRepository: authRepository,
+    scheduleRepository: scheduleRepository,
+    locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
+  );
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {

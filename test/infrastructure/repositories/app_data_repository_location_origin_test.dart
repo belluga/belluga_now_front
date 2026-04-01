@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/app_data/app_type.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -28,13 +28,13 @@ void main() {
     );
 
     await firstRepository.init();
-    await firstRepository.setHomeLocationOriginSettings(
-      HomeLocationOriginSettings.fixed(
+    await firstRepository.setLocationOriginSettings(
+      LocationOriginSettings.tenantDefaultLocation(
         fixedLocationReference: _buildCoordinate(
           latitude: -20.671339,
           longitude: -40.495395,
         ),
-        reason: HomeLocationOriginReason.outsideRange,
+        reason: LocationOriginReason.outsideRange,
       ),
     );
 
@@ -45,24 +45,24 @@ void main() {
     await reloadedRepository.init();
 
     expect(
-      reloadedRepository.hasPersistedHomeLocationOriginPreference,
+      reloadedRepository.hasPersistedLocationOriginPreference,
       isTrue,
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.usesFixedReference,
+      reloadedRepository.locationOriginSettings?.usesFixedReference,
       isTrue,
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.reason,
-      HomeLocationOriginReason.outsideRange,
+      reloadedRepository.locationOriginSettings?.reason,
+      LocationOriginReason.outsideRange,
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.fixedLocationReference
+      reloadedRepository.locationOriginSettings?.fixedLocationReference
           ?.latitude,
       closeTo(-20.671339, 0.000001),
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.fixedLocationReference
+      reloadedRepository.locationOriginSettings?.fixedLocationReference
           ?.longitude,
       closeTo(-40.495395, 0.000001),
     );
@@ -78,8 +78,8 @@ void main() {
     );
 
     await firstRepository.init();
-    await firstRepository.setHomeLocationOriginSettings(
-      HomeLocationOriginSettings.live(),
+    await firstRepository.setLocationOriginSettings(
+      LocationOriginSettings.userLiveLocation(),
     );
 
     final reloadedRepository = AppDataRepository(
@@ -89,15 +89,15 @@ void main() {
     await reloadedRepository.init();
 
     expect(
-      reloadedRepository.hasPersistedHomeLocationOriginPreference,
+      reloadedRepository.hasPersistedLocationOriginPreference,
       isTrue,
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.usesLiveLocation,
+      reloadedRepository.locationOriginSettings?.usesUserLiveLocation,
       isTrue,
     );
     expect(
-      reloadedRepository.homeLocationOriginSettings?.fixedLocationReference,
+      reloadedRepository.locationOriginSettings?.fixedLocationReference,
       isNull,
     );
   });

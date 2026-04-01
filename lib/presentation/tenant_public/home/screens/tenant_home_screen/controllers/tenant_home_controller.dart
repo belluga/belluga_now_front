@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
@@ -19,20 +20,19 @@ class TenantHomeController implements Disposable {
     UserEventsRepositoryContract? userEventsRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    LocationOriginServiceContract? locationOriginService,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>();
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
 
   final UserEventsRepositoryContract _userEventsRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final LocationOriginServiceContract _locationOriginService;
   final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
@@ -63,7 +63,7 @@ class TenantHomeController implements Disposable {
       debugPrint('TenantHomeController.init confirmed ids failed: $error');
     }
     await loadMyEvents();
-    _listenHomeLocationOrigin();
+    _listenLocationOrigin();
     _listenConfirmedEvents();
   }
 
@@ -92,11 +92,11 @@ class TenantHomeController implements Disposable {
     myEventsFilteredStreamValue.addValue(_filterConfirmedUpcoming(events));
   }
 
-  void _listenHomeLocationOrigin() {
-    _publishHomeLocationStatus(_appDataRepository.homeLocationOriginSettings);
+  void _listenLocationOrigin() {
+    _publishHomeLocationStatus(_appDataRepository.locationOriginSettings);
     _homeLocationStatusSubscription?.cancel();
     _homeLocationStatusSubscription = _appDataRepository
-        .homeLocationOriginSettingsStreamValue.stream
+        .locationOriginSettingsStreamValue.stream
         .listen(_publishHomeLocationStatus);
   }
 
@@ -134,7 +134,7 @@ class TenantHomeController implements Disposable {
     return _formatDistanceLabel(distanceMeters.value);
   }
 
-  void _publishHomeLocationStatus(HomeLocationOriginSettings? settings) {
+  void _publishHomeLocationStatus(LocationOriginSettings? settings) {
     if (_isDisposed) return;
     if (settings == null) {
       homeLocationStatusStreamValue.addValue(null);
@@ -142,19 +142,19 @@ class TenantHomeController implements Disposable {
     }
     homeLocationStatusStreamValue.addValue(
       HomeLocationStatusState(
-        statusText: settings.usesLiveLocation
+        statusText: settings.usesUserLiveLocation
             ? 'Usando sua localização.'
             : 'Usando localização fixa.',
-        dialogTitle: settings.usesLiveLocation
+        dialogTitle: settings.usesUserLiveLocation
             ? 'Usando sua localização'
             : 'Usando localização fixa',
-        dialogMessage: _dialogMessageForHomeLocationOrigin(settings),
+        dialogMessage: _dialogMessageForLocationOrigin(settings),
       ),
     );
   }
 
-  String _dialogMessageForHomeLocationOrigin(
-    HomeLocationOriginSettings settings,
+  String _dialogMessageForLocationOrigin(
+    LocationOriginSettings settings,
   ) {
     return LocationOriginMessageResolver.fromSettings(
       settings: settings,
@@ -170,14 +170,7 @@ class TenantHomeController implements Disposable {
   }
 
   CityCoordinate? _resolveHomeDistanceReferenceCoordinate() {
-    final homeLocationOriginSettings =
-        _appDataRepository.homeLocationOriginSettings;
-    if (homeLocationOriginSettings?.usesFixedReference == true &&
-        homeLocationOriginSettings?.fixedLocationReference != null) {
-      return homeLocationOriginSettings!.fixedLocationReference;
-    }
-    return _userLocationRepository?.userLocationStreamValue.value ??
-        _userLocationRepository?.lastKnownLocationStreamValue.value;
+    return _locationOriginService.resolveCached().effectiveCoordinate;
   }
 
   @override

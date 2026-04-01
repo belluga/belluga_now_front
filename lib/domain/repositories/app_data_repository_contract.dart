@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:flutter/material.dart';
@@ -15,9 +15,8 @@ typedef AppDataRepositoryContractPrimDateTime = DateTime;
 typedef AppDataRepositoryContractPrimDynamic = dynamic;
 
 abstract class AppDataRepositoryContract {
-  final StreamValue<HomeLocationOriginSettings?>
-      _homeLocationOriginSettingsStreamValue =
-      StreamValue<HomeLocationOriginSettings?>(defaultValue: null);
+  final StreamValue<LocationOriginSettings?> _locationOriginSettingsStreamValue =
+      StreamValue<LocationOriginSettings?>(defaultValue: null);
 
   AppData get appData;
 
@@ -32,14 +31,14 @@ abstract class AppDataRepositoryContract {
   bool get hasPersistedMaxRadiusPreference => false;
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters);
 
-  StreamValue<HomeLocationOriginSettings?> get homeLocationOriginSettingsStreamValue =>
-      _homeLocationOriginSettingsStreamValue;
-  HomeLocationOriginSettings? get homeLocationOriginSettings =>
-      _homeLocationOriginSettingsStreamValue.value;
-  bool get hasPersistedHomeLocationOriginPreference => false;
-  Future<void> setHomeLocationOriginSettings(
-    HomeLocationOriginSettings settings,
+  StreamValue<LocationOriginSettings?> get locationOriginSettingsStreamValue =>
+      _locationOriginSettingsStreamValue;
+  LocationOriginSettings? get locationOriginSettings =>
+      _locationOriginSettingsStreamValue.value;
+  bool get hasPersistedLocationOriginPreference => false;
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
   ) async {
-    _homeLocationOriginSettingsStreamValue.addValue(settings);
+    _locationOriginSettingsStreamValue.addValue(settings);
   }
 }

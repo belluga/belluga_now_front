@@ -18,10 +18,15 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
@@ -134,6 +139,32 @@ class _FakePoiRepository implements PoiRepositoryContract {
     selectedPoiStreamValue.dispose();
     stackItemsStreamValue.dispose();
   }
+}
+
+class _NoopLocationOriginService implements LocationOriginServiceContract {
+  const _NoopLocationOriginService();
+
+  static const LocationOriginResolution _resolution = LocationOriginResolution(
+    settings: null,
+    effectiveCoordinate: null,
+    liveUserCoordinate: null,
+    tenantDefaultCoordinate: null,
+    userFixedCoordinate: null,
+    distanceFromTenantDefaultOriginValue: null,
+  );
+
+  @override
+  LocationOriginResolution resolveCached() => _resolution;
+
+  @override
+  Future<LocationOriginResolution> resolve(
+    LocationOriginResolutionRequest request,
+  ) async => _resolution;
+
+  @override
+  Future<LocationOriginResolution> resolveAndPersist(
+    LocationOriginResolutionRequest request,
+  ) async => _resolution;
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -404,6 +435,65 @@ PoiHexColorValue _buildHexColorValue(String raw) {
   return value;
 }
 
+MapScreenController _buildMapScreenController({
+  required PoiRepositoryContract poiRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required TelemetryRepositoryContract telemetryRepository,
+}) {
+  return MapScreenController(
+    poiRepository: poiRepository,
+    userLocationRepository: userLocationRepository,
+    telemetryRepository: telemetryRepository,
+    appData: _buildTestAppData(),
+    locationOriginService: _NoopLocationOriginService(),
+  );
+}
+
+AppData _buildTestAppData() {
+  return buildAppDataFromInitialization(
+    remoteData: const {
+      'name': 'Tenant Test',
+      'type': 'tenant',
+      'main_domain': 'https://tenant.test',
+      'profile_types': [],
+      'domains': ['https://tenant.test'],
+      'app_domains': [],
+      'theme_data_settings': {
+        'brightness_default': 'light',
+        'primary_seed_color': '#FFFFFF',
+        'secondary_seed_color': '#000000',
+      },
+      'main_color': '#FFFFFF',
+      'tenant_id': 'tenant-1',
+      'telemetry': {'trackers': []},
+      'telemetry_context': {'location_freshness_minutes': 5},
+      'settings': {
+        'map_ui': {
+          'distance_bounds': {
+            'min_meters': 1000,
+            'default_meters': 15000,
+            'max_meters': 50000,
+          },
+          'default_origin': {
+            'lat': -20.0,
+            'lng': -40.0,
+            'label': 'Centro',
+          },
+        },
+      },
+      'firebase': null,
+      'push': null,
+    },
+    localInfo: const {
+      'platformType': 'mobile',
+      'hostname': 'tenant.test',
+      'href': 'https://tenant.test',
+      'port': null,
+      'device': 'test-device',
+    },
+  );
+}
+
 void main() {
   testWidgets(
     'category FAB prefers override icon+color over legacy image',
@@ -411,7 +501,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -483,7 +573,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -560,7 +650,7 @@ void main() {
     final poiRepository = _FakePoiRepository();
     final userLocationRepository = _FakeUserLocationRepository();
     final telemetryRepository = _FakeTelemetryRepository();
-    final mapController = MapScreenController(
+    final mapController = _buildMapScreenController(
       poiRepository: poiRepository,
       userLocationRepository: userLocationRepository,
       telemetryRepository: telemetryRepository,
@@ -616,7 +706,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -700,7 +790,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
@@ -769,7 +859,7 @@ void main() {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetryRepository = _FakeTelemetryRepository();
-      final mapController = MapScreenController(
+      final mapController = _buildMapScreenController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,

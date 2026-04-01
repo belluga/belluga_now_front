@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -7,10 +11,10 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/map/geo_distance.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +29,7 @@ class EventSearchScreenController
     InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    LocationOriginServiceContract? locationOriginService,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
@@ -36,7 +41,9 @@ class EventSearchScreenController
                 ? GetIt.I.get<UserLocationRepositoryContract>()
                 : null),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>() {
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>() {
     _initializeStateHolders();
   }
 
@@ -45,6 +52,7 @@ class EventSearchScreenController
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final LocationOriginServiceContract _locationOriginService;
 
   static const double _fallbackRadiusMeters = 50000.0;
   static final Uri _localEventPlaceholderUri =
@@ -438,9 +446,7 @@ class EventSearchScreenController
   bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
 
   String? distanceLabelFor(VenueEventResume event) {
-    final userCoordinate =
-        _userLocationRepository?.userLocationStreamValue.value ??
-            _userLocationRepository?.lastKnownLocationStreamValue.value;
+    final userCoordinate = _currentEffectiveOriginCoordinate();
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;
@@ -515,20 +521,15 @@ class EventSearchScreenController
     final currentLat = _effectiveOriginLat;
     final currentLng = _effectiveOriginLng;
 
-    final userCoordinate = await _resolveUserCoordinate(
-      warmUpIfPossible: warmUpIfPossible,
+    final resolution = await _locationOriginService.resolveAndPersist(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: warmUpIfPossible,
+      ),
     );
-    if (userCoordinate != null) {
-      _effectiveOriginLat = userCoordinate.latitude;
-      _effectiveOriginLng = userCoordinate.longitude;
-      return _effectiveOriginLat != currentLat ||
-          _effectiveOriginLng != currentLng;
-    }
-
-    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
-    if (tenantDefaultOrigin != null) {
-      _effectiveOriginLat = tenantDefaultOrigin.latitude;
-      _effectiveOriginLng = tenantDefaultOrigin.longitude;
+    final effectiveOrigin = resolution.effectiveCoordinate;
+    if (effectiveOrigin != null) {
+      _effectiveOriginLat = effectiveOrigin.latitude;
+      _effectiveOriginLng = effectiveOrigin.longitude;
       return _effectiveOriginLat != currentLat ||
           _effectiveOriginLng != currentLng;
     }
@@ -536,62 +537,6 @@ class EventSearchScreenController
     _effectiveOriginLat = null;
     _effectiveOriginLng = null;
     return currentLat != null || currentLng != null;
-  }
-
-  Future<CityCoordinate?> _resolveUserCoordinate({
-    required bool warmUpIfPossible,
-  }) async {
-    final repository = _userLocationRepository;
-    if (repository == null) {
-      return null;
-    }
-
-    if (warmUpIfPossible) {
-      try {
-        await repository.warmUpIfPermitted();
-      } on Object {
-        // Best-effort warm up.
-      }
-    }
-
-    return _resolveFreshLocationCoordinate(repository);
-  }
-
-  CityCoordinate? _resolveFreshLocationCoordinate(
-    UserLocationRepositoryContract repository,
-  ) {
-    final coordinate = repository.userLocationStreamValue.value ??
-        repository.lastKnownLocationStreamValue.value;
-    if (coordinate == null) {
-      return null;
-    }
-
-    final capturedAt = repository.lastKnownCapturedAtStreamValue.value;
-    if (capturedAt == null) {
-      return coordinate;
-    }
-
-    Duration freshnessWindow;
-    try {
-      freshnessWindow =
-          _appDataRepository.appData.telemetryContextSettings.locationFreshness;
-    } on Object {
-      freshnessWindow = const Duration(minutes: 5);
-    }
-
-    if (DateTime.now().difference(capturedAt) > freshnessWindow) {
-      return null;
-    }
-
-    return coordinate;
-  }
-
-  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
-    try {
-      return _appDataRepository.appData.tenantDefaultOrigin;
-    } on Object {
-      return null;
-    }
   }
 
   @override
@@ -619,6 +564,17 @@ class EventSearchScreenController
       return _clampRadiusMeters(configured);
     }
     return _clampRadiusMeters(_currentMaxRadiusMeters());
+  }
+
+  CityCoordinate? _currentEffectiveOriginCoordinate() {
+    if (_effectiveOriginLat != null && _effectiveOriginLng != null) {
+      return CityCoordinate(
+        latitudeValue: LatitudeValue()..parse(_effectiveOriginLat!.toString()),
+        longitudeValue:
+            LongitudeValue()..parse(_effectiveOriginLng!.toString()),
+      );
+    }
+    return _locationOriginService.resolveCached().effectiveCoordinate;
   }
 
   double _configuredMinRadiusMeters() {

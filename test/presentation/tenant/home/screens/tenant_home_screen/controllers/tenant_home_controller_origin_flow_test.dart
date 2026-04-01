@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -14,6 +15,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart'
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
@@ -52,7 +54,7 @@ void main() {
       userEventsRepoString(_CapturingScheduleBackend.eventId),
     );
 
-    final controller = TenantHomeController(
+    final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
@@ -93,7 +95,7 @@ void main() {
       userEventsRepoString(_CapturingScheduleBackend.eventId),
     );
 
-    final controller = TenantHomeController(
+    final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
@@ -139,6 +141,22 @@ void main() {
     expect(backend.requests.map((sample) => sample.page), [1, 2]);
     expect(backend.requests.every((sample) => sample.confirmedOnly), isTrue);
   });
+}
+
+TenantHomeController _buildTenantHomeController({
+  required UserEventsRepositoryContract userEventsRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+}) {
+  return TenantHomeController(
+    userEventsRepository: userEventsRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+  );
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {

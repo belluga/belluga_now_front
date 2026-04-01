@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
@@ -17,6 +18,7 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart
 import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
@@ -37,16 +39,20 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/src/misc/move_and_rotate_result.dart';
@@ -808,7 +814,7 @@ void main() {
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
       );
-      controller = MapScreenController(
+      controller = _buildMapController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
@@ -1272,7 +1278,7 @@ void main() {
       expect(userLocationRepository.resolveUserLocationCallCount, 0);
       expect(
         controller.softLocationNoticeStreamValue.value,
-        'Sua localização não está disponível agora. Por isso, estamos usando uma localização de referência para mostrar resultados relevantes.',
+        'Sua localização não está disponível, por isso, usamos uma localização de referência para mostrar eventos e locais relevantes.',
       );
       expect(
         mapRepository.lastQuery?.origin?.latitude,
@@ -1286,7 +1292,7 @@ void main() {
 
     test('centerOnUser shows status when map is not ready yet', () async {
       final notReadyMapController = _NotReadyMapController();
-      final localController = MapScreenController(
+      final localController = _buildMapController(
         poiRepository: PoiRepository(dataSource: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
@@ -1451,7 +1457,7 @@ void main() {
       );
       mapRepository.nextPois = <CityPoiModel>[targetPoi];
 
-      final localController = MapScreenController(
+      final localController = _buildMapController(
         poiRepository: PoiRepository(dataSource: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
@@ -1493,6 +1499,28 @@ void main() {
   });
 }
 
+MapScreenController _buildMapController({
+  required PoiRepositoryContract poiRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required TelemetryRepositoryContract telemetryRepository,
+  MapController? mapController,
+  AppData? appData,
+}) {
+  final resolvedAppData = appData ?? _buildAppData();
+  final appDataRepository = _FakeMapAppDataRepository(resolvedAppData);
+  return MapScreenController(
+    poiRepository: poiRepository,
+    userLocationRepository: userLocationRepository,
+    telemetryRepository: telemetryRepository,
+    mapController: mapController,
+    appData: resolvedAppData,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+  );
+}
+
 AppData _buildAppData() {
   final remoteData = {
     'name': 'Tenant Test',
@@ -1520,6 +1548,20 @@ AppData _buildAppData() {
     'tenant_id': 'tenant-1',
     'telemetry': const {'trackers': []},
     'telemetry_context': const {'location_freshness_minutes': 5},
+    'settings': {
+      'map_ui': {
+        'distance_bounds': {
+          'min_meters': 1000,
+          'default_meters': 15000,
+          'max_meters': 50000,
+        },
+        'default_origin': {
+          'lat': -20.0,
+          'lng': -40.0,
+          'label': 'Centro',
+        },
+      },
+    },
     'firebase': null,
     'push': null,
   };
@@ -1534,4 +1576,45 @@ AppData _buildAppData() {
     remoteData: remoteData,
     localInfo: localInfo,
   );
+}
+
+class _FakeMapAppDataRepository extends AppDataRepositoryContract {
+  _FakeMapAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+  );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
 }

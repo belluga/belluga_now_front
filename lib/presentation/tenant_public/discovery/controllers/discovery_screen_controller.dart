@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
@@ -11,6 +10,8 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -25,17 +26,21 @@ class DiscoveryScreenController implements Disposable {
     AccountProfilesRepositoryContract? accountProfilesRepository,
     AuthRepositoryContract? authRepository,
     ScheduleRepositoryContract? scheduleRepository,
+    LocationOriginServiceContract? locationOriginService,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
-        _scheduleRepository = scheduleRepository;
+        _scheduleRepository = scheduleRepository,
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>();
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
   ScheduleRepositoryContract? _scheduleRepository;
+  final LocationOriginServiceContract _locationOriginService;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
@@ -147,20 +152,20 @@ class DiscoveryScreenController implements Disposable {
       return;
     }
     final repository = GetIt.I.get<UserLocationRepositoryContract>();
-    _lastOriginSignature = _originSignatureFrom(repository);
+    _lastOriginSignature = _originSignature();
 
     _userLocationSubscription ??=
         repository.userLocationStreamValue.stream.listen((_) {
-      _onLocationUpdated(repository);
+      _onLocationUpdated();
     });
     _lastKnownLocationSubscription ??=
         repository.lastKnownLocationStreamValue.stream.listen((_) {
-      _onLocationUpdated(repository);
+      _onLocationUpdated();
     });
   }
 
-  void _onLocationUpdated(UserLocationRepositoryContract repository) {
-    final signature = _originSignatureFrom(repository);
+  void _onLocationUpdated() {
+    final signature = _originSignature();
     if (signature == null || signature == _lastOriginSignature) {
       return;
     }
@@ -426,9 +431,8 @@ class DiscoveryScreenController implements Disposable {
     favoriteIdsStreamValue.addValue(ids);
   }
 
-  String? _originSignatureFrom(UserLocationRepositoryContract repository) {
-    final coordinate = repository.userLocationStreamValue.value ??
-        repository.lastKnownLocationStreamValue.value;
+  String? _originSignature() {
+    final coordinate = _locationOriginService.resolveCached().effectiveCoordinate;
     if (coordinate == null) {
       return null;
     }
@@ -446,7 +450,12 @@ class DiscoveryScreenController implements Disposable {
       return;
     }
 
-    final origin = _resolveDiscoveryOrigin();
+    final resolution = await _locationOriginService.resolve(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: true,
+      ),
+    );
+    final origin = resolution.effectiveCoordinate;
     final maxDistanceMeters = _resolveDiscoveryMaxDistanceMeters();
 
     _isFetchingLiveNow = true;
@@ -540,19 +549,6 @@ class DiscoveryScreenController implements Disposable {
 
   ProfileTypeRegistry? _resolveRegistry() {
     return appData?.profileTypeRegistry;
-  }
-
-  CityCoordinate? _resolveDiscoveryOrigin() {
-    UserLocationRepositoryContract? locationRepository;
-    if (GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
-      final current = locationRepository.userLocationStreamValue.value ??
-          locationRepository.lastKnownLocationStreamValue.value;
-      if (current != null) {
-        return current;
-      }
-    }
-    return appData?.tenantDefaultOrigin;
   }
 
   double? _resolveDiscoveryMaxDistanceMeters() {

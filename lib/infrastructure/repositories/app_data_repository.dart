@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -42,34 +42,35 @@ class AppDataRepository implements AppDataRepositoryContract {
     ),
   );
   @override
-  final StreamValue<HomeLocationOriginSettings?>
-      homeLocationOriginSettingsStreamValue =
-      StreamValue<HomeLocationOriginSettings?>(defaultValue: null);
+  final StreamValue<LocationOriginSettings?> locationOriginSettingsStreamValue =
+      StreamValue<LocationOriginSettings?>(defaultValue: null);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
-  static const String _homeUseLiveLocationStorageKey = 'home_use_live_location';
-  static const String _homeLocationOriginReasonStorageKey =
+  // Legacy key names are preserved for local compatibility.
+  static const String _locationOriginUsesLiveStorageKey =
+      'home_use_live_location';
+  static const String _locationOriginReasonStorageKey =
       'home_location_origin_reason';
-  static const String _homeFixedLocationReferenceLatStorageKey =
+  static const String _locationOriginFixedReferenceLatStorageKey =
       'home_fixed_location_reference_lat';
-  static const String _homeFixedLocationReferenceLngStorageKey =
+  static const String _locationOriginFixedReferenceLngStorageKey =
       'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   bool _hasPersistedMaxRadiusPreference = false;
-  bool _hasPersistedHomeLocationOriginPreference = false;
+  bool _hasPersistedLocationOriginPreference = false;
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
   @override
-  HomeLocationOriginSettings? get homeLocationOriginSettings =>
-      homeLocationOriginSettingsStreamValue.value;
+  LocationOriginSettings? get locationOriginSettings =>
+      locationOriginSettingsStreamValue.value;
   @override
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
   @override
-  bool get hasPersistedHomeLocationOriginPreference =>
-      _hasPersistedHomeLocationOriginPreference;
+  bool get hasPersistedLocationOriginPreference =>
+      _hasPersistedLocationOriginPreference;
 
   @override
   Future<void> init() async {
@@ -100,14 +101,13 @@ class AppDataRepository implements AppDataRepositoryContract {
     } else {
       _hasPersistedMaxRadiusPreference = false;
     }
-    final storedHomeLocationOriginSettings =
-        await _loadHomeLocationOriginSettings();
-    if (storedHomeLocationOriginSettings != null) {
-      homeLocationOriginSettingsStreamValue
-          .addValue(storedHomeLocationOriginSettings);
-      _hasPersistedHomeLocationOriginPreference = true;
+    final storedLocationOriginSettings = await _loadLocationOriginSettings();
+    if (storedLocationOriginSettings != null) {
+      locationOriginSettingsStreamValue
+          .addValue(storedLocationOriginSettings);
+      _hasPersistedLocationOriginPreference = true;
     } else {
-      _hasPersistedHomeLocationOriginPreference = false;
+      _hasPersistedLocationOriginPreference = false;
     }
     await _precacheLogos();
     await _persistRuntimeMetadata();
@@ -147,38 +147,38 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setHomeLocationOriginSettings(
-    HomeLocationOriginSettings settings,
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
   ) async {
-    final current = homeLocationOriginSettingsStreamValue.value;
+    final current = locationOriginSettingsStreamValue.value;
     if (current != null && current.sameAs(settings)) {
       return;
     }
 
-    homeLocationOriginSettingsStreamValue.addValue(settings);
-    _hasPersistedHomeLocationOriginPreference = true;
+    locationOriginSettingsStreamValue.addValue(settings);
+    _hasPersistedLocationOriginPreference = true;
     await _storage.write(
-      key: _homeUseLiveLocationStorageKey,
-      value: settings.usesLiveLocation.toString(),
+      key: _locationOriginUsesLiveStorageKey,
+      value: settings.usesUserLiveLocation.toString(),
     );
     await _storage.write(
-      key: _homeLocationOriginReasonStorageKey,
+      key: _locationOriginReasonStorageKey,
       value: settings.reason.name,
     );
 
     final fixedReference = settings.fixedLocationReference;
     if (fixedReference == null) {
-      await _storage.delete(key: _homeFixedLocationReferenceLatStorageKey);
-      await _storage.delete(key: _homeFixedLocationReferenceLngStorageKey);
+      await _storage.delete(key: _locationOriginFixedReferenceLatStorageKey);
+      await _storage.delete(key: _locationOriginFixedReferenceLngStorageKey);
       return;
     }
 
     await _storage.write(
-      key: _homeFixedLocationReferenceLatStorageKey,
+      key: _locationOriginFixedReferenceLatStorageKey,
       value: fixedReference.latitude.toString(),
     );
     await _storage.write(
-      key: _homeFixedLocationReferenceLngStorageKey,
+      key: _locationOriginFixedReferenceLngStorageKey,
       value: fixedReference.longitude.toString(),
     );
   }
@@ -191,22 +191,24 @@ class AppDataRepository implements AppDataRepositoryContract {
     return parsed;
   }
 
-  Future<HomeLocationOriginSettings?> _loadHomeLocationOriginSettings() async {
-    final rawUseLive = await _storage.read(key: _homeUseLiveLocationStorageKey);
+  Future<LocationOriginSettings?> _loadLocationOriginSettings() async {
+    final rawUseLive = await _storage.read(
+      key: _locationOriginUsesLiveStorageKey,
+    );
     if (rawUseLive == null || rawUseLive.trim().isEmpty) {
       return null;
     }
 
-    final usesLiveLocation = rawUseLive.trim().toLowerCase() == 'true';
-    if (usesLiveLocation) {
-      return HomeLocationOriginSettings.live();
+    final usesUserLiveLocation = rawUseLive.trim().toLowerCase() == 'true';
+    if (usesUserLiveLocation) {
+      return LocationOriginSettings.userLiveLocation();
     }
 
     final rawLat = await _storage.read(
-      key: _homeFixedLocationReferenceLatStorageKey,
+      key: _locationOriginFixedReferenceLatStorageKey,
     );
     final rawLng = await _storage.read(
-      key: _homeFixedLocationReferenceLngStorageKey,
+      key: _locationOriginFixedReferenceLngStorageKey,
     );
     if (rawLat == null || rawLng == null) {
       return null;
@@ -219,19 +221,28 @@ class AppDataRepository implements AppDataRepositoryContract {
     }
 
     final reasonRaw = await _storage.read(
-      key: _homeLocationOriginReasonStorageKey,
+      key: _locationOriginReasonStorageKey,
     );
     final reason = switch (reasonRaw?.trim()) {
-      'outsideRange' => HomeLocationOriginReason.outsideRange,
-      'unavailable' => HomeLocationOriginReason.unavailable,
-      _ => HomeLocationOriginReason.unavailable,
+      'outsideRange' => LocationOriginReason.outsideRange,
+      'unavailable' => LocationOriginReason.unavailable,
+      'userPreference' => LocationOriginReason.userPreference,
+      _ => LocationOriginReason.unavailable,
     };
 
-    return HomeLocationOriginSettings.fixed(
-      fixedLocationReference: CityCoordinate(
-        latitudeValue: LatitudeValue()..parse(lat.toString()),
-        longitudeValue: LongitudeValue()..parse(lng.toString()),
-      ),
+    final fixedLocationReference = CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(lat.toString()),
+      longitudeValue: LongitudeValue()..parse(lng.toString()),
+    );
+
+    if (reason == LocationOriginReason.userPreference) {
+      return LocationOriginSettings.userFixedLocation(
+        fixedLocationReference: fixedLocationReference,
+      );
+    }
+
+    return LocationOriginSettings.tenantDefaultLocation(
+      fixedLocationReference: fixedLocationReference,
       reason: reason,
     );
   }

@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
@@ -15,7 +18,9 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -54,7 +59,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     final profiles = await backend.fetchAccountProfiles();
 
@@ -87,7 +97,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     await backend.fetchAccountProfiles();
 
@@ -115,7 +130,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     final profiles = await backend.fetchAccountProfiles();
 
@@ -143,7 +163,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     await backend.fetchAccountProfilesPage(
       page: 1,
@@ -182,7 +207,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     final profiles = await backend.fetchAccountProfiles();
 
@@ -218,7 +248,12 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
 
     final profiles = await backend.fetchNearbyAccountProfiles(pageSize: 5);
 
@@ -265,17 +300,64 @@ void main() {
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        userLocationRepository: userLocationRepository,
+      ),
+    );
 
     final profiles = await backend.fetchNearbyAccountProfiles(pageSize: 5);
 
-    expect(userLocationRepository.ensureLoadedCalls, 1);
     expect(adapter.lastRequest?.uri.path, '/api/v1/account_profiles/near');
     expect(adapter.lastRequest?.queryParameters['origin_lat'], -20.661);
     expect(adapter.lastRequest?.queryParameters['origin_lng'], -40.492);
     expect(profiles, hasLength(1));
     expect(profiles.first.distanceMeters, closeTo(120.0, 0.001));
   });
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(AppData appData)
+      : _appData = appData,
+        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(
+            appData.mapRadiusMaxMeters,
+            defaultValue: appData.mapRadiusMaxMeters,
+          ),
+        );
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue;
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -421,7 +503,10 @@ class _FakeUserLocationRepository extends UserLocationRepositoryContract {
   ) async {}
 
   @override
-  Future<bool> warmUpIfPermitted() async => true;
+  Future<bool> warmUpIfPermitted() async {
+    lastKnownLocationStreamValue.addValue(loadedCoordinate);
+    return true;
+  }
 
   @override
   Future<bool> refreshIfPermitted({

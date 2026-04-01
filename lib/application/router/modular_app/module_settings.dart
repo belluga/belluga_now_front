@@ -40,6 +40,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -75,6 +76,7 @@ import 'package:belluga_now/infrastructure/dal/dao/production_backend/production
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
@@ -360,6 +362,11 @@ class ModuleSettings extends ModuleSettingsContract {
       ),
     );
     await appDataRepository.init();
+    _registerLazySingletonIfAbsent<LocationOriginServiceContract>(
+      () => LocationOriginService(
+        appDataRepository: appDataRepository,
+      ),
+    );
     GetIt.I
         .get<BackendContract>()
         .setContext(BackendContext.fromAppData(appDataRepository.appData));

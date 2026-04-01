@@ -4,28 +4,45 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
-  LaravelAccountProfilesBackend({Dio? dio}) : _dio = dio ?? Dio();
+  LaravelAccountProfilesBackend({
+    Dio? dio,
+    LocationOriginServiceContract? locationOriginService,
+  })  : _dio = dio ?? Dio(),
+        _locationOriginService = locationOriginService;
 
   static const int _defaultPageSize = 30;
   static const int _maxPages = 10;
 
   final Dio _dio;
+  LocationOriginServiceContract? _locationOriginService;
 
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
+
+  LocationOriginServiceContract? get _resolvedLocationOriginService {
+    if (_locationOriginService != null) {
+      return _locationOriginService;
+    }
+    if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+      return null;
+    }
+    _locationOriginService = GetIt.I.get<LocationOriginServiceContract>();
+    return _locationOriginService;
+  }
 
   Future<Map<String, String>> _buildHeaders({bool includeJsonAccept = false}) {
     return TenantPublicAuthHeaders.build(
@@ -87,8 +104,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           ? currentPage < lastPage
           : raw['next_page_url'] != null;
 
+      final distanceOrigin = await _resolveDistanceOrigin();
       return pagedAccountProfilesResultFromRaw(
-        profiles: _parseProfiles(data),
+        profiles: _parseProfiles(data, distanceOrigin: distanceOrigin),
         hasMore: hasMore,
       );
     } on DioException catch (error) {
@@ -107,7 +125,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
   }) async {
-    final origin = await _effectiveOriginLatLng();
+    final origin = await _resolveEffectiveOriginCoordinate();
     if (origin == null) {
       return const <AccountProfileModel>[];
     }
@@ -118,8 +136,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles/near',
         queryParameters: <String, dynamic>{
-          'origin_lat': origin.$1,
-          'origin_lng': origin.$2,
+          'origin_lat': origin.latitude,
+          'origin_lng': origin.longitude,
           'page': 1,
           'page_size': safePageSize,
         },
@@ -131,7 +149,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
 
       final data = _extractDataList(raw);
-      return _parseProfiles(data);
+      return _parseProfiles(data, distanceOrigin: origin);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
@@ -180,7 +198,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
   }
 
-  List<AccountProfileModel> _parseProfiles(List<dynamic> raw) {
+  List<AccountProfileModel> _parseProfiles(
+    List<dynamic> raw, {
+    required CityCoordinate? distanceOrigin,
+  }) {
     final profiles = <AccountProfileModel>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
@@ -195,7 +216,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final trimmedType = typeRaw.trim();
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
-      final distanceMeters = _resolveDistanceMeters(json);
+      final distanceMeters = _resolveDistanceMeters(
+        json,
+        distanceOrigin: distanceOrigin,
+      );
       ThumbUriValue? avatarValue;
       final avatarUrl = json['avatar_url']?.toString();
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -267,7 +291,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return null;
   }
 
-  double? _resolveDistanceMeters(Map<String, dynamic> json) {
+  double? _resolveDistanceMeters(
+    Map<String, dynamic> json, {
+    required CityCoordinate? distanceOrigin,
+  }) {
     final directDistance = _parseDirectDistanceMeters(json);
     if (directDistance != null) {
       return directDistance;
@@ -279,15 +306,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return null;
     }
 
-    final origin = _effectiveDistanceOriginLatLng();
-    if (origin == null) {
+    if (distanceOrigin == null) {
       return null;
     }
 
     return haversineDistanceMeters(
-      coordinateA: CityCoordinate.fromLatLng(
-        LatLng(origin.$1, origin.$2),
-      ),
+      coordinateA: distanceOrigin,
       coordinateB: CityCoordinate.fromLatLng(
         LatLng(location.$1, location.$2),
       ),
@@ -316,41 +340,21 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return null;
   }
 
-  (double, double)? _effectiveDistanceOriginLatLng() {
-    return _tenantDefaultOriginLatLng();
+  Future<CityCoordinate?> _resolveEffectiveOriginCoordinate() async {
+    final locationOriginService = _resolvedLocationOriginService;
+    if (locationOriginService == null) {
+      return null;
+    }
+    final resolution = await locationOriginService.resolve(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: true,
+      ),
+    );
+    return resolution.effectiveCoordinate;
   }
 
-  Future<(double, double)?> _effectiveOriginLatLng() async {
-    return (await _userLocationLatLng()) ?? _tenantDefaultOriginLatLng();
-  }
-
-  Future<(double, double)?> _userLocationLatLng() async {
-    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      return null;
-    }
-    final repository = GetIt.I.get<UserLocationRepositoryContract>();
-    try {
-      await repository.ensureLoaded();
-    } catch (_) {
-      // Keep a best-effort path; fallback to tenant default origin below.
-    }
-    final coordinate = repository.userLocationStreamValue.value ??
-        repository.lastKnownLocationStreamValue.value;
-    if (coordinate == null) {
-      return null;
-    }
-    return (coordinate.latitude, coordinate.longitude);
-  }
-
-  (double, double)? _tenantDefaultOriginLatLng() {
-    if (!GetIt.I.isRegistered<AppData>()) {
-      return null;
-    }
-    final origin = GetIt.I.get<AppData>().tenantDefaultOrigin;
-    if (origin == null) {
-      return null;
-    }
-    return (origin.latitude, origin.longitude);
+  Future<CityCoordinate?> _resolveDistanceOrigin() async {
+    return _resolveEffectiveOriginCoordinate();
   }
 
   (double, double)? _parseLocationLatLng(dynamic rawLocation) {

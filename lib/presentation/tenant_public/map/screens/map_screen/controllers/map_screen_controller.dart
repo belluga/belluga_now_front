@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
@@ -28,10 +28,12 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -44,18 +46,22 @@ class MapScreenController implements Disposable {
     TelemetryRepositoryContract? telemetryRepository,
     MapController? mapController,
     AppData? appData,
+    LocationOriginServiceContract? locationOriginService,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
         _appData = appData ?? GetIt.I.get<AppData>(),
+        _locationOriginService = locationOriginService ??
+            GetIt.I.get<LocationOriginServiceContract>(),
         mapController = mapController ?? MapController();
 
   final PoiRepositoryContract _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
   final TelemetryRepositoryContract _telemetryRepository;
   final AppData _appData;
+  final LocationOriginServiceContract _locationOriginService;
 
   final MapController mapController;
 
@@ -111,7 +117,8 @@ class MapScreenController implements Disposable {
   CityCoordinate get defaultCenter => _poiRepository.defaultCenter;
 
   PoiQuery _currentQuery = PoiQuery();
-  CityCoordinate? _forcedEntryOrigin;
+  bool _forceTenantDefaultUnavailableEntry = false;
+  bool _hasDismissedSoftLocationNoticeForAccess = false;
   bool _filtersLoadFailed = false;
   Set<String> _activeCategoryKeys = <String>{};
   Set<String> _activeTaxonomyTokens = <String>{};
@@ -136,17 +143,9 @@ class MapScreenController implements Disposable {
     final enteredViaSoftLocationGate =
         LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry();
     _resetInitialPoiFocusState();
-    _forcedEntryOrigin = enteredViaSoftLocationGate ? defaultCenter : null;
-    if (enteredViaSoftLocationGate) {
-      softLocationNoticeStreamValue.addValue(
-        LocationOriginMessageResolver.fixed(
-          reason: HomeLocationOriginReason.unavailable,
-          appName: _appData.nameValue.value,
-        ),
-      );
-    } else {
-      softLocationNoticeStreamValue.addValue('');
-    }
+    _forceTenantDefaultUnavailableEntry = enteredViaSoftLocationGate;
+    _hasDismissedSoftLocationNoticeForAccess = false;
+    softLocationNoticeStreamValue.addValue('');
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
     _bindFilteredPoisClamp();
     _attachZoomListener();
@@ -185,7 +184,7 @@ class MapScreenController implements Disposable {
   }
 
   void _requestLocationPermissionIfNeeded() {
-    if (_forcedEntryOrigin != null || hasResolvedUserLocation) {
+    if (_forceTenantDefaultUnavailableEntry || hasResolvedUserLocation) {
       return;
     }
     unawaited(_userLocationRepository.resolveUserLocation());
@@ -307,6 +306,7 @@ class MapScreenController implements Disposable {
   }
 
   void dismissSoftLocationNotice() {
+    _hasDismissedSoftLocationNoticeForAccess = true;
     softLocationNoticeStreamValue.addValue('');
   }
 
@@ -362,7 +362,7 @@ class MapScreenController implements Disposable {
     String? loadingMessage,
   }) async {
     final requestSequence = ++_poiRequestSequence;
-    final resolvedQuery = _resolveRuntimeQuery(query);
+    final resolvedQuery = await _resolveRuntimeQuery(query);
     _currentQuery = resolvedQuery;
     searchTermStreamValue.addValue(resolvedQuery.searchTermValue?.value);
 
@@ -396,9 +396,14 @@ class MapScreenController implements Disposable {
     return requestSequence == _poiRequestSequence;
   }
 
-  PoiQuery _resolveRuntimeQuery(PoiQuery query) {
-    final origin =
-        _forcedEntryOrigin ?? userLocationStreamValue.value ?? query.origin;
+  Future<PoiQuery> _resolveRuntimeQuery(PoiQuery query) async {
+    final resolution = await _locationOriginService.resolveAndPersist(
+      LocationOriginResolutionRequestFactory.create(
+        forceTenantDefaultUnavailable: _forceTenantDefaultUnavailableEntry,
+      ),
+    );
+    _publishSoftLocationNotice(resolution.settings?.reason);
+    final origin = resolution.effectiveCoordinate ?? query.origin;
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,
@@ -411,6 +416,17 @@ class MapScreenController implements Disposable {
       taxonomyTokenValues: query.taxonomyTokenValues,
       searchTermValue: query.searchTermValue,
     );
+  }
+
+  void _publishSoftLocationNotice(LocationOriginReason? reason) {
+    if (_hasDismissedSoftLocationNoticeForAccess || reason == null) {
+      return;
+    }
+    final message = LocationOriginMessageResolver.transientMessageForReason(
+      reason: reason,
+      appName: _appData.nameValue.value,
+    );
+    softLocationNoticeStreamValue.addValue(message ?? '');
   }
 
   Future<void> _applyInitialPoiQuery({

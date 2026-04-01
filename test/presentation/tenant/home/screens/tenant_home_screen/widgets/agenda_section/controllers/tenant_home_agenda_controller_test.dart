@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -44,6 +44,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
@@ -64,7 +65,7 @@ void main() {
         maxKm: 15,
       );
       final appDataRepository = _FakeAppDataRepository(appData);
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FakeScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -92,7 +93,7 @@ void main() {
         initialMaxRadiusMeters: 9000,
         hasPersistedMaxRadiusPreference: true,
       );
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FakeScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -127,7 +128,7 @@ void main() {
         final scheduleRepository = _FakeScheduleRepository();
         final locationRepository = _FakeUserLocationRepository()
           ..userLocationStreamValue.addValue(userCoordinate);
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -169,7 +170,7 @@ void main() {
               longitudeValue: LongitudeValue()..parse('-46.633308'),
             ),
           );
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -196,7 +197,7 @@ void main() {
         maxKm: 15,
       );
       final appDataRepository = _FakeAppDataRepository(appData);
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FakeScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -230,7 +231,7 @@ void main() {
           maxKm: 15,
         );
         final appDataRepository = _FakeAppDataRepository(appData);
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -275,7 +276,7 @@ void main() {
       );
       final appDataRepository = _FakeAppDataRepository(appData);
       final scheduleRepository = _FakeScheduleRepository();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -326,7 +327,7 @@ void main() {
         maxKm: 10,
       );
       final appDataRepository = _FakeAppDataRepository(appData);
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FailingScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -350,7 +351,7 @@ void main() {
       );
       final appDataRepository = _FakeAppDataRepository(appData);
       final scheduleRepository = _FailingOnceScheduleRepository();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -382,7 +383,7 @@ void main() {
           ),
         );
       final backend = _FailingOnceThenDataBackend();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: ScheduleRepository(backend: backend),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -411,7 +412,7 @@ void main() {
       );
       final appDataRepository = _FakeAppDataRepository(appData);
       final scheduleRepository = _FakeScheduleRepository();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -444,7 +445,7 @@ void main() {
         final appDataRepository = _FakeAppDataRepository(appData);
         final sharedScheduleRepository = _FakeScheduleRepository();
 
-        final firstController = TenantHomeAgendaController(
+        final firstController = _buildAgendaController(
           scheduleRepository: sharedScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -455,7 +456,7 @@ void main() {
         expect(sharedScheduleRepository.getEventsPageCallCount, 1);
         firstController.onDispose();
 
-        final secondController = TenantHomeAgendaController(
+        final secondController = _buildAgendaController(
           scheduleRepository: sharedScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -515,7 +516,7 @@ void main() {
           ),
         );
 
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -550,7 +551,7 @@ void main() {
       );
       final appDataRepository = _FakeAppDataRepository(appData);
       final scheduleRepository = _AlwaysFailingScheduleRepository();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -573,7 +574,7 @@ void main() {
     });
 
     test('shows invite filter action for anonymous app sessions', () {
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FakeScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -598,7 +599,7 @@ void main() {
       'hides invite filter on unauthenticated web and reveals it after auth',
       (tester) async {
         final authRepository = _FakeAuthRepository(authorized: false);
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -640,7 +641,7 @@ void main() {
     testWidgets(
       'home radius sheet shows explanatory copy and persistence note',
       (tester) async {
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -702,7 +703,7 @@ void main() {
       final locationRepository = _FakeUserLocationRepository()
         ..warmUpResult = false;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -717,12 +718,12 @@ void main() {
       expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
       expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
       expect(
-        appDataRepository.homeLocationOriginSettings?.usesFixedReference,
+        appDataRepository.locationOriginSettings?.usesFixedReference,
         isTrue,
       );
       expect(
-        appDataRepository.homeLocationOriginSettings?.reason,
-        HomeLocationOriginReason.unavailable,
+        appDataRepository.locationOriginSettings?.reason,
+        LocationOriginReason.unavailable,
       );
 
       controller.onDispose();
@@ -746,7 +747,7 @@ void main() {
             ),
           );
 
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -758,13 +759,13 @@ void main() {
 
         expect(scheduleRepository.lastOriginLat, closeTo(-20.675000, 0.000001));
         expect(scheduleRepository.lastOriginLng, closeTo(-40.500000, 0.000001));
-        expect(appDataRepository.setHomeLocationOriginSettingsCallCount, 1);
+        expect(appDataRepository.setLocationOriginSettingsCallCount, 1);
         expect(
-          appDataRepository.homeLocationOriginSettings?.usesLiveLocation,
+          appDataRepository.locationOriginSettings?.usesUserLiveLocation,
           isTrue,
         );
         expect(
-          appDataRepository.homeLocationOriginSettings?.fixedLocationReference,
+          appDataRepository.locationOriginSettings?.fixedLocationReference,
           isNull,
         );
 
@@ -790,7 +791,7 @@ void main() {
             ),
           );
 
-        final controller = TenantHomeAgendaController(
+        final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -802,22 +803,22 @@ void main() {
 
         expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
         expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
-        expect(appDataRepository.setHomeLocationOriginSettingsCallCount, 1);
+        expect(appDataRepository.setLocationOriginSettingsCallCount, 1);
         expect(
-          appDataRepository.homeLocationOriginSettings?.usesFixedReference,
+          appDataRepository.locationOriginSettings?.usesFixedReference,
           isTrue,
         );
         expect(
-          appDataRepository.homeLocationOriginSettings?.reason,
-          HomeLocationOriginReason.outsideRange,
+          appDataRepository.locationOriginSettings?.reason,
+          LocationOriginReason.outsideRange,
         );
         expect(
-          appDataRepository.homeLocationOriginSettings?.fixedLocationReference
+          appDataRepository.locationOriginSettings?.fixedLocationReference
               ?.latitude,
           closeTo(-20.671339, 0.000001),
         );
         expect(
-          appDataRepository.homeLocationOriginSettings?.fixedLocationReference
+          appDataRepository.locationOriginSettings?.fixedLocationReference
               ?.longitude,
           closeTo(-40.495395, 0.000001),
         );
@@ -845,7 +846,7 @@ void main() {
         final withinTenantMaxLocationRepository = _FakeUserLocationRepository()
           ..userLocationStreamValue.addValue(userCoordinate);
 
-        final withinTenantMaxController = TenantHomeAgendaController(
+        final withinTenantMaxController = _buildAgendaController(
           scheduleRepository: withinTenantMaxScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -864,7 +865,7 @@ void main() {
           closeTo(-40.495395, 0.000001),
         );
         expect(
-          withinTenantMaxRepository.homeLocationOriginSettings?.usesLiveLocation,
+          withinTenantMaxRepository.locationOriginSettings?.usesUserLiveLocation,
           isTrue,
         );
 
@@ -881,7 +882,7 @@ void main() {
         final outsideTenantMaxLocationRepository = _FakeUserLocationRepository()
           ..userLocationStreamValue.addValue(userCoordinate);
 
-        final outsideTenantMaxController = TenantHomeAgendaController(
+        final outsideTenantMaxController = _buildAgendaController(
           scheduleRepository: outsideTenantMaxScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -901,12 +902,12 @@ void main() {
         );
         expect(
           outsideTenantMaxRepository
-              .homeLocationOriginSettings?.usesFixedReference,
+              .locationOriginSettings?.usesFixedReference,
           isTrue,
         );
         expect(
-          outsideTenantMaxRepository.homeLocationOriginSettings?.reason,
-          HomeLocationOriginReason.outsideRange,
+          outsideTenantMaxRepository.locationOriginSettings?.reason,
+          LocationOriginReason.outsideRange,
         );
 
         outsideTenantMaxController.onDispose();
@@ -931,7 +932,7 @@ void main() {
             ),
           );
 
-        final firstController = TenantHomeAgendaController(
+        final firstController = _buildAgendaController(
           scheduleRepository: sharedScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -943,7 +944,7 @@ void main() {
         expect(sharedScheduleRepository.getEventsPageCallCount, 1);
         firstController.onDispose();
 
-        final secondController = TenantHomeAgendaController(
+        final secondController = _buildAgendaController(
           scheduleRepository: sharedScheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -985,7 +986,7 @@ void main() {
           DateTime.now().subtract(const Duration(hours: 2)),
         );
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1015,7 +1016,7 @@ void main() {
       final locationRepository = _FakeUserLocationRepository()
         ..warmUpResult = false;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1046,7 +1047,7 @@ void main() {
       final locationRepository = _FakeUserLocationRepository()
         ..warmUpResult = false;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1078,7 +1079,7 @@ void main() {
       final locationRepository = _FakeUserLocationRepository()
         ..warmUpResult = false;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1115,7 +1116,7 @@ void main() {
           ),
         );
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1147,7 +1148,7 @@ void main() {
           ),
         );
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1187,7 +1188,7 @@ void main() {
           ),
         );
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1224,7 +1225,7 @@ void main() {
       final locationRepository = _FakeUserLocationRepository()
         ..neverCompleteWarmUp = true;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1257,7 +1258,7 @@ void main() {
       final userEventsRepository = _FakeUserEventsRepository()
         ..throwOnRefreshConfirmedIds = true;
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: scheduleRepository,
         userEventsRepository: userEventsRepository,
         invitesRepository: _FakeInvitesRepository(),
@@ -1290,7 +1291,7 @@ void main() {
           ),
         );
 
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: ScheduleRepository(
           backend: _PayloadScheduleBackend(),
         ),
@@ -1329,7 +1330,7 @@ void main() {
           ),
         );
       final backend = _AutoPageRegressionBackend();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: ScheduleRepository(backend: backend),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1364,7 +1365,7 @@ void main() {
           ),
         );
       final backend = _AutoPageRegressionBackend();
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: ScheduleRepository(backend: backend),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1397,7 +1398,7 @@ void main() {
         defaultKm: 5,
         maxKm: 10,
       );
-      final controller = TenantHomeAgendaController(
+      final controller = _buildAgendaController(
         scheduleRepository: _FakeScheduleRepository(),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
@@ -1425,6 +1426,39 @@ void main() {
       controller.onDispose();
     });
   });
+}
+
+TenantHomeAgendaController _buildAgendaController({
+  required ScheduleRepositoryContract scheduleRepository,
+  required UserEventsRepositoryContract userEventsRepository,
+  required InvitesRepositoryContract invitesRepository,
+  required UserLocationRepositoryContract? userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+  AuthRepositoryContract? authRepository,
+  bool? isWebRuntime,
+  Duration? locationWarmUpTimeout,
+  Duration? locationPermissionTimeout,
+  Duration? radiusRefreshDebounce,
+}) {
+  return TenantHomeAgendaController(
+    scheduleRepository: scheduleRepository,
+    userEventsRepository: userEventsRepository,
+    invitesRepository: invitesRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    authRepository: authRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+    isWebRuntime: isWebRuntime ?? true,
+    locationWarmUpTimeout:
+        locationWarmUpTimeout ?? const Duration(seconds: 4),
+    locationPermissionTimeout:
+        locationPermissionTimeout ?? const Duration(seconds: 8),
+    radiusRefreshDebounce:
+        radiusRefreshDebounce ?? const Duration(milliseconds: 250),
+  );
 }
 
 AppData _buildAppData({
@@ -1515,7 +1549,7 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   final AppData _appData;
   bool _hasPersistedMaxRadiusPreference;
   int setMaxRadiusMetersCallCount = 0;
-  int setHomeLocationOriginSettingsCallCount = 0;
+  int setLocationOriginSettingsCallCount = 0;
 
   @override
   AppData get appData => _appData;
@@ -1549,15 +1583,15 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setHomeLocationOriginSettings(
-    HomeLocationOriginSettings settings,
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
   ) async {
-    final current = homeLocationOriginSettingsStreamValue.value;
+    final current = locationOriginSettingsStreamValue.value;
     if (current != null && current.sameAs(settings)) {
       return;
     }
-    setHomeLocationOriginSettingsCallCount += 1;
-    homeLocationOriginSettingsStreamValue.addValue(settings);
+    setLocationOriginSettingsCallCount += 1;
+    locationOriginSettingsStreamValue.addValue(settings);
   }
 
   @override

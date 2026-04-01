@@ -6,14 +6,15 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_reason.dart';
-import 'package:belluga_now/domain/app_data/home_location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ void main() {
     userEventsRepository = _FakeUserEventsRepository();
     userLocationRepository = _FakeUserLocationRepository();
     appDataRepository = _FakeAppDataRepository(appData);
-    controller = TenantHomeController(
+    controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
@@ -111,7 +112,7 @@ void main() {
   test('init continues when confirmed ids refresh fails', () async {
     controller.onDispose();
     userEventsRepository.throwOnRefreshConfirmedIds = true;
-    controller = TenantHomeController(
+    controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
@@ -126,8 +127,8 @@ void main() {
       () async {
     await controller.init();
 
-    await appDataRepository.setHomeLocationOriginSettings(
-      HomeLocationOriginSettings.live(),
+    await appDataRepository.setLocationOriginSettings(
+      LocationOriginSettings.userLiveLocation(),
     );
 
     expect(
@@ -144,13 +145,13 @@ void main() {
       () async {
     await controller.init();
 
-    await appDataRepository.setHomeLocationOriginSettings(
-      HomeLocationOriginSettings.fixed(
+    await appDataRepository.setLocationOriginSettings(
+      LocationOriginSettings.tenantDefaultLocation(
         fixedLocationReference: CityCoordinate(
           latitudeValue: LatitudeValue()..parse('-20.671339'),
           longitudeValue: LongitudeValue()..parse('-40.495395'),
         ),
-        reason: HomeLocationOriginReason.outsideRange,
+        reason: LocationOriginReason.outsideRange,
       ),
     );
 
@@ -160,9 +161,25 @@ void main() {
     );
     expect(
       controller.homeLocationStatusStreamValue.value?.dialogMessage,
-      'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, a estamos usando uma localização de referência para mostrar resultados mais úteis.',
+      'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
     );
   });
+}
+
+TenantHomeController _buildTenantHomeController({
+  required UserEventsRepositoryContract userEventsRepository,
+  required UserLocationRepositoryContract userLocationRepository,
+  required AppDataRepositoryContract appDataRepository,
+}) {
+  return TenantHomeController(
+    userEventsRepository: userEventsRepository,
+    userLocationRepository: userLocationRepository,
+    appDataRepository: appDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
+  );
 }
 
 AppData _buildAppData() {
@@ -298,10 +315,10 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 
   @override
-  Future<void> setHomeLocationOriginSettings(
-    HomeLocationOriginSettings settings,
+  Future<void> setLocationOriginSettings(
+    LocationOriginSettings settings,
   ) async {
-    homeLocationOriginSettingsStreamValue.addValue(settings);
+    locationOriginSettingsStreamValue.addValue(settings);
   }
 }
 

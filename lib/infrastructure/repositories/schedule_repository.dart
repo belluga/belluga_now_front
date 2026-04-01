@@ -2,18 +2,21 @@ import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -30,14 +33,17 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     BackendContract? backendContract,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    LocationOriginServiceContract? locationOriginService,
   })  : _backend = backend ??
             (backendContract ?? GetIt.I.get<BackendContract>()).schedule,
         _userLocationRepository = userLocationRepository,
-        _appDataRepository = appDataRepository;
+        _appDataRepository = appDataRepository,
+        _locationOriginService = locationOriginService;
 
   final ScheduleBackendContract _backend;
-  UserLocationRepositoryContract? _userLocationRepository;
+  final UserLocationRepositoryContract? _userLocationRepository;
   AppDataRepositoryContract? _appDataRepository;
+  LocationOriginServiceContract? _locationOriginService;
   @override
   final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
       StreamValue<List<EventModel>?>();
@@ -153,17 +159,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
   }
 
-  UserLocationRepositoryContract? get _resolvedUserLocationRepository {
-    if (_userLocationRepository != null) {
-      return _userLocationRepository;
-    }
-    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      return null;
-    }
-    _userLocationRepository = GetIt.I.get<UserLocationRepositoryContract>();
-    return _userLocationRepository;
-  }
-
   AppDataRepositoryContract? get _resolvedAppDataRepository {
     if (_appDataRepository != null) {
       return _appDataRepository;
@@ -173,6 +168,25 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     }
     _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
     return _appDataRepository;
+  }
+
+  LocationOriginServiceContract? get _resolvedLocationOriginService {
+    if (_locationOriginService != null) {
+      return _locationOriginService;
+    }
+    if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+      final appDataRepository = _resolvedAppDataRepository;
+      if (appDataRepository == null) {
+        return null;
+      }
+      _locationOriginService = LocationOriginService(
+        appDataRepository: appDataRepository,
+        userLocationRepository: _userLocationRepository,
+      );
+      return _locationOriginService;
+    }
+    _locationOriginService = GetIt.I.get<LocationOriginServiceContract>();
+    return _locationOriginService;
   }
 
   ThumbUriValue _resolveDefaultEventImage() {
@@ -536,33 +550,16 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   Future<CityCoordinate?> _resolveEffectiveOrigin() async {
-    final userCoordinate = await _resolveUserCoordinate();
-    if (userCoordinate != null) {
-      return userCoordinate;
-    }
-    return _resolveTenantDefaultOriginCoordinate();
-  }
-
-  Future<CityCoordinate?> _resolveUserCoordinate() async {
-    final repository = _resolvedUserLocationRepository;
-    if (repository == null) {
+    final locationOriginService = _resolvedLocationOriginService;
+    if (locationOriginService == null) {
       return null;
     }
-    try {
-      await repository.warmUpIfPermitted();
-    } on Object {
-      // Best-effort warm-up.
-    }
-    return repository.userLocationStreamValue.value ??
-        repository.lastKnownLocationStreamValue.value;
-  }
-
-  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
-    final appDataRepository = _resolvedAppDataRepository;
-    if (appDataRepository == null) {
-      return null;
-    }
-    return appDataRepository.appData.tenantDefaultOrigin;
+    final resolution = await locationOriginService.resolve(
+      LocationOriginResolutionRequestFactory.create(
+        warmUpIfPossible: true,
+      ),
+    );
+    return resolution.effectiveCoordinate;
   }
 
   bool _isSameDate(DateTime a, DateTime b) {
