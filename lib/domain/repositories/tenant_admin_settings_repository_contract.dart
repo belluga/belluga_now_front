@@ -38,6 +38,12 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminFirebaseSettings settings,
   });
 
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings();
+
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
+  });
+
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   });

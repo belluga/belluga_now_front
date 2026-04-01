@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_requi
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 class TenantAdminSettingsResponseDecoder {
   const TenantAdminSettingsResponseDecoder({
@@ -108,6 +109,26 @@ class TenantAdminSettingsResponseDecoder {
       label: 'firebase settings',
     );
     return _mapFirebaseSettings(payload);
+  }
+
+  TenantAdminResendEmailSettings decodeResendEmailSettings(
+      Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'resend_email settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('resend_email')) {
+      final resendRaw = payload['resend_email'];
+      if (resendRaw is Map) {
+        return _mapResendEmailSettings(
+          Map<String, dynamic>.from(resendRaw),
+        );
+      }
+      return TenantAdminResendEmailSettings.empty();
+    }
+
+    return _mapResendEmailSettings(payload);
   }
 
   TenantAdminPushSettings decodePushSettings(Object? rawResponse) {
@@ -522,6 +543,24 @@ class TenantAdminSettingsResponseDecoder {
     );
   }
 
+  TenantAdminResendEmailSettings _mapResendEmailSettings(
+    Map<String, dynamic> map,
+  ) {
+    final token = _normalizeOptionalText(map['token']);
+    final from = _normalizeOptionalText(map['from']);
+
+    return TenantAdminResendEmailSettings(
+      token: token == null ? null : _optionalTextValue(token),
+      from: from == null ? null : _optionalTextValue(from),
+      toRecipients: _resendEmailRecipients(_extractStringList(map['to'])),
+      ccRecipients: _resendEmailRecipients(_extractStringList(map['cc'])),
+      bccRecipients: _resendEmailRecipients(_extractStringList(map['bcc'])),
+      replyToRecipients: _resendEmailRecipients(
+        _extractStringList(map['reply_to']),
+      ),
+    );
+  }
+
   TenantAdminTelemetryIntegration _mapTelemetry(Map<String, dynamic> map) {
     final type = map['type']?.toString().trim() ?? '';
     final trackAll = _parseBool(map['track_all']);
@@ -625,6 +664,20 @@ class TenantAdminSettingsResponseDecoder {
           .toList(growable: false);
     }
     return const <String>[];
+  }
+
+  TenantAdminResendEmailRecipients _resendEmailRecipients(
+    Iterable<String> rawValues,
+  ) {
+    return TenantAdminResendEmailRecipients(
+      rawValues.map(_emailAddressValue),
+    );
+  }
+
+  EmailAddressValue _emailAddressValue(String raw) {
+    final value = EmailAddressValue();
+    value.parse(raw);
+    return value;
   }
 
   String _requireNonEmptyString(

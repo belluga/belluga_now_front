@@ -45,6 +45,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 TenantAdminRequiredTextValue _requiredText(String raw) {
   final value = TenantAdminRequiredTextValue();
@@ -84,6 +85,22 @@ LongitudeValue _lng(double raw) {
 
 TenantAdminOptionalTextValue _optionalText(String raw) {
   final value = TenantAdminOptionalTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminResendEmailRecipients _resendRecipients(Iterable<String> values) {
+  return TenantAdminResendEmailRecipients(
+    values.map(_emailAddressValue),
+  );
+}
+
+List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
+  return values.values.map((entry) => entry.value).toList(growable: false);
+}
+
+EmailAddressValue _emailAddressValue(String raw) {
+  final value = EmailAddressValue();
   value.parse(raw);
   return value;
 }
@@ -171,6 +188,10 @@ void main() {
     );
     expect(
       find.byKey(TenantAdminSettingsKeys.hubIntegrationFirebase),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationResend),
       findsOneWidget,
     );
     expect(
@@ -879,20 +900,6 @@ void main() {
         ),
       ),
     );
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsScopedAppBar,
-        skipOffstage: false,
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsBackButton,
-        skipOffstage: false,
-      ),
-      findsOneWidget,
-    );
 
     final projectIdRow = find.byKey(
       const ValueKey('tenant_admin_settings_firebase_project_id_edit'),
@@ -934,6 +941,121 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
+  });
+
+  testWidgets('saves resend email settings via remote repository',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.resend,
+        ),
+      ),
+    );
+
+    final tokenRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendTokenEdit,
+      skipOffstage: false,
+    );
+    final fromRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendFromEdit,
+      skipOffstage: false,
+    );
+    final toRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsResendToEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveResend,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      tokenRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: tokenRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'API Token'),
+      're_token_updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: fromRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'From'),
+      'Belluga <noreply@belluga.space>',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: toRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'To'),
+      'owner@belluga.space, ops@belluga.space',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedResendEmailSettings, isNotNull);
+    expect(
+      settingsRepository.updatedResendEmailSettings!.token,
+      're_token_updated',
+    );
+    expect(
+      settingsRepository.updatedResendEmailSettings!.from,
+      'Belluga <noreply@belluga.space>',
+    );
+    expect(
+      _recipientStrings(settingsRepository.updatedResendEmailSettings!.to),
+      equals(['owner@belluga.space', 'ops@belluga.space']),
+    );
   });
 
   testWidgets('saves app links settings via remote repository', (tester) async {
@@ -1519,7 +1641,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       _maxRadiusMetersStreamValue;
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+      StreamValue<DistanceInMetersValue>(
+          defaultValue:
+              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
@@ -1581,6 +1705,7 @@ class _FakeTenantAdminSettingsRepository
 
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
+  TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
   TenantAdminAppLinksSettings? updatedAppLinksSettings;
@@ -1626,6 +1751,15 @@ class _FakeTenantAdminSettingsRepository
     iosBundleId: 'com.guarappari.app',
     iosPaths: ['/invite*', '/convites*'],
   );
+  TenantAdminResendEmailSettings _resendEmailSettings =
+      TenantAdminResendEmailSettings(
+    token: _optionalText('re_fixture_token'),
+    from: _optionalText('Belluga <noreply@belluga.space>'),
+    toRecipients: _resendRecipients(['admin@belluga.space']),
+    ccRecipients: _resendRecipients(['ops@belluga.space']),
+    bccRecipients: TenantAdminResendEmailRecipients(),
+    replyToRecipients: _resendRecipients(['reply@belluga.space']),
+  );
 
   @override
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
@@ -1665,6 +1799,11 @@ class _FakeTenantAdminSettingsRepository
       messagingSenderId: _requiredText('sender'),
       storageBucket: _requiredText('bucket'),
     );
+  }
+
+  @override
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings() async {
+    return _resendEmailSettings;
   }
 
   @override
@@ -1728,6 +1867,15 @@ class _FakeTenantAdminSettingsRepository
     required TenantAdminFirebaseSettings settings,
   }) async {
     updatedFirebaseProjectId = settings.projectId;
+    return settings;
+  }
+
+  @override
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
+  }) async {
+    updatedResendEmailSettings = settings;
+    _resendEmailSettings = settings;
     return settings;
   }
 

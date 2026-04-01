@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';

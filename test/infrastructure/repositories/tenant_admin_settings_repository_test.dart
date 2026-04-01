@@ -22,6 +22,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 void main() {
   setUp(() async {
@@ -49,6 +50,39 @@ void main() {
     expect(adapter.requests.single.path, contains('tenant-a.test/admin/api'));
   });
 
+  test('fetchResendEmailSettings parses resend_email namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchResendEmailSettings();
+
+    expect(settings.token, 're_live_token');
+    expect(settings.from, 'Belluga <noreply@belluga.space>');
+    expect(
+      _recipientStrings(settings.to),
+      equals(['admin@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.cc),
+      equals(['ops@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.bcc),
+      equals(['audit@bellugasolutions.com.br']),
+    );
+    expect(
+      _recipientStrings(settings.replyTo),
+      equals(['reply@bellugasolutions.com.br']),
+    );
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
   test('updatePushSettings sends payload and parses response', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -71,6 +105,55 @@ void main() {
     expect(updated.maxTtlDays, 14);
     expect(updated.maxPerMinute, 20);
     expect(updated.maxPerHour, 120);
+  });
+
+  test('updateResendEmailSettings patches resend_email namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateResendEmailSettings(
+      settings: TenantAdminResendEmailSettings(
+        token: _optionalTextValue('re_live_token'),
+        from: _optionalTextValue('Belluga <noreply@belluga.space>'),
+        toRecipients: _recipients(['admin@bellugasolutions.com.br']),
+        ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
+        bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
+        replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/resend_email');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['token'], 're_live_token');
+    expect(payload['from'], 'Belluga <noreply@belluga.space>');
+    expect(
+      payload['to'],
+      equals(['admin@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['cc'],
+      equals(['ops@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['bcc'],
+      equals(['audit@bellugasolutions.com.br']),
+    );
+    expect(
+      payload['reply_to'],
+      equals(['reply@bellugasolutions.com.br']),
+    );
+    expect(updated.from, 'Belluga <noreply@belluga.space>');
+    expect(
+      _recipientStrings(updated.to),
+      equals(['admin@bellugasolutions.com.br']),
+    );
   });
 
   test('fetchMapUiSettings parses default origin from settings values',
@@ -940,6 +1023,22 @@ TenantAdminPositiveIntValue _positiveIntValue(int raw) {
   return value;
 }
 
+TenantAdminResendEmailRecipients _recipients(Iterable<String> values) {
+  return TenantAdminResendEmailRecipients(
+    values.map(_emailAddressValue),
+  );
+}
+
+List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
+  return values.values.map((entry) => entry.value).toList(growable: false);
+}
+
+EmailAddressValue _emailAddressValue(String raw) {
+  final value = EmailAddressValue();
+  value.parse(raw);
+  return value;
+}
+
 LatitudeValue _latitudeValue(double raw) {
   final value = LatitudeValue();
   value.parse(raw.toString());
@@ -1199,6 +1298,14 @@ class _RoutingAdapter implements HttpClientAdapter {
                     'paths': ['/invite*', '/convites*'],
                   },
                 },
+                'resend_email': {
+                  'token': 're_live_token',
+                  'from': 'Belluga <noreply@belluga.space>',
+                  'to': ['admin@bellugasolutions.com.br'],
+                  'cc': ['ops@bellugasolutions.com.br'],
+                  'bcc': ['audit@bellugasolutions.com.br'],
+                  'reply_to': ['reply@bellugasolutions.com.br'],
+                },
                 'map_ui': {
                   'radius': {
                     'min_km': 1,
@@ -1301,6 +1408,15 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'app_links': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/resend_email') && method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'resend_email': _expandDotPayload(request),
         },
       });
     }

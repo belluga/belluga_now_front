@@ -41,6 +41,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 class TenantAdminSettingsController implements Disposable {
   TenantAdminSettingsController({
@@ -131,6 +132,8 @@ class TenantAdminSettingsController implements Disposable {
 
   final StreamValue<bool> firebaseSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> resendEmailSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> pushSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> telemetrySubmittingStreamValue =
@@ -182,6 +185,16 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController firebaseMessagingSenderIdController =
       TextEditingController();
   final TextEditingController firebaseStorageBucketController =
+      TextEditingController();
+  final TextEditingController resendEmailTokenController =
+      TextEditingController();
+  final TextEditingController resendEmailFromController =
+      TextEditingController();
+  final TextEditingController resendEmailToController = TextEditingController();
+  final TextEditingController resendEmailCcController = TextEditingController();
+  final TextEditingController resendEmailBccController =
+      TextEditingController();
+  final TextEditingController resendEmailReplyToController =
       TextEditingController();
 
   final TextEditingController pushMaxTtlDaysController =
@@ -239,7 +252,8 @@ class TenantAdminSettingsController implements Disposable {
 
   void _bindMaxRadiusStream() {
     _maxRadiusSubscription?.cancel();
-    maxRadiusMetersStreamValue.addValue(_appDataRepository.maxRadiusMeters.value);
+    maxRadiusMetersStreamValue
+        .addValue(_appDataRepository.maxRadiusMeters.value);
     _maxRadiusSubscription =
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
       maxRadiusMetersStreamValue.addValue(value.value);
@@ -369,6 +383,14 @@ class TenantAdminSettingsController implements Disposable {
         if (firebaseSettings != null) {
           _applyFirebaseSettings(firebaseSettings);
         }
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final resendEmailSettings =
+            await _settingsRepository.fetchResendEmailSettings();
+        _applyResendEmailSettings(resendEmailSettings);
       } catch (error) {
         errors.add(error.toString());
       }
@@ -838,6 +860,26 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  Future<void> saveResendEmailSettings() async {
+    final parsed = _buildResendEmailSettings();
+    if (parsed == null) {
+      return;
+    }
+
+    resendEmailSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await _settingsRepository.updateResendEmailSettings(
+        settings: parsed,
+      );
+      _applyResendEmailSettings(updated);
+      _reportSuccess('Resend atualizado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      resendEmailSubmittingStreamValue.addValue(false);
+    }
+  }
+
   Future<void> savePushSettings() async {
     final parsed = _buildPushSettings();
     if (parsed == null) {
@@ -1104,6 +1146,7 @@ class TenantAdminSettingsController implements Disposable {
     telemetrySnapshotStreamValue
         .addValue(TenantAdminTelemetrySettingsSnapshot.empty());
     clearTelemetryForm();
+    _resetResendEmailDraft();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
@@ -1142,6 +1185,16 @@ class TenantAdminSettingsController implements Disposable {
     appLinksIosBundleIdController.clear();
   }
 
+  void _resetResendEmailDraft() {
+    resendEmailSubmittingStreamValue.addValue(false);
+    resendEmailTokenController.clear();
+    resendEmailFromController.clear();
+    resendEmailToController.clear();
+    resendEmailCcController.clear();
+    resendEmailBccController.clear();
+    resendEmailReplyToController.clear();
+  }
+
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
     final apiKey = firebaseApiKeyController.text.trim();
     final appId = firebaseAppIdController.text.trim();
@@ -1161,6 +1214,87 @@ class TenantAdminSettingsController implements Disposable {
       projectId: _requiredTextValue(projectId),
       messagingSenderId: _requiredTextValue(senderId),
       storageBucket: _requiredTextValue(storageBucket),
+    );
+  }
+
+  TenantAdminResendEmailSettings? _buildResendEmailSettings() {
+    final token = _normalizeOptionalText(resendEmailTokenController.text);
+    if (token == null) {
+      remoteErrorStreamValue.addValue(
+        'Token do Resend é obrigatório.',
+      );
+      return null;
+    }
+
+    final from = _normalizeOptionalText(resendEmailFromController.text);
+    if (from == null) {
+      remoteErrorStreamValue.addValue(
+        'Remetente do Resend é obrigatório.',
+      );
+      return null;
+    }
+    if (!_isValidResendSender(from)) {
+      remoteErrorStreamValue.addValue(
+        'Remetente inválido. Use "Nome <email@dominio.com>" ou apenas "email@dominio.com".',
+      );
+      return null;
+    }
+
+    final to = _parseDelimitedList(resendEmailToController.text);
+    if (to.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Informe ao menos um destinatário em To.',
+      );
+      return null;
+    }
+    if (to.length > 50) {
+      remoteErrorStreamValue.addValue(
+        'O campo To aceita no máximo 50 destinatários.',
+      );
+      return null;
+    }
+    final invalidTo = to.firstWhere(
+      (entry) => !_isValidEmailAddress(entry),
+      orElse: () => '',
+    );
+    if (invalidTo.isNotEmpty) {
+      remoteErrorStreamValue.addValue(
+        'O campo To deve conter apenas e-mails válidos.',
+      );
+      return null;
+    }
+
+    final cc = _parseDelimitedList(resendEmailCcController.text);
+    if (cc.any((entry) => !_isValidEmailAddress(entry))) {
+      remoteErrorStreamValue.addValue(
+        'O campo Cc deve conter apenas e-mails válidos.',
+      );
+      return null;
+    }
+
+    final bcc = _parseDelimitedList(resendEmailBccController.text);
+    if (bcc.any((entry) => !_isValidEmailAddress(entry))) {
+      remoteErrorStreamValue.addValue(
+        'O campo Bcc deve conter apenas e-mails válidos.',
+      );
+      return null;
+    }
+
+    final replyTo = _parseDelimitedList(resendEmailReplyToController.text);
+    if (replyTo.any((entry) => !_isValidEmailAddress(entry))) {
+      remoteErrorStreamValue.addValue(
+        'O campo Reply-To deve conter apenas e-mails válidos.',
+      );
+      return null;
+    }
+
+    return TenantAdminResendEmailSettings(
+      token: _optionalTextValue(token),
+      from: _optionalTextValue(from),
+      toRecipients: _resendEmailRecipients(to),
+      ccRecipients: _resendEmailRecipients(cc),
+      bccRecipients: _resendEmailRecipients(bcc),
+      replyToRecipients: _resendEmailRecipients(replyTo),
     );
   }
 
@@ -1306,6 +1440,33 @@ class TenantAdminSettingsController implements Disposable {
     firebaseProjectIdController.text = settings.projectId;
     firebaseMessagingSenderIdController.text = settings.messagingSenderId;
     firebaseStorageBucketController.text = settings.storageBucket;
+  }
+
+  void _applyResendEmailSettings(TenantAdminResendEmailSettings settings) {
+    resendEmailTokenController.text = settings.token ?? '';
+    resendEmailFromController.text = settings.from ?? '';
+    resendEmailToController.text = _recipientText(settings.to);
+    resendEmailCcController.text = _recipientText(settings.cc);
+    resendEmailBccController.text = _recipientText(settings.bcc);
+    resendEmailReplyToController.text = _recipientText(settings.replyTo);
+  }
+
+  TenantAdminResendEmailRecipients _resendEmailRecipients(
+    Iterable<String> rawValues,
+  ) {
+    return TenantAdminResendEmailRecipients(
+      rawValues.map(_emailAddressValue),
+    );
+  }
+
+  EmailAddressValue _emailAddressValue(String raw) {
+    final value = EmailAddressValue();
+    value.parse(raw);
+    return value;
+  }
+
+  String _recipientText(TenantAdminResendEmailRecipients recipients) {
+    return recipients.values.map((entry) => entry.value).join(', ');
   }
 
   void _applyPushSettings(TenantAdminPushSettings settings) {
@@ -1790,6 +1951,27 @@ class TenantAdminSettingsController implements Disposable {
     return pattern.hasMatch(raw.toUpperCase());
   }
 
+  bool _isValidEmailAddress(String raw) {
+    final pattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return pattern.hasMatch(raw);
+  }
+
+  bool _isValidResendSender(String raw) {
+    if (_isValidEmailAddress(raw)) {
+      return true;
+    }
+
+    final match = RegExp(
+      r'^.+<\s*([^<>\s@]+@[^\s@<>]+\.[^\s@<>]+)\s*>$',
+    ).firstMatch(raw);
+    if (match == null) {
+      return false;
+    }
+
+    final address = match.group(1)?.trim() ?? '';
+    return address.isNotEmpty && _isValidEmailAddress(address);
+  }
+
   bool _isValidSha256Fingerprint(String raw) {
     final pattern = RegExp(r'^([A-F0-9]{2}:){31}[A-F0-9]{2}$');
     return pattern.hasMatch(raw);
@@ -1905,6 +2087,7 @@ class TenantAdminSettingsController implements Disposable {
     mapFilterRuleCatalogStreamValue.dispose();
     mapFilterRuleCatalogLoadingStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
+    resendEmailSubmittingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
     brandingSubmittingStreamValue.dispose();
@@ -1927,6 +2110,12 @@ class TenantAdminSettingsController implements Disposable {
     firebaseProjectIdController.dispose();
     firebaseMessagingSenderIdController.dispose();
     firebaseStorageBucketController.dispose();
+    resendEmailTokenController.dispose();
+    resendEmailFromController.dispose();
+    resendEmailToController.dispose();
+    resendEmailCcController.dispose();
+    resendEmailBccController.dispose();
+    resendEmailReplyToController.dispose();
     pushMaxTtlDaysController.dispose();
     pushMaxPerMinuteController.dispose();
     pushMaxPerHourController.dispose();

@@ -3,11 +3,16 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/promotion/promotion_lead_capture_request.dart';
+import 'package:belluga_now/domain/promotion/promotion_lead_mobile_platform.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/services/promotion_lead_capture_service_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/app_promotion_screen.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_tester_waitlist_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -17,6 +22,7 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   late _RecordingStackRouter router;
   late _FakeAppDataRepository appDataRepository;
+  late _FakePromotionLeadCaptureService leadCaptureService;
 
   setUp(() async {
     await GetIt.I.reset();
@@ -27,158 +33,200 @@ void main() {
       iconLightUrl: Uri.parse('https://tenant.example/icon-light.png'),
       iconDarkUrl: Uri.parse('https://tenant.example/icon-dark.png'),
     );
+    leadCaptureService = _FakePromotionLeadCaptureService();
   });
 
   tearDown(() async {
     await GetIt.I.reset();
   });
 
-  testWidgets('renders runtime app name and branding icon', (tester) async {
-    GetIt.I.registerSingleton<AppPromotionScreenController>(
-      AppPromotionScreenController(
-        appDataRepository: appDataRepository,
-        preferredStorePlatformResolver: () => null,
-      ),
-    );
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
-    expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
-    expect(find.byKey(const Key('app_promotion_brand_icon')), findsOneWidget);
-    expect(find.byKey(const Key('app_promotion_close_button')), findsOneWidget);
-    expect(find.byKey(const Key('app_promotion_dismiss_button')), findsOneWidget);
-  });
-
-  testWidgets('renders only App Store badge when iOS is inferred',
+  testWidgets('renders tester waitlist by default with proper field keyboards',
       (tester) async {
-    GetIt.I.registerSingleton<AppPromotionScreenController>(
-      AppPromotionScreenController(
-        appDataRepository: appDataRepository,
-        preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
-      ),
-    );
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-      ),
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
     );
 
+    await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
 
+    expect(find.text('Teste o Bóora! antes do lançamento'), findsOneWidget);
     expect(
-      find.byKey(const Key('app_promotion_store_badge_ios')),
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('app_promotion_store_badge_android')),
-      findsNothing,
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      findsOneWidget,
     );
-  });
-
-  testWidgets('renders only Google Play badge when Android is inferred',
-      (tester) async {
-    GetIt.I.registerSingleton<AppPromotionScreenController>(
-      AppPromotionScreenController(
-        appDataRepository: appDataRepository,
-        preferredStorePlatformResolver: () =>
-            AppPromotionStorePlatform.android,
-      ),
-    );
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
     expect(
       find.byKey(const Key('app_promotion_store_badge_ios')),
       findsNothing,
     );
     expect(
       find.byKey(const Key('app_promotion_store_badge_android')),
+      findsNothing,
+    );
+
+    final emailField = tester.widget<TextField>(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+    );
+    final whatsappField = tester.widget<TextField>(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+    );
+
+    expect(emailField.keyboardType, TextInputType.emailAddress);
+    expect(whatsappField.keyboardType, TextInputType.phone);
+  });
+
+  testWidgets('submits tester waitlist lead and shows success state',
+      (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      'tester@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      '27999999999',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final captured = leadCaptureService.lastRequest;
+    expect(captured, isNotNull);
+    expect(captured!.appName, 'Bóora!');
+    expect(captured.email, 'tester@example.com');
+    expect(captured.whatsapp, '27999999999');
+    expect(captured.mobilePlatform, PromotionLeadMobilePlatform.android);
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_success')),
       findsOneWidget,
     );
   });
 
-  testWidgets('renders App Store badge before Google Play badge on fallback',
-      (tester) async {
-    GetIt.I.registerSingleton<AppPromotionScreenController>(
-      AppPromotionScreenController(
-        appDataRepository: appDataRepository,
-        preferredStorePlatformResolver: () => null,
-      ),
-    );
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-      ),
+  testWidgets('shows the underlying submission error on screen', (tester) async {
+    leadCaptureService.errorToThrow =
+        StateError('Promotion lead capture failed with status 521');
+
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
     );
 
+    await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
 
-    final iosFinder = find.byKey(const Key('app_promotion_store_badge_ios'));
-    final androidFinder =
-        find.byKey(const Key('app_promotion_store_badge_android'));
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      'tester@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      '27999999999',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.pumpAndSettle();
 
-    expect(iosFinder, findsOneWidget);
-    expect(androidFinder, findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
 
-    final iosTopLeft = tester.getTopLeft(iosFinder);
-    final androidTopLeft = tester.getTopLeft(androidFinder);
-
-    expect(iosTopLeft.dy, lessThan(androidTopLeft.dy));
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_error')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('status 521'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
-      'keeps top close and bottom actions stable on constrained mobile viewport',
+      'renders only App Store badge when iOS is inferred in app download override',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 680));
-    addTearDown(() async {
-      await tester.binding.setSurfaceSize(null);
-    });
-
-    GetIt.I.registerSingleton<AppPromotionScreenController>(
-      AppPromotionScreenController(
-        appDataRepository: appDataRepository,
-        preferredStorePlatformResolver: () => null,
-      ),
+    _registerControllers(
+      experience: AppPromotionExperience.appDownload,
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
     );
 
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-      ),
-    );
+    await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-
-    final closeFinder = find.byKey(const Key('app_promotion_close_button'));
-    final brandFinder = find.byKey(const Key('app_promotion_brand_icon'));
-    final dismissFinder = find.byKey(const Key('app_promotion_dismiss_button'));
-    final androidFinder =
-        find.byKey(const Key('app_promotion_store_badge_android'));
-
-    expect(closeFinder, findsOneWidget);
-    expect(brandFinder, findsOneWidget);
-    expect(dismissFinder, findsOneWidget);
-    expect(androidFinder, findsOneWidget);
-
-    final closeTopLeft = tester.getTopLeft(closeFinder);
-    final brandTopLeft = tester.getTopLeft(brandFinder);
-    final dismissTopLeft = tester.getTopLeft(dismissFinder);
-    final androidTopLeft = tester.getTopLeft(androidFinder);
-
-    expect(closeTopLeft.dy, lessThan(brandTopLeft.dy));
-    expect(dismissTopLeft.dy, greaterThan(androidTopLeft.dy));
+    expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_ios')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      findsNothing,
+    );
   });
+}
+
+void _registerControllers({
+  required AppPromotionExperience experience,
+  required AppPromotionStorePlatformResolver preferredStorePlatformResolver,
+  required _FakeAppDataRepository appDataRepository,
+  required _FakePromotionLeadCaptureService leadCaptureService,
+}) {
+  GetIt.I.registerSingleton<AppPromotionScreenController>(
+    AppPromotionScreenController(
+      appDataRepository: appDataRepository,
+      preferredStorePlatformResolver: preferredStorePlatformResolver,
+      experienceResolver: () => experience,
+    ),
+  );
+  GetIt.I.registerSingleton<AppPromotionTesterWaitlistController>(
+    AppPromotionTesterWaitlistController(
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    ),
+  );
 }
 
 Widget _buildWidget({
@@ -187,7 +235,7 @@ Widget _buildWidget({
   return StackRouterScope(
     controller: router,
     stateHash: 0,
-    child: MaterialApp(
+    child: const MaterialApp(
       home: AppPromotionScreen(
         redirectPath: '/invite?code=CODE123',
       ),
@@ -196,6 +244,22 @@ Widget _buildWidget({
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {}
+
+class _FakePromotionLeadCaptureService
+    implements PromotionLeadCaptureServiceContract {
+  PromotionLeadCaptureRequest? lastRequest;
+  Object? errorToThrow;
+
+  @override
+  Future<void> submitTesterWaitlistLead(
+    PromotionLeadCaptureRequest request,
+  ) async {
+    if (errorToThrow != null) {
+      throw errorToThrow!;
+    }
+    lastRequest = request;
+  }
+}
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({

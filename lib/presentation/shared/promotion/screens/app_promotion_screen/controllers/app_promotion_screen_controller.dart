@@ -5,6 +5,7 @@ import 'app_promotion_web_store_platform_resolver_stub.dart'
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/web_promotion_telemetry.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -12,19 +13,25 @@ import 'package:url_launcher/url_launcher.dart';
 
 typedef AppPromotionStorePlatformResolver = AppPromotionStorePlatform?
     Function();
+typedef AppPromotionExperienceResolver = AppPromotionExperience Function();
 
 class AppPromotionScreenController implements Disposable {
   AppPromotionScreenController({
     AppDataRepositoryContract? appDataRepository,
     AppPromotionStorePlatformResolver? preferredStorePlatformResolver,
+    AppPromotionExperienceResolver? experienceResolver,
   })  : _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _preferredStorePlatformResolver =
-            preferredStorePlatformResolver ??
-                web_store_platform.resolvePreferredWebPromotionStorePlatform;
+        _preferredStorePlatformResolver = preferredStorePlatformResolver ??
+            web_store_platform.resolvePreferredWebPromotionStorePlatform,
+        _experienceResolver =
+            experienceResolver ?? _resolveHardcodedPromotionExperience;
 
   final AppDataRepositoryContract _appDataRepository;
   final AppPromotionStorePlatformResolver _preferredStorePlatformResolver;
+  final AppPromotionExperienceResolver _experienceResolver;
+
+  AppPromotionExperience get currentExperience => _experienceResolver();
 
   String normalizeRedirectPath(String? rawRedirectPath) {
     final normalized = rawRedirectPath?.trim();
@@ -95,4 +102,9 @@ class AppPromotionScreenController implements Disposable {
 
   @override
   void onDispose() {}
+}
+
+AppPromotionExperience _resolveHardcodedPromotionExperience() {
+  // TODO(vnext-promotion-experience-switch): move the active promotion experience selection to runtime config/backend contracts.
+  return AppPromotionExperience.testerWaitlist;
 }

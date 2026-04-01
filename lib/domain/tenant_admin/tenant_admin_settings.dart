@@ -15,5 +15,7 @@ export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_type_option.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_ui_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_push_settings.dart';
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_resend_email_recipients.dart';
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_resend_email_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_telemetry_integration.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_telemetry_settings_snapshot.dart';

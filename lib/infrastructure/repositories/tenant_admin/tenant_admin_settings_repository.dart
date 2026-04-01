@@ -215,6 +215,35 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminResendEmailSettings> fetchResendEmailSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeResendEmailSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load resend_email settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
+    required TenantAdminResendEmailSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'resend_email'),
+        data: _requestEncoder.encodeResendEmailSettingsPatch(settings),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeResendEmailSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update resend_email settings');
+    }
+  }
+
+  @override
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   }) async {

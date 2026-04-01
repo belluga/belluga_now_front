@@ -15,6 +15,19 @@ class TenantAdminSettingsRequestEncoder {
     return encodeSettingsPatchPayload(settings.rawAppLinks);
   }
 
+  Map<String, dynamic> encodeResendEmailSettingsPatch(
+    TenantAdminResendEmailSettings settings,
+  ) {
+    return encodeSettingsPatchPayload({
+      'token': settings.token,
+      'from': settings.from,
+      'to': settings.to.values.map((entry) => entry.value).toList(),
+      'cc': settings.cc.values.map((entry) => entry.value).toList(),
+      'bcc': settings.bcc.values.map((entry) => entry.value).toList(),
+      'reply_to': settings.replyTo.values.map((entry) => entry.value).toList(),
+    });
+  }
+
   Map<String, dynamic> encodeSettingsPatchPayload(
     Map<String, dynamic> source,
   ) {

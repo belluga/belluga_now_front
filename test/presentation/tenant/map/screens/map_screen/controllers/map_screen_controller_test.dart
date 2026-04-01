@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
