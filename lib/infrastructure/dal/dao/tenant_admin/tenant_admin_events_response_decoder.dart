@@ -117,7 +117,7 @@ class TenantAdminEventsResponseDecoder {
         .cast<String>()
         .map(TenantAdminArtistIdValue.new)
         .toList(growable: false);
-    final artistProfiles = _decodeAccountProfiles(row['artists']);
+    final artistProfiles = _decodeEventArtistProfiles(row['artists']);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -341,10 +341,56 @@ class TenantAdminEventsResponseDecoder {
     );
   }
 
+  TenantAdminAccountProfile _mapEventArtistProfile(
+    Map<String, dynamic> row,
+  ) {
+    final taxonomyTerms = _asList(row['taxonomy_terms'])
+        .map(_asMap)
+        .where((term) => term.isNotEmpty)
+        .map((term) => tenantAdminTaxonomyTermFromRaw(
+              type: _asString(term['type']) ?? '',
+              value: _asString(term['value']) ?? '',
+            ))
+        .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
+        .toList(growable: false);
+
+    final id = _asString(row['id']) ?? '';
+
+    return tenantAdminAccountProfileFromRaw(
+      id: id,
+      accountId:
+          _asString(row['account_id']) ?? _asString(row['accountId']) ?? id,
+      profileType: _asString(row['profile_type']) ??
+          _asString(row['profileType']) ??
+          'artist',
+      displayName:
+          _asString(row['display_name']) ?? _asString(row['name']) ?? '',
+      slug: _asString(row['slug']),
+      avatarUrl: _asString(row['avatar_url']),
+      coverUrl: _asString(row['cover_url']),
+      bio: _asString(row['bio']),
+      content: _asString(row['content']),
+      taxonomyTerms: (() {
+        final terms = TenantAdminTaxonomyTerms();
+        for (final taxonomyTerm in taxonomyTerms) {
+          terms.add(taxonomyTerm);
+        }
+        return terms;
+      })(),
+    );
+  }
+
   List<TenantAdminAccountProfile> _decodeAccountProfiles(Object? raw) {
     return _asList(raw)
         .whereType<Map>()
         .map((row) => _mapAccountProfile(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+  }
+
+  List<TenantAdminAccountProfile> _decodeEventArtistProfiles(Object? raw) {
+    return _asList(raw)
+        .whereType<Map>()
+        .map((row) => _mapEventArtistProfile(Map<String, dynamic>.from(row)))
         .toList(growable: false);
   }
 
