@@ -1,7 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
@@ -9,11 +11,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
+import 'package:dio/dio.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_events_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +64,36 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
+  });
+
+  testWidgets(
+      'screen renders events from backend payload when artists are summarized',
+      (tester) async {
+    final dio = Dio()
+      ..httpClientAdapter = _EventsScreenSummarizedArtistsAdapter();
+    final scope = _ScreenTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _ScreenLandlordAuthRepository(),
+    );
+
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    expect(find.text('Summarized Artist Event'), findsOneWidget);
+    expect(find.text('Unable to load events.'), findsNothing);
+    expect(controller.eventsErrorStreamValue.value, isNull);
   });
 }
 
@@ -206,6 +241,120 @@ class _EventsRepositoryWithSeedData
       statusValue: tenantAdminRequiredText('draft'),
     ),
   );
+}
+
+class _ScreenLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  @override
+  bool get hasValidSession => true;
+
+  @override
+  String get token => 'screen-landlord-token';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+}
+
+class _ScreenTenantScope implements TenantAdminTenantScopeContract {
+  _ScreenTenantScope(String initialBaseUrl) {
+    _selectedTenantDomainStreamValue.addValue(initialBaseUrl);
+  }
+
+  final StreamValue<String?> _selectedTenantDomainStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
+  @override
+  String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
+
+  @override
+  String get selectedTenantAdminBaseUrl => selectedTenantDomain ?? '';
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      _selectedTenantDomainStreamValue;
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomainStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenantDomain(Object tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
+  }
+}
+
+class _EventsScreenSummarizedArtistsAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        '''
+        {
+          "data": [
+            {
+              "event_id": "evt-summary-screen-1",
+              "slug": "summarized-artist-event",
+              "title": "Summarized Artist Event",
+              "content": "Content",
+              "type": { "name": "Show", "slug": "show" },
+              "publication": { "status": "draft" },
+              "occurrences": [
+                { "date_time_start": "2026-03-05T20:00:00Z" }
+              ],
+              "artists": [
+                {
+                  "id": "artist-summary-screen-1",
+                  "display_name": "DJ Summary",
+                  "avatar_url": "https://example.com/dj-summary.jpg",
+                  "highlight": false,
+                  "genres": ["house"]
+                }
+              ]
+            }
+          ],
+          "current_page": 1,
+          "last_page": 1,
+          "per_page": 20,
+          "total": 1
+        }
+        ''',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      '{"data": {}}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
 }
 
 class _NoopTaxonomiesRepository
