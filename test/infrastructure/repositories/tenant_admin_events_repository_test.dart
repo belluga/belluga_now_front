@@ -308,6 +308,32 @@ void main() {
     expect(request.queryParameters['archived'], 1);
   });
 
+  test(
+      'fetchEventsPage decodes summarized event artists without requiring full account profile payload',
+      () async {
+    final adapter = _EventsListWithSummarizedArtistsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+    );
+
+    expect(result.items, hasLength(1));
+    expect(result.items.first.title, 'Summarized Artist Event');
+    expect(result.items.first.artistProfiles, hasLength(1));
+    expect(result.items.first.artistProfiles.first.id, 'artist-summary-1');
+    expect(result.items.first.artistProfiles.first.displayName, 'DJ Summary');
+    expect(result.items.first.artistProfiles.first.profileType, 'artist');
+    expect(
+        result.items.first.artistProfiles.first.accountId, 'artist-summary-1');
+  });
+
   test('fetchEventTypes prefers landlord token and maps payload', () async {
     final adapter = _EventTypesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -875,6 +901,71 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
   ResponseBody _jsonResponse(Map<String, dynamic> payload) {
     return ResponseBody.fromString(
       jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventsListWithSummarizedArtistsAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': [
+            {
+              'event_id': 'evt-summary-1',
+              'slug': 'summarized-artist-event',
+              'title': 'Summarized Artist Event',
+              'content': 'Content',
+              'type': {
+                'name': 'Show',
+                'slug': 'show',
+              },
+              'publication': {
+                'status': 'draft',
+              },
+              'occurrences': [
+                {
+                  'date_time_start': '2026-03-05T20:00:00Z',
+                }
+              ],
+              'artists': [
+                {
+                  'id': 'artist-summary-1',
+                  'display_name': 'DJ Summary',
+                  'avatar_url': 'https://example.com/dj-summary.jpg',
+                  'highlight': false,
+                  'genres': ['house'],
+                }
+              ],
+            },
+          ],
+          'current_page': 1,
+          'last_page': 1,
+          'per_page': 20,
+          'total': 1,
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
