@@ -1,10 +1,9 @@
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_field_payload.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_request.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_email_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_phone_value.dart';
-import 'package:belluga_now/domain/promotion/promotion_lead_capture_request.dart';
 import 'package:belluga_now/domain/promotion/promotion_lead_mobile_platform.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/services/promotion_lead_capture_service_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -21,12 +20,18 @@ class AppPromotionTesterWaitlistController implements Disposable {
   final AppDataRepositoryContract _appDataRepository;
   final PromotionLeadCaptureServiceContract _leadCaptureService;
 
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController whatsappController = TextEditingController();
+  final TextEditingController expectationsController = TextEditingController();
 
+  final StreamValue<String?> nameErrorStreamValue =
+      StreamValue<String?>(defaultValue: null);
   final StreamValue<String?> emailErrorStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<String?> whatsappErrorStreamValue =
+      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> expectationsErrorStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<String?> platformErrorStreamValue =
       StreamValue<String?>(defaultValue: null);
@@ -45,14 +50,23 @@ class AppPromotionTesterWaitlistController implements Disposable {
   }
 
   void reset() {
+    nameController.clear();
     emailController.clear();
     whatsappController.clear();
+    expectationsController.clear();
+    nameErrorStreamValue.addValue(null);
     emailErrorStreamValue.addValue(null);
     whatsappErrorStreamValue.addValue(null);
+    expectationsErrorStreamValue.addValue(null);
     platformErrorStreamValue.addValue(null);
     selectedPlatformStreamValue.addValue(null);
     isSubmittingStreamValue.addValue(false);
     submissionSucceededStreamValue.addValue(false);
+    submissionErrorMessageStreamValue.addValue(null);
+  }
+
+  void onNameChanged(String _) {
+    nameErrorStreamValue.addValue(null);
     submissionErrorMessageStreamValue.addValue(null);
   }
 
@@ -63,6 +77,11 @@ class AppPromotionTesterWaitlistController implements Disposable {
 
   void onWhatsappChanged(String _) {
     whatsappErrorStreamValue.addValue(null);
+    submissionErrorMessageStreamValue.addValue(null);
+  }
+
+  void onExpectationsChanged(String _) {
+    expectationsErrorStreamValue.addValue(null);
     submissionErrorMessageStreamValue.addValue(null);
   }
 
@@ -100,6 +119,14 @@ class AppPromotionTesterWaitlistController implements Disposable {
   bool _validate() {
     var isValid = true;
 
+    final normalizedName = nameController.text.trim();
+    if (normalizedName.isEmpty) {
+      nameErrorStreamValue.addValue('Insira seu nome.');
+      isValid = false;
+    } else {
+      nameErrorStreamValue.addValue(null);
+    }
+
     final normalizedEmail = emailController.text.trim();
     if (!_isValidEmail(normalizedEmail)) {
       emailErrorStreamValue.addValue('Insira um e-mail válido.');
@@ -116,6 +143,16 @@ class AppPromotionTesterWaitlistController implements Disposable {
       whatsappErrorStreamValue.addValue(null);
     }
 
+    final normalizedExpectations = expectationsController.text.trim();
+    if (normalizedExpectations.isEmpty) {
+      expectationsErrorStreamValue.addValue(
+        'Conte para nós o que você espera encontrar.',
+      );
+      isValid = false;
+    } else {
+      expectationsErrorStreamValue.addValue(null);
+    }
+
     if (selectedPlatformStreamValue.value == null) {
       platformErrorStreamValue.addValue('Selecione uma opção.');
       isValid = false;
@@ -130,11 +167,28 @@ class AppPromotionTesterWaitlistController implements Disposable {
     final appNameValue = EnvironmentNameValue()..parse(appDisplayName);
     return PromotionLeadCaptureRequest(
       appNameValue: appNameValue,
-      emailValue: ContactEmailValue(raw: emailController.text.trim()),
-      whatsappValue: ContactPhoneValue(
-        raw: _normalizedWhatsappDigits(whatsappController.text),
-      ),
-      mobilePlatform: selectedPlatformStreamValue.value!,
+      submittedFields: <PromotionLeadCaptureFieldPayload>[
+        PromotionLeadCaptureFieldPayload(
+          label: 'Seu Nome',
+          value: nameController.text.trim(),
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'E-mail',
+          value: emailController.text.trim(),
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'WhatsApp',
+          value: _normalizedWhatsappDigits(whatsappController.text),
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'Qual o seu sistema operacional?',
+          value: selectedPlatformStreamValue.value!.label,
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'O que não pode faltar para atender às suas expectativas?',
+          value: expectationsController.text.trim(),
+        ),
+      ],
     );
   }
 
@@ -168,10 +222,14 @@ class AppPromotionTesterWaitlistController implements Disposable {
 
   @override
   void onDispose() {
+    nameController.dispose();
     emailController.dispose();
     whatsappController.dispose();
+    expectationsController.dispose();
+    nameErrorStreamValue.dispose();
     emailErrorStreamValue.dispose();
     whatsappErrorStreamValue.dispose();
+    expectationsErrorStreamValue.dispose();
     platformErrorStreamValue.dispose();
     selectedPlatformStreamValue.dispose();
     isSubmittingStreamValue.dispose();

@@ -1,12 +1,12 @@
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_field_payload.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_request.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
-import 'package:belluga_now/domain/promotion/promotion_lead_capture_request.dart';
-import 'package:belluga_now/domain/promotion/promotion_lead_mobile_platform.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/services/promotion_lead_capture_service_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/app_promotion_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
@@ -52,7 +52,11 @@ void main() {
     await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Teste o Bóora! antes do lançamento'), findsOneWidget);
+    expect(find.text('Bora testar o Bóora!?'), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('app_promotion_waitlist_email_field')),
       findsOneWidget,
@@ -68,6 +72,10 @@ void main() {
     expect(
       find.byKey(const Key('app_promotion_store_badge_android')),
       findsNothing,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_benefits_carousel')),
+      findsOneWidget,
     );
 
     final emailField = tester.widget<TextField>(
@@ -94,6 +102,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      'Maria Tester',
+    );
+    await tester.enterText(
       find.byKey(const Key('app_promotion_waitlist_email_field')),
       'tester@example.com',
     );
@@ -108,6 +120,10 @@ void main() {
       find.byKey(const Key('app_promotion_waitlist_platform_android')),
     );
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+      'Mapa confiável e agenda atualizada.',
+    );
 
     await tester.ensureVisible(
       find.byKey(const Key('app_promotion_waitlist_submit_button')),
@@ -121,16 +137,42 @@ void main() {
     final captured = leadCaptureService.lastRequest;
     expect(captured, isNotNull);
     expect(captured!.appName, 'Bóora!');
-    expect(captured.email, 'tester@example.com');
-    expect(captured.whatsapp, '27999999999');
-    expect(captured.mobilePlatform, PromotionLeadMobilePlatform.android);
+    expect(
+      captured.submittedFields
+          .map((PromotionLeadCaptureFieldPayload field) => field.label)
+          .toList(growable: false),
+      const <String>[
+        'Seu Nome',
+        'E-mail',
+        'WhatsApp',
+        'Qual o seu sistema operacional?',
+        'O que não pode faltar para atender às suas expectativas?',
+      ],
+    );
+    expect(
+      captured.submittedFields
+          .map((PromotionLeadCaptureFieldPayload field) => field.value)
+          .toList(growable: false),
+      const <String>[
+        'Maria Tester',
+        'tester@example.com',
+        '27999999999',
+        'Android',
+        'Mapa confiável e agenda atualizada.',
+      ],
+    );
     expect(
       find.byKey(const Key('app_promotion_waitlist_success')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_continue_button')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('shows the underlying submission error on screen', (tester) async {
+  testWidgets('shows the underlying submission error on screen',
+      (tester) async {
     leadCaptureService.errorToThrow =
         StateError('Promotion lead capture failed with status 521');
 
@@ -145,6 +187,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      'Maria Tester',
+    );
+    await tester.enterText(
       find.byKey(const Key('app_promotion_waitlist_email_field')),
       'tester@example.com',
     );
@@ -159,6 +205,10 @@ void main() {
       find.byKey(const Key('app_promotion_waitlist_platform_android')),
     );
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+      'Mapa confiável e agenda atualizada.',
+    );
 
     await tester.ensureVisible(
       find.byKey(const Key('app_promotion_waitlist_submit_button')),
@@ -177,6 +227,76 @@ void main() {
       find.textContaining('status 521'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('close button uses pop only', (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('app_promotion_close_button')));
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 1);
+    expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets('success CTA uses pop only', (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      'Maria Tester',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      'tester@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      '27999999999',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+      'Mapa confiável e agenda atualizada.',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_continue_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 1);
+    expect(router.replaceAllCalls, 0);
   });
 
   testWidgets(
@@ -243,7 +363,24 @@ Widget _buildWidget({
   );
 }
 
-class _RecordingStackRouter extends Mock implements StackRouter {}
+class _RecordingStackRouter extends Mock implements StackRouter {
+  int popCalls = 0;
+  int replaceAllCalls = 0;
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCalls += 1;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo>? routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllCalls += 1;
+  }
+}
 
 class _FakePromotionLeadCaptureService
     implements PromotionLeadCaptureServiceContract {
