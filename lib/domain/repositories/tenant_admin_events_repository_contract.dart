@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -19,9 +21,16 @@ abstract class TenantAdminEventsRepositoryContract {
 
   static final Expando<_TenantAdminEventsPaginationState>
       _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
+  static final Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>
+      _accountProfileCandidatesStateByRepository =
+      Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>();
 
   _TenantAdminEventsPaginationState get _eventsPaginationState =>
       _eventsStateByRepository[this] ??= _TenantAdminEventsPaginationState();
+  _TenantAdminEventAccountProfileCandidatesPaginationState
+      get _accountProfileCandidatesPaginationState =>
+          _accountProfileCandidatesStateByRepository[this] ??=
+              _TenantAdminEventAccountProfileCandidatesPaginationState();
 
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsPaginationState.eventsStreamValue;
@@ -169,13 +178,97 @@ abstract class TenantAdminEventsRepositoryContract {
 
   Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {}
 
-  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
   });
 
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      loadEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    await _waitForEventAccountProfileCandidatesFetch();
+    _resetEventAccountProfileCandidatesPagination();
+
+    return _fetchEventAccountProfileCandidatesPageInternal(
+      candidateType: candidateType,
+      page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      loadNextEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (_accountProfileCandidatesPaginationState.isFetching.value ||
+        !_accountProfileCandidatesPaginationState.hasMore.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _accountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: _accountProfileCandidatesPaginationState.hasMore.value,
+      );
+    }
+
+    return _fetchEventAccountProfileCandidatesPageInternal(
+      candidateType: candidateType,
+      page: TenantAdminEventsRepoInt.fromRaw(
+        _accountProfileCandidatesPaginationState.currentPage.value + 1,
+        defaultValue: 1,
+      ),
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+
+  Future<List<TenantAdminAccountProfile>> fetchAllEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    await _waitForEventAccountProfileCandidatesFetch();
+
+    final items = <TenantAdminAccountProfile>[];
+    var currentPage = 1;
+    var hasMore = true;
+
+    while (hasMore) {
+      final result = await fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: TenantAdminEventsRepoInt.fromRaw(
+          currentPage,
+          defaultValue: currentPage,
+        ),
+        pageSize: _eventAccountProfileCandidatesPageSize(candidateType),
+        search: search,
+        accountSlug: accountSlug,
+      );
+      items.addAll(result.items);
+      hasMore = result.hasMore;
+      currentPage += 1;
+    }
+
+    return List<TenantAdminAccountProfile>.unmodifiable(items);
+  }
+
   Future<void> _waitForEventsFetch() async {
     while (_eventsPaginationState.isFetchingEventsPage.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> _waitForEventAccountProfileCandidatesFetch() async {
+    while (_accountProfileCandidatesPaginationState.isFetching.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -257,6 +350,94 @@ abstract class TenantAdminEventsRepositoryContract {
     isEventsPageLoadingStreamValue.addValue(
         TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
   }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _fetchEventAccountProfileCandidatesPageInternal({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (_accountProfileCandidatesPaginationState.isFetching.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _accountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: _accountProfileCandidatesPaginationState.hasMore.value,
+      );
+    }
+    if (page.value > 1 && !_accountProfileCandidatesPaginationState.hasMore.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _accountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: false,
+      );
+    }
+
+    _accountProfileCandidatesPaginationState.isFetching =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+
+    try {
+      final result = await fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: page,
+        pageSize: _eventAccountProfileCandidatesPageSize(candidateType),
+        search: search,
+        accountSlug: accountSlug,
+      );
+
+      if (page.value <= 1) {
+        _accountProfileCandidatesPaginationState.cachedItems
+          ..clear()
+          ..addAll(result.items);
+      } else {
+        _accountProfileCandidatesPaginationState.cachedItems
+            .addAll(result.items);
+      }
+
+      _accountProfileCandidatesPaginationState.currentPage = page;
+      _accountProfileCandidatesPaginationState.hasMore =
+          TenantAdminEventsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
+
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _accountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: result.hasMore,
+      );
+    } finally {
+      _accountProfileCandidatesPaginationState.isFetching =
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+    }
+  }
+
+  void _resetEventAccountProfileCandidatesPagination() {
+    _accountProfileCandidatesPaginationState.cachedItems.clear();
+    _accountProfileCandidatesPaginationState.currentPage =
+        TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+    _accountProfileCandidatesPaginationState.hasMore =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _accountProfileCandidatesPaginationState.isFetching =
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+  }
+
+  TenantAdminEventsRepoInt _eventAccountProfileCandidatesPageSize(
+    TenantAdminEventAccountProfileCandidateType candidateType,
+  ) {
+    final rawValue = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.artist => 20,
+      TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
+    };
+
+    return TenantAdminEventsRepoInt.fromRaw(
+      rawValue,
+      defaultValue: rawValue,
+    );
+  }
 }
 
 mixin TenantAdminEventsPaginationMixin
@@ -268,9 +449,16 @@ mixin TenantAdminEventsPaginationMixin
 
   static final Expando<_TenantAdminEventsPaginationState>
       _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
+  static final Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>
+      _accountProfileCandidatesStateByRepository =
+      Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>();
 
   _TenantAdminEventsPaginationState get _mixinEventsPaginationState =>
       _eventsStateByRepository[this] ??= _TenantAdminEventsPaginationState();
+  _TenantAdminEventAccountProfileCandidatesPaginationState
+      get _mixinAccountProfileCandidatesPaginationState =>
+          _accountProfileCandidatesStateByRepository[this] ??=
+              _TenantAdminEventAccountProfileCandidatesPaginationState();
 
   @override
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
@@ -369,8 +557,91 @@ mixin TenantAdminEventsPaginationMixin
   @override
   Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {}
 
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      loadEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    await _waitForEventAccountProfileCandidatesFetchMixin();
+    _resetEventAccountProfileCandidatesPaginationMixin();
+
+    return _fetchEventAccountProfileCandidatesPageMixin(
+      candidateType: candidateType,
+      page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      loadNextEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (_mixinAccountProfileCandidatesPaginationState.isFetching.value ||
+        !_mixinAccountProfileCandidatesPaginationState.hasMore.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _mixinAccountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: _mixinAccountProfileCandidatesPaginationState.hasMore.value,
+      );
+    }
+
+    return _fetchEventAccountProfileCandidatesPageMixin(
+      candidateType: candidateType,
+      page: TenantAdminEventsRepoInt.fromRaw(
+        _mixinAccountProfileCandidatesPaginationState.currentPage.value + 1,
+        defaultValue: 1,
+      ),
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+
+  @override
+  Future<List<TenantAdminAccountProfile>> fetchAllEventAccountProfileCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    await _waitForEventAccountProfileCandidatesFetchMixin();
+
+    final items = <TenantAdminAccountProfile>[];
+    var currentPage = 1;
+    var hasMore = true;
+
+    while (hasMore) {
+      final result = await fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: TenantAdminEventsRepoInt.fromRaw(
+          currentPage,
+          defaultValue: currentPage,
+        ),
+        pageSize: _eventAccountProfileCandidatesPageSizeMixin(candidateType),
+        search: search,
+        accountSlug: accountSlug,
+      );
+      items.addAll(result.items);
+      hasMore = result.hasMore;
+      currentPage += 1;
+    }
+
+    return List<TenantAdminAccountProfile>.unmodifiable(items);
+  }
+
   Future<void> _waitForEventsFetchMixin() async {
     while (_mixinEventsPaginationState.isFetchingEventsPage.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> _waitForEventAccountProfileCandidatesFetchMixin() async {
+    while (_mixinAccountProfileCandidatesPaginationState.isFetching.value) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
@@ -451,6 +722,95 @@ mixin TenantAdminEventsPaginationMixin
     isEventsPageLoadingStreamValue.addValue(
         TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
   }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _fetchEventAccountProfileCandidatesPageMixin({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (_mixinAccountProfileCandidatesPaginationState.isFetching.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _mixinAccountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: _mixinAccountProfileCandidatesPaginationState.hasMore.value,
+      );
+    }
+    if (page.value > 1 &&
+        !_mixinAccountProfileCandidatesPaginationState.hasMore.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _mixinAccountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: false,
+      );
+    }
+
+    _mixinAccountProfileCandidatesPaginationState.isFetching =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+
+    try {
+      final result = await fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: page,
+        pageSize: _eventAccountProfileCandidatesPageSizeMixin(candidateType),
+        search: search,
+        accountSlug: accountSlug,
+      );
+
+      if (page.value <= 1) {
+        _mixinAccountProfileCandidatesPaginationState.cachedItems
+          ..clear()
+          ..addAll(result.items);
+      } else {
+        _mixinAccountProfileCandidatesPaginationState.cachedItems
+            .addAll(result.items);
+      }
+
+      _mixinAccountProfileCandidatesPaginationState.currentPage = page;
+      _mixinAccountProfileCandidatesPaginationState.hasMore =
+          TenantAdminEventsRepoBool.fromRaw(
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
+
+      return tenantAdminPagedResultFromRaw(
+        items: List<TenantAdminAccountProfile>.unmodifiable(
+          _mixinAccountProfileCandidatesPaginationState.cachedItems,
+        ),
+        hasMore: result.hasMore,
+      );
+    } finally {
+      _mixinAccountProfileCandidatesPaginationState.isFetching =
+          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+    }
+  }
+
+  void _resetEventAccountProfileCandidatesPaginationMixin() {
+    _mixinAccountProfileCandidatesPaginationState.cachedItems.clear();
+    _mixinAccountProfileCandidatesPaginationState.currentPage =
+        TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+    _mixinAccountProfileCandidatesPaginationState.hasMore =
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _mixinAccountProfileCandidatesPaginationState.isFetching =
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+  }
+
+  TenantAdminEventsRepoInt _eventAccountProfileCandidatesPageSizeMixin(
+    TenantAdminEventAccountProfileCandidateType candidateType,
+  ) {
+    final rawValue = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.artist => 20,
+      TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
+    };
+
+    return TenantAdminEventsRepoInt.fromRaw(
+      rawValue,
+      defaultValue: rawValue,
+    );
+  }
 }
 
 class _TenantAdminEventsPaginationState {
@@ -472,5 +832,16 @@ class _TenantAdminEventsPaginationState {
   TenantAdminEventsRepoBool hasMoreEvents =
       TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
   TenantAdminEventsRepoInt currentEventsPage =
+      TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+}
+
+class _TenantAdminEventAccountProfileCandidatesPaginationState {
+  final List<TenantAdminAccountProfile> cachedItems =
+      <TenantAdminAccountProfile>[];
+  TenantAdminEventsRepoBool isFetching =
+      TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
+  TenantAdminEventsRepoBool hasMore =
+      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+  TenantAdminEventsRepoInt currentPage =
       TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
 }

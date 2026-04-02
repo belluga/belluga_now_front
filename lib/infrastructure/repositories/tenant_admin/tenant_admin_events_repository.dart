@@ -2,7 +2,9 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
@@ -361,7 +363,11 @@ class TenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
@@ -372,12 +378,14 @@ class TenantAdminEventsRepository
 
       final response = await _dio.get(
         isAccountScoped
-            ? '$_tenantApiBaseUrl/v1/accounts/$normalizedAccountSlug/events/party_candidates'
-            : '$_apiBaseUrl/v1/events/party_candidates',
+            ? '$_tenantApiBaseUrl/v1/accounts/$normalizedAccountSlug/events/account_profile_candidates'
+            : '$_apiBaseUrl/v1/events/account_profile_candidates',
         queryParameters: {
+          'type': candidateType.apiValue,
+          'page': page.value,
+          'page_size': pageSize.value,
           if (search != null && search.value.trim().isNotEmpty)
             'search': search.value,
-          'limit': 100,
         },
         options: Options(
           headers: isAccountScoped
@@ -389,9 +397,15 @@ class TenantAdminEventsRepository
         ),
       );
 
-      return _responseDecoder.decodePartyCandidates(response.data);
+      return tenantAdminPagedResultFromRaw(
+        items: _responseDecoder.decodeAccountProfileCandidates(response.data),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page.value,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load event party candidates');
+      throw _wrapError(error, 'load event account profile candidates');
     }
   }
 

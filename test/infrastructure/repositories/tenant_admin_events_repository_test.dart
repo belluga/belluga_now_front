@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -385,9 +386,9 @@ void main() {
     );
   });
 
-  test('fetchPartyCandidates uses dedicated events candidates endpoint',
+  test('fetchEventAccountProfileCandidatesPage uses dedicated endpoint',
       () async {
-    final adapter = _PartyCandidatesAdapter();
+    final adapter = _AccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -395,30 +396,36 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(
+    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
       search: _repoText('main'),
     );
 
-    expect(candidates.venues, hasLength(1));
-    expect(candidates.venues.first.id, 'venue-1');
-    expect(candidates.venues.first.profileType, 'venue');
-    expect(candidates.artists, isEmpty);
+    expect(candidates.items, hasLength(1));
+    expect(candidates.items.first.id, 'venue-1');
+    expect(candidates.items.first.profileType, 'venue');
+    expect(candidates.hasMore, isFalse);
 
     final candidateRequests = adapter.requests
-        .where((request) =>
-            request.path.endsWith('/admin/api/v1/events/party_candidates'))
+        .where((request) => request.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates'))
         .toList(growable: false);
 
     expect(candidateRequests, hasLength(1));
+    expect(candidateRequests.first.queryParameters['type'], 'physical_host');
+    expect(candidateRequests.first.queryParameters['page'], 1);
+    expect(candidateRequests.first.queryParameters['page_size'], 20);
     expect(candidateRequests.first.queryParameters['search'], 'main');
-    expect(candidateRequests.first.queryParameters['limit'], 100);
     expect(
         candidateRequests.first.headers['Authorization'], 'Bearer test-token');
   });
 
-  test('fetchPartyCandidates uses account-scoped endpoint for own-create flow',
+  test(
+      'fetchEventAccountProfileCandidatesPage derives hasMore from backend pagination metadata',
       () async {
-    final adapter = _PartyCandidatesAdapter();
+    final adapter = _AccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -426,32 +433,69 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(
+    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
+      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      page: _repoInt(2),
+      pageSize: _repoInt(20),
+      search: _repoText('paged'),
+    );
+
+    expect(candidates.items, hasLength(20));
+    expect(candidates.items.first.id, 'artist-page-21');
+    expect(candidates.items.first.displayName, 'Paged Artist 021');
+    expect(candidates.hasMore, isTrue);
+
+    final candidateRequests = adapter.requests
+        .where((request) => request.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates'))
+        .toList(growable: false);
+
+    expect(candidateRequests, hasLength(1));
+    expect(candidateRequests.first.queryParameters['page'], 2);
+    expect(candidateRequests.first.queryParameters['page_size'], 20);
+    expect(candidateRequests.first.queryParameters['search'], 'paged');
+  });
+
+  test(
+      'fetchEventAccountProfileCandidatesPage uses account-scoped endpoint for own-create flow',
+      () async {
+    final adapter = _AccountProfileCandidatesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+      page: _repoInt(2),
+      pageSize: _repoInt(10),
       search: _repoText('main'),
       accountSlug: _repoText('my-account'),
     );
 
-    expect(candidates.venues, hasLength(1));
-    expect(candidates.venues.first.id, 'venue-1');
-    expect(candidates.venues.first.profileType, 'venue');
-    expect(candidates.artists, isEmpty);
+    expect(candidates.items, hasLength(1));
+    expect(candidates.items.first.id, 'venue-1');
+    expect(candidates.items.first.profileType, 'venue');
 
     final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/api/v1/accounts/my-account/events/party_candidates'))
+        .where((request) => request.path.endsWith(
+            '/api/v1/accounts/my-account/events/account_profile_candidates'))
         .toList(growable: false);
 
     expect(candidateRequests, hasLength(1));
+    expect(candidateRequests.first.queryParameters['type'], 'physical_host');
+    expect(candidateRequests.first.queryParameters['page'], 2);
+    expect(candidateRequests.first.queryParameters['page_size'], 10);
     expect(candidateRequests.first.queryParameters['search'], 'main');
-    expect(candidateRequests.first.queryParameters['limit'], 100);
     expect(candidateRequests.first.headers['Authorization'],
         'Bearer account-token');
   });
 
-  test(
-      'fetchPartyCandidates ignores legacy venues when physical_hosts is empty',
+  test('fetchEventAccountProfileCandidatesPage decodes artist candidate pages',
       () async {
-    final adapter = _LegacyVenueOnlyPartyCandidatesAdapter();
+    final adapter = _AccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -459,17 +503,22 @@ void main() {
       tenantScope: scope,
     );
 
-    final candidates = await repository.fetchPartyCandidates(
-      search: _repoText('legacy'),
+    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
+      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      search: _repoText('dj'),
     );
 
-    expect(candidates.venues, isEmpty);
-    expect(candidates.artists, isEmpty);
+    expect(candidates.items, hasLength(1));
+    expect(candidates.items.first.id, 'artist-1');
+    expect(candidates.items.first.profileType, 'artist');
   });
 
-  test('fetchPartyCandidates throws when candidates endpoint is unauthorized',
+  test(
+      'fetchEventAccountProfileCandidatesPage throws when endpoint is unauthorized',
       () async {
-    final adapter = _UnauthorizedAdminPartyCandidatesAdapter();
+    final adapter = _UnauthorizedAdminAccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -478,26 +527,32 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: _repoText('main')),
+      () => repository.fetchEventAccountProfileCandidatesPage(
+        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        search: _repoText('main'),
+      ),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
           'message',
-          contains('Failed to load event party candidates'),
+          contains('Failed to load event account profile candidates'),
         ),
       ),
     );
 
     final candidateRequests = adapter.requests
-        .where((request) =>
-            request.path.endsWith('/admin/api/v1/events/party_candidates'))
+        .where((request) => request.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates'))
         .toList(growable: false);
     expect(candidateRequests, hasLength(1));
   });
 
-  test('fetchPartyCandidates throws when candidates endpoint is not found',
+  test(
+      'fetchEventAccountProfileCandidatesPage throws when endpoint is not found',
       () async {
-    final adapter = _NotFoundAdminPartyCandidatesAdapter();
+    final adapter = _NotFoundAdminAccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -506,13 +561,18 @@ void main() {
     );
 
     await expectLater(
-      () => repository.fetchPartyCandidates(search: _repoText('main')),
+      () => repository.fetchEventAccountProfileCandidatesPage(
+        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        search: _repoText('main'),
+      ),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
           'message',
           allOf(
-            contains('Failed to load event party candidates'),
+            contains('Failed to load event account profile candidates'),
             contains('status=404'),
           ),
         ),
@@ -520,8 +580,8 @@ void main() {
     );
 
     final candidateRequests = adapter.requests
-        .where((request) =>
-            request.path.endsWith('/admin/api/v1/events/party_candidates'))
+        .where((request) => request.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates'))
         .toList(growable: false);
     expect(candidateRequests, hasLength(1));
   });
@@ -710,8 +770,7 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _MutableTenantScope implements TenantAdminTenantScopeContract {
@@ -905,7 +964,7 @@ class _EventTypesAdapter implements HttpClientAdapter {
   }
 }
 
-class _PartyCandidatesAdapter implements HttpClientAdapter {
+class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = <RequestOptions>[];
 
   @override
@@ -919,17 +978,23 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
-    final isAdminCandidatesRequest =
-        options.path.endsWith('/admin/api/v1/events/party_candidates') &&
-            options.method == 'GET';
+    final isAdminCandidatesRequest = options.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
+        options.method == 'GET';
     final isAccountCandidatesRequest =
-        options.path.endsWith('/events/party_candidates') &&
+        options.path.endsWith('/events/account_profile_candidates') &&
             options.path.contains('/api/v1/accounts/') &&
             options.method == 'GET';
 
     if (isAdminCandidatesRequest || isAccountCandidatesRequest) {
       final rawSearch = options.queryParameters['search']?.toString() ?? '';
+      final candidateType = options.queryParameters['type']?.toString();
       final search = rawSearch.trim().toLowerCase();
+      final requestedPage =
+          int.tryParse(options.queryParameters['page']?.toString() ?? '') ?? 1;
+      final requestedPageSize = int.tryParse(
+              options.queryParameters['page_size']?.toString() ?? '') ??
+          20;
       final venueRows = <Map<String, dynamic>>[
         {
           'id': 'venue-1',
@@ -948,24 +1013,74 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
           'slug': 'dj-night',
         },
       ];
+      final pagedArtistRows = List<Map<String, dynamic>>.generate(
+        45,
+        (index) => {
+          'id': 'artist-page-${index + 1}',
+          'account_id': 'account-${index + 100}',
+          'profile_type': 'artist',
+          'display_name':
+              'Paged Artist ${(index + 1).toString().padLeft(3, '0')}',
+          'slug': 'paged-artist-${index + 1}',
+        },
+        growable: false,
+      );
+
+      List<Map<String, dynamic>> rows;
+      int currentPage;
+      int lastPage;
+      int total;
+
+      switch (candidateType) {
+        case 'physical_host':
+          rows = venueRows
+              .where((row) =>
+                  search.isEmpty ||
+                  (row['display_name'] as String)
+                      .toLowerCase()
+                      .contains(search))
+              .toList(growable: false);
+          currentPage = requestedPage;
+          lastPage = requestedPage;
+          total = rows.length;
+          break;
+        case 'artist':
+          final sourceRows = search == 'paged' ? pagedArtistRows : artistRows;
+          final filteredRows = sourceRows
+              .where((row) =>
+                  search.isEmpty ||
+                  (row['display_name'] as String)
+                      .toLowerCase()
+                      .contains(search))
+              .toList(growable: false);
+          final startIndex = (requestedPage - 1) * requestedPageSize;
+          rows = startIndex >= filteredRows.length
+              ? const <Map<String, dynamic>>[]
+              : filteredRows
+                  .skip(startIndex)
+                  .take(requestedPageSize)
+                  .toList(growable: false);
+          currentPage = requestedPage;
+          lastPage = filteredRows.isEmpty
+              ? requestedPage
+              : (filteredRows.length / requestedPageSize).ceil();
+          total = filteredRows.length;
+          break;
+        default:
+          rows = const <Map<String, dynamic>>[];
+          currentPage = requestedPage;
+          lastPage = requestedPage;
+          total = 0;
+          break;
+      }
+
       return ResponseBody.fromString(
         jsonEncode({
-          'data': {
-            'physical_hosts': venueRows
-                .where((row) =>
-                    search.isEmpty ||
-                    (row['display_name'] as String)
-                        .toLowerCase()
-                        .contains(search))
-                .toList(growable: false),
-            'artists': artistRows
-                .where((row) =>
-                    search.isEmpty ||
-                    (row['display_name'] as String)
-                        .toLowerCase()
-                        .contains(search))
-                .toList(growable: false),
-          },
+          'data': rows,
+          'current_page': currentPage,
+          'last_page': lastPage,
+          'per_page': requestedPageSize,
+          'total': total,
         }),
         200,
         headers: {
@@ -1055,7 +1170,8 @@ class _EventTypeMutationsAdapter implements HttpClientAdapter {
   }
 }
 
-class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
+class _UnauthorizedAdminAccountProfileCandidatesAdapter
+    implements HttpClientAdapter {
   final List<RequestOptions> requests = <RequestOptions>[];
 
   @override
@@ -1069,56 +1185,8 @@ class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
-    if (options.path.endsWith('/admin/api/v1/events/party_candidates') &&
-        options.method == 'GET') {
-      return ResponseBody.fromString(
-        jsonEncode({
-          'data': {
-            'physical_hosts': [],
-            'venues': [
-              {
-                'id': 'venue-legacy',
-                'account_id': 'account-legacy',
-                'profile_type': 'venue',
-                'display_name': 'Legacy Venue',
-                'slug': 'legacy-venue',
-              }
-            ],
-            'artists': [],
-          },
-        }),
-        200,
-        headers: {
-          Headers.contentTypeHeader: ['application/json'],
-        },
-      );
-    }
-
-    return ResponseBody.fromString(
-      jsonEncode({'data': []}),
-      200,
-      headers: {
-        Headers.contentTypeHeader: ['application/json'],
-      },
-    );
-  }
-}
-
-class _UnauthorizedAdminPartyCandidatesAdapter implements HttpClientAdapter {
-  final List<RequestOptions> requests = <RequestOptions>[];
-
-  @override
-  void close({bool force = false}) {}
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<List<int>>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    requests.add(options);
-
-    if (options.path.endsWith('/admin/api/v1/events/party_candidates') &&
+    if (options.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Unauthorized.'}),
@@ -1139,7 +1207,8 @@ class _UnauthorizedAdminPartyCandidatesAdapter implements HttpClientAdapter {
   }
 }
 
-class _NotFoundAdminPartyCandidatesAdapter implements HttpClientAdapter {
+class _NotFoundAdminAccountProfileCandidatesAdapter
+    implements HttpClientAdapter {
   final List<RequestOptions> requests = <RequestOptions>[];
 
   @override
@@ -1153,7 +1222,8 @@ class _NotFoundAdminPartyCandidatesAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
-    if (options.path.endsWith('/admin/api/v1/events/party_candidates') &&
+    if (options.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Not found.'}),
