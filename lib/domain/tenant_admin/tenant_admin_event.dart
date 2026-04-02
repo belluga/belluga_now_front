@@ -15,7 +15,6 @@ part 'tenant_admin_event/tenant_admin_event_location.dart';
 part 'tenant_admin_event/tenant_admin_event_occurrence.dart';
 part 'tenant_admin_event/tenant_admin_event_online_location.dart';
 part 'tenant_admin_event/tenant_admin_event_party.dart';
-part 'tenant_admin_event/tenant_admin_event_party_candidates.dart';
 part 'tenant_admin_event/tenant_admin_event_place_ref.dart';
 part 'tenant_admin_event/tenant_admin_event_publication.dart';
 part 'tenant_admin_event/tenant_admin_event_type.dart';
@@ -33,6 +32,7 @@ class TenantAdminEvent {
     this.placeRef,
     TenantAdminOptionalUrlValue? thumbUrlValue,
     List<TenantAdminArtistIdValue>? artistIdValues,
+    this.artistProfiles = const <TenantAdminAccountProfile>[],
     this.eventParties = const <TenantAdminEventParty>[],
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminOptionalDateTimeValue? createdAtValue,
@@ -61,6 +61,7 @@ class TenantAdminEvent {
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
   final List<TenantAdminArtistIdValue> artistIdValues;
+  final List<TenantAdminAccountProfile> artistProfiles;
   final List<TenantAdminEventParty> eventParties;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final TenantAdminOptionalDateTimeValue createdAtValue;

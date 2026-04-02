@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -71,15 +73,17 @@ class _TenantAdminEventFormScreenState
               builder: (context, isSubmitting) {
                 return StreamValueBuilder<List<TenantAdminAccountProfile>>(
                   streamValue: _controller.venueCandidatesStreamValue,
-                  builder: (context, venues) {
+                      builder: (context, venues) {
                     _controller.hydrateDefaultEventVenue(venues);
                     return StreamValueBuilder<bool>(
                       streamValue:
-                          _controller.partyCandidatesLoadingStreamValue,
+                          _controller
+                              .accountProfileCandidatesLoadingStreamValue,
                       builder: (context, partyCandidatesLoading) {
                         return StreamValueBuilder<String?>(
                           streamValue:
-                              _controller.partyCandidatesErrorStreamValue,
+                              _controller
+                                  .accountProfileCandidatesErrorStreamValue,
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
                                 List<TenantAdminAccountProfile>>(
@@ -780,19 +784,16 @@ class _TenantAdminEventFormScreenState
           ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: artists.isEmpty
-                ? null
-                : () => _openArtistPickerSheet(
-                      artists,
-                      formState: formState,
-                    ),
+            onPressed: () => _openArtistPickerSheet(
+              formState: formState,
+            ),
             icon: const Icon(Icons.add),
             label: const Text('Adicionar artista'),
           ),
           if (artists.isEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'Nenhum artista elegível encontrado.',
+              'Use a busca para localizar artistas além da primeira página carregada.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -899,96 +900,152 @@ class _TenantAdminEventFormScreenState
     });
   }
 
-  Future<void> _openArtistPickerSheet(
-    List<TenantAdminAccountProfile> artists, {
+  Future<void> _openArtistPickerSheet({
     required TenantAdminEventFormState formState,
   }) async {
+    unawaited(_controller.prepareArtistPicker(
+      accountSlug: widget.accountSlugForOwnCreate,
+    ));
+
     final selectedArtist =
         await showModalBottomSheet<TenantAdminAccountProfile>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) {
-        var query = '';
-
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final normalized = query.trim().toLowerCase();
-            final filteredArtists = artists.where((artist) {
-              if (normalized.isEmpty) {
-                return true;
-              }
-              final displayName = artist.displayName.toLowerCase();
-              final slug = (artist.slug ?? '').toLowerCase();
-              return displayName.contains(normalized) ||
-                  slug.contains(normalized);
-            }).toList(growable: false);
-
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                16 + MediaQuery.viewInsetsOf(context).bottom,
-              ),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.72,
-                child: Column(
-                  children: [
-                    TextField(
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Buscar artista',
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: (value) {
-                        setSheetState(() {
-                          query = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: filteredArtists.isEmpty
-                          ? const Center(
-                              child: Text('Nenhum artista encontrado.'),
-                            )
-                          : ListView.separated(
-                              itemCount: filteredArtists.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final artist = filteredArtists[index];
-                                final isAlreadySelected =
-                                    formState.selectedArtistIds.contains(
-                                  artist.id,
-                                );
-
-                                return Card(
-                                  child: ListTile(
-                                    enabled: !isAlreadySelected,
-                                    leading: const Icon(Icons.person_outline),
-                                    title: Text(artist.displayName),
-                                    subtitle: Text(artist.slug ?? artist.id),
-                                    trailing: Icon(
-                                      isAlreadySelected
-                                          ? Icons.check_circle_outline
-                                          : Icons.add_circle_outline,
-                                    ),
-                                    onTap: isAlreadySelected
-                                        ? null
-                                        : () => context.router.maybePop<
-                                            TenantAdminAccountProfile>(artist),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.72,
+            child: Column(
+              children: [
+                TextField(
+                  controller: _controller.artistSearchController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar artista',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: _controller.updateArtistSearchQuery,
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 12),
+                Expanded(
+                  child: StreamValueBuilder<String>(
+                    streamValue: _controller.artistSearchErrorStreamValue,
+                    builder: (context, searchError) {
+                      return StreamValueBuilder<bool>(
+                        streamValue: _controller.artistSearchLoadingStreamValue,
+                        builder: (context, isSearchLoading) {
+                          return StreamValueBuilder<bool>(
+                            streamValue:
+                                _controller.artistSearchPageLoadingStreamValue,
+                            builder: (context, isSearchPageLoading) {
+                              return StreamValueBuilder<
+                                  List<TenantAdminAccountProfile>>(
+                                streamValue:
+                                    _controller.artistSearchResultsStreamValue,
+                                builder: (context, searchResults) {
+                                  if (isSearchLoading && searchResults.isEmpty) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+
+                                  if (searchError.isNotEmpty &&
+                                      searchResults.isEmpty) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            searchError,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          FilledButton(
+                                            onPressed:
+                                                _controller.retryArtistSearch,
+                                            child: const Text('Tentar novamente'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  if (searchResults.isEmpty) {
+                                    return const Center(
+                                      child: Text(
+                                        'Nenhum artista elegível encontrado.',
+                                      ),
+                                    );
+                                  }
+
+                                  final itemCount = searchResults.length +
+                                      (isSearchPageLoading ? 1 : 0);
+
+                                  return ListView.separated(
+                                    controller:
+                                        _controller.artistSearchScrollController,
+                                    itemCount: itemCount,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 8),
+                                    itemBuilder: (context, index) {
+                                      if (index >= searchResults.length) {
+                                        return const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          child: Center(
+                                            child:
+                                                CircularProgressIndicator(),
+                                          ),
+                                        );
+                                      }
+
+                                      final artist = searchResults[index];
+                                      final isAlreadySelected =
+                                          formState.selectedArtistIds.contains(
+                                        artist.id,
+                                      );
+
+                                      return Card(
+                                        child: ListTile(
+                                          enabled: !isAlreadySelected,
+                                          leading:
+                                              const Icon(Icons.person_outline),
+                                          title: Text(artist.displayName),
+                                          subtitle: Text(artist.slug ?? artist.id),
+                                          trailing: Icon(
+                                            isAlreadySelected
+                                                ? Icons.check_circle_outline
+                                                : Icons.add_circle_outline,
+                                          ),
+                                          onTap: isAlreadySelected
+                                              ? null
+                                              : () => context.router.maybePop<
+                                                  TenantAdminAccountProfile>(
+                                                  artist),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

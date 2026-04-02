@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -341,17 +342,72 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Nenhum artista elegível encontrado.'),
+      find.text('Use a busca para localizar artistas além da primeira página carregada.'),
       280,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Nenhum artista elegível encontrado.'), findsOneWidget);
+    expect(
+      find.text(
+        'Use a busca para localizar artistas além da primeira página carregada.',
+      ),
+      findsOneWidget,
+    );
     final addArtistButton = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Adicionar artista'),
     );
-    expect(addArtistButton.onPressed, isNull);
+    expect(addArtistButton.onPressed, isNotNull);
+  });
+
+  testWidgets('artist picker performs backend search after typing',
+      (tester) async {
+    final eventsRepository = _SearchableCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439099'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(OutlinedButton, 'Adicionar artista'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar artista'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artist A'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Buscar artista'),
+      'Zulu',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Artist A'), findsNothing);
+    expect(eventsRepository.recordedSearchTerms, contains('Zulu'));
   });
 }
 
@@ -482,31 +538,39 @@ class _FakeEventsRepository
   }
 
   @override
-  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
-    return TenantAdminEventPartyCandidates(
-      venues: [
-        tenantAdminAccountProfileFromRaw(
-          id: 'venue-1',
-          accountId: 'acc-venue',
-          profileType: 'venue',
-          displayName: 'Venue A',
-          location: tenantAdminLocationFromRaw(
-            latitude: -20.611121,
-            longitude: -40.498617,
+    final items = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.physicalHost => [
+          tenantAdminAccountProfileFromRaw(
+            id: 'venue-1',
+            accountId: 'acc-venue',
+            profileType: 'venue',
+            displayName: 'Venue A',
+            location: tenantAdminLocationFromRaw(
+              latitude: -20.611121,
+              longitude: -40.498617,
+            ),
           ),
-        ),
-      ],
-      artists: [
-        tenantAdminAccountProfileFromRaw(
-          id: 'artist-1',
-          accountId: 'acc-artist',
-          profileType: 'artist',
-          displayName: 'Artist A',
-        ),
-      ],
+        ],
+      TenantAdminEventAccountProfileCandidateType.artist => [
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-1',
+            accountId: 'acc-artist',
+            profileType: 'artist',
+            displayName: 'Artist A',
+          ),
+        ],
+    };
+    return tenantAdminPagedResultFromRaw(
+      items: items,
+      hasMore: false,
     );
   }
 
@@ -657,13 +721,70 @@ class _FakeTaxonomiesRepository
 
 class _EmptyCandidatesEventsRepository extends _FakeEventsRepository {
   @override
-  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
-    return TenantAdminEventPartyCandidates(
-      venues: <TenantAdminAccountProfile>[],
-      artists: <TenantAdminAccountProfile>[],
+    return tenantAdminPagedResultFromRaw(
+      items: const <TenantAdminAccountProfile>[],
+      hasMore: false,
+    );
+  }
+}
+
+class _SearchableCandidatesEventsRepository extends _FakeEventsRepository {
+  final List<String> recordedSearchTerms = <String>[];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      return super.fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        accountSlug: accountSlug,
+      );
+    }
+
+    final normalizedSearch = search?.value.trim() ?? '';
+    if (normalizedSearch.isNotEmpty) {
+      recordedSearchTerms.add(normalizedSearch);
+    }
+
+    final items = normalizedSearch.toLowerCase() == 'zulu'
+        ? <TenantAdminAccountProfile>[
+            tenantAdminAccountProfileFromRaw(
+              id: 'artist-zulu',
+              accountId: 'acc-zulu',
+              profileType: 'artist',
+              displayName: 'Zulu Artist',
+            ),
+          ]
+        : <TenantAdminAccountProfile>[
+            tenantAdminAccountProfileFromRaw(
+              id: 'artist-1',
+              accountId: 'acc-artist',
+              profileType: 'artist',
+              displayName: 'Artist A',
+            ),
+          ];
+
+    return tenantAdminPagedResultFromRaw(
+      items: items,
+      hasMore: false,
     );
   }
 }
