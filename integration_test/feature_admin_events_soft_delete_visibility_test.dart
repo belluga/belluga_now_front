@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -367,13 +368,17 @@ class _FakeTenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
-    return TenantAdminEventPartyCandidates(
-      venues: <TenantAdminAccountProfile>[],
-      artists: <TenantAdminAccountProfile>[],
+    return tenantAdminPagedResultFromRaw(
+      items: const <TenantAdminAccountProfile>[],
+      hasMore: false,
     );
   }
 }
