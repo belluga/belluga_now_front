@@ -190,11 +190,53 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
-    final profiles = await fetchAccountProfiles();
-    try {
-      return profiles.firstWhere((profile) => profile.slug == slug);
-    } catch (_) {
+    final normalizedSlug = slug.trim();
+    if (normalizedSlug.isEmpty) {
       return null;
+    }
+
+    try {
+      final headers = await _buildHeaders(includeJsonAccept: true);
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles/'
+        '${Uri.encodeComponent(normalizedSlug)}',
+        options: Options(headers: headers),
+      );
+      final raw = response.data;
+      if (raw is! Map<String, dynamic>) {
+        throw Exception('Unexpected account profile detail response shape.');
+      }
+
+      final data = raw['data'];
+      if (data is! Map) {
+        throw Exception('Account profile detail payload missing data object.');
+      }
+
+      final distanceOrigin = await _resolveDistanceOrigin();
+      final profiles = _parseProfiles(
+        [Map<String, dynamic>.from(data)],
+        distanceOrigin: distanceOrigin,
+      );
+      if (profiles.isEmpty) {
+        throw Exception(
+          'Account profile detail payload missing required fields.',
+        );
+      }
+
+      return profiles.first;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        return null;
+      }
+
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      throw Exception(
+        'Failed to load account profile by slug '
+        '[status=$statusCode] '
+        '(${error.requestOptions.uri}): '
+        '${data ?? error.message}',
+      );
     }
   }
 
@@ -246,9 +288,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           avatarValue: avatarValue,
           coverValue: coverValue,
           bioValue: bioValue,
-          tagValues: tags
-              .map(AccountProfileTagValue.new)
-              .toList(growable: false),
+          tagValues:
+              tags.map(AccountProfileTagValue.new).toList(growable: false),
           distanceMetersValue:
               AccountProfileDistanceMetersValue(distanceMeters),
         ),

@@ -239,6 +239,35 @@ void main() {
     expect(nearby.first.type, 'artist');
   });
 
+  test(
+      'getAccountProfileBySlug delegates to backend direct lookup without paged scans',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final profile = await repository.getAccountProfileBySlug(
+      AccountProfilesRepositoryContractPrimString.fromRaw('artist-one'),
+    );
+
+    expect(profile?.slug, 'artist-one');
+    expect(backend.fetchBySlugCalls, 1);
+    expect(backend.fetchAccountProfilesCalls, 0);
+    expect(backend.fetchAccountProfilesPageCalls, 0);
+  });
+
   test('paged account profiles stream accumulates loaded pages canonically',
       () async {
     final backend = _StubAccountProfilesBackend(
@@ -351,11 +380,16 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
   List<String>? lastAllowedTypes;
+  int fetchAccountProfilesCalls = 0;
+  int fetchAccountProfilesPageCalls = 0;
+  int fetchBySlugCalls = 0;
   int fetchNearbyCalls = 0;
 
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() async =>
-      accountProfiles;
+  Future<List<AccountProfileModel>> fetchAccountProfiles() async => (() {
+        fetchAccountProfilesCalls += 1;
+        return accountProfiles;
+      })();
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
@@ -365,6 +399,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     String? typeFilter,
     List<String>? allowedTypes,
   }) async {
+    fetchAccountProfilesPageCalls += 1;
     lastAllowedTypes = allowedTypes;
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
@@ -381,8 +416,10 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async =>
-      accountProfiles.firstWhere((profile) => profile.slug == slug);
+  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
+    fetchBySlugCalls += 1;
+    return accountProfiles.firstWhere((profile) => profile.slug == slug);
+  }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

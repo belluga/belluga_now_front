@@ -142,6 +142,62 @@ void main() {
     expect(profiles.first.distanceMeters, closeTo(1425.75, 0.001));
   });
 
+  test('fetchAccountProfileBySlug hits direct slug endpoint and parses profile',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'Slug Detail Artist',
+          'slug': 'slug-detail-artist',
+          'profile_type': 'artist',
+          'taxonomy_terms': const [],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug(
+      'slug-detail-artist',
+    );
+
+    expect(adapter.lastRequest?.uri.path,
+        '/api/v1/account_profiles/slug-detail-artist');
+    expect(adapter.lastRequest?.queryParameters, isEmpty);
+    expect(profile, isNotNull);
+    expect(profile?.name, 'Slug Detail Artist');
+    expect(profile?.slug, 'slug-detail-artist');
+  });
+
+  test('fetchAccountProfileBySlug returns null on not found', () async {
+    final adapter = _RecordingAdapter(
+      response: {
+        'message': 'Not Found',
+      },
+      statusCode: 404,
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('missing-slug');
+
+    expect(
+        adapter.lastRequest?.uri.path, '/api/v1/account_profiles/missing-slug');
+    expect(profile, isNull);
+  });
+
   test(
       'fetchAccountProfilesPage keeps profile_type unset when no explicit type filter',
       () async {
@@ -435,10 +491,13 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({required Map<String, dynamic> response})
-      : _response = response;
+  _RecordingAdapter({
+    required Map<String, dynamic> response,
+    this.statusCode = 200,
+  }) : _response = response;
 
   final Map<String, dynamic> _response;
+  final int statusCode;
   RequestOptions? lastRequest;
 
   @override
@@ -453,7 +512,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     lastRequest = options;
     return ResponseBody.fromString(
       jsonEncode(_response),
-      200,
+      statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
