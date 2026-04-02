@@ -49,18 +49,14 @@ class TenantAdminEventsResponseDecoder {
     return _mapEventType(row);
   }
 
-  TenantAdminEventPartyCandidates decodePartyCandidates(Object? rawResponse) {
+  List<TenantAdminAccountProfile> decodeAccountProfileCandidates(
+    Object? rawResponse,
+  ) {
     final envelope = _envelopeDecoder.decodeItemMap(
       rawResponse,
-      label: 'event party candidates',
+      label: 'event account profile candidates',
     );
-    final physicalHosts = _decodeAccountProfiles(envelope['physical_hosts']);
-    final artists = _decodeAccountProfiles(envelope['artists']);
-
-    return TenantAdminEventPartyCandidates(
-      venues: physicalHosts,
-      artists: artists,
-    );
+    return _decodeAccountProfiles(envelope['data']);
   }
 
   String decodeErrorMessage({
@@ -121,6 +117,7 @@ class TenantAdminEventsResponseDecoder {
         .cast<String>()
         .map(TenantAdminArtistIdValue.new)
         .toList(growable: false);
+    final artistProfiles = _decodeAccountProfiles(row['artists']);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -232,6 +229,7 @@ class TenantAdminEventsResponseDecoder {
           ),
         ),
         artistIdValues: artistIds,
+        artistProfiles: artistProfiles,
         eventParties: eventParties,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
@@ -276,6 +274,7 @@ class TenantAdminEventsResponseDecoder {
         ),
       ),
       artistIdValues: artistIds,
+      artistProfiles: artistProfiles,
       eventParties: eventParties,
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();

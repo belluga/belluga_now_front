@@ -11,7 +11,9 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -48,6 +50,7 @@ class TenantAdminEventsController implements Disposable {
                 : TenantAdminImageIngestionService()) {
     _bindTenantScope();
     _bindRepositoryStreams();
+    _bindArtistSearchScroll();
   }
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
@@ -104,14 +107,29 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<List<TenantAdminAccountProfile>>
       artistCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
-  final StreamValue<bool> partyCandidatesLoadingStreamValue =
+  final StreamValue<List<TenantAdminAccountProfile>>
+      artistSearchResultsStreamValue =
+      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
+  final StreamValue<bool> artistSearchLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> partyCandidatesErrorStreamValue =
+  final StreamValue<bool> artistSearchPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> artistSearchHasMoreStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<String> artistSearchErrorStreamValue =
+      StreamValue<String>(defaultValue: '');
+  final StreamValue<String> artistSearchQueryStreamValue =
+      StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> accountProfileCandidatesLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> accountProfileCandidatesErrorStreamValue =
       StreamValue<String?>();
 
   final ScrollController eventsScrollController = ScrollController();
+  final ScrollController artistSearchScrollController = ScrollController();
 
   final GlobalKey<FormState> eventFormKey = GlobalKey<FormState>();
+  final TextEditingController artistSearchController = TextEditingController();
   final TextEditingController eventTitleController = TextEditingController();
   final TextEditingController eventContentController = TextEditingController();
   final TextEditingController eventStartController = TextEditingController();
@@ -148,6 +166,8 @@ class TenantAdminEventsController implements Disposable {
 
   bool _isDisposed = false;
   bool _submitInFlight = false;
+  bool _isFetchingArtistSearchPage = false;
+  bool _hasPendingArtistSearchReload = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>?
@@ -155,7 +175,13 @@ class TenantAdminEventsController implements Disposable {
   StreamSubscription<TenantAdminEventsRepoString?>? _eventsErrorSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
+  Timer? _artistSearchDebounce;
+  String? _artistSearchAccountSlug;
+  int _artistSearchCurrentPage = 0;
+  int _artistSearchRequestToken = 0;
 
+  static const Duration _artistSearchDebounceDuration =
+      Duration(milliseconds: 300);
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
       return;
@@ -235,6 +261,14 @@ class TenantAdminEventsController implements Disposable {
       value,
       defaultValue: value,
     );
+  }
+
+  String? _normalizeOptionalText(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   Future<void> loadEvents() async {
@@ -322,6 +356,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
+    _mergeKnownArtistProfiles(existingEvent?.artistProfiles ?? const []);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -684,11 +719,11 @@ class TenantAdminEventsController implements Disposable {
   Future<void> loadFormDependencies({
     String? accountSlug,
   }) async {
-    final normalizedAccountSlug = accountSlug?.trim();
+    final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     final tasks = <Future<void>>[
       _loadEventTypeCatalog(),
       _loadTaxonomies(),
-      _loadPartyCandidates(accountSlug: normalizedAccountSlug),
+      _loadAccountProfileCandidates(accountSlug: normalizedAccountSlug),
     ];
 
     await Future.wait<void>(tasks);
@@ -764,30 +799,292 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  Future<void> _loadPartyCandidates({
+  Future<void> prepareArtistPicker({
     String? accountSlug,
   }) async {
-    partyCandidatesLoadingStreamValue.addValue(true);
+    final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    final accountChanged = normalizedAccountSlug != _artistSearchAccountSlug;
+    final hasSearch = artistSearchQueryStreamValue.value.trim().isNotEmpty;
+    final needsInitialLoad =
+        _artistSearchCurrentPage <= 0 && artistSearchResultsStreamValue.value.isEmpty;
+
+    _artistSearchAccountSlug = normalizedAccountSlug;
+    if (artistSearchController.text.isNotEmpty) {
+      artistSearchController.text = '';
+    }
+    artistSearchQueryStreamValue.addValue('');
+    artistSearchErrorStreamValue.addValue('');
+
+    if (artistSearchScrollController.hasClients) {
+      artistSearchScrollController.jumpTo(0);
+    }
+
+    if (accountChanged || hasSearch || needsInitialLoad) {
+      await _reloadArtistSearch(immediate: true);
+    }
+  }
+
+  void updateArtistSearchQuery(String query) {
+    if (artistSearchQueryStreamValue.value == query) {
+      return;
+    }
+    artistSearchQueryStreamValue.addValue(query);
+    _scheduleArtistSearchReload(immediate: false);
+  }
+
+  Future<void> retryArtistSearch() async {
+    await _reloadArtistSearch(immediate: true);
+  }
+
+  Future<void> loadNextArtistSearchPage() async {
+    await _loadArtistSearchPage(
+      isInitial: false,
+      requestToken: _artistSearchRequestToken,
+    );
+  }
+
+  Future<void> _loadAccountProfileCandidates({
+    String? accountSlug,
+  }) async {
+    final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    accountProfileCandidatesLoadingStreamValue.addValue(true);
+    accountProfileCandidatesErrorStreamValue.addValue(null);
+
     try {
-      final candidates = await _eventsRepository.fetchPartyCandidates(
-        accountSlug: _toNullableEventsText(accountSlug),
-      );
+      final results = await Future.wait<Object>([
+        _fetchAllPhysicalHostCandidates(accountSlug: normalizedAccountSlug),
+        _eventsRepository.loadEventAccountProfileCandidates(
+          candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+          accountSlug: _toNullableEventsText(normalizedAccountSlug),
+        ),
+      ]);
+
       if (_isDisposed) {
         return;
       }
-      venueCandidatesStreamValue.addValue(candidates.venues);
-      artistCandidatesStreamValue.addValue(candidates.artists);
-      partyCandidatesErrorStreamValue.addValue(null);
+
+      final venues = results[0] as List<TenantAdminAccountProfile>;
+      final firstArtistPage =
+          results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
+
+      venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
+      _artistSearchAccountSlug = normalizedAccountSlug;
+      _artistSearchCurrentPage = 1;
+      artistSearchResultsStreamValue.addValue(
+        List.unmodifiable(firstArtistPage.items),
+      );
+      artistSearchHasMoreStreamValue.addValue(firstArtistPage.hasMore);
+      artistSearchErrorStreamValue.addValue('');
+      _mergeKnownArtistProfiles(firstArtistPage.items);
     } catch (error) {
       if (_isDisposed) {
         return;
       }
-      partyCandidatesErrorStreamValue.addValue(error.toString());
+      artistSearchResultsStreamValue.addValue(const []);
+      artistSearchHasMoreStreamValue.addValue(false);
+      artistSearchErrorStreamValue.addValue(error.toString());
+      accountProfileCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
-        partyCandidatesLoadingStreamValue.addValue(false);
+        accountProfileCandidatesLoadingStreamValue.addValue(false);
       }
     }
+  }
+
+  Future<List<TenantAdminAccountProfile>> _fetchAllPhysicalHostCandidates({
+    String? accountSlug,
+  }) async {
+    return _eventsRepository.fetchAllEventAccountProfileCandidates(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+      accountSlug: _toNullableEventsText(accountSlug),
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _loadArtistCandidates({
+    required bool isInitial,
+    required String query,
+    String? accountSlug,
+  }) {
+    final normalizedQuery = query.trim();
+    if (isInitial) {
+      return _eventsRepository.loadEventAccountProfileCandidates(
+        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
+        accountSlug: _toNullableEventsText(accountSlug),
+      );
+    }
+
+    return _eventsRepository.loadNextEventAccountProfileCandidates(
+      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
+      accountSlug: _toNullableEventsText(accountSlug),
+    );
+  }
+
+  void _scheduleArtistSearchReload({
+    required bool immediate,
+  }) {
+    _artistSearchDebounce?.cancel();
+    final nextRequestToken = _artistSearchRequestToken + 1;
+    _artistSearchRequestToken = nextRequestToken;
+    if (immediate) {
+      unawaited(
+        _loadArtistSearchPage(
+          isInitial: true,
+          requestToken: nextRequestToken,
+        ),
+      );
+      return;
+    }
+    _artistSearchDebounce = Timer(_artistSearchDebounceDuration, () {
+      unawaited(
+        _loadArtistSearchPage(
+          isInitial: true,
+          requestToken: nextRequestToken,
+        ),
+      );
+    });
+  }
+
+  Future<void> _reloadArtistSearch({
+    required bool immediate,
+  }) async {
+    _scheduleArtistSearchReload(immediate: immediate);
+    if (!immediate) {
+      return;
+    }
+
+    while (_isFetchingArtistSearchPage || artistSearchLoadingStreamValue.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+  }
+
+  Future<void> _loadArtistSearchPage({
+    required bool isInitial,
+    required int requestToken,
+  }) async {
+    if (_isFetchingArtistSearchPage) {
+      if (isInitial) {
+        _hasPendingArtistSearchReload = true;
+      }
+      return;
+    }
+    if (!isInitial && !artistSearchHasMoreStreamValue.value) {
+      return;
+    }
+
+    _isFetchingArtistSearchPage = true;
+    if (isInitial) {
+      artistSearchLoadingStreamValue.addValue(true);
+      artistSearchErrorStreamValue.addValue('');
+    } else {
+      artistSearchPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final query = artistSearchQueryStreamValue.value.trim();
+      final pageResult = await _loadArtistCandidates(
+        accountSlug: _artistSearchAccountSlug,
+        isInitial: isInitial,
+        query: query,
+      );
+
+      if (_isDisposed || requestToken != _artistSearchRequestToken) {
+        return;
+      }
+
+      final nextItems = isInitial
+          ? pageResult.items
+          : _mergeAccountProfiles(
+              artistSearchResultsStreamValue.value,
+              pageResult.items,
+            );
+
+      _artistSearchCurrentPage = isInitial ? 1 : _artistSearchCurrentPage + 1;
+      artistSearchResultsStreamValue.addValue(List.unmodifiable(nextItems));
+      artistSearchHasMoreStreamValue.addValue(pageResult.hasMore);
+      artistSearchErrorStreamValue.addValue('');
+      _mergeKnownArtistProfiles(pageResult.items);
+    } catch (error) {
+      if (_isDisposed || requestToken != _artistSearchRequestToken) {
+        return;
+      }
+      if (isInitial) {
+        artistSearchResultsStreamValue.addValue(const []);
+        artistSearchHasMoreStreamValue.addValue(false);
+      }
+      artistSearchErrorStreamValue.addValue(error.toString());
+    } finally {
+      _isFetchingArtistSearchPage = false;
+      if (!_isDisposed && requestToken == _artistSearchRequestToken) {
+        if (isInitial) {
+          artistSearchLoadingStreamValue.addValue(false);
+        } else {
+          artistSearchPageLoadingStreamValue.addValue(false);
+        }
+      }
+
+      if (_hasPendingArtistSearchReload) {
+        _hasPendingArtistSearchReload = false;
+        unawaited(
+          _loadArtistSearchPage(
+            isInitial: true,
+            requestToken: _artistSearchRequestToken,
+          ),
+        );
+      }
+    }
+  }
+
+  void _bindArtistSearchScroll() {
+    artistSearchScrollController.addListener(() {
+      if (_isDisposed || !artistSearchScrollController.hasClients) {
+        return;
+      }
+      final position = artistSearchScrollController.position;
+      if (position.pixels < position.maxScrollExtent - 160) {
+        return;
+      }
+      unawaited(loadNextArtistSearchPage());
+    });
+  }
+
+  void _mergeKnownArtistProfiles(
+    Iterable<TenantAdminAccountProfile> profiles,
+  ) {
+    if (profiles.isEmpty) {
+      return;
+    }
+    artistCandidatesStreamValue.addValue(
+      List.unmodifiable(
+        _mergeAccountProfiles(
+          artistCandidatesStreamValue.value,
+          profiles,
+        ),
+      ),
+    );
+  }
+
+  List<TenantAdminAccountProfile> _mergeAccountProfiles(
+    Iterable<TenantAdminAccountProfile> current,
+    Iterable<TenantAdminAccountProfile> incoming,
+  ) {
+    final orderedIds = <String>[
+      for (final profile in current) profile.id,
+    ];
+    final byId = <String, TenantAdminAccountProfile>{
+      for (final profile in current) profile.id: profile,
+    };
+
+    for (final profile in incoming) {
+      if (!byId.containsKey(profile.id)) {
+        orderedIds.add(profile.id);
+      }
+      byId[profile.id] = profile;
+    }
+
+    return orderedIds.map((id) => byId[id]!).toList(growable: false);
   }
 
   Future<TenantAdminEvent?> submitCreate(
@@ -894,6 +1191,12 @@ class TenantAdminEventsController implements Disposable {
 
   void _resetTenantScopedState() {
     _submitInFlight = false;
+    _artistSearchDebounce?.cancel();
+    _artistSearchAccountSlug = null;
+    _artistSearchCurrentPage = 0;
+    _artistSearchRequestToken = 0;
+    _isFetchingArtistSearchPage = false;
+    _hasPendingArtistSearchReload = false;
     _eventsRepository.resetEventsState();
     statusFilterStreamValue.addValue(null);
     archivedFilterStreamValue.addValue(false);
@@ -907,8 +1210,15 @@ class TenantAdminEventsController implements Disposable {
     eventTypeCatalogStreamValue.addValue(const []);
     venueCandidatesStreamValue.addValue(const []);
     artistCandidatesStreamValue.addValue(const []);
-    partyCandidatesLoadingStreamValue.addValue(false);
-    partyCandidatesErrorStreamValue.addValue(null);
+    artistSearchResultsStreamValue.addValue(const []);
+    artistSearchLoadingStreamValue.addValue(false);
+    artistSearchPageLoadingStreamValue.addValue(false);
+    artistSearchHasMoreStreamValue.addValue(true);
+    artistSearchErrorStreamValue.addValue('');
+    artistSearchQueryStreamValue.addValue('');
+    artistSearchController.clear();
+    accountProfileCandidatesLoadingStreamValue.addValue(false);
+    accountProfileCandidatesErrorStreamValue.addValue(null);
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
@@ -1009,6 +1319,7 @@ class TenantAdminEventsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    _artistSearchDebounce?.cancel();
     unawaited(_tenantScopeSubscription?.cancel());
     unawaited(_hasMoreEventsSubscription?.cancel());
     unawaited(_isEventsPageLoadingSubscription?.cancel());
@@ -1035,10 +1346,18 @@ class TenantAdminEventsController implements Disposable {
     taxonomyErrorStreamValue.dispose();
     venueCandidatesStreamValue.dispose();
     artistCandidatesStreamValue.dispose();
-    partyCandidatesLoadingStreamValue.dispose();
-    partyCandidatesErrorStreamValue.dispose();
+    artistSearchResultsStreamValue.dispose();
+    artistSearchLoadingStreamValue.dispose();
+    artistSearchPageLoadingStreamValue.dispose();
+    artistSearchHasMoreStreamValue.dispose();
+    artistSearchErrorStreamValue.dispose();
+    artistSearchQueryStreamValue.dispose();
+    accountProfileCandidatesLoadingStreamValue.dispose();
+    accountProfileCandidatesErrorStreamValue.dispose();
     eventsScrollController.dispose();
+    artistSearchScrollController.dispose();
     eventFormStateStreamValue.dispose();
+    artistSearchController.dispose();
     eventTitleController.dispose();
     eventContentController.dispose();
     eventStartController.dispose();
