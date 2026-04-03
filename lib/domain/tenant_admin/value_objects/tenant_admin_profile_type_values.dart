@@ -7,13 +7,14 @@ TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
   required Object? label,
   required Object? allowedTaxonomies,
   required TenantAdminProfileTypeCapabilities capabilities,
-  TenantAdminPoiVisual? poiVisual,
+  TenantAdminPoiVisual? visual,
+  @Deprecated('Use visual instead.') TenantAdminPoiVisual? poiVisual,
 }) {
   return TenantAdminProfileTypeDefinition(
     typeValue: tenantAdminRequiredText(type),
     labelValue: tenantAdminRequiredText(label),
     allowedTaxonomiesValue: tenantAdminTrimmedStringList(allowedTaxonomies),
     capabilities: capabilities,
-    poiVisual: poiVisual,
+    visual: visual ?? poiVisual,
   );
 }

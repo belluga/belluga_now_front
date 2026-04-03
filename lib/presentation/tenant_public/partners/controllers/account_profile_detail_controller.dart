@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/profile_type_visual.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
@@ -116,6 +118,24 @@ class AccountProfileDetailController implements Disposable {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
     return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
+  }
+
+  ProfileTypeDefinition? profileTypeDefinitionFor(
+    AccountProfileModel accountProfile,
+  ) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return null;
+    }
+    return registry.byType(ProfileTypeKeyValue(accountProfile.type));
+  }
+
+  String typeLabelFor(AccountProfileModel accountProfile) {
+    return profileTypeDefinitionFor(accountProfile)?.label ?? accountProfile.type;
+  }
+
+  ProfileTypeVisual? typeVisualFor(AccountProfileModel accountProfile) {
+    return profileTypeDefinitionFor(accountProfile)?.visual;
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

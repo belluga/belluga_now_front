@@ -12,17 +12,21 @@ class TenantAdminStaticProfileTypeDefinition {
     required this.labelValue,
     required this.allowedTaxonomiesValue,
     required this.capabilities,
-    this.poiVisual,
-  });
+    TenantAdminPoiVisual? visual,
+    @Deprecated('Use visual instead.') TenantAdminPoiVisual? poiVisual,
+  }) : visual = visual ?? poiVisual;
 
   final TenantAdminRequiredTextValue typeValue;
   final TenantAdminRequiredTextValue labelValue;
   final TenantAdminTrimmedStringListValue allowedTaxonomiesValue;
   final TenantAdminStaticProfileTypeCapabilities capabilities;
-  final TenantAdminPoiVisual? poiVisual;
+  final TenantAdminPoiVisual? visual;
 
   String get type => typeValue.value;
   String get label => labelValue.value;
   TenantAdminTrimmedStringListValue get allowedTaxonomies =>
       allowedTaxonomiesValue;
+
+  @Deprecated('Use visual instead.')
+  TenantAdminPoiVisual? get poiVisual => visual;
 }

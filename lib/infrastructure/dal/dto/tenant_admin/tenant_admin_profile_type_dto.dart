@@ -6,7 +6,7 @@ class TenantAdminProfileTypeDTO {
     required this.type,
     required this.label,
     required this.allowedTaxonomies,
-    this.poiVisual,
+    this.visual,
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.hasBio,
@@ -20,7 +20,7 @@ class TenantAdminProfileTypeDTO {
   final String type;
   final String label;
   final List<String> allowedTaxonomies;
-  final TenantAdminPoiVisual? poiVisual;
+  final TenantAdminPoiVisual? visual;
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool hasBio;
@@ -59,11 +59,15 @@ class TenantAdminProfileTypeDTO {
       hasCover = _parseBool(capabilities['has_cover']);
       hasEvents = _parseBool(capabilities['has_events']);
     }
+    final visualRaw = _resolveVisualRaw(
+      visualRaw: json['visual'] ?? json['poi_visual'],
+      typeAssetUrl: json['type_asset_url'],
+    );
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
-      poiVisual: tenantAdminPoiVisualFromRaw(json['poi_visual']),
+      visual: tenantAdminPoiVisualFromRaw(visualRaw),
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
       hasBio: hasBio,
@@ -85,12 +89,40 @@ class TenantAdminProfileTypeDTO {
     return false;
   }
 
+  static Object? _resolveVisualRaw({
+    required Object? visualRaw,
+    required Object? typeAssetUrl,
+  }) {
+    if (visualRaw is! Map) {
+      return visualRaw;
+    }
+
+    final visualMap = Map<String, dynamic>.from(visualRaw);
+    if (_readTrimmedString(visualMap['image_url']) != null) {
+      return visualMap;
+    }
+
+    final fallbackTypeAssetUrl = _readTrimmedString(typeAssetUrl);
+    if (fallbackTypeAssetUrl != null) {
+      visualMap['image_url'] = fallbackTypeAssetUrl;
+    }
+    return visualMap;
+  }
+
+  static String? _readTrimmedString(Object? raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
   TenantAdminProfileTypeDefinition toDomain() {
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
-      poiVisual: poiVisual,
+      visual: visual,
       capabilities: TenantAdminProfileTypeCapabilities(
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),

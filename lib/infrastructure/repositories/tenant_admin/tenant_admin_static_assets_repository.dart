@@ -337,12 +337,13 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      createStaticProfileTypeWithPoiVisual({
+      createStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) async {
     try {
       final payload = _requestEncoder.encodeStaticProfileTypePayload(
@@ -352,13 +353,22 @@ class TenantAdminStaticAssetsRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: true,
+        visual: visual,
+        includeVisual: true,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
       );
       final response = await _dio.post(
         '$_apiBaseUrl/v1/static_profile_types',
-        data: payload,
-        options: Options(headers: _buildHeaders()),
+        data: uploadPayload ?? payload,
+        options: uploadPayload == null
+            ? Options(headers: _buildHeaders())
+            : Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
       return dto.toDomain();
@@ -399,13 +409,15 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      updateStaticProfileTypeWithPoiVisual({
+      updateStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     TenantAdminStaticAssetsRepoString? newType,
     TenantAdminStaticAssetsRepoString? label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminStaticAssetsRepoBool? removeTypeAsset,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
@@ -416,14 +428,29 @@ class TenantAdminStaticAssetsRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: true,
+        visual: visual,
+        includeVisual: true,
+        removeTypeAsset: removeTypeAsset?.value,
       );
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/static_profile_types/$encodedType',
-        data: payload,
-        options: Options(headers: _buildHeaders()),
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
       );
+      final response = uploadPayload == null
+          ? await _dio.patch(
+              '$_apiBaseUrl/v1/static_profile_types/$encodedType',
+              data: payload,
+              options: Options(headers: _buildHeaders()),
+            )
+          : await _dio.post(
+              '$_apiBaseUrl/v1/static_profile_types/$encodedType',
+              data: uploadPayload
+                ..fields.add(const MapEntry('_method', 'PATCH')),
+              options: Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
+            );
       final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
       return dto.toDomain();
     } on DioException catch (error) {

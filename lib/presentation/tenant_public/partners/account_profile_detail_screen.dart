@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/presentation/shared/visuals/profile_type_visual_resolver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -102,6 +103,25 @@ class _AccountProfileDetailScreenState
   Widget _buildHero(
       AccountProfileModel accountProfile, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
+    final typeDefinition = _controller.profileTypeDefinitionFor(accountProfile);
+    final fallbackVisual = ProfileTypeVisualResolver.resolve(
+      visual: typeDefinition?.visual,
+      avatarUrl: accountProfile.avatarUrl,
+      coverUrl: accountProfile.coverUrl,
+    );
+    final errorFallbackVisual = ProfileTypeVisualResolver.resolve(
+      visual: typeDefinition?.visual,
+      avatarUrl: accountProfile.avatarUrl,
+      coverUrl: null,
+    );
+    final fallbackHero = _buildHeroFallback(
+      colorScheme: colorScheme,
+      visual: fallbackVisual,
+    );
+    final fallbackHeroOnCoverError = _buildHeroFallback(
+      colorScheme: colorScheme,
+      visual: errorFallbackVisual,
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -109,23 +129,9 @@ class _AccountProfileDetailScreenState
             ? BellugaNetworkImage(
                 accountProfile.coverUrl!,
                 fit: BoxFit.cover,
-                errorWidget: Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    _iconForType(accountProfile.type),
-                    size: 64,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                errorWidget: fallbackHeroOnCoverError,
               )
-            : Container(
-                color: colorScheme.surfaceContainerHighest,
-                child: Icon(
-                  _iconForType(accountProfile.type),
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+            : fallbackHero,
         Positioned(
           right: 16,
           top: 16,
@@ -161,7 +167,14 @@ class _AccountProfileDetailScreenState
                 spacing: 8,
                 children: [
                   Chip(
-                    label: Text(_labelForType(accountProfile.type)),
+                    avatar: _buildTypeChipAvatar(
+                      ProfileTypeVisualResolver.resolve(
+                        visual: typeDefinition?.visual,
+                        avatarUrl: accountProfile.avatarUrl,
+                        coverUrl: accountProfile.coverUrl,
+                      ),
+                    ),
+                    label: Text(typeDefinition?.label ?? accountProfile.type),
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
                     labelStyle: const TextStyle(
                       color: Colors.white,
@@ -186,6 +199,78 @@ class _AccountProfileDetailScreenState
         ),
       ],
     );
+  }
+
+  Widget _buildHeroFallback({
+    required ColorScheme colorScheme,
+    required ResolvedProfileTypeVisual? visual,
+  }) {
+    if (visual?.isImage == true && visual?.imageUrl != null) {
+      return BellugaNetworkImage(
+        visual!.imageUrl!,
+        fit: BoxFit.cover,
+        errorWidget: _buildDefaultHeroFallback(
+          colorScheme: colorScheme,
+          visual: null,
+        ),
+      );
+    }
+
+    return _buildDefaultHeroFallback(
+      colorScheme: colorScheme,
+      visual: visual,
+    );
+  }
+
+  Widget _buildDefaultHeroFallback({
+    required ColorScheme colorScheme,
+    required ResolvedProfileTypeVisual? visual,
+  }) {
+    return Container(
+      color: visual?.backgroundColor ?? colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Icon(
+        visual?.iconData ?? Icons.account_circle,
+        size: 64,
+        color: visual?.iconColor ?? colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
+
+  Widget? _buildTypeChipAvatar(ResolvedProfileTypeVisual? visual) {
+    if (visual == null) {
+      return null;
+    }
+
+    if (visual.isImage && visual.imageUrl != null) {
+      return CircleAvatar(
+        radius: 10,
+        backgroundColor: Colors.transparent,
+        child: ClipOval(
+          child: BellugaNetworkImage(
+            visual.imageUrl!,
+            width: 20,
+            height: 20,
+            fit: BoxFit.cover,
+            errorWidget: const Icon(
+              Icons.account_circle,
+              size: 16,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (visual.isIcon && visual.iconData != null) {
+      return Icon(
+        visual.iconData,
+        size: 16,
+        color: visual.iconColor ?? Colors.white,
+      );
+    }
+
+    return null;
   }
 
   Widget? _buildBetweenHero(AccountProfileModel accountProfile) {
@@ -298,40 +383,6 @@ class _AccountProfileDetailScreenState
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
-  }
-
-  IconData _iconForType(String type) {
-    switch (type) {
-      case 'artist':
-        return Icons.music_note;
-      case 'venue':
-        return Icons.place;
-      case 'experience_provider':
-        return Icons.explore;
-      case 'influencer':
-        return Icons.person;
-      case 'curator':
-        return Icons.bookmark;
-      default:
-        return Icons.account_circle;
-    }
-  }
-
-  String _labelForType(String type) {
-    switch (type) {
-      case 'artist':
-        return 'Artista';
-      case 'venue':
-        return 'Local';
-      case 'experience_provider':
-        return 'Experiência';
-      case 'influencer':
-        return 'Conector';
-      case 'curator':
-        return 'Curador';
-      default:
-        return type;
-    }
   }
 
   Widget _metricPill(IconData icon, String value, String tooltip) {
