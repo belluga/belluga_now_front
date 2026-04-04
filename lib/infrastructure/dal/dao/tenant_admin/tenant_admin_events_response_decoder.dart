@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -59,6 +60,25 @@ class TenantAdminEventsResponseDecoder {
     return _decodeAccountProfiles(envelope['data']);
   }
 
+  TenantAdminLegacyEventPartiesSummary decodeLegacyEventPartiesSummary(
+    Object? rawResponse,
+  ) {
+    final row = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'legacy event parties summary',
+    );
+    final data = _asMap(row['data']);
+    final summary = data.isEmpty ? row : data;
+
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: tenantAdminCount(summary['scanned']),
+      invalidValue: tenantAdminCount(summary['invalid']),
+      repairedValue: tenantAdminCount(summary['repaired']),
+      unchangedValue: tenantAdminCount(summary['unchanged']),
+      failedValue: tenantAdminCount(summary['failed']),
+    );
+  }
+
   String decodeErrorMessage({
     required Object? payload,
     required String fallback,
@@ -110,8 +130,11 @@ class TenantAdminEventsResponseDecoder {
         .whereType<TenantAdminEventOccurrence>()
         .toList(growable: false);
 
-    final artistIdsRaw = _asList(row['artist_ids']);
-    final artistIds = artistIdsRaw
+    final eventPartiesRaw = _asList(row['event_parties']);
+    final artistIds = eventPartiesRaw
+        .map(_asMap)
+        .where((party) => (_asString(party['party_type']) ?? '') == 'artist')
+        .map((party) => party['party_ref_id'])
         .map(_asString)
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
@@ -133,7 +156,6 @@ class TenantAdminEventsResponseDecoder {
           growable: false,
         );
 
-    final eventPartiesRaw = _asList(row['event_parties']);
     final eventParties = eventPartiesRaw
         .map(_asMap)
         .where((party) => party.isNotEmpty)

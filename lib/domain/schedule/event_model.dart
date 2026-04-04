@@ -63,6 +63,20 @@ class EventModel {
   DateTime? get confirmedAt => confirmedAtValue.value;
   List<VenueEventTagValue> get tags =>
       List<VenueEventTagValue>.unmodifiable(tagValues);
+  List<EventLinkedAccountProfile> get linkedArtistProfiles {
+    return List<EventLinkedAccountProfile>.unmodifiable(
+      linkedAccountProfiles.where((profile) {
+        final normalizedPartyType = profile.partyType?.trim().toLowerCase();
+        final normalizedProfileType = profile.profileType.trim().toLowerCase();
+        return normalizedPartyType == 'artist' ||
+            normalizedProfileType == 'artist';
+      }),
+    );
+  }
+
+  EventLinkedAccountProfile? get primaryLinkedArtist =>
+      linkedArtistProfiles.isEmpty ? null : linkedArtistProfiles.first;
+
   List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
         tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
@@ -72,14 +86,24 @@ class EventModel {
       );
     }
 
-    final artistGenres = artists
+    final linkedTerms = linkedArtistProfiles
+        .expand((profile) => profile.taxonomyTerms)
+        .map((term) => term.labelValue.value.trim())
+        .where((g) => g.isNotEmpty)
+        .toSet()
+        .map(VenueEventTagValue.new)
+        .toList(growable: false);
+    if (linkedTerms.isNotEmpty) {
+      return linkedTerms;
+    }
+
+    return artists
         .expand((artist) => artist.genres)
         .map((genre) => genre.value.trim())
         .where((g) => g.isNotEmpty)
         .toSet()
         .map(VenueEventTagValue.new)
         .toList(growable: false);
-    return artistGenres;
   }
 
   EventModel({

@@ -20,6 +20,8 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -30,7 +32,7 @@ import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_values.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
@@ -274,7 +276,7 @@ void main() {
               event: _buildEvent(
                 venue: _buildVenueResume(),
                 linkedProfiles: [
-                  eventLinkedAccountProfileFromRaw(
+                  _buildLinkedAccountProfile(
                     id: 'artist-1',
                     displayName: 'Ananda Torres',
                     profileType: 'artist',
@@ -282,14 +284,14 @@ void main() {
                     avatarUrl: 'https://example.com/ananda.png',
                     coverUrl: 'https://example.com/ananda-cover.png',
                     taxonomyTerms: [
-                      eventLinkedAccountProfileTaxonomyTermFromRaw(
+                      _buildLinkedAccountProfileTaxonomyTerm(
                         type: 'genre',
                         value: 'samba',
                         name: 'Samba',
                       ),
                     ],
                   ),
-                  eventLinkedAccountProfileFromRaw(
+                  _buildLinkedAccountProfile(
                     id: 'venue-1',
                     displayName: 'Carvoeiro',
                     profileType: 'restaurant',
@@ -370,7 +372,7 @@ void main() {
               event: _buildEvent(
                 venue: _buildVenueResume(),
                 linkedProfiles: [
-                  eventLinkedAccountProfileFromRaw(
+                  _buildLinkedAccountProfile(
                     id: 'artist-1',
                     displayName: 'Ananda Torres',
                     profileType: 'artist',
@@ -759,6 +761,60 @@ PartnerResume _buildVenueResume() {
     logoImageValue: InvitePartnerLogoImageValue()
       ..parse('https://example.com/carvoeiro-logo.png'),
   );
+}
+
+EventLinkedAccountProfile _buildLinkedAccountProfile({
+  required String id,
+  required String displayName,
+  required String profileType,
+  required String slug,
+  String? avatarUrl,
+  String? coverUrl,
+  String? partyType,
+  List<EventLinkedAccountProfileTaxonomyTerm> taxonomyTerms = const [],
+}) {
+  final taxonomyTermsGroup = EventLinkedAccountProfileTaxonomyTerms();
+  for (final term in taxonomyTerms) {
+    taxonomyTermsGroup.addTerm(
+      typeValue: term.typeValue,
+      valueValue: term.valueValue,
+      nameValue: term.nameValue,
+    );
+  }
+
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    slugValue: SlugValue()..parse(slug),
+    avatarUrlValue: _thumbUriValueOrNull(avatarUrl),
+    coverUrlValue: _thumbUriValueOrNull(coverUrl),
+    partyTypeValue: partyType == null
+        ? null
+        : EventLinkedAccountProfileTextValue(partyType),
+    taxonomyTerms: taxonomyTermsGroup,
+  );
+}
+
+EventLinkedAccountProfileTaxonomyTerm _buildLinkedAccountProfileTaxonomyTerm({
+  required String type,
+  required String value,
+  String name = '',
+}) {
+  return EventLinkedAccountProfileTaxonomyTerm(
+    typeValue: AccountProfileTagValue(type),
+    valueValue: AccountProfileTagValue(value),
+    nameValue: AccountProfileTagValue(name),
+  );
+}
+
+ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
+  final normalized = rawUrl?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  return ThumbUriValue(defaultValue: Uri.parse(normalized), isRequired: true)
+    ..parse(normalized);
 }
 
 EventModel _buildEvent({

@@ -487,9 +487,9 @@ class _ImmersiveEventDetailScreenState
       settingsDefaultImageValue: fallbackImageValue,
     ).toString();
     final locationLabel = event.location.value;
-    final hostName = event.artists.isNotEmpty
-        ? event.artists.first.displayName
-        : 'Belluga Now';
+    final hostName = event.primaryLinkedArtist?.displayName ??
+        event.venue?.displayName ??
+        'Belluga Now';
     final description = _stripHtml(event.content.value ?? '').trim();
     final tags = event.taxonomyTags;
     final eventId = event.id.value;

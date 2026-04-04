@@ -11,8 +11,6 @@ class EventLinkedAccountProfileTaxonomyTerm {
   final AccountProfileTagValue valueValue;
   final AccountProfileTagValue nameValue;
 
-  String get type => typeValue.value;
-  String get value => valueValue.value;
-  String get name => nameValue.value;
-  String get label => name.trim().isNotEmpty ? name.trim() : value.trim();
+  AccountProfileTagValue get labelValue =>
+      nameValue.value.trim().isNotEmpty ? nameValue : valueValue;
 }

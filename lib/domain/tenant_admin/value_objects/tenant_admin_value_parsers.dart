@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_date_time_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_date_time_value.dart';
@@ -74,6 +75,23 @@ TenantAdminFlagValue tenantAdminFlag(Object? raw, {bool fallback = false}) {
   }
 
   throw FormatException('Invalid boolean value: $raw');
+}
+
+TenantAdminCountValue tenantAdminCount(Object? raw) {
+  if (raw is TenantAdminCountValue) {
+    return raw;
+  }
+
+  if (raw is int) {
+    return TenantAdminCountValue(raw);
+  }
+
+  if (raw is num) {
+    return TenantAdminCountValue(raw.toInt());
+  }
+
+  final parsed = int.tryParse(raw?.toString().trim() ?? '') ?? 0;
+  return TenantAdminCountValue(parsed);
 }
 
 TenantAdminDateTimeValue tenantAdminDateTime(Object raw) {

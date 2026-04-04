@@ -7,13 +7,15 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_values.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
@@ -24,6 +26,7 @@ import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -95,8 +98,6 @@ class EventDTO {
     );
     final linkedProfiles = _resolveLinkedAccountProfiles(
       linkedProfilesRaw: json['linked_account_profiles'],
-      venuePayload: venuePayload,
-      artistsRaw: json['artists'],
     );
 
     return EventDTO(
@@ -255,8 +256,6 @@ class EventDTO {
 
   static List<EventLinkedAccountProfile> _resolveLinkedAccountProfiles({
     required Object? linkedProfilesRaw,
-    required Map<String, dynamic> venuePayload,
-    required Object? artistsRaw,
   }) {
     final orderedIds = <String>[];
     final mergedProfiles = <String, Map<String, dynamic>>{};
@@ -329,24 +328,6 @@ class EventDTO {
       }
     }
 
-    if (venuePayload.isNotEmpty) {
-      addProfile(<String, dynamic>{
-        ...venuePayload,
-        'party_type': 'venue',
-        'profile_type': _asString(venuePayload['profile_type']) ?? 'venue',
-      });
-    }
-
-    if (artistsRaw is List) {
-      for (final entry in artistsRaw) {
-        addProfile(<String, dynamic>{
-          ..._asMap(entry),
-          'party_type': 'artist',
-          'profile_type': _asString(_asMap(entry)['profile_type']) ?? 'artist',
-        });
-      }
-    }
-
     final resolved = orderedIds
         .map((id) => _toLinkedAccountProfile(mergedProfiles[id]!))
         .whereType<EventLinkedAccountProfile>()
@@ -371,7 +352,7 @@ class EventDTO {
     }
 
     final taxonomyTermsRaw = profile['taxonomy_terms'];
-    final taxonomyTerms = <EventLinkedAccountProfileTaxonomyTerm>[];
+    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
     if (taxonomyTermsRaw is List) {
       for (final entry in taxonomyTermsRaw) {
         final term = _asMap(entry);
@@ -380,11 +361,11 @@ class EventDTO {
         if (type.isEmpty || value.isEmpty) {
           continue;
         }
-        taxonomyTerms.add(
-          eventLinkedAccountProfileTaxonomyTermFromRaw(
-            type: type,
-            value: value,
-            name: _asString(term['name'])?.trim() ??
+        taxonomyTerms.addTerm(
+          typeValue: AccountProfileTagValue(type),
+          valueValue: AccountProfileTagValue(value),
+          nameValue: AccountProfileTagValue(
+            _asString(term['name'])?.trim() ??
                 _asString(term['label'])?.trim() ??
                 '',
           ),
@@ -392,18 +373,23 @@ class EventDTO {
       }
     }
 
-    return eventLinkedAccountProfileFromRaw(
-      id: id,
-      displayName: displayName,
-      profileType: _asString(profile['profile_type'])?.trim().isNotEmpty == true
-          ? _asString(profile['profile_type'])!.trim()
-          : (_asString(profile['party_type'])?.trim() ?? ''),
-      slug: _asNullableString(_extractProfileSlug(profile)),
-      avatarUrl:
-          _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
-      coverUrl:
-          _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
-      partyType: _asNullableString(profile['party_type']),
+    final profileType =
+        _asString(profile['profile_type'])?.trim().isNotEmpty == true
+        ? _asString(profile['profile_type'])!.trim()
+        : (_asString(profile['party_type'])?.trim() ?? '');
+
+    return EventLinkedAccountProfile(
+      idValue: EventLinkedAccountProfileTextValue(id),
+      displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+      profileTypeValue: AccountProfileTypeValue(profileType),
+      slugValue: _requiredLinkedAccountProfileSlugValue(profile: profile, id: id),
+      avatarUrlValue: _thumbUriValueOrNull(
+        _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
+      ),
+      coverUrlValue: _thumbUriValueOrNull(
+        _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
+      ),
+      partyTypeValue: _textValueOrNull(_asNullableString(profile['party_type'])),
       taxonomyTerms: taxonomyTerms,
     );
   }
@@ -421,6 +407,40 @@ class EventDTO {
     return profile['slug'] ??
         profile['account_profile_slug'] ??
         profile['profile_slug'];
+  }
+
+  static SlugValue _requiredLinkedAccountProfileSlugValue({
+    required Map<String, dynamic> profile,
+    required String id,
+  }) {
+    final slug = _asNullableString(_extractProfileSlug(profile))?.trim() ?? '';
+    if (slug.isEmpty) {
+      throw FormatException(
+        'linked_account_profiles[$id].slug is required for route-driven navigation',
+      );
+    }
+    return SlugValue()..parse(slug);
+  }
+
+  static EventLinkedAccountProfileTextValue? _textValueOrNull(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return EventLinkedAccountProfileTextValue(normalized);
+  }
+
+  static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
+    final normalized = rawUrl?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null) {
+      return null;
+    }
+    return ThumbUriValue(defaultValue: parsed, isRequired: true)
+      ..parse(normalized);
   }
 
   static List<Map<String, dynamic>> _mergeTaxonomyTerms(

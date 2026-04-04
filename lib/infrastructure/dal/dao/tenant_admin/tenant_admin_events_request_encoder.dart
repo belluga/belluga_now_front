@@ -67,8 +67,14 @@ class TenantAdminEventsRequestEncoder {
     }
 
     if (draft.artistIds.isNotEmpty) {
-      payload['artist_ids'] = draft.artistIds
-          .map((artistId) => artistId.value)
+      payload['event_parties'] = draft.artistIds
+          .map((artistId) => <String, dynamic>{
+                'party_type': 'artist',
+                'party_ref_id': artistId.value,
+                'permissions': <String, dynamic>{
+                  'can_edit': true,
+                },
+              })
           .toList(growable: false);
     }
 

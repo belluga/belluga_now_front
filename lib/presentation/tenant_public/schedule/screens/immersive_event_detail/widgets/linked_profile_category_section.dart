@@ -83,7 +83,7 @@ class _LinkedProfileCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final tags = profile.taxonomyTerms
-        .map((term) => term.label.trim())
+        .map((term) => term.labelValue.value.trim())
         .where((label) => label.isNotEmpty)
         .take(4)
         .toList(growable: false);
@@ -101,10 +101,9 @@ class _LinkedProfileCard extends StatelessWidget {
             InkWell(
               key: Key('linkedProfileCardTapTarget_${profile.id}'),
               borderRadius: BorderRadius.circular(24),
-              onTap: profile.hasNavigableSlug
-                  ? () => context.router
-                      .push(PartnerDetailRoute(slug: profile.slug!))
-                  : null,
+              onTap: () => context.router.push(
+                PartnerDetailRoute(slug: profile.slug),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: AccountProfileIdentityBlock(
