@@ -32,8 +32,6 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -559,24 +557,12 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   }
 
   @override
-  Future<List<EventModel>> getAllEvents() async => [_event];
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
     if (slug.value == _event.slugValue.value) {
       return _event;
     }
     return null;
   }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      [_event];
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -594,45 +580,6 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     return pagedEventsResultFromRaw(events: [_event], hasMore: false);
-  }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    return ScheduleSummaryModel(
-      items: [
-        ScheduleSummaryItemModel(
-          dateTimeStartValue: DateTimeValue(isRequired: true)
-            ..parse(
-              (_event.dateTimeStart.value ?? DateTime.now()).toIso8601String(),
-            ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-      ScheduleRepoDateTime date) async {
-    return [
-      VenueEventResume.fromScheduleEvent(
-        _event,
-        ThumbUriValue(
-          defaultValue: Uri.parse('https://example.com/event.png'),
-        ),
-      ),
-    ];
-  }
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
-    return [
-      VenueEventResume.fromScheduleEvent(
-        _event,
-        ThumbUriValue(
-          defaultValue: Uri.parse('https://example.com/event.png'),
-        ),
-      ),
-    ];
   }
 
   @override

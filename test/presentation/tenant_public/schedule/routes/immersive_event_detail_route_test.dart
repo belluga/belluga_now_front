@@ -3,6 +3,17 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
+import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
+import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
@@ -70,10 +81,85 @@ void main() {
 
     expect(builtScreen, isA<ImmersiveEventDetailScreen>());
   });
+
+  testWidgets(
+      'wraps immersive event detail with image palette theme when thumb is missing but artist avatar exists',
+      (tester) async {
+    final route = const ImmersiveEventDetailRoutePage(
+      eventSlug: 'show-immersive',
+    );
+    final event = _buildEvent(
+      artists: [
+        ArtistResume(
+          idValue: ArtistIdValue()..parse('507f1f77bcf86cd799439099'),
+          nameValue: ArtistNameValue()..parse('Ananda Torres'),
+          avatarValue: ArtistAvatarValue(
+            defaultValue: Uri.parse('https://example.com/ananda.png'),
+            isRequired: true,
+          )..parse('https://example.com/ananda.png'),
+          isHighlightValue: ArtistIsHighlightValue()..parse('false'),
+          genreValues: const [],
+        ),
+      ],
+    );
+
+    late Widget builtScreen;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            builtScreen = route.buildScreen(context, event);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(builtScreen, isA<ImagePaletteTheme>());
+  });
+
+  testWidgets(
+      'wraps immersive event detail with image palette theme when thumb is missing but venue hero exists',
+      (tester) async {
+    final route = const ImmersiveEventDetailRoutePage(
+      eventSlug: 'show-immersive',
+    );
+    final event = _buildEvent(
+      venue: PartnerResume(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439088'),
+        nameValue: InvitePartnerNameValue()..parse('Carvoeiro'),
+        slugValue: SlugValue()..parse('carvoeiro'),
+        type: InviteAccountProfileType.mercadoProducer,
+        logoImageValue: InvitePartnerLogoImageValue()
+          ..parse('https://example.com/carvoeiro-logo.png'),
+        heroImageValue: InvitePartnerHeroImageValue()
+          ..parse('https://example.com/carvoeiro-hero.png'),
+        taglineValue: InvitePartnerTaglineValue()..parse('Praia'),
+      ),
+    );
+
+    late Widget builtScreen;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            builtScreen = route.buildScreen(context, event);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(builtScreen, isA<ImagePaletteTheme>());
+  });
 }
 
 EventModel _buildEvent({
   String? thumbUrl,
+  List<ArtistResume> artists = const [],
+  PartnerResume? venue,
 }) {
   return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
@@ -89,7 +175,7 @@ EventModel _buildEvent({
     title: TitleValue()..parse('Evento de Teste'),
     content: HTMLContentValue()..parse('Descricao longa do evento para teste.'),
     location: DescriptionValue()..parse('Local muito legal para teste.'),
-    venue: null,
+    venue: venue,
     thumb: thumbUrl == null
         ? null
         : ThumbModel(
@@ -102,7 +188,7 @@ EventModel _buildEvent({
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
-    artists: const [],
+    artists: artists,
     coordinate: null,
     tags: const <String>['show'],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),

@@ -2,8 +2,11 @@ export 'favorite_navigation_target.dart';
 
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -49,7 +52,7 @@ class FavoritesSectionController implements Disposable {
           )..parse(mainIconUri.toString()))
         : null;
 
-    return FavoriteResume(
+    return favoriteResumeFromRaw(
       titleValue: TitleValue()..parse(appData.nameValue.value),
       imageUriValue: iconImageUriValue,
       iconImageUriValue: iconImageUriValue,
@@ -77,6 +80,32 @@ class FavoritesSectionController implements Disposable {
     final target = await resolveNavigationTarget(favorite);
     navigationTargetStreamValue.addValue(target);
   }
+
+  ResolvedAccountProfileVisual? resolvedVisualFor(FavoriteResume favorite) {
+    if (favorite.isPrimary || !favorite.isAccountProfileTarget) {
+      return null;
+    }
+    final registry = _appDataRepository.appData.profileTypeRegistry;
+    final profileType = favorite.profileType?.trim();
+    final avatarUrl = favorite.imageUri?.toString();
+    final coverUrl = favorite.coverImageUrl;
+
+    if ((profileType == null || profileType.isEmpty) &&
+        (avatarUrl == null || avatarUrl.isEmpty) &&
+        (coverUrl == null || coverUrl.isEmpty)) {
+      return null;
+    }
+
+    return AccountProfileVisualResolver.resolvePreview(
+      registry: registry,
+      profileType: profileType,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
+    );
+  }
+
+  FavoriteChipHaloState haloStateFor(FavoriteResume favorite) =>
+      favorite.haloState;
 
   void clearNavigationTarget() {
     navigationTargetStreamValue.addValue(null);

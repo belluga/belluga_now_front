@@ -102,7 +102,6 @@ void main() {
 
       final scheduleRepository = ScheduleRepository(
         backendContract: backend,
-        appDataRepository: appDataRepository,
       );
 
       final origin = appDataRepository.appData.tenantDefaultOrigin;

@@ -29,7 +29,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchAllAccountProfiles returns items when registry enables type',
+  test('fetchAccountProfilesPage returns items when registry enables type',
       () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
@@ -48,10 +48,13 @@ void main() {
       favoriteAccountProfileIds: const {},
     );
 
-    final profiles = await repository.fetchAllAccountProfiles();
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
 
-    expect(profiles, hasLength(1));
-    expect(profiles.first.type, 'artist');
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.first.type, 'artist');
   });
 
   test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
@@ -88,7 +91,7 @@ void main() {
     expect(page.profiles, hasLength(2));
   });
 
-  test('init loads favorite ids from backend favorites source', () async {
+  test('init loads favorite ids from backend favorites source without preloading full catalog', () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
@@ -126,6 +129,8 @@ void main() {
           .toSet(),
       contains('profile-fav-1'),
     );
+    expect(backend.fetchAccountProfilesPageCalls, 0);
+    expect(repository.allAccountProfilesStreamValue.value, isEmpty);
   });
 
   test('toggleFavorite persists favorite and unfavorite through backend',
@@ -264,7 +269,6 @@ void main() {
 
     expect(profile?.slug, 'artist-one');
     expect(backend.fetchBySlugCalls, 1);
-    expect(backend.fetchAccountProfilesCalls, 0);
     expect(backend.fetchAccountProfilesPageCalls, 0);
   });
 
@@ -380,16 +384,9 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
   List<String>? lastAllowedTypes;
-  int fetchAccountProfilesCalls = 0;
   int fetchAccountProfilesPageCalls = 0;
   int fetchBySlugCalls = 0;
   int fetchNearbyCalls = 0;
-
-  @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() async => (() {
-        fetchAccountProfilesCalls += 1;
-        return accountProfiles;
-      })();
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
@@ -429,14 +426,6 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
     return source.take(pageSize).toList(growable: false);
   }
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
-    List<String>? allowedTypes,
-  }) async =>
-      accountProfiles;
 }
 
 class _NoopTelemetry implements TelemetryRepositoryContract {

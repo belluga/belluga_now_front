@@ -172,6 +172,7 @@ enum MapMarkerIconToken {
     'shoppingbag': MapMarkerIconToken.shopping,
     'shopping': MapMarkerIconToken.shopping,
     'music': MapMarkerIconToken.music,
+    'musicnote': MapMarkerIconToken.music,
     'star': MapMarkerIconToken.star,
   };
 

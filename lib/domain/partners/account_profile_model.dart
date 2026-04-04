@@ -1,5 +1,8 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -15,11 +18,14 @@ class AccountProfileModel {
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
   final List<AccountProfileTagValue> tagValues;
-  final List<AccountProfileUpcomingEventIdValue> upcomingEventIdValues;
+  final List<PartnerEventView> agendaEventViews;
   final AccountProfileIsVerifiedValue isVerifiedValue;
   final EngagementData? engagementData;
   final AccountProfileAcceptedInvitesValue acceptedInvitesValue;
   final AccountProfileDistanceMetersValue distanceMetersValue;
+  final AccountProfileLocationAddressValue? locationAddressValue;
+  final LatitudeValue? locationLatitudeValue;
+  final LongitudeValue? locationLongitudeValue;
 
   AccountProfileModel({
     required this.idValue,
@@ -30,19 +36,20 @@ class AccountProfileModel {
     this.coverValue,
     this.bioValue,
     List<AccountProfileTagValue>? tagValues,
-    List<AccountProfileUpcomingEventIdValue>? upcomingEventIdValues,
+    List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
     this.engagementData,
     AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
     AccountProfileDistanceMetersValue? distanceMetersValue,
+    this.locationAddressValue,
+    this.locationLatitudeValue,
+    this.locationLongitudeValue,
   })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
-         tagValues ?? const <AccountProfileTagValue>[],
-       ),
-        upcomingEventIdValues =
-            List<AccountProfileUpcomingEventIdValue>.unmodifiable(
-              upcomingEventIdValues ??
-                  const <AccountProfileUpcomingEventIdValue>[],
-            ),
+          tagValues ?? const <AccountProfileTagValue>[],
+        ),
+        agendaEventViews = List<PartnerEventView>.unmodifiable(
+          agendaEventViews ?? const <PartnerEventView>[],
+        ),
         isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
         acceptedInvitesValue =
             acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
@@ -61,13 +68,21 @@ class AccountProfileModel {
   String? get bio => bioValue?.value;
   List<AccountProfileTagValue> get tags =>
       List<AccountProfileTagValue>.unmodifiable(tagValues);
-  List<AccountProfileUpcomingEventIdValue> get upcomingEventIds =>
-      List<AccountProfileUpcomingEventIdValue>.unmodifiable(
-        upcomingEventIdValues,
-      );
+  List<PartnerEventView> get agendaEvents =>
+      List<PartnerEventView>.unmodifiable(agendaEventViews);
   bool get isVerified => isVerifiedValue.value;
   int get acceptedInvites => acceptedInvitesValue.value;
   double? get distanceMeters => distanceMetersValue.value;
+  String? get locationAddress {
+    final value = locationAddressValue?.value.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  double? get locationLat => locationLatitudeValue?.value;
+  double? get locationLng => locationLongitudeValue?.value;
 
   AccountProfileModel copyWith({
     MongoIDValue? idValue,
@@ -78,11 +93,14 @@ class AccountProfileModel {
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
     List<AccountProfileTagValue>? tagValues,
-    List<AccountProfileUpcomingEventIdValue>? upcomingEventIdValues,
+    List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
     EngagementData? engagementData,
     AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
     AccountProfileDistanceMetersValue? distanceMetersValue,
+    AccountProfileLocationAddressValue? locationAddressValue,
+    LatitudeValue? locationLatitudeValue,
+    LongitudeValue? locationLongitudeValue,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
@@ -93,12 +111,16 @@ class AccountProfileModel {
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
       tagValues: tagValues ?? this.tagValues,
-      upcomingEventIdValues:
-          upcomingEventIdValues ?? this.upcomingEventIdValues,
+      agendaEventViews: agendaEventViews ?? this.agendaEventViews,
       isVerifiedValue: isVerifiedValue ?? this.isVerifiedValue,
       engagementData: engagementData ?? this.engagementData,
       acceptedInvitesValue: acceptedInvitesValue ?? this.acceptedInvitesValue,
       distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,
+      locationAddressValue: locationAddressValue ?? this.locationAddressValue,
+      locationLatitudeValue:
+          locationLatitudeValue ?? this.locationLatitudeValue,
+      locationLongitudeValue:
+          locationLongitudeValue ?? this.locationLongitudeValue,
     );
   }
 }

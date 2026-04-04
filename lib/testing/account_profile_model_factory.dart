@@ -1,5 +1,8 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -16,11 +19,14 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   String? coverUrl,
   String? bio,
   List<String>? tags,
-  List<String>? upcomingEventIds,
+  List<PartnerEventView>? agendaEvents,
   bool isVerified = false,
   EngagementData? engagementData,
   int acceptedInvites = 0,
   double? distanceMeters,
+  String? locationAddress,
+  double? locationLat,
+  double? locationLng,
 }) {
   ThumbUriValue? avatarValue;
   if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -39,6 +45,22 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     bioValue = DescriptionValue()..parse(bio);
   }
 
+  AccountProfileLocationAddressValue? locationAddressValue;
+  if (locationAddress != null && locationAddress.isNotEmpty) {
+    locationAddressValue = AccountProfileLocationAddressValue()
+      ..parse(locationAddress);
+  }
+
+  LatitudeValue? locationLatitudeValue;
+  if (locationLat != null) {
+    locationLatitudeValue = LatitudeValue()..parse(locationLat.toString());
+  }
+
+  LongitudeValue? locationLongitudeValue;
+  if (locationLng != null) {
+    locationLongitudeValue = LongitudeValue()..parse(locationLng.toString());
+  }
+
   return AccountProfileModel(
     idValue: MongoIDValue()..parse(id),
     nameValue: TitleValue()..parse(name),
@@ -48,24 +70,21 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     coverValue: coverValue,
     bioValue: bioValue,
     tagValues: _buildTagValues(tags),
-    upcomingEventIdValues: _buildUpcomingEventIdValues(upcomingEventIds),
+    agendaEventViews: List<PartnerEventView>.unmodifiable(
+      agendaEvents ?? const <PartnerEventView>[],
+    ),
     isVerifiedValue: AccountProfileIsVerifiedValue(isVerified),
     engagementData: engagementData,
     acceptedInvitesValue: AccountProfileAcceptedInvitesValue(acceptedInvites),
     distanceMetersValue: AccountProfileDistanceMetersValue(distanceMeters),
+    locationAddressValue: locationAddressValue,
+    locationLatitudeValue: locationLatitudeValue,
+    locationLongitudeValue: locationLongitudeValue,
   );
 }
 
 List<AccountProfileTagValue> _buildTagValues(List<String>? tags) {
   return (tags ?? const <String>[])
       .map(AccountProfileTagValue.new)
-      .toList(growable: false);
-}
-
-List<AccountProfileUpcomingEventIdValue> _buildUpcomingEventIdValues(
-  List<String>? ids,
-) {
-  return (ids ?? const <String>[])
-      .map(AccountProfileUpcomingEventIdValue.new)
       .toList(growable: false);
 }

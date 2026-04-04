@@ -8,11 +8,14 @@ import 'package:belluga_now/domain/gamification/value_objects/mission_total_requ
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -28,6 +31,7 @@ class ImmersiveEventDetailController implements Disposable {
     InvitesRepositoryContract? invitesRepository,
     AuthRepositoryContract? authRepository,
     AppDataRepositoryContract? appDataRepository,
+    AccountProfilesRepositoryContract? accountProfilesRepository,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
@@ -39,25 +43,35 @@ class ImmersiveEventDetailController implements Disposable {
         _appDataRepository = appDataRepository ??
             (GetIt.I.isRegistered<AppDataRepositoryContract>()
                 ? GetIt.I.get<AppDataRepositoryContract>()
+                : null),
+        _accountProfilesRepository = accountProfilesRepository ??
+            (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
+                ? GetIt.I.get<AccountProfilesRepositoryContract>()
                 : null);
 
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
   final AuthRepositoryContract? _authRepository;
   final AppDataRepositoryContract? _appDataRepository;
+  final AccountProfilesRepositoryContract? _accountProfilesRepository;
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
+  StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
+      _favoriteProfileIdsSubscription;
   StreamValue<EventModel?> get eventStreamValue =>
       _invitesRepository.immersiveSelectedEventStreamValue;
   StreamValue<List<InviteModel>> get receivedInvitesStreamValue =>
       _invitesRepository.immersiveReceivedInvitesStreamValue;
+  final favoriteAccountProfileIdsStreamValue =
+      StreamValue<Set<String>>(defaultValue: const <String>{});
 
   void init(EventModel event) {
     _invitesRepository.setImmersiveSelectedEvent(event);
     _hydrateState(event);
+    _bindFavoriteAccountProfileState();
     unawaited(_refreshConfirmationState(event.id.value));
   }
 
@@ -82,7 +96,61 @@ class ImmersiveEventDetailController implements Disposable {
     return _localEventPlaceholderUri;
   }
 
+  ProfileTypeRegistry? get profileTypeRegistry =>
+      _appDataRepository?.appData.profileTypeRegistry;
+
+  String profileTypePluralLabelFor(
+    String profileType, {
+    String fallback = '',
+  }) {
+    final normalized = profileType.trim();
+    if (normalized.isEmpty) {
+      return fallback;
+    }
+    final registry = profileTypeRegistry;
+    if (registry == null) {
+      return fallback.isNotEmpty ? fallback : normalized;
+    }
+    return registry.pluralLabelForType(ProfileTypeKeyValue(normalized));
+  }
+
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
+
+  bool isLinkedProfileFavoritable(String profileType) {
+    final normalized = profileType.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+    final registry = profileTypeRegistry;
+    if (registry == null || registry.isEmpty) {
+      return false;
+    }
+    return registry.isFavoritableFor(ProfileTypeKeyValue(normalized));
+  }
+
+  bool isLinkedProfileFavorite(String accountProfileId) {
+    final normalized = accountProfileId.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+    return favoriteAccountProfileIdsStreamValue.value.contains(normalized);
+  }
+
+  LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
+    String accountProfileId,
+  ) {
+    if (!_isAuthorized) {
+      return LinkedProfileFavoriteToggleOutcome.requiresAuthentication;
+    }
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return LinkedProfileFavoriteToggleOutcome.unavailable;
+    }
+    repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
+    );
+    return LinkedProfileFavoriteToggleOutcome.toggled;
+  }
 
   void _hydrateState(EventModel event) {
     final isConfirmedLocally = _userEventsRepository.isEventConfirmed(
@@ -126,6 +194,29 @@ class ImmersiveEventDetailController implements Disposable {
         .where((invite) => invite.eventIdValue.value == eventId)
         .toList();
     _invitesRepository.setImmersiveReceivedInvites(filtered);
+  }
+
+  void _bindFavoriteAccountProfileState() {
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+      return;
+    }
+
+    favoriteAccountProfileIdsStreamValue.addValue(
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
+    );
+
+    _favoriteProfileIdsSubscription ??=
+        repository.favoriteAccountProfileIdsStreamValue.stream.listen((ids) {
+      favoriteAccountProfileIdsStreamValue.addValue(
+        ids.map((entry) => entry.value).toSet(),
+      );
+    });
+
+    unawaited(repository.init());
   }
 
   /// Confirm attendance at this event
@@ -209,10 +300,12 @@ class ImmersiveEventDetailController implements Disposable {
   @override
   void onDispose() {
     _pendingInvitesSubscription?.cancel();
+    _favoriteProfileIdsSubscription?.cancel();
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();
     missionStreamValue.dispose();
+    favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }
 }
@@ -221,4 +314,10 @@ enum AttendanceConfirmationResult {
   confirmed,
   requiresAuthentication,
   skipped,
+}
+
+enum LinkedProfileFavoriteToggleOutcome {
+  toggled,
+  requiresAuthentication,
+  unavailable,
 }

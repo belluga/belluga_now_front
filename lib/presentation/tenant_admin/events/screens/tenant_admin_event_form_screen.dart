@@ -20,6 +20,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -329,13 +330,11 @@ class _TenantAdminEventFormScreenState
             },
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          TenantAdminRichTextEditor(
             controller: _controller.eventContentController,
-            decoration: const InputDecoration(
-              labelText: 'Descrição (opcional)',
-            ),
-            minLines: 3,
-            maxLines: 6,
+            label: 'Descrição (opcional)',
+            placeholder: 'Escreva a descrição do evento',
+            minHeight: 180,
           ),
         ],
       ),

@@ -14,6 +14,10 @@ void main() {
           {
             'type': 'venue',
             'label': 'Venue',
+            'labels': {
+              'singular': 'Venue',
+              'plural': 'Venues',
+            },
             'visual': {
               'mode': 'icon',
               'icon': 'place',
@@ -34,6 +38,7 @@ void main() {
 
       expect(definition, isNotNull);
       expect(definition!.label, 'Venue');
+      expect(definition.pluralLabel, 'Venues');
       expect(definition.visual?.mode, ProfileTypeVisualMode.icon);
       expect(definition.visual?.icon, 'place');
       expect(definition.visual?.color, '#FF8800');

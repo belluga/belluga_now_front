@@ -7,11 +7,13 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
@@ -46,6 +48,7 @@ class EventDTO {
     required this.dateTimeStart,
     this.dateTimeEnd,
     required this.artists,
+    this.linkedAccountProfiles = const [],
     this.isConfirmed = false,
     this.totalConfirmed = 0,
     this.receivedInvites,
@@ -67,6 +70,7 @@ class EventDTO {
   final String dateTimeStart;
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final bool isConfirmed;
   final int totalConfirmed;
   final List<Map<String, dynamic>>? receivedInvites;
@@ -88,6 +92,11 @@ class EventDTO {
       longitude: _asDouble(json['longitude']),
       locationPayload: locationPayload,
       geoLocationPayload: geoLocationPayload,
+    );
+    final linkedProfiles = _resolveLinkedAccountProfiles(
+      linkedProfilesRaw: json['linked_account_profiles'],
+      venuePayload: venuePayload,
+      artistsRaw: json['artists'],
     );
 
     return EventDTO(
@@ -134,15 +143,15 @@ class EventDTO {
             ),
           )
           .toList(),
+      linkedAccountProfiles: linkedProfiles,
       isConfirmed: _asBool(json['is_confirmed']),
       totalConfirmed: _asInt(json['total_confirmed']),
       receivedInvites: _asMapList(json['received_invites']),
       sentInvites: _asMapList(json['sent_invites']),
       friendsGoing: _asMapList(json['friends_going']),
-      tags: (json['tags'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+              const [],
     );
   }
 
@@ -154,25 +163,20 @@ class EventDTO {
             longitudeValue: LongitudeValue()..parse(longitude!.toString()),
           )
         : null;
-    final artistsDomain = artists
-        .map((artist) => artist.toDomain())
-        .toList(growable: false);
+    final artistsDomain =
+        artists.map((artist) => artist.toDomain()).toList(growable: false);
     final venueDomain = venue != null ? _mapPartnerResume(venue!) : null;
 
-    final receivedInvitesDomain = receivedInvites
-        ?.map((entry) {
-          final inviteMap = Map<String, dynamic>.from(entry);
-          inviteMap.putIfAbsent('event_id', () => id);
-          return InviteDto.fromJson(inviteMap).toDomain();
-        })
-        .toList(growable: false);
+    final receivedInvitesDomain = receivedInvites?.map((entry) {
+      final inviteMap = Map<String, dynamic>.from(entry);
+      inviteMap.putIfAbsent('event_id', () => id);
+      return InviteDto.fromJson(inviteMap).toDomain();
+    }).toList(growable: false);
 
-    final sentInvitesDomain = sentInvites
-        ?.map(_mapSentInviteStatus)
-        .toList(growable: false);
-    final friendsGoingDomain = friendsGoing
-        ?.map(_mapEventFriendResume)
-        .toList(growable: false);
+    final sentInvitesDomain =
+        sentInvites?.map(_mapSentInviteStatus).toList(growable: false);
+    final friendsGoingDomain =
+        friendsGoing?.map(_mapEventFriendResume).toList(growable: false);
 
     return eventModelFromRaw(
       id: MongoIDValue()..parse(id),
@@ -195,12 +199,12 @@ class EventDTO {
           dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
       venue: venueDomain,
       artists: artistsDomain,
+      linkedAccountProfiles: linkedAccountProfiles,
       coordinate: coordinate,
       tags: tags,
-      isConfirmedValue:
-          EventIsConfirmedValue()..parse(isConfirmed.toString()),
-      totalConfirmedValue:
-          EventTotalConfirmedValue()..parse(totalConfirmed.toString()),
+      isConfirmedValue: EventIsConfirmedValue()..parse(isConfirmed.toString()),
+      totalConfirmedValue: EventTotalConfirmedValue()
+        ..parse(totalConfirmed.toString()),
       receivedInvites: receivedInvitesDomain,
       sentInvites: sentInvitesDomain,
       friendsGoing: friendsGoingDomain,
@@ -247,6 +251,212 @@ class EventDTO {
       return value.toString();
     }
     return null;
+  }
+
+  static List<EventLinkedAccountProfile> _resolveLinkedAccountProfiles({
+    required Object? linkedProfilesRaw,
+    required Map<String, dynamic> venuePayload,
+    required Object? artistsRaw,
+  }) {
+    final orderedIds = <String>[];
+    final mergedProfiles = <String, Map<String, dynamic>>{};
+
+    void addProfile(Map<String, dynamic> profile) {
+      final id = _asString(profile['id'])?.trim() ?? '';
+      if (id.isEmpty) {
+        return;
+      }
+
+      final displayName = _asString(profile['display_name'])?.trim() ??
+          _asString(profile['name'])?.trim() ??
+          '';
+      if (displayName.isEmpty) {
+        return;
+      }
+
+      final existing = mergedProfiles[id];
+      if (existing == null) {
+        orderedIds.add(id);
+        mergedProfiles[id] = Map<String, dynamic>.from(profile);
+        return;
+      }
+
+      existing['display_name'] = _preferNonEmptyString(
+        existing['display_name'],
+        profile['display_name'] ?? profile['name'],
+      );
+      existing['name'] = _preferNonEmptyString(
+        existing['name'],
+        profile['name'],
+      );
+      existing['profile_type'] = _preferNonEmptyString(
+        existing['profile_type'],
+        profile['profile_type'],
+      );
+      existing['party_type'] = _preferNonEmptyString(
+        existing['party_type'],
+        profile['party_type'],
+      );
+      existing['slug'] = _preferNonEmptyString(
+        existing['slug'],
+        _extractProfileSlug(profile),
+      );
+      existing['avatar_url'] = _preferNonEmptyString(
+        existing['avatar_url'],
+        profile['avatar_url'] ?? profile['logo_url'],
+      );
+      existing['logo_url'] = _preferNonEmptyString(
+        existing['logo_url'],
+        profile['logo_url'],
+      );
+      existing['cover_url'] = _preferNonEmptyString(
+        existing['cover_url'],
+        profile['cover_url'] ?? profile['hero_image_url'],
+      );
+      existing['hero_image_url'] = _preferNonEmptyString(
+        existing['hero_image_url'],
+        profile['hero_image_url'],
+      );
+      existing['taxonomy_terms'] = _mergeTaxonomyTerms(
+        existing['taxonomy_terms'],
+        profile['taxonomy_terms'],
+      );
+    }
+
+    if (linkedProfilesRaw is List) {
+      for (final entry in linkedProfilesRaw) {
+        addProfile(_asMap(entry));
+      }
+    }
+
+    if (venuePayload.isNotEmpty) {
+      addProfile(<String, dynamic>{
+        ...venuePayload,
+        'party_type': 'venue',
+        'profile_type': _asString(venuePayload['profile_type']) ?? 'venue',
+      });
+    }
+
+    if (artistsRaw is List) {
+      for (final entry in artistsRaw) {
+        addProfile(<String, dynamic>{
+          ..._asMap(entry),
+          'party_type': 'artist',
+          'profile_type': _asString(_asMap(entry)['profile_type']) ?? 'artist',
+        });
+      }
+    }
+
+    final resolved = orderedIds
+        .map((id) => _toLinkedAccountProfile(mergedProfiles[id]!))
+        .whereType<EventLinkedAccountProfile>()
+        .toList(growable: false);
+
+    return List<EventLinkedAccountProfile>.unmodifiable(resolved);
+  }
+
+  static EventLinkedAccountProfile? _toLinkedAccountProfile(
+    Map<String, dynamic> profile,
+  ) {
+    final id = _asString(profile['id'])?.trim() ?? '';
+    if (id.isEmpty) {
+      return null;
+    }
+
+    final displayName = _asString(profile['display_name'])?.trim() ??
+        _asString(profile['name'])?.trim() ??
+        '';
+    if (displayName.isEmpty) {
+      return null;
+    }
+
+    final taxonomyTermsRaw = profile['taxonomy_terms'];
+    final taxonomyTerms = <EventLinkedAccountProfileTaxonomyTerm>[];
+    if (taxonomyTermsRaw is List) {
+      for (final entry in taxonomyTermsRaw) {
+        final term = _asMap(entry);
+        final type = _asString(term['type'])?.trim() ?? '';
+        final value = _asString(term['value'])?.trim() ?? '';
+        if (type.isEmpty || value.isEmpty) {
+          continue;
+        }
+        taxonomyTerms.add(
+          eventLinkedAccountProfileTaxonomyTermFromRaw(
+            type: type,
+            value: value,
+            name: _asString(term['name'])?.trim() ??
+                _asString(term['label'])?.trim() ??
+                '',
+          ),
+        );
+      }
+    }
+
+    return eventLinkedAccountProfileFromRaw(
+      id: id,
+      displayName: displayName,
+      profileType: _asString(profile['profile_type'])?.trim().isNotEmpty == true
+          ? _asString(profile['profile_type'])!.trim()
+          : (_asString(profile['party_type'])?.trim() ?? ''),
+      slug: _asNullableString(_extractProfileSlug(profile)),
+      avatarUrl:
+          _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
+      coverUrl:
+          _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
+      partyType: _asNullableString(profile['party_type']),
+      taxonomyTerms: taxonomyTerms,
+    );
+  }
+
+  static dynamic _preferNonEmptyString(dynamic current, dynamic candidate) {
+    final currentValue = _asString(current)?.trim() ?? '';
+    if (currentValue.isNotEmpty) {
+      return current;
+    }
+    final candidateValue = _asString(candidate)?.trim() ?? '';
+    return candidateValue.isNotEmpty ? candidate : current;
+  }
+
+  static dynamic _extractProfileSlug(Map<String, dynamic> profile) {
+    return profile['slug'] ??
+        profile['account_profile_slug'] ??
+        profile['profile_slug'];
+  }
+
+  static List<Map<String, dynamic>> _mergeTaxonomyTerms(
+    dynamic currentRaw,
+    dynamic candidateRaw,
+  ) {
+    final merged = <String, Map<String, dynamic>>{};
+
+    void ingest(dynamic raw) {
+      if (raw is! List) {
+        return;
+      }
+      for (final entry in raw) {
+        final term = _asMap(entry);
+        final type = _asString(term['type'])?.trim() ?? '';
+        final value = _asString(term['value'])?.trim() ?? '';
+        if (type.isEmpty || value.isEmpty) {
+          continue;
+        }
+        final key = '$type::$value';
+        final existing = merged[key];
+        if (existing == null) {
+          merged[key] = Map<String, dynamic>.from(term);
+          continue;
+        }
+        existing['name'] =
+            _preferNonEmptyString(existing['name'], term['name']);
+        existing['label'] =
+            _preferNonEmptyString(existing['label'], term['label']);
+      }
+    }
+
+    ingest(currentRaw);
+    ingest(candidateRaw);
+
+    return merged.values.toList(growable: false);
   }
 
   static int _asInt(dynamic value) {
@@ -368,8 +578,9 @@ class EventDTO {
     final friendMap = dto['friend'] as Map<String, dynamic>? ?? {};
     final sentAtValue = DateTimeValue()..parse(dto['sent_at'] as String);
     final respondedAtRaw = dto['responded_at'] as String?;
-    final respondedAtValue =
-        respondedAtRaw == null ? null : (DateTimeValue()..parse(respondedAtRaw));
+    final respondedAtValue = respondedAtRaw == null
+        ? null
+        : (DateTimeValue()..parse(respondedAtRaw));
     return SentInviteStatus(
       friend: _mapEventFriendResume(friendMap),
       status: _parseInviteStatus(dto['status'] as String?),

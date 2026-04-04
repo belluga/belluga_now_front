@@ -1,6 +1,7 @@
 export 'value_objects/event_model_values.dart';
 
 import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -38,6 +39,7 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
   final List<ArtistResume> artists; // Keep for backward compatibility
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final CityCoordinate? coordinate;
   final List<VenueEventTagValue> tagValues;
 
@@ -92,6 +94,7 @@ class EventModel {
     required this.dateTimeStart,
     required this.dateTimeEnd,
     required this.artists,
+    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
     required this.coordinate,
     required List<VenueEventTagValue> tags,
     required this.isConfirmedValue,
@@ -100,6 +103,8 @@ class EventModel {
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  })  : tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+  })  : linkedAccountProfiles =
+            List<EventLinkedAccountProfile>.unmodifiable(linkedAccountProfiles),
+        tagValues = List<VenueEventTagValue>.unmodifiable(tags),
         confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

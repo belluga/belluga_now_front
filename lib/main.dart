@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
@@ -117,6 +118,13 @@ class _StartupBootstrapErrorAppState extends State<_StartupBootstrapErrorApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: ApplicationContract.appLocale,
+      supportedLocales: const <Locale>[ApplicationContract.appLocale],
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: Scaffold(
         body: Center(
           child: Padding(

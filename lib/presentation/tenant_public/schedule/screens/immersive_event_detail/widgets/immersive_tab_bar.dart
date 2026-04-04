@@ -27,8 +27,14 @@ class ImmersiveTabBar extends StatelessWidget {
         children: List.generate(tabs.length, (index) {
           final isSelected = index == selectedIndex;
           return GestureDetector(
+            key: Key('immersiveTab_$index'),
             onTap: () => onTabTapped(index),
             child: Container(
+              key: Key(
+                isSelected
+                    ? 'immersiveTabSelected_$index'
+                    : 'immersiveTabUnselected_$index',
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 border: Border(
@@ -41,6 +47,7 @@ class ImmersiveTabBar extends StatelessWidget {
                 ),
               ),
               child: Text(
+                key: Key('immersiveTabLabel_$index'),
                 tabs[index],
                 style: TextStyle(
                   color: isSelected ? selectedColor : unselectedColor,

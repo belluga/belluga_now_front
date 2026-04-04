@@ -3,8 +3,6 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/home_agenda_cache_snapshot.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/schedule/home_agenda_cache_snapshot.dart';
@@ -35,8 +33,6 @@ abstract class ScheduleRepositoryContract {
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   final discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
-  final eventsByDateStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   final pagedEventsStreamValue =
       StreamValue<PagedEventsResult?>(defaultValue: null);
 
@@ -63,29 +59,6 @@ abstract class ScheduleRepositoryContract {
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot);
   void clearHomeAgendaCache();
 
-  Future<ScheduleSummaryModel> getScheduleSummary();
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  });
-  Future<void> refreshEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    final events = await getEventsByDate(
-      date,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
-    );
-    eventsByDateStreamValue.addValue(events);
-  }
-
-  Future<List<EventModel>> getAllEvents();
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug);
   Future<PagedEventsResult> getEventsPage({
     required ScheduleRepoInt page,
@@ -345,11 +318,6 @@ abstract class ScheduleRepositoryContract {
       ),
     );
   }
-
-  Future<List<VenueEventResume>> getEventResumesByDate(
-      ScheduleRepoDateTime date);
-
-  Future<List<VenueEventResume>> fetchUpcomingEvents();
 
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,

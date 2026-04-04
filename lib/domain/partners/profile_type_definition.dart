@@ -7,15 +7,18 @@ class ProfileTypeDefinition {
   ProfileTypeDefinition({
     required this.typeValue,
     required this.labelValue,
+    ProfileTypeLabelValue? pluralLabelValue,
     required this.capabilities,
     this.visual,
-  });
+  }) : pluralLabelValue = pluralLabelValue ?? labelValue;
 
   final ProfileTypeKeyValue typeValue;
   final ProfileTypeLabelValue labelValue;
+  final ProfileTypeLabelValue pluralLabelValue;
   final ProfileTypeCapabilities capabilities;
   final ProfileTypeVisual? visual;
 
   String get type => typeValue.value;
   String get label => labelValue.value;
+  String get pluralLabel => pluralLabelValue.value;
 }

@@ -31,7 +31,6 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
@@ -42,7 +41,6 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -1612,9 +1610,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   final StreamValue<List<EventModel>> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   @override
-  final StreamValue<List<EventModel>> eventsByDateStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
-  @override
   final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
       StreamValue<PagedEventsResult?>(defaultValue: null);
   @override
@@ -1678,35 +1673,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<void> refreshEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    final events = await getEventsByDate(
-      date,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
-    );
-    eventsByDateStreamValue.addValue(events);
-  }
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -1882,20 +1849,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-          ScheduleRepoDateTime date) async =>
-      const <VenueEventResume>[];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
-      const <VenueEventResume>[];
-
-  @override
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
@@ -2016,15 +1969,6 @@ class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
 
 class _PayloadScheduleBackend implements ScheduleBackendContract {
   @override
-  Future<EventSummaryDTO> fetchSummary() async =>
-      EventSummaryDTO(items: const []);
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async => [
-        _eventDto(),
-      ];
-
-  @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
       _eventDto();
 
@@ -2106,13 +2050,6 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
 
 class _AutoPageRegressionBackend implements ScheduleBackendContract {
   final List<int> requestedPages = <int>[];
-
-  @override
-  Future<EventSummaryDTO> fetchSummary() async =>
-      EventSummaryDTO(items: const []);
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async => [_pageOneEvent()];
 
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
@@ -2255,13 +2192,6 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
 
 class _FailingOnceThenDataBackend implements ScheduleBackendContract {
   int fetchEventsPageCallCount = 0;
-
-  @override
-  Future<EventSummaryDTO> fetchSummary() async =>
-      EventSummaryDTO(items: const []);
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async => [_eventDto()];
 
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>

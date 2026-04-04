@@ -3,29 +3,21 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/direction_info.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
-import 'package:belluga_now/domain/map/ride_share_option.dart';
-import 'package:belluga_now/domain/map/ride_share_provider.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
-import 'package:belluga_now/domain/map/value_objects/directions_destination_name_value.dart';
-import 'package:belluga_now/domain/map/value_objects/directions_fallback_url_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
-import 'package:belluga_now/domain/map/value_objects/ride_share_label_value.dart';
-import 'package:belluga_now/domain/map/value_objects/ride_share_uri_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/single_poi_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:map_launcher/map_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 const double _kDeckMeasurementPadding = 32;
 
@@ -33,9 +25,11 @@ class PoiDetailDeck extends StatefulWidget {
   const PoiDetailDeck({
     super.key,
     required this.controller,
+    this.directionsAppChooser,
   });
 
   final MapScreenController controller;
+  final DirectionsAppChooserContract? directionsAppChooser;
 
   @override
   State<PoiDetailDeck> createState() => _PoiDetailDeckState();
@@ -44,6 +38,8 @@ class PoiDetailDeck extends StatefulWidget {
 class _PoiDetailDeckState extends State<PoiDetailDeck>
     with TickerProviderStateMixin {
   late final MapScreenController _controller = widget.controller;
+  late final DirectionsAppChooserContract _directionsAppChooser =
+      widget.directionsAppChooser ?? DirectionsAppChooser();
   final PageController _pageController = PageController(viewportFraction: 0.8);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   PoiFilterMode? _lastFilterMode;
@@ -271,300 +267,27 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   Future<void> _handleRoute(CityPoiModel poi) async {
     _controller.logDirectionsOpened(poi);
-    final info = await _prepareDirections(poi);
-    if (info == null) {
+    final target = _directionsTargetFromPoi(poi);
+    if (target == null) {
       _controller.statusMessageStreamValue
           .addValue('Localização indisponível para ${poi.name}.');
       return;
     }
-    await _presentDirectionsOptions(info, poi);
-  }
-
-  Future<DirectionsInfo?> _prepareDirections(CityPoiModel poi) async {
-    final coordinate = poi.coordinate;
-    return _buildDirectionsInfo(coordinate, poi.name);
-  }
-
-  Future<DirectionsInfo?> _buildDirectionsInfo(
-    CityCoordinate coordinate,
-    String destinationName,
-  ) async {
-    final destination = Coords(
-      coordinate.latitude,
-      coordinate.longitude,
-    );
-
-    try {
-      final availableMaps = await MapLauncher.installedMaps;
-      final rideShareOptions =
-          await _availableRideShareOptions(destination, destinationName);
-      final fallbackUrl =
-          _buildFallbackDirectionsUri(destination, destinationName);
-      return DirectionsInfo(
-        coordinate: coordinate,
-        destination: destination,
-        destinationNameValue: _buildDestinationNameValue(destinationName),
-        availableMaps: availableMaps,
-        rideShareOptions: rideShareOptions,
-        fallbackUrlValue: _buildFallbackUrlValue(fallbackUrl),
-      );
-    } catch (_) {
-      final fallbackUrl =
-          _buildFallbackDirectionsUri(destination, destinationName);
-      return DirectionsInfo(
-        coordinate: coordinate,
-        destination: destination,
-        destinationNameValue: _buildDestinationNameValue(destinationName),
-        availableMaps: const [],
-        rideShareOptions: const [],
-        fallbackUrlValue: _buildFallbackUrlValue(fallbackUrl),
-      );
-    }
-  }
-
-  Uri _buildFallbackDirectionsUri(Coords destination, String destinationName) {
-    return Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&destination=${destination.latitude},${destination.longitude}'
-      '&destination_place_id=${Uri.encodeComponent(destinationName)}',
+    await _directionsAppChooser.present(
+      context,
+      target: target,
+      onStatusMessage: _controller.statusMessageStreamValue.addValue,
     );
   }
 
-  Future<List<RideShareOption>> _availableRideShareOptions(
-    Coords destination,
-    String destinationName,
-  ) async {
-    final options = <RideShareOption>[];
-    final latitude = destination.latitude;
-    final longitude = destination.longitude;
-    final encodedTitle = Uri.encodeComponent(destinationName);
-
-    final uberUris = <Uri>[
-      Uri.parse(
-        'uber://?action=setPickup'
-        '&dropoff[latitude]=$latitude'
-        '&dropoff[longitude]=$longitude'
-        '&dropoff[nickname]=$encodedTitle',
-      ),
-      Uri.parse(
-        'https://m.uber.com/ul/?action=setPickup'
-        '&dropoff[latitude]=$latitude'
-        '&dropoff[longitude]=$longitude'
-        '&dropoff[nickname]=$encodedTitle',
-      ),
-    ];
-    final uberUriValues = _buildRideShareUriValues(uberUris);
-    if (await _hasAnyLaunchHandler(uberUriValues)) {
-      options.add(
-        RideShareOption(
-          provider: RideShareProvider.uber,
-          labelValue: _buildRideShareLabelValue('Uber'),
-          uriValues: uberUriValues,
-        ),
-      );
-    }
-
-    final ninetyNineUris = <Uri>[
-      Uri.parse(
-        'ninetynine://ride?dropoff_latitude=$latitude'
-        '&dropoff_longitude=$longitude'
-        '&dropoff_title=$encodedTitle',
-      ),
-      Uri.parse(
-        'https://app.99app.com/open?deep_link_value=ride'
-        '&dropoff_latitude=$latitude'
-        '&dropoff_longitude=$longitude'
-        '&dropoff_title=$encodedTitle',
-      ),
-    ];
-    final ninetyNineUriValues = _buildRideShareUriValues(ninetyNineUris);
-    if (await _hasAnyLaunchHandler(ninetyNineUriValues)) {
-      options.add(
-        RideShareOption(
-          provider: RideShareProvider.ninetyNine,
-          labelValue: _buildRideShareLabelValue('99'),
-          uriValues: ninetyNineUriValues,
-        ),
-      );
-    }
-
-    return options;
-  }
-
-  Future<void> _presentDirectionsOptions(
-    DirectionsInfo info,
-    CityPoiModel poi,
-  ) async {
-    final maps = info.availableMaps;
-    final rideShares = info.rideShareOptions;
-    final totalOptions = maps.length + rideShares.length;
-
-    if (totalOptions == 0) {
-      await _launchFallbackDirections(info);
-      return;
-    }
-
-    if (totalOptions == 1) {
-      if (maps.length == 1) {
-        await maps.first.showDirections(
-          destination: info.destination,
-          destinationTitle: info.destinationName,
-        );
-      } else {
-        final success = await _launchRideShareOption(rideShares.first, poi);
-        if (!success) {
-          await _launchFallbackDirections(info);
-        }
-      }
-      return;
-    }
-
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Escolha como chegar',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              for (final map in maps)
-                ListTile(
-                  leading: SvgPicture.asset(
-                    map.icon,
-                    width: 32,
-                    height: 32,
-                  ),
-                  title: Text(map.mapName),
-                  onTap: () async {
-                    sheetContext.router.pop();
-                    await map.showDirections(
-                      destination: info.destination,
-                      destinationTitle: info.destinationName,
-                    );
-                  },
-                ),
-              if (maps.isNotEmpty && rideShares.isNotEmpty)
-                const Divider(height: 1),
-              for (final option in rideShares)
-                ListTile(
-                  leading: Icon(
-                    _rideShareIcon(option.provider),
-                    color: theme.colorScheme.primary,
-                  ),
-                  title: Text(option.label),
-                  onTap: () async {
-                    sheetContext.router.pop();
-                    final success = await _launchRideShareOption(option, poi);
-                    if (!success) {
-                      await _launchFallbackDirections(info);
-                    }
-                  },
-                ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
+  DirectionsLaunchTarget? _directionsTargetFromPoi(CityPoiModel poi) {
+    final address = poi.address.trim();
+    return DirectionsLaunchTarget(
+      destinationName: poi.name,
+      latitude: poi.coordinate.latitude,
+      longitude: poi.coordinate.longitude,
+      address: address.isEmpty ? null : address,
     );
-  }
-
-  Future<void> _launchFallbackDirections(DirectionsInfo info) async {
-    final launched = await launchUrl(
-      info.fallbackUrl,
-      mode: LaunchMode.externalApplication,
-    );
-    if (!launched) {
-      _controller.statusMessageStreamValue.addValue(
-        'Não foi possível abrir rotas para ${info.destinationName}.',
-      );
-    }
-  }
-
-  Future<bool> _launchRideShareOption(
-    RideShareOption option,
-    CityPoiModel poi,
-  ) {
-    _controller.logRideShareClicked(
-      provider: option.provider,
-      poiId: poi.id,
-    );
-    return _launchFirstSupportedUri(option.uris, option.label);
-  }
-
-  Future<bool> _launchFirstSupportedUri(
-    List<RideShareUriValue> uris,
-    String providerName,
-  ) async {
-    for (final uriValue in uris) {
-      final uri = uriValue.value;
-      if (await _safeCanLaunch(uri)) {
-        final launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-        if (launched) {
-          return true;
-        }
-      }
-    }
-    debugPrint('No handler available for $providerName');
-    return false;
-  }
-
-  Future<bool> _hasAnyLaunchHandler(List<RideShareUriValue> uris) async {
-    for (final uriValue in uris) {
-      final uri = uriValue.value;
-      if (await _safeCanLaunch(uri)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> _safeCanLaunch(Uri uri) async {
-    try {
-      return await canLaunchUrl(uri);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  DirectionsDestinationNameValue _buildDestinationNameValue(String raw) {
-    return DirectionsDestinationNameValue()..parse(raw);
-  }
-
-  DirectionsFallbackUrlValue _buildFallbackUrlValue(Uri uri) {
-    return DirectionsFallbackUrlValue()..parse(uri.toString());
-  }
-
-  RideShareLabelValue _buildRideShareLabelValue(String raw) {
-    return RideShareLabelValue()..parse(raw);
-  }
-
-  List<RideShareUriValue> _buildRideShareUriValues(List<Uri> uris) {
-    return uris
-        .map((uri) => RideShareUriValue()..parse(uri.toString()))
-        .toList(growable: false);
-  }
-
-  IconData _rideShareIcon(RideShareProvider provider) {
-    switch (provider) {
-      case RideShareProvider.uber:
-        return Icons.local_taxi;
-      case RideShareProvider.ninetyNine:
-        return Icons.local_taxi_outlined;
-    }
   }
 
   bool _isEventPoi(CityPoiModel poi) {

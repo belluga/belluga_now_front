@@ -93,6 +93,21 @@ void main() {
       expect(localResolved.toString(), 'asset://event-placeholder');
     });
   });
+
+  test('fromScheduleEvent preserves event type label and venue title', () {
+    final event = _buildEvent(
+      venue: _buildVenue(),
+    );
+    final fallbackThumb = ThumbUriValue(
+      defaultValue: Uri.parse('https://cdn.test/settings.png'),
+      isRequired: true,
+    )..parse('https://cdn.test/settings.png');
+
+    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+
+    expect(projection.eventTypeLabel, 'Show');
+    expect(projection.venueTitle, 'Host Venue');
+  });
 }
 
 EventModel _buildEvent({

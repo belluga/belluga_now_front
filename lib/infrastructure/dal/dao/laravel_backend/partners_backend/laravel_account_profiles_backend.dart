@@ -3,8 +3,12 @@ import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -15,6 +19,7 @@ import 'package:belluga_now/infrastructure/services/location_origin_resolution_r
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -23,9 +28,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     LocationOriginServiceContract? locationOriginService,
   })  : _dio = dio ?? Dio(),
         _locationOriginService = locationOriginService;
-
-  static const int _defaultPageSize = 30;
-  static const int _maxPages = 10;
 
   final Dio _dio;
   LocationOriginServiceContract? _locationOriginService;
@@ -49,16 +51,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       includeJsonAccept: includeJsonAccept,
       bootstrapIfEmpty: true,
     );
-  }
-
-  @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() async {
-    final page = await fetchAccountProfilesPage(
-      page: 1,
-      pageSize: _defaultPageSize,
-    );
-
-    return page.profiles;
   }
 
   @override
@@ -163,32 +155,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
-    List<String>? allowedTypes,
-  }) async {
-    final profiles = <AccountProfileModel>[];
-    var page = 1;
-    var hasMore = true;
-
-    while (hasMore && page <= _maxPages) {
-      final result = await fetchAccountProfilesPage(
-        page: page,
-        pageSize: _defaultPageSize,
-        query: query,
-        typeFilter: typeFilter,
-        allowedTypes: allowedTypes,
-      );
-      profiles.addAll(result.profiles);
-      hasMore = result.hasMore;
-      page += 1;
-    }
-
-    return profiles;
-  }
-
-  @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     final normalizedSlug = slug.trim();
     if (normalizedSlug.isEmpty) {
@@ -258,10 +224,14 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final trimmedType = typeRaw.trim();
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
+      final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
       final distanceMeters = _resolveDistanceMeters(
         json,
         distanceOrigin: distanceOrigin,
       );
+      final locationCoordinates =
+          _parseLocationLatLng(json['location']) ?? _parseTopLevelLatLng(json);
+      final locationAddress = _parseLocationAddress(json);
       ThumbUriValue? avatarValue;
       final avatarUrl = json['avatar_url']?.toString();
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -279,6 +249,19 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (bio != null && bio.isNotEmpty) {
         bioValue = DescriptionValue()..parse(bio);
       }
+      AccountProfileLocationAddressValue? locationAddressValue;
+      if (locationAddress != null) {
+        locationAddressValue = AccountProfileLocationAddressValue()
+          ..parse(locationAddress);
+      }
+      LatitudeValue? locationLatitudeValue;
+      LongitudeValue? locationLongitudeValue;
+      if (locationCoordinates != null) {
+        locationLatitudeValue = LatitudeValue()
+          ..parse(locationCoordinates.$1.toString());
+        locationLongitudeValue = LongitudeValue()
+          ..parse(locationCoordinates.$2.toString());
+      }
       profiles.add(
         AccountProfileModel(
           idValue: MongoIDValue()..parse(id),
@@ -290,8 +273,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           bioValue: bioValue,
           tagValues:
               tags.map(AccountProfileTagValue.new).toList(growable: false),
+          agendaEventViews: agendaEvents,
           distanceMetersValue:
               AccountProfileDistanceMetersValue(distanceMeters),
+          locationAddressValue: locationAddressValue,
+          locationLatitudeValue: locationLatitudeValue,
+          locationLongitudeValue: locationLongitudeValue,
         ),
       );
     }
@@ -317,13 +304,228 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     final tags = <String>[];
     for (final entry in raw) {
       if (entry is Map) {
-        final value = entry['value']?.toString();
+        final value =
+            entry['name']?.toString() ??
+            entry['label']?.toString() ??
+            entry['value']?.toString();
         if (value != null && value.trim().isNotEmpty) {
-          tags.add(value);
+          tags.add(value.trim());
         }
       }
     }
     return tags;
+  }
+
+  List<PartnerEventView> _extractAgendaEvents(dynamic raw) {
+    if (raw is! List) return const [];
+    final agendaEvents = <PartnerEventView>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final eventId = json['event_id']?.toString().trim() ?? '';
+      final occurrenceId = json['occurrence_id']?.toString().trim() ?? '';
+      final slug = json['slug']?.toString().trim() ?? '';
+      final title = json['title']?.toString().trim() ?? '';
+      final startRaw =
+          (json['date_time_start'] ?? json['starts_at'])?.toString().trim() ??
+              '';
+      if (eventId.isEmpty ||
+          occurrenceId.isEmpty ||
+          slug.isEmpty ||
+          title.isEmpty ||
+          startRaw.isEmpty) {
+        continue;
+      }
+
+      final startDateTimeValue = DateTimeValue(isRequired: true)
+        ..parse(startRaw);
+      final endRaw =
+          (json['date_time_end'] ?? json['ends_at'])?.toString().trim() ?? '';
+      final endDateTimeValue = endRaw.isEmpty
+          ? null
+          : (DateTimeValue(isRequired: true)..parse(endRaw));
+      final venueId = _extractAgendaVenueId(json);
+      final venueTitle = _extractAgendaVenueTitle(json);
+      final eventTypeLabel = _extractAgendaEventTypeLabel(json);
+      final locationLabel =
+          _extractAgendaLocationLabel(json) ?? venueTitle ?? '';
+      ThumbUriValue? imageUriValue;
+      final imageUrl = _extractAgendaImageUrl(json);
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        imageUriValue = ThumbUriValue(defaultValue: Uri.parse(imageUrl))
+          ..parse(imageUrl);
+      }
+
+      agendaEvents.add(
+        PartnerEventView(
+          eventIdValue: MongoIDValue()..parse(eventId),
+          occurrenceIdValue: MongoIDValue()..parse(occurrenceId),
+          slugValue: SlugValue()..parse(slug),
+          titleValue: partnerProjectionRequiredText(title),
+          eventTypeLabelValue: eventTypeLabel == null
+              ? null
+              : partnerProjectionOptionalText(eventTypeLabel),
+          startDateTimeValue: startDateTimeValue,
+          endDateTimeValue: endDateTimeValue,
+          locationValue: partnerProjectionRequiredText(locationLabel),
+          venueIdValue: venueId == null ? null : (MongoIDValue()..parse(venueId)),
+          venueTitleValue:
+              venueTitle == null ? null : partnerProjectionOptionalText(venueTitle),
+          imageUriValue: imageUriValue,
+          artists: _extractAgendaArtists(json['artists']),
+        ),
+      );
+    }
+    return agendaEvents;
+  }
+
+  List<PartnerSupportedEntityView> _extractAgendaArtists(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+
+    final artists = <PartnerSupportedEntityView>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final displayName = (json['display_name'] ?? json['name'])
+              ?.toString()
+              .trim() ??
+          '';
+      if (displayName.isEmpty) {
+        continue;
+      }
+
+      final thumb = json['avatar_url']?.toString().trim();
+      artists.add(
+        PartnerSupportedEntityView(
+          idValue: (() {
+            final id = json['id']?.toString().trim();
+            if (id == null || id.isEmpty) {
+              return null;
+            }
+            return MongoIDValue()..parse(id);
+          })(),
+          titleValue: partnerProjectionRequiredText(displayName),
+          thumbValue: thumb == null || thumb.isEmpty
+              ? null
+              : partnerProjectionOptionalText(thumb),
+        ),
+      );
+    }
+
+    return artists;
+  }
+
+  String? _extractAgendaVenueId(Map<String, dynamic> json) {
+    final rawVenue = json['venue'];
+    if (rawVenue is! Map) {
+      return null;
+    }
+
+    final venue = Map<String, dynamic>.from(rawVenue);
+    final value = venue['id']?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  String? _extractAgendaVenueTitle(Map<String, dynamic> json) {
+    final rawVenue = json['venue'];
+    if (rawVenue is! Map) {
+      return null;
+    }
+
+    final venue = Map<String, dynamic>.from(rawVenue);
+    final value = (venue['display_name'] ?? venue['name'])?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    return value;
+  }
+
+  String? _extractAgendaEventTypeLabel(Map<String, dynamic> json) {
+    final rawType = json['type'];
+    if (rawType is! Map) {
+      return null;
+    }
+
+    final type = Map<String, dynamic>.from(rawType);
+    final value = (type['label'] ?? type['name'] ?? type['title'])
+        ?.toString()
+        .trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  String? _extractAgendaLocationLabel(Map<String, dynamic> json) {
+    final rawLocation = json['location'];
+    if (rawLocation is String) {
+      final value = rawLocation.trim();
+      return value.isEmpty ? null : value;
+    }
+    if (rawLocation is! Map) {
+      return null;
+    }
+
+    final location = Map<String, dynamic>.from(rawLocation);
+    const keys = <String>[
+      'label',
+      'display_name',
+      'formatted_address',
+      'address',
+      'name',
+    ];
+    for (final key in keys) {
+      final value = location[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  String? _extractAgendaImageUrl(Map<String, dynamic> json) {
+    final rawThumb = json['thumb'];
+    if (rawThumb is Map) {
+      final thumb = Map<String, dynamic>.from(rawThumb);
+      final data = thumb['data'];
+      if (data is Map) {
+        final url = data['url']?.toString().trim();
+        if (url != null && url.isNotEmpty) {
+          return url;
+        }
+      }
+    }
+
+    final artists = json['artists'];
+    if (artists is List) {
+      for (final entry in artists) {
+        if (entry is! Map) continue;
+        final imageUrl = entry['avatar_url']?.toString().trim();
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          return imageUrl;
+        }
+      }
+    }
+
+    final rawVenue = json['venue'];
+    if (rawVenue is Map) {
+      final venue = Map<String, dynamic>.from(rawVenue);
+      for (final key in const ['hero_image_url', 'logo_url']) {
+        final imageUrl = venue[key]?.toString().trim();
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          return imageUrl;
+        }
+      }
+    }
+
+    return null;
   }
 
   int? _parsePageValue(dynamic raw) {
@@ -357,6 +559,35 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         LatLng(location.$1, location.$2),
       ),
     ).value;
+  }
+
+  String? _parseLocationAddress(Map<String, dynamic> json) {
+    final topLevelAddress = json['address']?.toString().trim();
+    if (topLevelAddress != null && topLevelAddress.isNotEmpty) {
+      return topLevelAddress;
+    }
+
+    final rawLocation = json['location'];
+    if (rawLocation is! Map) {
+      return null;
+    }
+
+    final location = Map<String, dynamic>.from(rawLocation);
+    const addressKeys = <String>[
+      'address',
+      'label',
+      'formatted_address',
+      'display_name',
+      'name',
+    ];
+    for (final key in addressKeys) {
+      final value = location[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    return null;
   }
 
   double? _parseDirectDistanceMeters(Map<String, dynamic> json) {

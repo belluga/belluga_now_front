@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -11,13 +13,24 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
@@ -32,8 +45,10 @@ import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mockito/mockito.dart';
@@ -169,11 +184,285 @@ void main() {
     expect(find.text('Agora não'), findsOneWidget);
     expect(find.text('Bóora!'), findsOneWidget);
   });
+
+  testWidgets('horizontal swipe moves immersive event detail to the next tab',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsNothing);
+
+    final swipeSurface = tester.widget<GestureDetector>(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    swipeSurface.onHorizontalDragEnd?.call(
+      DragEndDetails(
+        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
+        primaryVelocity: -1000,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+  });
+
+  testWidgets(
+      'event detail replaces Line-up with dynamic profile category tabs and cards',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final accountProfilesRepository = _FakeAccountProfilesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        accountProfilesRepository: accountProfilesRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                linkedProfiles: [
+                  eventLinkedAccountProfileFromRaw(
+                    id: 'artist-1',
+                    displayName: 'Ananda Torres',
+                    profileType: 'artist',
+                    slug: 'ananda-torres',
+                    avatarUrl: 'https://example.com/ananda.png',
+                    coverUrl: 'https://example.com/ananda-cover.png',
+                    taxonomyTerms: [
+                      eventLinkedAccountProfileTaxonomyTermFromRaw(
+                        type: 'genre',
+                        value: 'samba',
+                        name: 'Samba',
+                      ),
+                    ],
+                  ),
+                  eventLinkedAccountProfileFromRaw(
+                    id: 'venue-1',
+                    displayName: 'Carvoeiro',
+                    profileType: 'restaurant',
+                    slug: 'carvoeiro',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Line-up'), findsNothing);
+    expect(find.text('Artists'), findsNWidgets(2));
+    expect(find.byKey(const Key('immersiveTabLabel_1')), findsOneWidget);
+    expect(find.text('Como Chegar'), findsNWidgets(2));
+
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ananda Torres'), findsWidgets);
+    expect(find.text('Samba'), findsOneWidget);
+    expect(
+      find.byKey(const Key('linkedProfileFavoriteButton_artist-1')),
+      findsOneWidget,
+    );
+
+    await tester
+        .tap(find.byKey(const Key('linkedProfileCardTapTarget_artist-1')));
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushedRoute, isA<PartnerDetailRoute>());
+    expect(
+      (router.lastPushedRoute! as PartnerDetailRoute).args!.slug,
+      'ananda-torres',
+    );
+
+    await tester
+        .tap(find.byKey(const Key('linkedProfileFavoriteButton_artist-1')));
+    await tester.pumpAndSettle();
+    expect(accountProfilesRepository.toggleFavoriteCalls, 1);
+  });
+
+  testWidgets(
+      'event detail uses Sobre html content, Como Chegar naming, and hero summary metadata',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                linkedProfiles: [
+                  eventLinkedAccountProfileFromRaw(
+                    id: 'artist-1',
+                    displayName: 'Ananda Torres',
+                    profileType: 'artist',
+                    slug: 'ananda-torres',
+                    avatarUrl: 'https://example.com/ananda.png',
+                  ),
+                ],
+                contentHtml:
+                    '<p><strong>Evento</strong> aleatório <em>longe</em></p>',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('O Rolê'), findsNothing);
+    expect(find.text('O Local'), findsNothing);
+    expect(find.text('Sobre'), findsWidgets);
+    expect(find.text('Como Chegar'), findsNWidgets(2));
+    expect(find.byType(Html), findsOneWidget);
+    expect(find.text('Show tipo'), findsOneWidget);
+    expect(find.text('Ananda Torres'), findsWidgets);
+    expect(find.textContaining('Carvoeiro'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_2')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ver no mapa'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
+    expect(find.textContaining('Confirmar Presença'), findsOneWidget);
+    expect(find.text('Ver perfil do local'), findsNothing);
+  });
+
+  testWidgets(
+      'event detail only promotes Como Chegar footer after confirmation',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                isConfirmed: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Traçar rota'), findsOneWidget);
+    expect(find.textContaining('Confirmar Presença'), findsNothing);
+  });
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastPushedPath;
   String? lastReplacedPath;
+  PageRouteInfo? lastPushedRoute;
 
   @override
   Future<T?> pushPath<T extends Object?>(
@@ -192,6 +481,15 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastReplacedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> push<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedRoute = route;
     return null;
   }
 }
@@ -326,8 +624,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
-      InviteRecipients recipients,
+  Future<void> sendInvites(
+      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
 }
@@ -391,14 +689,84 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   ) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 
   @override
   String get userToken => authorized ? 'token' : '';
 }
 
-EventModel _buildEvent() {
+AppData _buildAppData() {
+  return buildAppDataFromInitialization(
+    remoteData: {
+      'name': 'Tenant Test',
+      'type': 'tenant',
+      'main_domain': 'https://tenant.test',
+      'profile_types': [
+        {
+          'type': 'artist',
+          'label': 'Artist',
+          'labels': {
+            'singular': 'Artist',
+            'plural': 'Artists',
+          },
+          'visual': {
+            'mode': 'icon',
+            'icon': 'music_note',
+            'color': '#FF3355',
+            'icon_color': '#FFFFFF',
+          },
+          'capabilities': {'has_events': true, 'is_favoritable': true},
+        },
+        {
+          'type': 'restaurant',
+          'label': 'Restaurant',
+          'labels': {
+            'singular': 'Restaurant',
+            'plural': 'Restaurants',
+          },
+          'visual': {
+            'mode': 'icon',
+            'icon': 'restaurant',
+            'color': '#3355FF',
+            'icon_color': '#FFFFFF',
+          },
+          'capabilities': {
+            'is_poi_enabled': true,
+            'is_favoritable': true,
+          },
+        },
+      ],
+      'theme_data_settings': const {
+        'primary_seed_color': '#FFFFFF',
+        'secondary_seed_color': '#3355FF',
+      },
+    },
+    localInfo: {
+      'platformType': 'mobile',
+      'hostname': 'tenant.test',
+      'href': 'https://tenant.test',
+      'device': 'test-device',
+    },
+  );
+}
+
+PartnerResume _buildVenueResume() {
+  return PartnerResume(
+    idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
+    nameValue: InvitePartnerNameValue()..parse('Carvoeiro'),
+    slugValue: SlugValue()..parse('carvoeiro'),
+    type: InviteAccountProfileType.mercadoProducer,
+    logoImageValue: InvitePartnerLogoImageValue()
+      ..parse('https://example.com/carvoeiro-logo.png'),
+  );
+}
+
+EventModel _buildEvent({
+  PartnerResume? venue,
+  List<EventLinkedAccountProfile> linkedProfiles = const [],
+  String? contentHtml,
+  bool isConfirmed = false,
+}) {
   return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse('evento-de-teste'),
@@ -411,9 +779,10 @@ EventModel _buildEvent() {
       color: ColorValue(defaultValue: Colors.blue)..parse('#3366FF'),
     ),
     title: TitleValue()..parse('Evento de Teste'),
-    content: HTMLContentValue()..parse('Descricao longa do evento para teste.'),
+    content: HTMLContentValue()
+      ..parse(contentHtml ?? 'Descricao longa do evento para teste.'),
     location: DescriptionValue()..parse('Local muito legal para teste.'),
-    venue: null,
+    venue: venue,
     thumb: ThumbModel(
       thumbUri: ThumbUriValue(
         defaultValue: Uri.parse('https://example.com/event.png'),
@@ -425,15 +794,132 @@ EventModel _buildEvent() {
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    linkedAccountProfiles: linkedProfiles,
     coordinate: null,
     tags: const <String>['show'],
-    isConfirmedValue: EventIsConfirmedValue()..parse('false'),
+    isConfirmedValue: EventIsConfirmedValue()..parse(isConfirmed.toString()),
     confirmedAt: null,
     receivedInvites: null,
     sentInvites: null,
     friendsGoing: null,
     totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
   );
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue =>
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+
+  @override
+  ThemeMode get themeMode => ThemeMode.system;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue(defaultValue: 5000),
+      );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue(defaultValue: 5000);
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
+}
+
+class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
+  _FakeAccountProfilesRepository({Set<String> favoriteIds = const <String>{}}) {
+    favoriteAccountProfileIdsStreamValue.addValue(
+      favoriteIds
+          .map(AccountProfilesRepositoryContractPrimString.fromRaw)
+          .toSet(),
+    );
+  }
+
+  int initCalls = 0;
+  int toggleFavoriteCalls = 0;
+
+  @override
+  Future<void> init() async {
+    initCalls += 1;
+  }
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
+  }) async {
+    return pagedAccountProfilesResultFromRaw(
+      profiles: const <AccountProfileModel>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    return null;
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+  }) async {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    toggleFavoriteCalls += 1;
+    final currentIds = favoriteAccountProfileIdsStreamValue.value
+        .map((entry) => entry.value)
+        .toSet();
+    if (currentIds.contains(accountProfileId.value)) {
+      currentIds.remove(accountProfileId.value);
+    } else {
+      currentIds.add(accountProfileId.value);
+    }
+    favoriteAccountProfileIdsStreamValue.addValue(
+      currentIds
+          .map(AccountProfilesRepositoryContractPrimString.fromRaw)
+          .toSet(),
+    );
+  }
+
+  @override
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      favoriteAccountProfileIdsStreamValue.value.any(
+        (entry) => entry.value == accountProfileId.value,
+      ),
+    );
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() {
+    return const <AccountProfileModel>[];
+  }
 }
 
 InviteModel _buildInviteForEvent({

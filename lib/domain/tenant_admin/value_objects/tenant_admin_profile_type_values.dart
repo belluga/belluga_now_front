@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
   required Object? type,
   required Object? label,
+  Object? pluralLabel,
   required Object? allowedTaxonomies,
   required TenantAdminProfileTypeCapabilities capabilities,
   TenantAdminPoiVisual? visual,
@@ -13,6 +14,7 @@ TenantAdminProfileTypeDefinition tenantAdminProfileTypeDefinitionFromRaw({
   return TenantAdminProfileTypeDefinition(
     typeValue: tenantAdminRequiredText(type),
     labelValue: tenantAdminRequiredText(label),
+    pluralLabelValue: tenantAdminRequiredText(pluralLabel ?? label),
     allowedTaxonomiesValue: tenantAdminTrimmedStringList(allowedTaxonomies),
     capabilities: capabilities,
     visual: visual ?? poiVisual,

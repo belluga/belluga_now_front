@@ -37,6 +37,9 @@ class ProfileTypeRegistry {
   String labelForType(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.label ?? typeValue.value;
 
+  String pluralLabelForType(ProfileTypeKeyValue typeValue) =>
+      _byType(typeValue)?.pluralLabel ?? labelForType(typeValue);
+
   ProfileTypeVisual? visualForType(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.visual;
 

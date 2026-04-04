@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -52,7 +53,7 @@ void main() {
       ),
     );
 
-    await _fillRequiredFields(tester);
+    await _fillRequiredFields(tester, controller: controller);
     await tester.scrollUntilVisible(
       find.text('Rock'),
       250,
@@ -106,7 +107,7 @@ void main() {
       ),
     );
 
-    await _fillRequiredFields(tester);
+    await _fillRequiredFields(tester, controller: controller);
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
       250,
@@ -151,7 +152,7 @@ void main() {
       ),
     );
 
-    await _fillRequiredFields(tester);
+    await _fillRequiredFields(tester, controller: controller);
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
       250,
@@ -191,7 +192,7 @@ void main() {
       ),
     );
 
-    await _fillRequiredFields(tester);
+    await _fillRequiredFields(tester, controller: controller);
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
       250,
@@ -236,7 +237,11 @@ void main() {
       ),
     );
 
-    await _fillRequiredFields(tester, includeDescription: false);
+    await _fillRequiredFields(
+      tester,
+      controller: controller,
+      includeDescription: false,
+    );
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
       250,
@@ -409,6 +414,37 @@ void main() {
     expect(find.text('Artist A'), findsNothing);
     expect(eventsRepository.recordedSearchTerms, contains('Zulu'));
   });
+
+  testWidgets('uses rich text editor for event description content',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439120'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    expect(find.byType(TenantAdminRichTextEditor), findsOneWidget);
+    expect(find.text('Descrição (opcional)'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Descrição (opcional)'), findsNothing);
+  });
 }
 
 Future<void> _pumpWithAutoRoute(
@@ -436,15 +472,14 @@ Future<void> _pumpWithAutoRoute(
 
 Future<void> _fillRequiredFields(
   WidgetTester tester, {
+  required TenantAdminEventsController controller,
   bool includeDescription = true,
 }) async {
   await tester.enterText(
       find.widgetWithText(TextFormField, 'Título'), 'Evento');
   if (includeDescription) {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Descrição (opcional)'),
-      'Descrição do evento',
-    );
+    controller.eventContentController.text = '<p>Descrição do evento</p>';
+    await tester.pumpAndSettle();
   }
   final startField = tester
       .widget<TextFormField>(find.widgetWithText(TextFormField, 'Início'));

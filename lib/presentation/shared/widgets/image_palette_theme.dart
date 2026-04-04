@@ -8,6 +8,48 @@ typedef ImagePaletteThemeSchemeResolver = Future<ColorScheme> Function({
   required ColorScheme fallbackScheme,
 });
 
+ThemeData buildImagePaletteThemeData(ThemeData parentTheme, ColorScheme scheme) {
+  final textTheme = parentTheme.textTheme.apply(
+    displayColor: scheme.onSurface,
+    bodyColor: scheme.onSurfaceVariant,
+  );
+
+  return parentTheme.copyWith(
+    colorScheme: scheme,
+    textTheme: textTheme,
+    scaffoldBackgroundColor: scheme.surface,
+    canvasColor: scheme.surface,
+    cardColor: scheme.surface,
+    dividerColor: scheme.outlineVariant,
+    appBarTheme: parentTheme.appBarTheme.copyWith(
+      backgroundColor: scheme.surface,
+      foregroundColor: scheme.onSurface,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle:
+          (parentTheme.appBarTheme.titleTextStyle ?? textTheme.titleLarge)
+              ?.copyWith(
+        color: scheme.onSurface,
+      ),
+    ),
+    chipTheme: parentTheme.chipTheme.copyWith(
+      backgroundColor: scheme.surfaceContainerHighest,
+      selectedColor: scheme.secondaryContainer,
+      side: BorderSide(color: scheme.outline),
+      labelStyle: (parentTheme.chipTheme.labelStyle ?? textTheme.labelLarge)
+          ?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+    ),
+    progressIndicatorTheme: parentTheme.progressIndicatorTheme.copyWith(
+      color: scheme.primary,
+      linearTrackColor: scheme.surfaceContainerHighest,
+    ),
+    cardTheme: parentTheme.cardTheme.copyWith(
+      color: scheme.surface,
+    ),
+  );
+}
+
 /// Applies a stable scheme wrapper for image-backed surfaces.
 ///
 /// The widget resolves an image-derived [ColorScheme] once and falls back to
@@ -67,7 +109,7 @@ class _ImagePaletteThemeState extends State<ImagePaletteTheme> {
     final parentTheme = Theme.of(context);
     final scheme =
         _resolvedScheme ?? widget.fallbackScheme ?? parentTheme.colorScheme;
-    final themedData = _buildThemedData(parentTheme, scheme);
+    final themedData = buildImagePaletteThemeData(parentTheme, scheme);
     return Theme(
       data: themedData,
       child: Builder(
@@ -122,48 +164,6 @@ class _ImagePaletteThemeState extends State<ImagePaletteTheme> {
     return ColorSchemeGenerator.fromImageProvider(
       imageProvider,
       fallback: fallbackScheme,
-    );
-  }
-
-  static ThemeData _buildThemedData(ThemeData parentTheme, ColorScheme scheme) {
-    final textTheme = parentTheme.textTheme.apply(
-      displayColor: scheme.onSurface,
-      bodyColor: scheme.onSurfaceVariant,
-    );
-
-    return parentTheme.copyWith(
-      colorScheme: scheme,
-      textTheme: textTheme,
-      scaffoldBackgroundColor: scheme.surface,
-      canvasColor: scheme.surface,
-      cardColor: scheme.surface,
-      dividerColor: scheme.outlineVariant,
-      appBarTheme: parentTheme.appBarTheme.copyWith(
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
-        surfaceTintColor: Colors.transparent,
-        titleTextStyle:
-            (parentTheme.appBarTheme.titleTextStyle ?? textTheme.titleLarge)
-                ?.copyWith(
-          color: scheme.onSurface,
-        ),
-      ),
-      chipTheme: parentTheme.chipTheme.copyWith(
-        backgroundColor: scheme.surfaceContainerHighest,
-        selectedColor: scheme.secondaryContainer,
-        side: BorderSide(color: scheme.outline),
-        labelStyle: (parentTheme.chipTheme.labelStyle ?? textTheme.labelLarge)
-            ?.copyWith(
-          color: scheme.onSurfaceVariant,
-        ),
-      ),
-      progressIndicatorTheme: parentTheme.progressIndicatorTheme.copyWith(
-        color: scheme.primary,
-        linearTrackColor: scheme.surfaceContainerHighest,
-      ),
-      cardTheme: parentTheme.cardTheme.copyWith(
-        color: scheme.surface,
-      ),
     );
   }
 }

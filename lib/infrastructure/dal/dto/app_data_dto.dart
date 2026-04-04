@@ -360,6 +360,18 @@ class AppDataDTO {
         continue;
       }
       final label = rawType['label']?.toString().trim();
+      final labelsRaw = rawType['labels'];
+      final labelsMap = labelsRaw is Map
+          ? Map<String, dynamic>.from(labelsRaw)
+          : const <String, dynamic>{};
+      final singularLabel =
+          labelsMap['singular']?.toString().trim().isNotEmpty == true
+              ? labelsMap['singular']?.toString().trim()
+              : label;
+      final pluralLabel = labelsMap['plural']?.toString().trim().isNotEmpty ==
+              true
+          ? labelsMap['plural']?.toString().trim()
+          : singularLabel;
       final capabilitiesRaw = rawType['capabilities'];
       final capabilitiesMap = capabilitiesRaw is Map
           ? Map<String, dynamic>.from(capabilitiesRaw)
@@ -369,7 +381,14 @@ class AppDataDTO {
         ProfileTypeDefinition(
           typeValue: ProfileTypeKeyValue(type),
           labelValue: ProfileTypeLabelValue(
-            label == null || label.isEmpty ? type : label,
+            singularLabel == null || singularLabel.isEmpty ? type : singularLabel,
+          ),
+          pluralLabelValue: ProfileTypeLabelValue(
+            pluralLabel == null || pluralLabel.isEmpty
+                ? (singularLabel == null || singularLabel.isEmpty
+                    ? type
+                    : singularLabel)
+                : pluralLabel,
           ),
           visual: _buildProfileTypeVisual(
             rawType['visual'] ?? rawType['poi_visual'],

@@ -9,6 +9,10 @@ void main() {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'restaurant',
         'label': 'Restaurant',
+        'labels': {
+          'singular': 'Restaurant',
+          'plural': 'Restaurants',
+        },
         'allowed_taxonomies': const ['cuisine'],
         'visual': {
           'mode': 'icon',
@@ -24,6 +28,8 @@ void main() {
 
       final definition = dto.toDomain();
 
+      expect(definition.label, 'Restaurant');
+      expect(definition.pluralLabel, 'Restaurants');
       expect(definition.visual?.mode, TenantAdminPoiVisualMode.icon);
       expect(definition.visual?.icon, 'restaurant');
       expect(definition.visual?.color, '#EB2528');

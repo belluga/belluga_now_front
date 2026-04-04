@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -545,6 +547,15 @@ class DiscoveryScreenController implements Disposable {
       return _fallbackLabelForType(type);
     }
     return registry.labelForType(ProfileTypeKeyValue(type));
+  }
+
+  ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    return AccountProfileVisualResolver.resolve(
+      accountProfile: accountProfile,
+      registry: _resolveRegistry(),
+    );
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

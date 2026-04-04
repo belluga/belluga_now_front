@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_family_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
@@ -22,7 +24,11 @@ class FavoritePreviewDTO {
     this.favoritedAt,
     this.nextEventOccurrenceAt,
     this.lastEventOccurrenceAt,
+    this.liveNowEventOccurrenceId,
+    this.liveNowEventOccurrenceAt,
     this.imageUrl,
+    this.coverUrl,
+    this.profileType,
     this.assetPath,
     this.badgeIconCodePoint,
     this.badgeFontFamily,
@@ -93,7 +99,13 @@ class FavoritePreviewDTO {
       favoritedAt: parseDate(json['favorited_at']),
       nextEventOccurrenceAt: parseDate(snapshot['next_event_occurrence_at']),
       lastEventOccurrenceAt: parseDate(snapshot['last_event_occurrence_at']),
+      liveNowEventOccurrenceId:
+          snapshot['live_now_event_occurrence_id']?.toString().trim(),
+      liveNowEventOccurrenceAt:
+          parseDate(snapshot['live_now_event_occurrence_at']),
       imageUrl: target['avatar_url']?.toString(),
+      coverUrl: target['cover_url']?.toString(),
+      profileType: target['profile_type']?.toString().trim(),
       assetPath: null,
       isPrimary: false,
     );
@@ -108,7 +120,11 @@ class FavoritePreviewDTO {
   final DateTime? favoritedAt;
   final DateTime? nextEventOccurrenceAt;
   final DateTime? lastEventOccurrenceAt;
+  final String? liveNowEventOccurrenceId;
+  final DateTime? liveNowEventOccurrenceAt;
   final String? imageUrl;
+  final String? coverUrl;
+  final String? profileType;
   final String? assetPath;
   final int? badgeIconCodePoint;
   final String? badgeFontFamily;
@@ -181,5 +197,47 @@ class FavoritePreviewDTO {
       badge: badge,
       isPrimaryValue: isPrimaryValue,
     );
+  }
+
+  FavoriteResume toResume() {
+    final favorite = toDomain();
+    return favoriteResumeFromRaw(
+      titleValue: favorite.titleValue,
+      slugValue: favorite.slugValue,
+      imageUriValue: favorite.imageUriValue,
+      assetPathValue: favorite.assetPathValue,
+      badge: favorite.badge,
+      isPrimaryValue: favorite.isPrimaryValue,
+      targetType: targetType,
+      profileType: _trimOrNull(profileType),
+      coverImageUriValue: _thumbUriFromString(coverUrl),
+      nextEventOccurrenceAt: nextEventOccurrenceAt,
+      lastEventOccurrenceAt: lastEventOccurrenceAt,
+      liveNowEventOccurrenceId: _trimOrNull(liveNowEventOccurrenceId),
+      liveNowEventOccurrenceAt: liveNowEventOccurrenceAt,
+    );
+  }
+
+  ThumbUriValue? _thumbUriFromString(String? rawUrl) {
+    final normalized = _trimOrNull(rawUrl);
+    if (normalized == null) {
+      return null;
+    }
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null) {
+      return null;
+    }
+    return ThumbUriValue(
+      defaultValue: parsed,
+      isRequired: true,
+    )..parse(normalized);
+  }
+
+  String? _trimOrNull(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_card.dart';
 import 'package:flutter/material.dart';
 
@@ -10,7 +11,7 @@ class DiscoveryPartnerGrid extends StatelessWidget {
     required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onPartnerTap,
-    required this.typeLabelForPartner,
+    required this.resolvedVisualForPartner,
   });
 
   final List<AccountProfileModel> partners;
@@ -18,7 +19,8 @@ class DiscoveryPartnerGrid extends StatelessWidget {
   final bool Function(AccountProfileModel) isFavoritable;
   final ValueChanged<String> onFavoriteTap;
   final ValueChanged<AccountProfileModel> onPartnerTap;
-  final String Function(AccountProfileModel) typeLabelForPartner;
+  final ResolvedAccountProfileVisual Function(AccountProfileModel)
+      resolvedVisualForPartner;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +40,7 @@ class DiscoveryPartnerGrid extends StatelessWidget {
             isFavoritable: isFavoritable(partner),
             onFavoriteTap: () => onFavoriteTap(partner.id),
             onTap: () => onPartnerTap(partner),
-            typeLabel: typeLabelForPartner(partner),
+            resolvedVisual: resolvedVisualForPartner(partner),
           );
         },
         childCount: partners.length,

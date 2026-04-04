@@ -5,6 +5,7 @@ class TenantAdminProfileTypeDTO {
   const TenantAdminProfileTypeDTO({
     required this.type,
     required this.label,
+    required this.pluralLabel,
     required this.allowedTaxonomies,
     this.visual,
     required this.isFavoritable,
@@ -19,6 +20,7 @@ class TenantAdminProfileTypeDTO {
 
   final String type;
   final String label;
+  final String pluralLabel;
   final List<String> allowedTaxonomies;
   final TenantAdminPoiVisual? visual;
   final bool isFavoritable;
@@ -63,9 +65,22 @@ class TenantAdminProfileTypeDTO {
       visualRaw: json['visual'] ?? json['poi_visual'],
       typeAssetUrl: json['type_asset_url'],
     );
+    final labelsRaw = json['labels'];
+    final labels = labelsRaw is Map<String, dynamic>
+        ? labelsRaw
+        : (labelsRaw is Map ? Map<String, dynamic>.from(labelsRaw) : const {});
+    final singularLabel = labels['singular']?.toString().trim();
+    final pluralLabel = labels['plural']?.toString().trim();
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
-      label: json['label']?.toString() ?? '',
+      label: singularLabel != null && singularLabel.isNotEmpty
+          ? singularLabel
+          : json['label']?.toString() ?? '',
+      pluralLabel: pluralLabel != null && pluralLabel.isNotEmpty
+          ? pluralLabel
+          : singularLabel != null && singularLabel.isNotEmpty
+              ? singularLabel
+              : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
       isFavoritable: isFavoritable,
@@ -121,6 +136,7 @@ class TenantAdminProfileTypeDTO {
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
+      pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       visual: visual,
       capabilities: TenantAdminProfileTypeCapabilities(
