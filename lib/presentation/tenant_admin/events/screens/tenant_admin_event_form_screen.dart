@@ -268,6 +268,7 @@ class _TenantAdminEventFormScreenState
                                                                     onPressed: isSubmitting
                                                                         ? null
                                                                         : () => _handleSubmit(
+                                                                              artists: artists,
                                                                               venues: venues,
                                                                               eventTypes: eventTypes,
                                                                               formState: formState,
@@ -1285,6 +1286,7 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<void> _handleSubmit({
+    required List<TenantAdminAccountProfile> artists,
     required List<TenantAdminAccountProfile> venues,
     required List<TenantAdminEventType> eventTypes,
     required TenantAdminEventFormState formState,
@@ -1353,6 +1355,15 @@ class _TenantAdminEventFormScreenState
     final selectedVenue = venues.firstWhereOrNull(
       (venue) => venue.id == formState.selectedVenueId,
     );
+    final knownArtistProfilesById = <String, TenantAdminAccountProfile>{
+      for (final artist in widget.existingEvent?.artistProfiles ?? const [])
+        artist.id: artist,
+      for (final artist in artists) artist.id: artist,
+    };
+    final selectedArtistProfiles = formState.selectedArtistIds
+        .map((artistId) => knownArtistProfilesById[artistId])
+        .whereType<TenantAdminAccountProfile>()
+        .toList(growable: false);
 
     final taxonomyTerms = <TenantAdminTaxonomyTerm>[];
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
@@ -1424,6 +1435,7 @@ class _TenantAdminEventFormScreenState
         artistIdValues: formState.selectedArtistIds
             .map(TenantAdminArtistIdValue.new)
             .toList(growable: false),
+        artistProfiles: selectedArtistProfiles,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
           for (final taxonomyTerm in taxonomyTerms) {

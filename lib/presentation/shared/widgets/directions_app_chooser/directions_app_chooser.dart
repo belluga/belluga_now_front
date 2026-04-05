@@ -83,34 +83,36 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     DirectionsLaunchTarget target,
   ) async {
     final choices = <DirectionsAppChoice>[];
-    final destination = _destinationCoords(target);
+    if (target.hasCoordinates) {
+      final destination = Coords(target.latitude!, target.longitude!);
 
-    try {
-      final maps = await _availableMapsLoader();
-      for (final map in maps) {
-        choices.add(
-          DirectionsAppChoice(
-            id: 'map:${map.mapType.name}',
-            label: map.mapName,
-            subtitle: 'Abrir navegação externa',
-            visualType: DirectionsAppVisualType.mapAsset,
-            assetPath: map.icon,
-            onSelected: () async {
-              try {
-                await map.showDirections(
-                  destination: destination,
-                  destinationTitle: target.destinationName,
-                );
-                return true;
-              } catch (_) {
-                return false;
-              }
-            },
-          ),
-        );
+      try {
+        final maps = await _availableMapsLoader();
+        for (final map in maps) {
+          choices.add(
+            DirectionsAppChoice(
+              id: 'map:${map.mapType.name}',
+              label: map.mapName,
+              subtitle: 'Abrir navegação externa',
+              visualType: DirectionsAppVisualType.mapAsset,
+              assetPath: map.icon,
+              onSelected: () async {
+                try {
+                  await map.showDirections(
+                    destination: destination,
+                    destinationTitle: target.destinationName,
+                  );
+                  return true;
+                } catch (_) {
+                  return false;
+                }
+              },
+            ),
+          );
+        }
+      } catch (_) {
+        // Native discovery is best-effort. Browser fallback below still applies.
       }
-    } catch (_) {
-      // Native discovery is best-effort. Browser fallback below still applies.
     }
 
     choices.addAll(await _buildRideShareChoices(target, useWebUrisOnly: false));
@@ -206,12 +208,6 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
         <Uri>[_buildBrowserDirectionsUri(target)],
       ),
     );
-  }
-
-  Coords _destinationCoords(DirectionsLaunchTarget target) {
-    final latitude = target.latitude ?? 0;
-    final longitude = target.longitude ?? 0;
-    return Coords(latitude, longitude);
   }
 
   bool get _isApplePlatform {

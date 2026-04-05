@@ -73,6 +73,34 @@ void main() {
     expect(labels, contains('Abrir no navegador'));
   });
 
+  test('native chooser skips installed map apps when destination has no coordinates',
+      () async {
+    final chooser = DirectionsAppChooser(
+      isWebProvider: () => false,
+      platformProvider: () => TargetPlatform.android,
+      availableMapsLoader: () async => <AvailableMap>[
+        AvailableMap(
+          mapName: 'Google Maps',
+          mapType: MapType.google,
+          icon: 'packages/map_launcher/assets/icons/google.svg',
+        ),
+      ],
+      canLaunchUrl: (_) async => true,
+      launchUrl: (_, __) async => true,
+    );
+
+    final options = await chooser.loadOptions(
+      target: const DirectionsLaunchTarget(
+        destinationName: 'Casa Marracini',
+        address: 'Rua Teste, 123',
+      ),
+    );
+
+    final labels = options.map((option) => option.label).toList(growable: false);
+    expect(labels, isNot(contains('Google Maps')));
+    expect(labels, contains('Abrir no navegador'));
+  });
+
   testWidgets('sheet renders provided dynamic options and close button',
       (tester) async {
     await tester.pumpWidget(

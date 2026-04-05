@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const decoder = TenantAdminEventsResponseDecoder();
 
-  test('derives artist ids from event_parties only', () {
+  test('prefers artist ids from event_parties when available', () {
     final event = decoder.decodeEventItem({
       'data': {
         'event_id': 'evt-1',
