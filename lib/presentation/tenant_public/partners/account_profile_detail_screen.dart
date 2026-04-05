@@ -872,21 +872,21 @@ class _AccountProfileDetailScreenState
             _buildAgendaLiveHighlightCard(accountProfile, featuredEvent),
             const SizedBox(height: 28),
           ],
-          Text(
-            'Próximos Eventos',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 14),
-          ...upcomingEvents.map(
-            (event) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _buildAgendaEventCard(accountProfile, event),
+          if (upcomingEvents.isNotEmpty) ...[
+            Text(
+              'Próximos Eventos',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
             ),
-          ),
-          if (featuredEvent != null && upcomingEvents.isEmpty)
-            _buildAgendaEventCard(accountProfile, featuredEvent),
+            const SizedBox(height: 14),
+            ...upcomingEvents.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildAgendaEventCard(accountProfile, event),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -619,6 +619,92 @@ void main() {
     expect(find.text('Próximos Eventos'), findsOneWidget);
   });
 
+  testWidgets(
+      'live-only agenda renders the occurrence only in Acontecendo Agora',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistLiveOnlyProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Acontecendo Agora'), findsOneWidget);
+    expect(find.text('Próximos Eventos'), findsNothing);
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaLiveCard_507f1f77bcf86cd799439121',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439121',
+        ),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'live agenda keeps only distinct future occurrences in Próximos Eventos',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Acontecendo Agora'), findsOneWidget);
+    expect(find.text('Próximos Eventos'), findsOneWidget);
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaLiveCard_507f1f77bcf86cd799439121',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439121',
+        ),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439122',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('renders account profile tabs in fixed MVP order',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1036,6 +1122,19 @@ AccountProfileModel _buildArtistProfile() {
     type: 'artist',
     tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
     agendaEvents: _buildArtistAgendaEvents(),
+    isVerified: true,
+    acceptedInvites: 87,
+  );
+}
+
+AccountProfileModel _buildArtistLiveOnlyProfile() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: [_buildArtistAgendaEvents().first],
     isVerified: true,
     acceptedInvites: 87,
   );
