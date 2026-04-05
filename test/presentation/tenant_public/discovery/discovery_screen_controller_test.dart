@@ -670,8 +670,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
-  testWidgets(
-      'DiscoveryFilterChips uses the shared bordered chip styling',
+  testWidgets('DiscoveryFilterChips uses the shared bordered chip styling',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -780,7 +779,7 @@ void main() {
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
     final router = _RecordingStackRouter();
-    router.removeLastResult = true;
+    router.canPopResult = true;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/descobrir'),
       router: router,
@@ -821,13 +820,15 @@ void main() {
     expect(find.byType(DiscoveryScreen), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(find.text('Descubra'), findsOneWidget);
-    expect(router.removeLastCallCount, 0);
+    expect(router.canPopCallCount, 0);
+    expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, isEmpty);
 
     popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
   });
 
@@ -855,7 +856,7 @@ void main() {
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
     final router = _RecordingStackRouter();
-    router.removeLastResult = false;
+    router.canPopResult = false;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/descobrir'),
       router: router,
@@ -884,7 +885,8 @@ void main() {
     popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, hasLength(1));
     expect(router.replaceAllRoutes.single, hasLength(1));
     expect(
@@ -1071,14 +1073,25 @@ DiscoveryScreenController _buildDiscoveryController({
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
-  bool removeLastResult = true;
-  int removeLastCallCount = 0;
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
-  bool removeLast() {
-    removeLastCallCount += 1;
-    return removeLastResult;
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async {
+    popCallCount += 1;
+    return canPopResult;
   }
 
   @override

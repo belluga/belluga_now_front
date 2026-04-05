@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
@@ -15,10 +15,12 @@ import 'package:get_it/get_it.dart';
 class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
+    required this.backFallbackRoute,
     this.initialPoiQuery,
     this.initialPoiStackQuery,
   });
 
+  final PageRouteInfo<dynamic> backFallbackRoute;
   final String? initialPoiQuery;
   final String? initialPoiStackQuery;
 
@@ -65,7 +67,7 @@ class _MapScreenState extends State<MapScreen> {
             if (didPop) {
               return;
             }
-            context.router.replaceAll([const TenantHomeRoute()]);
+            _handleBack();
           },
           child: Scaffold(
             body: Stack(
@@ -107,11 +109,7 @@ class _MapScreenState extends State<MapScreen> {
                               backgroundColor: Colors.black54,
                               foregroundColor: Colors.white,
                             ),
-                            onPressed: () {
-                              context.router.replaceAll(
-                                [const TenantHomeRoute()],
-                              );
-                            },
+                            onPressed: _handleBack,
                             icon: const Icon(Icons.arrow_back),
                           ),
                         ),
@@ -152,5 +150,12 @@ class _MapScreenState extends State<MapScreen> {
 
   void _centerOnUser() {
     _controller.centerOnUser();
+  }
+
+  void _handleBack() {
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: widget.backFallbackRoute,
+    );
   }
 }

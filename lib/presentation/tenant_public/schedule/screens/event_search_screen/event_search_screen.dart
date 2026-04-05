@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -53,7 +54,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
         if (didPop) {
           return;
         }
-        context.router.replaceAll([TenantHomeRoute()]);
+        _handleBack();
       },
       child: Scaffold(
         appBar: PreferredSize(
@@ -186,11 +187,9 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   // AgendaAppBar handles icons/tooltips and radius modal.
 
   void _handleBack() {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop();
-    } else {
-      router.replaceAll([const ProfileRoute()]);
-    }
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: const ProfileRoute(),
+    );
   }
 }

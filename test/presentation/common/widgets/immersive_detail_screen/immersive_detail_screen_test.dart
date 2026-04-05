@@ -147,4 +147,35 @@ void main() {
       expect(heroTop, lessThanOrEqualTo(24));
     },
   );
+
+  testWidgets(
+    'back button delegates to host callback when provided',
+    (tester) async {
+      var backPressCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImmersiveDetailScreen(
+            title: 'Profile',
+            heroContent: Container(color: Colors.black),
+            tabs: [
+              ImmersiveTabItem(
+                title: 'Sobre',
+                content: SizedBox(height: 200, child: Text('Section')),
+              ),
+            ],
+            onBackPressed: () {
+              backPressCount += 1;
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+
+      expect(backPressCount, 1);
+    },
+  );
 }

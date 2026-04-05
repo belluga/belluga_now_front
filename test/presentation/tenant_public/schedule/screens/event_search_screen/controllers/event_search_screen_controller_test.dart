@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -29,12 +31,22 @@ import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  setUp(() async {
+    await GetIt.I.reset(dispose: false);
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset(dispose: false);
+  });
+
   testWidgets(
     'stream disconnect triggers deterministic page-1 rehydrate and reconnect',
     (tester) async {
@@ -153,6 +165,120 @@ void main() {
       scheduleRepository.dispose();
     },
   );
+
+  testWidgets(
+    'agenda system back falls back to profile when no history exists',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpEventSearchScreen(tester,
+          controller: controller, router: router);
+
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+          router.replaceAllRoutes.single.single.routeName, ProfileRoute.name);
+    },
+  );
+
+  testWidgets(
+    'agenda header back matches profile fallback when no history exists',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpEventSearchScreen(tester,
+          controller: controller, router: router);
+
+      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+          router.replaceAllRoutes.single.single.routeName, ProfileRoute.name);
+    },
+  );
+
+  testWidgets(
+    'agenda header back returns to previous route when history exists',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+      final router = _RecordingStackRouter()..canPopResult = true;
+
+      await _pumpEventSearchScreen(tester,
+          controller: controller, router: router);
+
+      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
+}
+
+Future<void> _pumpEventSearchScreen(
+  WidgetTester tester, {
+  required EventSearchScreenController controller,
+  required _RecordingStackRouter router,
+}) async {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(fullPath: '/agenda'),
+    router: router,
+    stackKey: const ValueKey('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  await tester.pumpWidget(
+    StackRouterScope(
+      controller: router,
+      stateHash: 0,
+      child: MaterialApp(
+        home: RouteDataScope(
+          routeData: routeData,
+          child: const EventSearchScreen(),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 120));
 }
 
 EventSearchScreenController _buildEventSearchController({
@@ -235,10 +361,59 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
       remoteData: remoteData, localInfo: localInfo);
 }
 
+class _RecordingStackRouter extends Fake implements StackRouter {
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async {
+    popCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
+  }
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const {},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  final String fullPath;
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
+}
+
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue =
-            StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(_appData.mapRadiusMaxMeters, defaultValue: _appData.mapRadiusMaxMeters));
+      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+            defaultValue: DistanceInMetersValue.fromRaw(
+                _appData.mapRadiusMaxMeters,
+                defaultValue: _appData.mapRadiusMaxMeters));
 
   final AppData _appData;
 
@@ -642,7 +817,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
   @override
   Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts) async =>
+          InviteContacts contacts) async =>
       const [];
 
   @override

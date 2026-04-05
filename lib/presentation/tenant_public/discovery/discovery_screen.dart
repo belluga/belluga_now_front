@@ -103,7 +103,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     }
 
     final router = context.router;
-    if (router.removeLast()) {
+    if (router.canPop()) {
+      router.pop();
       return;
     }
 

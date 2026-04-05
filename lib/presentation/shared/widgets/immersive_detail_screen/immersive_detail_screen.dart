@@ -29,6 +29,7 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.centerCollapsedTitle = true,
     this.appBarActionsBuilder,
     this.canUseTabFooter,
+    this.onBackPressed,
     super.key,
   });
 
@@ -68,6 +69,9 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// the same overlay plane as the built-in share action.
   final List<Widget> Function(BuildContext context, bool innerBoxIsScrolled)?
       appBarActionsBuilder;
+
+  /// Optional back handler for host screens that need route-specific fallback.
+  final VoidCallback? onBackPressed;
 
   @override
   State<ImmersiveDetailScreen> createState() => _ImmersiveDetailScreenState();
@@ -168,7 +172,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         left: 8,
                         right: 4,
                       ),
-                      onPressed: () => context.router.pop(),
+                      onPressed: widget.onBackPressed ?? () => context.router.pop(),
                     ),
                     actions: [
                       ...?widget.appBarActionsBuilder?.call(

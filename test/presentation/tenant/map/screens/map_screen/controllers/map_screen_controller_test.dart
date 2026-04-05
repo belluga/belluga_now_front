@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
@@ -49,12 +51,15 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/src/misc/move_and_rotate_result.dart';
+import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -1496,6 +1501,172 @@ void main() {
       );
     });
   });
+
+  group('MapScreen safe back', () {
+    late _FakeTelemetryRepository telemetry;
+    late _FakeCityMapRepository mapRepository;
+    late _FakeUserLocationRepository userLocationRepository;
+    late PoiRepository poiRepository;
+    late FabMenuController fabMenuController;
+    late MapScreenController controller;
+
+    setUp(() async {
+      await GetIt.I.reset(dispose: false);
+      LocationPermissionGateRuntime.resetForTesting();
+      telemetry = _FakeTelemetryRepository();
+      mapRepository = _FakeCityMapRepository();
+      userLocationRepository = _FakeUserLocationRepository();
+      poiRepository = PoiRepository(
+        dataSource: mapRepository,
+      );
+      controller = _buildMapController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        appData: _buildAppData(),
+      );
+      fabMenuController = FabMenuController(
+        poiRepository: poiRepository,
+      );
+      GetIt.I.registerSingleton<MapScreenController>(controller);
+      GetIt.I.registerSingleton<FabMenuController>(fabMenuController);
+    });
+
+    tearDown(() async {
+      await controller.onDispose();
+      fabMenuController.dispose();
+      mapRepository.dispose();
+      userLocationRepository.dispose();
+      await GetIt.I.reset(dispose: false);
+      LocationPermissionGateRuntime.resetForTesting();
+    });
+
+    testWidgets(
+        'map root system back falls back to home when no history exists',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    });
+
+    testWidgets(
+        'map detail system back falls back to city map when no history exists',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: CityMapRoute(),
+        initialPoiQuery: 'event:evt-001',
+      );
+
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        CityMapRoute.name,
+      );
+    });
+
+    testWidgets(
+        'map visible back returns to previous route when history exists',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = true;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      await tester.tap(find.byIcon(Icons.arrow_back).first);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(router.replaceAllRoutes, isEmpty);
+    });
+  });
+}
+
+Future<void> _pumpMapScreen(
+  WidgetTester tester, {
+  required _RecordingStackRouter router,
+  required PageRouteInfo<dynamic> fallbackRoute,
+  String? initialPoiQuery,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MapScreen(
+          backFallbackRoute: fallbackRoute,
+          initialPoiQuery: initialPoiQuery,
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 120));
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async {
+    popCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
+  }
 }
 
 MapScreenController _buildMapController({

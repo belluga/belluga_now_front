@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -123,11 +125,12 @@ class _AccountProfileDetailScreenState
                                         (context, innerBoxIsScrolled) =>
                                             _buildAppBarActions(
                                       context,
-                                      innerBoxIsScrolled,
+                                            innerBoxIsScrolled,
                                       resolvedAccountProfile,
                                       isFav: isFav,
                                       isFavoritable: isFavoritable,
                                     ),
+                                    onBackPressed: _handleBack,
                                     tabs: effectiveTabs,
                                     betweenHeroAndTabs: null,
                                   );
@@ -210,6 +213,13 @@ class _AccountProfileDetailScreenState
           ),
         ),
       ],
+    );
+  }
+
+  void _handleBack() {
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: const DiscoveryRoute(),
     );
   }
 
