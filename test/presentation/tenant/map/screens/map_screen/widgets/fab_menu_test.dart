@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
@@ -19,15 +21,17 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
-import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -141,33 +145,9 @@ class _FakePoiRepository implements PoiRepositoryContract {
   }
 }
 
-class _NoopLocationOriginService implements LocationOriginServiceContract {
-  const _NoopLocationOriginService();
-
-  static const LocationOriginResolution _resolution = LocationOriginResolution(
-    settings: null,
-    effectiveCoordinate: null,
-    liveUserCoordinate: null,
-    tenantDefaultCoordinate: null,
-    userFixedCoordinate: null,
-    distanceFromTenantDefaultOriginValue: null,
-  );
-
-  @override
-  LocationOriginResolution resolveCached() => _resolution;
-
-  @override
-  Future<LocationOriginResolution> resolve(
-    LocationOriginResolutionRequest request,
-  ) async => _resolution;
-
-  @override
-  Future<LocationOriginResolution> resolveAndPersist(
-    LocationOriginResolutionRequest request,
-  ) async => _resolution;
-}
-
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
+  Completer<bool>? refreshIfPermittedCompleter;
+
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
       StreamValue<CityCoordinate?>();
@@ -200,11 +180,24 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> refreshIfPermitted({
     Object? minInterval,
-  }) async =>
-      false;
+  }) async {
+    locationResolutionPhaseStreamValue.addValue(
+      LocationResolutionPhase.resolving,
+    );
+    final completer = refreshIfPermittedCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+    return false;
+  }
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation() async {
+    locationResolutionPhaseStreamValue.addValue(
+      LocationResolutionPhase.resolving,
+    );
+    return null;
+  }
 
   @override
   Future<void> setLastKnownAddress(Object? address) async {}
@@ -227,6 +220,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
     lastKnownCapturedAtStreamValue.dispose();
     lastKnownAccuracyStreamValue.dispose();
     lastKnownAddressStreamValue.dispose();
+    locationResolutionPhaseStreamValue.dispose();
   }
 }
 
@@ -439,14 +433,62 @@ MapScreenController _buildMapScreenController({
   required PoiRepositoryContract poiRepository,
   required UserLocationRepositoryContract userLocationRepository,
   required TelemetryRepositoryContract telemetryRepository,
+  AppDataRepositoryContract? appDataRepository,
 }) {
+  final resolvedAppDataRepository =
+      appDataRepository ?? _FakeMapAppDataRepository(_buildTestAppData());
   return MapScreenController(
     poiRepository: poiRepository,
     userLocationRepository: userLocationRepository,
     telemetryRepository: telemetryRepository,
-    appData: _buildTestAppData(),
-    locationOriginService: _NoopLocationOriginService(),
+    appData: resolvedAppDataRepository.appData,
+    appDataRepository: resolvedAppDataRepository,
+    locationOriginService: LocationOriginService(
+      appDataRepository: resolvedAppDataRepository,
+      userLocationRepository: userLocationRepository,
+    ),
   );
+}
+
+class _FakeMapAppDataRepository extends AppDataRepositoryContract {
+  _FakeMapAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+  );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
 }
 
 AppData _buildTestAppData() {
@@ -785,7 +827,7 @@ void main() {
   );
 
   testWidgets(
-    'navigate-to-user action stays disabled until user location is available',
+    'navigate-to-user action stays disabled while location origin is still unresolved',
     (tester) async {
       final poiRepository = _FakePoiRepository();
       final userLocationRepository = _FakeUserLocationRepository();
@@ -795,7 +837,11 @@ void main() {
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
       );
-      mapController.isLoading.addValue(false);
+      mapController.locationFeedbackStateStreamValue.addValue(
+        const MapLocationFeedbackState.loading(
+          resolutionPhase: LocationResolutionPhase.resolving,
+        ),
+      );
       final fabController = FabMenuController(poiRepository: poiRepository)
         ..setExpanded(true)
         ..setCondensed(false);
@@ -830,10 +876,17 @@ void main() {
       final disabledColor = disabledFab.backgroundColor!;
       expect(disabledFab.onPressed, isNull);
 
-      userLocationRepository.userLocationStreamValue.addValue(
-        CityCoordinate.fromLatLng(const LatLng(-20.0, -40.0)),
+      final resolvedCoordinate = CityCoordinate.fromLatLng(
+        const LatLng(-20.0, -40.0),
       );
-      await tester.pumpWidget(buildUnderTest());
+      mapController.locationFeedbackStateStreamValue.addValue(
+        MapLocationFeedbackState(
+          kind: MapLocationFeedbackKind.live,
+          resolutionPhase: LocationResolutionPhase.resolved,
+          settings: LocationOriginSettings.userLiveLocation(),
+          targetCoordinate: resolvedCoordinate,
+        ),
+      );
       await tester.pump();
 
       final enabledFab =
@@ -845,6 +898,63 @@ void main() {
       await tester.tap(find.text('Ir para você'));
       await tester.pump();
       expect(navigateTapCount, 1);
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'navigate-to-user action stays enabled with home badge for fixed manual location',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final fixedCoordinate = CityCoordinate.fromLatLng(
+        const LatLng(-20.011, -40.022),
+      );
+      final mapController = _buildMapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      mapController.locationFeedbackStateStreamValue.addValue(
+        MapLocationFeedbackState(
+          kind: MapLocationFeedbackKind.fixedManual,
+          resolutionPhase: LocationResolutionPhase.resolved,
+          settings: LocationOriginSettings.userFixedLocation(
+            fixedLocationReference: fixedCoordinate,
+          ),
+          targetCoordinate: fixedCoordinate,
+        ),
+      );
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final navigateFab = tester.widget<FloatingActionButton>(
+        find.ancestor(
+          of: find.text('Ir para você'),
+          matching: find.byType(FloatingActionButton),
+        ),
+      );
+      expect(navigateFab.onPressed, isNotNull);
+      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
 
       fabController.dispose();
       await mapController.onDispose();

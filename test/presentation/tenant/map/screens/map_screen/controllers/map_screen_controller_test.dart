@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
+import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
@@ -10,6 +12,7 @@ import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
@@ -52,15 +55,13 @@ import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/src/misc/move_and_rotate_result.dart';
 import 'package:get_it/get_it.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _LoggedEvent {
@@ -175,6 +176,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   int resolveUserLocationCallCount = 0;
   int startTrackingCallCount = 0;
   Completer<bool>? refreshIfPermittedCompleter;
+  Completer<String?>? resolveUserLocationCompleter;
 
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
@@ -214,6 +216,9 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> refreshIfPermitted({Object? minInterval}) async {
     refreshIfPermittedCallCount += 1;
+    locationResolutionPhaseStreamValue.addValue(
+      LocationResolutionPhase.resolving,
+    );
     final completer = refreshIfPermittedCompleter;
     if (completer != null) {
       return completer.future;
@@ -224,6 +229,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<String?> resolveUserLocation() async {
     resolveUserLocationCallCount += 1;
+    locationResolutionPhaseStreamValue.addValue(
+      LocationResolutionPhase.resolving,
+    );
+    final completer = resolveUserLocationCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
     return null;
   }
 
@@ -243,6 +255,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
     lastKnownCapturedAtStreamValue.dispose();
     lastKnownAccuracyStreamValue.dispose();
     lastKnownAddressStreamValue.dispose();
+    locationResolutionPhaseStreamValue.dispose();
   }
 }
 
@@ -345,157 +358,102 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   }
 }
 
-class _FakeMapController implements MapController {
-  _FakeMapController()
-      : _camera = MapCamera.initialCamera(
-          const MapOptions(
-            initialCenter: LatLng(-20.0, -40.0),
-            initialZoom: 16,
-          ),
-        );
+class _FakeMapHandle implements BellugaMapHandleContract {
+  _FakeMapHandle({
+    bool isReady = true,
+    double? initialZoom,
+  })  : _isReady = isReady,
+        _currentZoom = initialZoom ?? 16;
 
-  final StreamController<MapEvent> _events =
-      StreamController<MapEvent>.broadcast();
-  MapCamera _camera;
+  final StreamController<BellugaMapInteractionEvent> _events =
+      StreamController<BellugaMapInteractionEvent>.broadcast();
+  bool _isReady;
+  double? _currentZoom;
   int moveCallCount = 0;
-  LatLng? lastMoveCenter;
+  CityCoordinate? lastMoveCoordinate;
   double? lastMoveZoom;
 
   @override
-  Stream<MapEvent> get mapEventStream => _events.stream;
+  Stream<BellugaMapInteractionEvent> get interactionStream => _events.stream;
 
   @override
-  bool move(
-    LatLng center,
-    double zoom, {
-    Offset offset = Offset.zero,
-    String? id,
+  bool get isReady => _isReady;
+
+  @override
+  double? get currentZoom => _currentZoom;
+
+  @override
+  bool moveTo(
+    CityCoordinate coordinate, {
+    required double zoom,
   }) {
+    if (!_isReady) {
+      return false;
+    }
     moveCallCount += 1;
-    lastMoveCenter = center;
+    lastMoveCoordinate = coordinate;
     lastMoveZoom = zoom;
-    _camera = _camera.withPosition(center: center, zoom: zoom);
+    _currentZoom = zoom;
     return true;
   }
 
   @override
-  bool rotate(double degree, {String? id}) => false;
-
-  @override
-  MoveAndRotateResult rotateAroundPoint(
-    double degree, {
-    Offset? offset,
-    String? id,
+  bool moveToAnchored(
+    CityCoordinate coordinate, {
+    required double zoom,
+    required double verticalViewportAnchor,
   }) {
-    return const (moveSuccess: false, rotateSuccess: false);
+    return moveTo(coordinate, zoom: zoom);
   }
 
   @override
-  MoveAndRotateResult moveAndRotate(
-    LatLng center,
-    double zoom,
-    double degree, {
-    String? id,
+  bool fitToCoordinates(
+    List<CityCoordinate> coordinates, {
+    double padding = 32,
+    double? maxZoom,
   }) {
-    return const (moveSuccess: false, rotateSuccess: false);
+    if (coordinates.isEmpty || !_isReady) {
+      return false;
+    }
+    moveCallCount += 1;
+    lastMoveCoordinate = coordinates.first;
+    lastMoveZoom = maxZoom ?? _currentZoom;
+    return true;
   }
 
   @override
-  bool fitCamera(CameraFit cameraFit) => false;
-
-  @override
-  MapCamera get camera => _camera;
-
-  @override
-  void dispose() {
-    _events.close();
-  }
-
-  void emitMapEvent() {
-    final current = _camera;
-    _events.add(
-      MapEventMove(
-        source: MapEventSource.nonRotatedSizeChange,
-        oldCamera: current,
-        camera: current,
+  void markReady() {
+    if (_isReady) {
+      return;
+    }
+    _isReady = true;
+    emitInteraction(
+      BellugaMapInteractionEvent(
+        type: BellugaMapInteractionType.ready,
+        zoom: _currentZoom,
       ),
     );
   }
-}
-
-class _NotReadyMapController implements MapController {
-  _NotReadyMapController()
-      : _camera = MapCamera.initialCamera(
-          const MapOptions(
-            initialCenter: LatLng(-20.0, -40.0),
-            initialZoom: 16,
-          ),
-        );
-
-  final StreamController<MapEvent> _events =
-      StreamController<MapEvent>.broadcast();
-  MapCamera _camera;
-  bool isReady = false;
-  int moveCallCount = 0;
-  LatLng? lastMoveCenter;
-  double? lastMoveZoom;
 
   @override
-  Stream<MapEvent> get mapEventStream => _events.stream;
-
-  @override
-  bool move(
-    LatLng center,
-    double zoom, {
-    Offset offset = Offset.zero,
-    String? id,
-  }) {
-    if (!isReady) {
-      throw StateError('map not ready');
-    }
-    moveCallCount += 1;
-    lastMoveCenter = center;
-    lastMoveZoom = zoom;
-    _camera = _camera.withPosition(center: center, zoom: zoom);
-    return true;
-  }
-
-  @override
-  bool rotate(double degree, {String? id}) => false;
-
-  @override
-  MoveAndRotateResult rotateAroundPoint(
-    double degree, {
-    Offset? offset,
-    String? id,
-  }) {
-    return const (moveSuccess: false, rotateSuccess: false);
-  }
-
-  @override
-  MoveAndRotateResult moveAndRotate(
-    LatLng center,
-    double zoom,
-    double degree, {
-    String? id,
-  }) {
-    return const (moveSuccess: false, rotateSuccess: false);
-  }
-
-  @override
-  bool fitCamera(CameraFit cameraFit) => false;
-
-  @override
-  MapCamera get camera {
-    if (!isReady) {
-      throw StateError('map not ready');
-    }
-    return _camera;
+  void emitInteraction(BellugaMapInteractionEvent event) {
+    _currentZoom = event.zoom ?? _currentZoom;
+    _events.add(event);
   }
 
   @override
   void dispose() {
     _events.close();
+  }
+
+  void emitReady() {
+    _isReady = true;
+    _events.add(
+      BellugaMapInteractionEvent(
+        type: BellugaMapInteractionType.ready,
+        zoom: _currentZoom,
+      ),
+    );
   }
 }
 
@@ -846,6 +804,51 @@ void main() {
       expect(event.event, EventTrackerEvents.poiOpened);
       expect(event.eventName, 'poi_opened');
       expect(event.properties?['poi_id'], 'poi-123');
+    });
+
+    test('keeps last selected poi memory when closing the card explicitly', () async {
+      final poi = _buildPoi(id: 'poi-memory');
+
+      controller.selectPoi(poi);
+      await _flushMicrotasks();
+      controller.clearSelectedPoi();
+
+      expect(controller.selectedPoiStreamValue.value, isNull);
+      expect(
+        controller.lastSelectedPoiMemoryStreamValue.value?.poiId,
+        'poi-memory',
+      );
+    });
+
+    test('clears selected poi memory after user pan interaction', () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+      });
+
+      await localController.init();
+      final poi = _buildPoi(id: 'poi-pan');
+      localController.selectPoi(poi);
+      await _flushMicrotasks();
+
+      fakeMapHandle.emitInteraction(
+        const BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.pan,
+          zoom: 16,
+          userGesture: true,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(localController.lastSelectedPoiMemoryStreamValue.value, isNull);
     });
 
     test('logs search submit and clear events', () async {
@@ -1271,6 +1274,303 @@ void main() {
     });
 
     test(
+        'keeps location feedback in loading state and suppresses false unavailable notice while refresh is unresolved',
+        () async {
+      final refreshCompleter = Completer<bool>();
+      userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+
+      final initFuture = controller.init();
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        controller.locationFeedbackStateStreamValue.value.kind,
+        MapLocationFeedbackKind.loading,
+      );
+      expect(controller.softLocationNoticeStreamValue.value, '');
+
+      userLocationRepository.locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.unavailable);
+      refreshCompleter.complete(false);
+      await initFuture;
+    });
+
+    test(
+        'reconciles to live location after refresh resolves and reloads points from the resolved origin',
+        () async {
+      final refreshCompleter = Completer<bool>();
+      userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+
+      final initFuture = controller.init();
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        mapRepository.lastQuery?.origin?.latitude,
+        mapRepository.defaultCenter().latitude,
+      );
+      expect(
+        mapRepository.lastQuery?.origin?.longitude,
+        mapRepository.defaultCenter().longitude,
+      );
+      expect(controller.softLocationNoticeStreamValue.value, '');
+
+      final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
+      userLocationRepository.userLocationStreamValue.addValue(resolvedCoordinate);
+      userLocationRepository.lastKnownLocationStreamValue
+          .addValue(resolvedCoordinate);
+      userLocationRepository.lastKnownCapturedAtStreamValue
+          .addValue(DateTime.now());
+      userLocationRepository.locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
+      refreshCompleter.complete(true);
+
+      await initFuture;
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        controller.locationFeedbackStateStreamValue.value.kind,
+        MapLocationFeedbackKind.live,
+      );
+      expect(
+        controller.softLocationNoticeStreamValue.value,
+        'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
+      );
+      expect(
+        mapRepository.lastQuery?.origin?.latitude,
+        resolvedCoordinate.latitude,
+      );
+      expect(
+        mapRepository.lastQuery?.origin?.longitude,
+        resolvedCoordinate.longitude,
+      );
+    });
+
+    test(
+        'does not re-enter poi reload churn when rapid nearby live updates keep the same semantic origin state',
+        () async {
+      final refreshCompleter = Completer<bool>();
+      userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+      final firstFetch = Completer<List<CityPoiModel>>();
+      final reconcileFetch = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters.addAll(<Completer<List<CityPoiModel>>>[
+        firstFetch,
+        reconcileFetch,
+      ]);
+      final statusMessages = <String?>[];
+      final loadingStates = <bool>[];
+      final mapStatuses = <MapStatus>[];
+      final statusSubscription =
+          controller.statusMessageStreamValue.stream.listen(statusMessages.add);
+      final loadingSubscription =
+          controller.isLoading.stream.listen(loadingStates.add);
+      final mapStatusSubscription =
+          controller.mapStatusStreamValue.stream.listen(mapStatuses.add);
+      addTearDown(() async {
+        await statusSubscription.cancel();
+        await loadingSubscription.cancel();
+        await mapStatusSubscription.cancel();
+      });
+
+      final initFuture = controller.init();
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      final firstResolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
+      userLocationRepository.userLocationStreamValue
+          .addValue(firstResolvedCoordinate);
+      userLocationRepository.lastKnownLocationStreamValue
+          .addValue(firstResolvedCoordinate);
+      userLocationRepository.lastKnownCapturedAtStreamValue
+          .addValue(DateTime.now());
+      userLocationRepository.locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
+      refreshCompleter.complete(true);
+
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 2);
+      expect(
+        statusMessages.where((message) => message == 'Atualizando pontos...'),
+        hasLength(1),
+      );
+      expect(
+        loadingStates.where((value) => value),
+        hasLength(2),
+      );
+      expect(
+        mapStatuses.where((status) => status == MapStatus.fetching),
+        hasLength(2),
+      );
+
+      final burstCoordinates = <CityCoordinate>[
+        _buildCoordinate('-20.123401', '-40.234501'),
+        _buildCoordinate('-20.123402', '-40.234502'),
+        _buildCoordinate('-20.123403', '-40.234503'),
+        _buildCoordinate('-20.123404', '-40.234504'),
+        _buildCoordinate('-20.123405', '-40.234505'),
+        _buildCoordinate('-20.123406', '-40.234506'),
+        _buildCoordinate('-20.123407', '-40.234507'),
+        _buildCoordinate('-20.123408', '-40.234508'),
+      ];
+      for (var index = 0; index < burstCoordinates.length; index++) {
+        final latestResolvedCoordinate = burstCoordinates[index];
+        userLocationRepository.userLocationStreamValue
+            .addValue(latestResolvedCoordinate);
+        userLocationRepository.lastKnownLocationStreamValue
+            .addValue(latestResolvedCoordinate);
+        userLocationRepository.lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now().add(Duration(milliseconds: index + 1)),
+        );
+        userLocationRepository.locationResolutionPhaseStreamValue
+            .addValue(LocationResolutionPhase.resolved);
+      }
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        mapRepository.fetchPointsCallCount,
+        2,
+        reason:
+            'rapid nearby live updates in the same semantic state must not trigger extra poi reloads',
+      );
+      expect(
+        statusMessages.where((message) => message == 'Atualizando pontos...'),
+        hasLength(1),
+        reason: 'controller must not re-emit the updating banner during burst churn',
+      );
+      expect(
+        loadingStates.where((value) => value),
+        hasLength(2),
+        reason: 'controller must not re-enter loading for semantically equivalent live updates',
+      );
+      expect(
+        mapStatuses.where((status) => status == MapStatus.fetching),
+        hasLength(2),
+        reason: 'controller must not re-enter fetching for semantically equivalent live updates',
+      );
+
+      reconcileFetch.complete(const <CityPoiModel>[]);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+      firstFetch.complete(const <CityPoiModel>[]);
+      await initFuture;
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        mapRepository.fetchPointsCallCount,
+        2,
+        reason: 'same live-location semantic state must not trigger map reload loop',
+      );
+      expect(
+        statusMessages.where((message) => message == 'Atualizando pontos...'),
+        hasLength(1),
+      );
+      expect(
+        loadingStates.where((value) => value),
+        hasLength(2),
+      );
+      expect(
+        mapStatuses.where((status) => status == MapStatus.fetching),
+        hasLength(2),
+      );
+      expect(
+        controller.mapStatusStreamValue.value,
+        MapStatus.ready,
+      );
+      expect(
+        controller.statusMessageStreamValue.value,
+        isNull,
+      );
+    });
+
+    test(
+        'permission-resolution overlap reloads points only once when live origin resolves during the request',
+        () async {
+      final resolveCompleter = Completer<String?>();
+      userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
+      final firstFetch = Completer<List<CityPoiModel>>();
+      final reconcileFetch = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters.addAll(<Completer<List<CityPoiModel>>>[
+        firstFetch,
+        reconcileFetch,
+      ]);
+      final statusMessages = <String?>[];
+      final loadingStates = <bool>[];
+      final mapStatuses = <MapStatus>[];
+      final statusSubscription =
+          controller.statusMessageStreamValue.stream.listen(statusMessages.add);
+      final loadingSubscription =
+          controller.isLoading.stream.listen(loadingStates.add);
+      final mapStatusSubscription =
+          controller.mapStatusStreamValue.stream.listen(mapStatuses.add);
+      addTearDown(() async {
+        await statusSubscription.cancel();
+        await loadingSubscription.cancel();
+        await mapStatusSubscription.cancel();
+      });
+
+      final initFuture = controller.init();
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      firstFetch.complete(const <CityPoiModel>[]);
+      await initFuture;
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(userLocationRepository.resolveUserLocationCallCount, 1);
+      expect(mapRepository.fetchPointsCallCount, 1);
+
+      final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
+      userLocationRepository.userLocationStreamValue.addValue(resolvedCoordinate);
+      userLocationRepository.lastKnownLocationStreamValue
+          .addValue(resolvedCoordinate);
+      userLocationRepository.lastKnownCapturedAtStreamValue
+          .addValue(DateTime.now());
+      userLocationRepository.locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 2);
+      expect(
+        statusMessages.where((message) => message == 'Atualizando pontos...'),
+        hasLength(1),
+      );
+
+      resolveCompleter.complete(null);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      reconcileFetch.complete(const <CityPoiModel>[]);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        mapRepository.fetchPointsCallCount,
+        2,
+        reason:
+            'phase-listener reconciliation and resolveUserLocation completion must not double-reload the same origin transition',
+      );
+      expect(
+        statusMessages.where((message) => message == 'Atualizando pontos...'),
+        hasLength(1),
+      );
+      expect(
+        loadingStates.where((value) => value),
+        hasLength(2),
+      );
+      expect(
+        mapStatuses.where((status) => status == MapStatus.fetching),
+        hasLength(2),
+      );
+    });
+
+    test(
         'soft-gate map entry skips interactive resolution and exposes fixed-location notice',
         () async {
       LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
@@ -1295,17 +1595,17 @@ void main() {
     });
 
     test('centerOnUser shows status when map is not ready yet', () async {
-      final notReadyMapController = _NotReadyMapController();
+      final notReadyMapHandle = _FakeMapHandle(isReady: false);
       final localController = _buildMapController(
         poiRepository: PoiRepository(dataSource: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
-        mapController: notReadyMapController,
+        mapHandle: notReadyMapHandle,
         appData: _buildAppData(),
       );
       addTearDown(() async {
         await localController.onDispose();
-        notReadyMapController.dispose();
+        notReadyMapHandle.dispose();
       });
 
       userLocationRepository.userLocationStreamValue
@@ -1453,7 +1753,7 @@ void main() {
     test(
         'applies initial poi focus after first map event when deep link query is present',
         () async {
-      final fakeMapController = _FakeMapController();
+      final fakeMapHandle = _FakeMapHandle(isReady: false);
       final targetPoi = _buildPoi(
         id: 'poi-target',
         refType: 'event',
@@ -1465,37 +1765,40 @@ void main() {
         poiRepository: PoiRepository(dataSource: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
-        mapController: fakeMapController,
+        mapHandle: fakeMapHandle,
         appData: _buildAppData(),
       );
       addTearDown(() async {
         await localController.onDispose();
-        fakeMapController.dispose();
+        fakeMapHandle.dispose();
       });
 
       await localController.init(initialPoiQuery: 'event:evt-001');
       await _flushMicrotasks();
 
       expect(localController.selectedPoiStreamValue.value?.id, 'poi-target');
-      expect(fakeMapController.moveCallCount, 0);
+      expect(fakeMapHandle.moveCallCount, 0);
 
-      fakeMapController.emitMapEvent();
+      fakeMapHandle.emitReady();
       await _flushMicrotasks();
       await _flushMicrotasks();
 
-      expect(fakeMapController.moveCallCount, 1);
-      expect(fakeMapController.lastMoveCenter, isNotNull);
-      expect(fakeMapController.lastMoveCenter!.latitude, closeTo(-20.0, 1e-9));
+      expect(fakeMapHandle.moveCallCount, 1);
+      expect(fakeMapHandle.lastMoveCoordinate, isNotNull);
       expect(
-        fakeMapController.lastMoveCenter!.longitude,
+        fakeMapHandle.lastMoveCoordinate!.latitude,
+        closeTo(-20.0, 1e-9),
+      );
+      expect(
+        fakeMapHandle.lastMoveCoordinate!.longitude,
         closeTo(-40.0, 1e-9),
       );
 
-      fakeMapController.emitMapEvent();
+      fakeMapHandle.emitReady();
       await _flushMicrotasks();
 
       expect(
-        fakeMapController.moveCallCount,
+        fakeMapHandle.moveCallCount,
         1,
         reason: 'initial focus must be applied exactly once',
       );
@@ -1556,7 +1859,7 @@ void main() {
         find.byWidgetPredicate((widget) => widget is PopScope),
       );
       popScope.onPopInvokedWithResult?.call(false, null);
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(router.canPopCallCount, 1);
       expect(router.popCallCount, 0);
@@ -1583,7 +1886,7 @@ void main() {
         find.byWidgetPredicate((widget) => widget is PopScope),
       );
       popScope.onPopInvokedWithResult?.call(false, null);
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(router.canPopCallCount, 1);
       expect(router.popCallCount, 0);
@@ -1606,11 +1909,27 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.arrow_back).first);
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(router.canPopCallCount, 1);
       expect(router.popCallCount, 1);
       expect(router.replaceAllRoutes, isEmpty);
+    });
+
+    testWidgets('map screen shows local action row and discovery tray',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      expect(find.text('Você'), findsOneWidget);
+      expect(find.text('Buscar'), findsOneWidget);
+      expect(find.text('Filtros'), findsOneWidget);
+      expect(find.text('Perto de você'), findsOneWidget);
     });
   });
 }
@@ -1673,19 +1992,22 @@ MapScreenController _buildMapController({
   required PoiRepositoryContract poiRepository,
   required UserLocationRepositoryContract userLocationRepository,
   required TelemetryRepositoryContract telemetryRepository,
-  MapController? mapController,
+  BellugaMapHandleContract? mapHandle,
   AppData? appData,
+  AppDataRepositoryContract? appDataRepository,
 }) {
   final resolvedAppData = appData ?? _buildAppData();
-  final appDataRepository = _FakeMapAppDataRepository(resolvedAppData);
+  final resolvedAppDataRepository =
+      appDataRepository ?? _FakeMapAppDataRepository(resolvedAppData);
   return MapScreenController(
     poiRepository: poiRepository,
     userLocationRepository: userLocationRepository,
     telemetryRepository: telemetryRepository,
-    mapController: mapController,
+    mapHandle: mapHandle,
     appData: resolvedAppData,
+    appDataRepository: resolvedAppDataRepository,
     locationOriginService: LocationOriginService(
-      appDataRepository: appDataRepository,
+      appDataRepository: resolvedAppDataRepository,
       userLocationRepository: userLocationRepository,
     ),
   );

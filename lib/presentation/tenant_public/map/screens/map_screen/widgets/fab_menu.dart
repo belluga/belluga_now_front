@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_action_button.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_filter_category_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_location_status_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -98,14 +100,15 @@ class _FabMenuState extends State<FabMenu> {
                               builder: (_, isFilterInteractionLocked) {
                                 final interactionsEnabled =
                                     !isLoading && !isFilterInteractionLocked;
-                                return StreamValueBuilder<CityCoordinate?>(
-                                  streamValue:
-                                      _mapController.userLocationStreamValue,
-                                  builder: (_, __) {
+                                return StreamValueBuilder<
+                                    MapLocationFeedbackState>(
+                                  streamValue: _mapController
+                                      .locationFeedbackStateStreamValue,
+                                  builder: (_, locationFeedbackState) {
                                     final navigateToUserEnabled =
                                         interactionsEnabled &&
-                                            _mapController
-                                                .hasResolvedUserLocation;
+                                            locationFeedbackState
+                                                .isActionEnabled;
                                     return Column(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
@@ -115,7 +118,11 @@ class _FabMenuState extends State<FabMenu> {
                                           FabActionButton(
                                             label: 'Ir para você',
                                             heroId: 'navigate-to-user',
-                                            icon: Icons.my_location,
+                                            iconWidget: _buildLocationIcon(
+                                              context,
+                                              locationFeedbackState,
+                                              enabled: navigateToUserEnabled,
+                                            ),
                                             backgroundColor:
                                                 navigateToUserEnabled
                                                     ? scheme.secondaryContainer
@@ -161,8 +168,9 @@ class _FabMenuState extends State<FabMenu> {
                                                   category,
                                                 ),
                                                 icon: fallbackIcon,
-                                                iconWidget: _categoryVisual(
-                                                  category,
+                                                iconWidget:
+                                                    MapFilterCategoryIcon(
+                                                  category: category,
                                                   isActive: isActive,
                                                   fallbackIcon: fallbackIcon,
                                                   fallbackColor:
@@ -231,69 +239,6 @@ class _FabMenuState extends State<FabMenu> {
     );
   }
 
-  Widget? _categoryVisual(
-    PoiFilterCategory category, {
-    required bool isActive,
-    required IconData fallbackIcon,
-    required Color fallbackColor,
-  }) {
-    final overrideVisual = category.markerOverrideVisual;
-    if (overrideVisual != null && overrideVisual.isValid) {
-      if (overrideVisual.isIcon) {
-        final iconData =
-            MapMarkerVisualResolver.resolveIcon(overrideVisual.icon);
-        final configuredIconColor = MapMarkerVisualResolver.tryParseHexColor(
-          overrideVisual.iconColorHex,
-        );
-        final iconColor =
-            isActive ? (configuredIconColor ?? Colors.white) : fallbackColor;
-        return Icon(
-          iconData,
-          size: 18,
-          color: iconColor,
-        );
-      }
-      final overrideImageUri = overrideVisual.imageUri?.trim() ?? '';
-      if (overrideImageUri.isNotEmpty) {
-        return _buildImageWidget(
-          imageUri: overrideImageUri,
-          fallbackIcon: fallbackIcon,
-          fallbackColor: fallbackColor,
-        );
-      }
-    }
-
-    final legacyImageUri = category.imageUri?.trim() ?? '';
-    if (legacyImageUri.isEmpty) {
-      return null;
-    }
-    return _buildImageWidget(
-      imageUri: legacyImageUri,
-      fallbackIcon: fallbackIcon,
-      fallbackColor: fallbackColor,
-    );
-  }
-
-  Widget _buildImageWidget({
-    required String imageUri,
-    required IconData fallbackIcon,
-    required Color fallbackColor,
-  }) {
-    return SizedBox.square(
-      dimension: 20,
-      child: Image.network(
-        key: ValueKey(imageUri),
-        imageUri,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
-          fallbackIcon,
-          size: 18,
-          color: fallbackColor,
-        ),
-      ),
-    );
-  }
-
   Color _resolveCategoryActiveBackgroundColor(
     PoiFilterCategory category, {
     required Color fallback,
@@ -314,5 +259,16 @@ class _FabMenuState extends State<FabMenu> {
       return label;
     }
     return category.key.trim();
+  }
+
+  Widget _buildLocationIcon(
+    BuildContext context,
+    MapLocationFeedbackState state, {
+    required bool enabled,
+  }) {
+    return MapLocationStatusIcon(
+      state: state,
+      enabled: enabled,
+    );
   }
 }

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
@@ -42,7 +41,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       widget.directionsAppChooser ?? DirectionsAppChooser();
   final PageController _pageController = PageController(viewportFraction: 0.8);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
-  PoiFilterMode? _lastFilterMode;
   int? _lastPoiDeckIndex;
 
   static const double _defaultCardHeight = 320;
@@ -51,9 +49,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   @override
   void initState() {
     super.initState();
-    _lastFilterMode = _controller.filterModeStreamValue.value;
     _lastPoiDeckIndex = _controller.poiDeckIndexStreamValue.value;
-    _applyFilterMode(_lastFilterMode!);
     _applyPoiDeckIndex(_lastPoiDeckIndex!);
   }
 
@@ -61,21 +57,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   void dispose() {
     _pageController.dispose();
     super.dispose();
-  }
-
-  void _applyFilterMode(PoiFilterMode mode) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_controller.lastPoiDeckFilterMode != mode) {
-        _controller.lastPoiDeckFilterMode = mode;
-        if (mode != PoiFilterMode.none) {
-          _resetCarousel();
-        }
-      }
-      if (mode == PoiFilterMode.none &&
-          _controller.poiDeckIndexStreamValue.value != 0) {
-        _resetCarousel();
-      }
-    });
   }
 
   void _applyPoiDeckIndex(int index) {
@@ -93,136 +74,104 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return StreamValueBuilder<PoiFilterMode>(
-      streamValue: _controller.filterModeStreamValue,
-      builder: (_, mode) {
-        if (_lastFilterMode != mode) {
-          _lastFilterMode = mode;
-          _applyFilterMode(mode);
-        }
-        if (mode != PoiFilterMode.none) {
-          return StreamValueBuilder<List<CityPoiModel>?>(
-            streamValue: _controller.filteredPoisStreamValue,
-            builder: (_, filteredOrNull) {
-              final filtered = filteredOrNull ?? const <CityPoiModel>[];
-              if (filtered.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return StreamValueBuilder<int>(
-                streamValue: _controller.poiDeckIndexStreamValue,
-                builder: (_, pageIndex) {
-                  if (_lastPoiDeckIndex != pageIndex) {
-                    _lastPoiDeckIndex = pageIndex;
-                    _applyPoiDeckIndex(pageIndex);
-                  }
-                  final clampedIndex =
-                      pageIndex.clamp(0, filtered.length - 1).toInt();
-                  final currentPoi = filtered[clampedIndex];
-                  final deckHeight = _heightForPoi(context, currentPoi);
-                  return FilteredDeck(
-                    pois: filtered,
-                    controller: _controller,
-                    colorScheme: scheme,
-                    pageController: _pageController,
-                    cardBuilder: _cardBuilder,
-                    onPrimaryAction: _handlePoiAction,
-                    onShare: _handleShare,
-                    onRoute: _handleRoute,
-                    onChanged: (index) {
-                      _controller.setPoiDeckIndex(index);
-                      final poi = filtered[index];
-                      _controller.selectPoi(poi);
-                      unawaited(_controller.focusOnPoi(poi));
-                    },
-                    deckHeight: deckHeight,
-                    onCardHeightChanged: (poiId, height) =>
-                        _handleMeasuredHeight(context, poiId, height),
-                    deckMeasurementPadding: _kDeckMeasurementPadding,
-                  );
-                },
-              );
-            },
-          );
-        }
-
-        return StreamValueBuilder<CityPoiModel?>(
-          streamValue: _controller.selectedPoiStreamValue,
-          onNullWidget: const SizedBox.shrink(),
-          builder: (_, poi) {
-            final selectedPoi = poi!;
-            final stackPois = _stackDeckItems(selectedPoi);
-            if (stackPois.length > 1) {
-              return StreamValueBuilder<int>(
-                streamValue: _controller.poiDeckIndexStreamValue,
-                builder: (_, pageIndex) {
-                  final selectedIndex = stackPois.indexWhere(
-                    (candidate) => candidate.id == selectedPoi.id,
-                  );
-                  final desiredIndex =
-                      selectedIndex == -1 ? pageIndex : selectedIndex;
-                  final clampedIndex =
-                      desiredIndex.clamp(0, stackPois.length - 1).toInt();
-                  if (clampedIndex != pageIndex) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _controller.setPoiDeckIndex(clampedIndex);
-                    });
-                  }
-                  if (_lastPoiDeckIndex != clampedIndex) {
-                    _lastPoiDeckIndex = clampedIndex;
-                    _applyPoiDeckIndex(clampedIndex);
-                  }
-                  final currentPoi = stackPois[clampedIndex];
-                  final deckHeight = _heightForPoi(context, currentPoi);
-                  return FilteredDeck(
-                    pois: stackPois,
-                    controller: _controller,
-                    colorScheme: scheme,
-                    pageController: _pageController,
-                    cardBuilder: _cardBuilder,
-                    onPrimaryAction: _handlePoiAction,
-                    onShare: _handleShare,
-                    onRoute: _handleRoute,
-                    onChanged: (index) {
-                      _controller.setPoiDeckIndex(index);
-                      final poi = stackPois[index];
-                      _controller.selectPoi(poi);
-                      unawaited(_controller.focusOnPoi(poi));
-                    },
-                    deckHeight: deckHeight,
-                    onCardHeightChanged: (poiId, height) =>
-                        _handleMeasuredHeight(context, poiId, height),
-                    deckMeasurementPadding: _kDeckMeasurementPadding,
-                  );
-                },
-              );
-            }
-
-            final deckHeight = _heightForPoi(context, selectedPoi);
-            return SinglePoiCard(
-              poi: selectedPoi,
-              colorScheme: scheme,
-              cardBuilder: _cardBuilder,
-              onPrimaryAction: _handlePoiAction,
-              onShare: _handleShare,
-              onRoute: _handleRoute,
-              onCardHeightChanged: (poiId, height) =>
-                  _handleMeasuredHeight(context, poiId, height),
-              deckHeight: deckHeight,
-              deckMeasurementPadding: _kDeckMeasurementPadding,
-            );
-          },
+    return StreamValueBuilder<CityPoiModel?>(
+      streamValue: _controller.selectedPoiStreamValue,
+      onNullWidget: const SizedBox.shrink(),
+      builder: (_, poi) {
+        final selectedPoi = poi!;
+        final child = _buildSelectedDeck(
+          context: context,
+          scheme: scheme,
+          selectedPoi: selectedPoi,
+        );
+        return Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topRight,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 18, right: 6),
+              child: child,
+            ),
+            Material(
+              color: scheme.surface.withValues(alpha: 0.96),
+              shape: const CircleBorder(),
+              elevation: 6,
+              child: IconButton(
+                tooltip: 'Fechar',
+                onPressed: _controller.clearSelectedPoi,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
-  void _resetCarousel() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.resetPoiDeckIndex();
-      if (_pageController.hasClients) {
-        _pageController.jumpToPage(0);
-      }
-    });
+  Widget _buildSelectedDeck({
+    required BuildContext context,
+    required ColorScheme scheme,
+    required CityPoiModel selectedPoi,
+  }) {
+    final stackPois = _stackDeckItems(selectedPoi);
+    if (stackPois.length > 1) {
+      return StreamValueBuilder<int>(
+        streamValue: _controller.poiDeckIndexStreamValue,
+        builder: (_, pageIndex) {
+          final selectedIndex = stackPois.indexWhere(
+            (candidate) => candidate.id == selectedPoi.id,
+          );
+          final desiredIndex = selectedIndex == -1 ? pageIndex : selectedIndex;
+          final clampedIndex =
+              desiredIndex.clamp(0, stackPois.length - 1).toInt();
+          if (clampedIndex != pageIndex) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _controller.setPoiDeckIndex(clampedIndex);
+            });
+          }
+          if (_lastPoiDeckIndex != clampedIndex) {
+            _lastPoiDeckIndex = clampedIndex;
+            _applyPoiDeckIndex(clampedIndex);
+          }
+          final currentPoi = stackPois[clampedIndex];
+          final deckHeight = _heightForPoi(context, currentPoi);
+          return FilteredDeck(
+            pois: stackPois,
+            controller: _controller,
+            colorScheme: scheme,
+            pageController: _pageController,
+            cardBuilder: _cardBuilder,
+            onPrimaryAction: _handlePoiAction,
+            onShare: _handleShare,
+            onRoute: _handleRoute,
+            onChanged: (index) {
+              _controller.setPoiDeckIndex(index);
+              final poi = stackPois[index];
+              _controller.selectPoi(poi);
+              unawaited(_controller.focusOnPoi(poi));
+            },
+            deckHeight: deckHeight,
+            onCardHeightChanged: (poiId, height) =>
+                _handleMeasuredHeight(context, poiId, height),
+            deckMeasurementPadding: _kDeckMeasurementPadding,
+          );
+        },
+      );
+    }
+
+    final deckHeight = _heightForPoi(context, selectedPoi);
+    return SinglePoiCard(
+      poi: selectedPoi,
+      colorScheme: scheme,
+      cardBuilder: _cardBuilder,
+      onPrimaryAction: _handlePoiAction,
+      onShare: _handleShare,
+      onRoute: _handleRoute,
+      onCardHeightChanged: (poiId, height) =>
+          _handleMeasuredHeight(context, poiId, height),
+      deckHeight: deckHeight,
+      deckMeasurementPadding: _kDeckMeasurementPadding,
+    );
   }
 
   void _handlePoiAction(CityPoiModel poi) {
@@ -442,7 +391,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   double _clampHeight(BuildContext context, double raw) {
-    final maxHeight = MediaQuery.of(context).size.height * 0.55;
+    final viewportHeight = MediaQuery.of(context).size.height;
+    final maxHeight = (viewportHeight * 0.42).clamp(280.0, 360.0);
     return raw.clamp(_minCardHeight, maxHeight);
   }
 }

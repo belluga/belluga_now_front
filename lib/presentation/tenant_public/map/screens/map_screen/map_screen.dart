@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_local_action_row.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_soft_location_notice_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_status_message_listener.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
@@ -121,17 +122,32 @@ class _MapScreenState extends State<MapScreen> {
                 Positioned(
                   left: 16,
                   right: 16,
+                  bottom: 148,
+                  child: SafeArea(
+                    top: false,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: PoiDetailDeck(controller: _controller),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
                   bottom: 16,
                   child: SafeArea(
-                    child: PoiDetailDeck(controller: _controller),
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MapLocalActionRow(controller: _controller),
+                        const SizedBox(height: 12),
+                        MapAdaptiveTray(controller: _controller),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-            floatingActionButton: FabMenu(
-              onNavigateToUser: _centerOnUser,
-              mapController: _controller,
             ),
             bottomNavigationBar:
                 const BellugaBottomNavigationBar(currentIndex: 1),
@@ -146,10 +162,6 @@ class _MapScreenState extends State<MapScreen> {
       initialPoiQuery: widget.initialPoiQuery,
       initialPoiStackQuery: widget.initialPoiStackQuery,
     );
-  }
-
-  void _centerOnUser() {
-    _controller.centerOnUser();
   }
 
   void _handleBack() {

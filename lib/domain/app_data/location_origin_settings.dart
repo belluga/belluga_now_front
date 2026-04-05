@@ -61,6 +61,12 @@ class LocationOriginSettings {
   bool get usesTenantDefaultLocation =>
       mode == LocationOriginMode.tenantDefaultLocation;
   bool get usesUserFixedLocation => mode == LocationOriginMode.userFixedLocation;
+  bool get usesUserFixedPreference =>
+      usesUserFixedLocation && reason == LocationOriginReason.userPreference;
+  bool get usesTenantDefaultOutsideRange =>
+      usesTenantDefaultLocation && reason == LocationOriginReason.outsideRange;
+  bool get usesTenantDefaultUnavailable =>
+      usesTenantDefaultLocation && reason == LocationOriginReason.unavailable;
   bool get usesFixedReference =>
       usesTenantDefaultLocation || usesUserFixedLocation;
 
