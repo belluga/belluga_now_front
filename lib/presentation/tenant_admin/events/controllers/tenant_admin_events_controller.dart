@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -342,7 +343,9 @@ class TenantAdminEventsController implements Disposable {
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedArtistIds: {
-        ...?existingEvent?.artistIds.map((artistId) => artistId.value),
+        ...?existingEvent?.eventParties
+            .where((party) => party.partyType == 'artist')
+            .map((party) => party.partyRefId),
       },
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
@@ -1182,6 +1185,18 @@ class TenantAdminEventsController implements Disposable {
       eventsErrorStreamValue.addValue(error.toString());
       rethrow;
     }
+  }
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      inspectLegacyEventParties() async {
+    return _eventsRepository.fetchLegacyEventPartiesSummary();
+  }
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
+    final summary = await _eventsRepository.repairLegacyEventParties();
+    await loadEvents();
+    return summary;
   }
 
   void clearSubmitMessages() {

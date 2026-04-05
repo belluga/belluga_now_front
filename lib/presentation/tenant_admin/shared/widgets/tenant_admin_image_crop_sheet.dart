@@ -108,6 +108,7 @@ class _TenantAdminImageCropSheetState
           TenantAdminImageSlot.darkIcon => 1.0,
           TenantAdminImageSlot.pwaIcon => 1.0,
           TenantAdminImageSlot.mapFilter => 1.0,
+          TenantAdminImageSlot.typeVisual => 1.0,
           TenantAdminImageSlot.avatar => 1.0,
         };
 
@@ -120,6 +121,7 @@ class _TenantAdminImageCropSheetState
         TenantAdminImageSlot.darkIcon => 'Recortar icone escuro',
         TenantAdminImageSlot.pwaIcon => 'Recortar icone PWA',
         TenantAdminImageSlot.mapFilter => 'Recortar imagem do filtro',
+        TenantAdminImageSlot.typeVisual => 'Recortar imagem canônica do tipo',
       };
 
   Future<void> _submit() async {

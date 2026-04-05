@@ -3,8 +3,6 @@ export 'mock_artist_seed.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
 import 'mock_artist_seed.dart';
@@ -27,21 +25,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
   List<EventDTO>? _cachedEvents;
   static const Duration _assumedLiveDuration = Duration(hours: 3);
 
-  @override
-  Future<EventSummaryDTO> fetchSummary() async {
-    final events = await fetchEvents();
-    final items = events
-        .map(
-          (event) => EventSummaryItemDTO(
-            dateTimeStart: event.dateTimeStart,
-            color: _getTypeColor(event.type.id),
-          ),
-        )
-        .toList();
-
-    return EventSummaryDTO(items: items);
-  }
-
   /// Generates a stable 24-character hex MongoDB ObjectId from a string seed
   static String generateMongoId(String seed) {
     // Use hashCode to generate a stable number from the seed
@@ -50,17 +33,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final hexString = hash.toRadixString(16).padLeft(24, '0');
     // Ensure it's exactly 24 characters
     return hexString.substring(0, 24);
-  }
-
-  String _getTypeColor(String typeId) {
-    if (typeId == _concertType.id) return _concertType.color ?? '#000000';
-    if (typeId == _workshopType.id) return _workshopType.color ?? '#000000';
-    return '#000000';
-  }
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async {
-    return _loadEvents();
   }
 
   @override
@@ -442,7 +414,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   // Generate stable fake MongoDB IDs for event types
   static final String _concertTypeId = '507f1f77bcf86cd799439011';
-  static final String _workshopTypeId = '507f1f77bcf86cd799439012';
 
   static final _concertType = EventTypeDTO(
     id: _concertTypeId,
@@ -451,15 +422,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
     description: 'Apresentacoes ao vivo',
     icon: 'music',
     color: '#FF4FA0E3',
-  );
-
-  static final _workshopType = EventTypeDTO(
-    id: _workshopTypeId,
-    name: 'Oficina',
-    slug: 'oficina',
-    description: 'Atividades guiadas com especialistas',
-    icon: 'workshop',
-    color: '#FFE80D5D',
   );
 
   static const List<_EventVenue> _eventVenues = [

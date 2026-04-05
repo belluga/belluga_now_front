@@ -40,7 +40,10 @@ void main() {
     expect(favorites.first.slug, 'profile-1');
     expect(favorites.first.registryKey, 'account_profile');
     expect(favorites.first.targetType, 'account_profile');
+    expect(favorites.first.coverUrl, 'https://cdn.test/profile-1-cover.png');
+    expect(favorites.first.profileType, 'artist');
     expect(favorites.first.nextEventOccurrenceAt, isNotNull);
+    expect(favorites.first.liveNowEventOccurrenceId, 'occ-live-1');
     expect(favorites[1].id, 'profile-2');
 
     expect(adapter.requests, hasLength(2));
@@ -207,11 +210,15 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'slug': 'profile-1',
                 'display_name': 'Profile One',
                 'avatar_url': 'https://cdn.test/profile-1.png',
+                'cover_url': 'https://cdn.test/profile-1-cover.png',
+                'profile_type': 'artist',
               },
               'snapshot': {
                 'next_event_occurrence_id': 'occ-1',
                 'next_event_occurrence_at': '2026-03-22T20:00:00Z',
                 'last_event_occurrence_at': null,
+                'live_now_event_occurrence_id': 'occ-live-1',
+                'live_now_event_occurrence_at': '2026-03-20T20:00:00Z',
               },
               'navigation': {
                 'kind': 'account_profile',
@@ -236,11 +243,15 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'slug': 'profile-2',
                 'display_name': 'Profile Two',
                 'avatar_url': null,
+                'cover_url': null,
+                'profile_type': 'restaurant',
               },
               'snapshot': {
                 'next_event_occurrence_id': null,
                 'next_event_occurrence_at': null,
                 'last_event_occurrence_at': '2026-03-18T20:00:00Z',
+                'live_now_event_occurrence_id': null,
+                'live_now_event_occurrence_at': null,
               },
               'navigation': {
                 'kind': 'account_profile',

@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
@@ -281,6 +282,33 @@ class TenantAdminEventsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'delete event');
+    }
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/events/legacy_event_parties/summary',
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _responseDecoder.decodeLegacyEventPartiesSummary(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load legacy event parties summary');
+    }
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    try {
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/events/legacy_event_parties/repair',
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _responseDecoder.decodeLegacyEventPartiesSummary(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'repair legacy event parties');
     }
   }
 

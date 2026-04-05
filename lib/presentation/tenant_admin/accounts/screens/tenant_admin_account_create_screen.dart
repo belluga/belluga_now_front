@@ -13,12 +13,10 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_admin_account_create_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -101,161 +99,6 @@ class _TenantAdminAccountCreateScreenState
       return null;
     }
     return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
-  }
-
-  Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final slot =
-        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
-    if (isAvatar && _controller.createStateStreamValue.value.avatarBusy) {
-      return;
-    }
-    if (!isAvatar && _controller.createStateStreamValue.value.coverBusy) {
-      return;
-    }
-    try {
-      if (isAvatar) {
-        _controller.updateCreateAvatarBusy(true);
-      } else {
-        _controller.updateCreateCoverBusy(true);
-      }
-      final picked = await _controller.pickImageFromDevice(slot: slot);
-      if (picked == null) {
-        return;
-      }
-      if (!mounted) {
-        return;
-      }
-
-      final cropped = await showTenantAdminImageCropSheet(
-        context: context,
-        sourceFile: picked,
-        slot: slot,
-        readBytesForCrop: _controller.readImageBytesForCrop,
-        prepareCroppedFile: (croppedData, cropSlot) =>
-            _controller.prepareCroppedImage(
-          croppedData,
-          slot: cropSlot,
-        ),
-      );
-      if (cropped == null) {
-        return;
-      }
-      if (isAvatar) {
-        _controller.updateCreateAvatarFile(cropped);
-      } else {
-        _controller.updateCreateCoverFile(cropped);
-      }
-    } on TenantAdminImageIngestionException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } finally {
-      if (isAvatar) {
-        _controller.updateCreateAvatarBusy(false);
-      } else {
-        _controller.updateCreateCoverBusy(false);
-      }
-    }
-  }
-
-  Future<void> _pickImage({required bool isAvatar}) async {
-    final source = await showTenantAdminImageSourceSheet(
-      context: context,
-      title: isAvatar ? 'Adicionar avatar' : 'Adicionar capa',
-    );
-    if (source == null) {
-      return;
-    }
-    if (source == TenantAdminImageSourceOption.device) {
-      await _pickImageFromDevice(isAvatar: isAvatar);
-      return;
-    }
-    await _pickImageFromWeb(isAvatar: isAvatar);
-  }
-
-  Future<void> _pickImageFromWeb({required bool isAvatar}) async {
-    final slot =
-        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
-    if (isAvatar && _controller.createStateStreamValue.value.avatarBusy) {
-      return;
-    }
-    if (!isAvatar && _controller.createStateStreamValue.value.coverBusy) {
-      return;
-    }
-    final url = await _promptWebImageUrl(
-      title: isAvatar ? 'URL do avatar' : 'URL da capa',
-    );
-    if (url == null || !mounted) {
-      return;
-    }
-    try {
-      if (isAvatar) {
-        _controller.updateCreateAvatarBusy(true);
-      } else {
-        _controller.updateCreateCoverBusy(true);
-      }
-      final sourceFile = await _controller.fetchImageFromUrlForCrop(
-        imageUrl: url,
-      );
-      if (!mounted) {
-        return;
-      }
-      final cropped = await showTenantAdminImageCropSheet(
-        context: context,
-        sourceFile: sourceFile,
-        slot: slot,
-        readBytesForCrop: _controller.readImageBytesForCrop,
-        prepareCroppedFile: (croppedData, cropSlot) =>
-            _controller.prepareCroppedImage(
-          croppedData,
-          slot: cropSlot,
-        ),
-      );
-      if (cropped == null) return;
-      if (isAvatar) _controller.updateCreateAvatarFile(cropped);
-      if (!isAvatar) _controller.updateCreateCoverFile(cropped);
-    } on TenantAdminImageIngestionException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } finally {
-      if (isAvatar) {
-        _controller.updateCreateAvatarBusy(false);
-      } else {
-        _controller.updateCreateCoverBusy(false);
-      }
-    }
-  }
-
-  Future<String?> _promptWebImageUrl({required String title}) async {
-    final result = await showTenantAdminFieldEditSheet(
-      context: context,
-      title: title,
-      label: 'URL da imagem',
-      initialValue: '',
-      helperText: 'Use URL completa (http/https).',
-      keyboardType: TextInputType.url,
-      textCapitalization: TextCapitalization.none,
-      autocorrect: false,
-      enableSuggestions: false,
-      validator: (value) {
-        final trimmed = value?.trim() ?? '';
-        if (trimmed.isEmpty) {
-          return 'URL obrigatoria.';
-        }
-        final uri = Uri.tryParse(trimmed);
-        final hasScheme = uri != null &&
-            (uri.scheme == 'http' || uri.scheme == 'https') &&
-            uri.host.isNotEmpty;
-        if (!hasScheme) {
-          return 'URL invalida.';
-        }
-        return null;
-      },
-    );
-    return result?.value.trim();
   }
 
   void _clearImage({required bool isAvatar}) {
@@ -648,7 +491,7 @@ class _TenantAdminAccountCreateScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (showAvatar) ...[
-              TenantAdminImageUploadField(
+              TenantAdminCanonicalImageUploadField(
                 variant: TenantAdminImageUploadVariant.avatar,
                 preview: state.avatarFile != null
                     ? ClipRRect(
@@ -693,17 +536,30 @@ class _TenantAdminAccountCreateScreenState
                 removeButtonKey: const ValueKey(
                   'tenant_admin_account_create_avatar_remove',
                 ),
-                onAdd: () => _pickImage(isAvatar: true),
+                sourceSheetTitle: 'Adicionar avatar',
+                urlPromptTitle: 'URL do avatar',
                 busy: state.avatarBusy,
                 canRemove: state.avatarFile != null ||
                     (state.avatarWebUrl != null &&
                         state.avatarWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: true),
+                initialWebUrl: state.avatarWebUrl,
+                slot: TenantAdminImageSlot.avatar,
+                pickFromDevice: () => _controller.pickImageFromDevice(
+                  slot: TenantAdminImageSlot.avatar,
+                ),
+                fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
+                readBytesForCrop: _controller.readImageBytesForCrop,
+                prepareCroppedFile: _controller.prepareCroppedImage,
+                onBusyChanged: _controller.updateCreateAvatarBusy,
+                onImageSelected: (cropped) async {
+                  _controller.updateCreateAvatarFile(cropped);
+                },
               ),
             ],
             if (showAvatar && showCover) const SizedBox(height: 16),
             if (showCover) ...[
-              TenantAdminImageUploadField(
+              TenantAdminCanonicalImageUploadField(
                 variant: TenantAdminImageUploadVariant.cover,
                 preview: state.coverFile != null
                     ? ClipRRect(
@@ -752,12 +608,25 @@ class _TenantAdminAccountCreateScreenState
                 removeButtonKey: const ValueKey(
                   'tenant_admin_account_create_cover_remove',
                 ),
-                onAdd: () => _pickImage(isAvatar: false),
+                sourceSheetTitle: 'Adicionar capa',
+                urlPromptTitle: 'URL da capa',
                 busy: state.coverBusy,
                 canRemove: state.coverFile != null ||
                     (state.coverWebUrl != null &&
                         state.coverWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: false),
+                initialWebUrl: state.coverWebUrl,
+                slot: TenantAdminImageSlot.cover,
+                pickFromDevice: () => _controller.pickImageFromDevice(
+                  slot: TenantAdminImageSlot.cover,
+                ),
+                fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
+                readBytesForCrop: _controller.readImageBytesForCrop,
+                prepareCroppedFile: _controller.prepareCroppedImage,
+                onBusyChanged: _controller.updateCreateCoverBusy,
+                onImageSelected: (cropped) async {
+                  _controller.updateCreateCoverFile(cropped);
+                },
               ),
             ],
             FormValidationGroupError(

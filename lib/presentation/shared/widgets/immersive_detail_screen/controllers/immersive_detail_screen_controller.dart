@@ -30,16 +30,14 @@ class ImmersiveDetailScreenController {
   final GlobalKey<NestedScrollViewState> nestedScrollViewKey =
       GlobalKey<NestedScrollViewState>();
 
-  double _topPadding = 0;
   bool _isProgrammaticScroll = false;
   int? _lastSectionViewedIndex;
   Future<EventTrackerTimedEventHandle?>? _activeSectionTimedEventFuture;
   int? _activeSectionIndex;
+  double _pinnedHeaderHeight = 0;
 
   // Track visibility of each tab
   final Map<int, double> _tabVisibility = {};
-
-  void setTopPadding(double topPadding) => _topPadding = topPadding;
 
   void updateTabs(List<ImmersiveTabItem> updatedTabs) {
     tabItems = updatedTabs;
@@ -54,6 +52,10 @@ class ImmersiveDetailScreenController {
     if (currentTabIndexStreamValue.value >= tabItems.length) {
       _setCurrentTabIndex(tabItems.length - 1, track: false);
     }
+  }
+
+  void updatePinnedHeaderHeight(double value) {
+    _pinnedHeaderHeight = value < 0 ? 0 : value;
   }
 
   void onTabVisibilityChanged(int index, double visibleFraction) {
@@ -96,48 +98,77 @@ class ImmersiveDetailScreenController {
     // Set flag to prevent auto tab switching during programmatic scroll
     _isProgrammaticScroll = true;
 
-    // For the first tab, try scrolling to negative offset to compensate for any padding
-    if (index == 0) {
-      // Test different offsets to find the right one
-      const testOffset = -48.0; // Try negative tab bar height
+    Future<void>(() async {
+      try {
+        if (index == 0) {
+          final innerPosition = nestedState.innerController.position;
+          if (innerPosition.pixels > 0) {
+            await nestedState.innerController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
 
-      nestedState.innerController
-          .animateTo(
-        testOffset,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      )
-          .then((_) {
+          final outerPosition = nestedState.outerController.position;
+          if (outerPosition.pixels > 0) {
+            await nestedState.outerController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
+
+          return;
+        }
+
+        double targetScroll = 0;
+        for (int i = 0; i < index; i++) {
+          final renderBox =
+              tabItems[i].key.currentContext?.findRenderObject() as RenderBox?;
+          targetScroll += renderBox?.size.height ?? 0;
+        }
+        targetScroll = (targetScroll - _pinnedHeaderHeight).clamp(
+          0.0,
+          double.infinity,
+        );
+
+        final outerPosition = nestedState.outerController.position;
+        final collapsedHeaderOffset = outerPosition.maxScrollExtent;
+        if ((outerPosition.pixels - collapsedHeaderOffset).abs() > 0.5) {
+          await nestedState.outerController.animateTo(
+            collapsedHeaderOffset,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+
+        await nestedState.innerController.animateTo(
+          targetScroll,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      } finally {
         _isProgrammaticScroll = false;
-      });
+      }
+    });
+  }
+
+  void onHorizontalSwipeEnd(double? primaryVelocity) {
+    if (primaryVelocity == null || primaryVelocity.abs() < 300) {
+      return;
+    }
+    if (tabItems.length < 2) {
       return;
     }
 
-    // For other tabs, use simple sum of heights
-    double targetScroll = 0;
-    for (int i = 0; i < index; i++) {
-      final tabContext = tabItems[i].key.currentContext;
-      if (tabContext != null) {
-        final renderBox = tabContext.findRenderObject() as RenderBox?;
-        targetScroll += renderBox?.size.height ?? 0;
-      }
+    final delta = primaryVelocity < 0 ? 1 : -1;
+    final targetIndex = (currentTabIndexStreamValue.value + delta)
+        .clamp(0, tabItems.length - 1);
+    if (targetIndex == currentTabIndexStreamValue.value) {
+      return;
     }
-
-    // The inner controller's scroll 0 is AFTER the pinned header
-    // So we need to subtract the pinned header height
-    const tabBarHeight = 48.0;
-    final pinnedHeaderHeight = _topPadding + kToolbarHeight + tabBarHeight;
-    final adjustedTarget = targetScroll - pinnedHeaderHeight;
-
-    nestedState.innerController
-        .animateTo(
-      adjustedTarget,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    )
-        .then((_) {
-      _isProgrammaticScroll = false;
-    });
+    onTabTapped(targetIndex);
   }
 
   void dispose() {

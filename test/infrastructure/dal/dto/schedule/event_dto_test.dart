@@ -27,6 +27,7 @@ void main() {
       'venue': {
         'id': 'venue-1',
         'display_name': 'Arena Central',
+        'slug': 'arena-central',
       },
       'latitude': -20.2,
       'longitude': -40.1,
@@ -36,6 +37,7 @@ void main() {
         {
           'id': 'artist-1',
           'display_name': 'The Band',
+          'slug': 'the-band',
         },
       ],
       'tags': ['music'],
@@ -132,6 +134,7 @@ void main() {
       'venue': {
         'id': '69c558629b497835b900ac86',
         'display_name': 'Carvoeiro',
+        'slug': 'carvoeiro',
         'tagline': null,
         'hero_image_url': null,
         'logo_url': null,
@@ -145,6 +148,8 @@ void main() {
         {
           'id': '69949486be6cd999250a2507',
           'display_name': 'Ananda Torres',
+          'slug': 'ananda-torres',
+          'profile_type': 'artist',
           'avatar_url':
               'https://guarappari.belluga.space/account-profiles/69949486be6cd999250a2507/avatar?v=1771359996',
           'highlight': false,
@@ -172,6 +177,148 @@ void main() {
     expect(
       domain.artists.first.displayName,
       'Ananda Torres',
+    );
+  });
+
+  test('parses linked account profiles with taxonomy names for dynamic tabs',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909080f',
+      'slug': 'evt-linked',
+      'type': {
+        'id': '69a77aa3680219d569090810',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com perfis',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'artists': const [],
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'slug': 'ananda-torres',
+          'profile_type': 'artist',
+          'avatar_url': 'https://tenant.test/artist-avatar.png',
+          'cover_url': 'https://tenant.test/artist-cover.png',
+          'taxonomy_terms': [
+            {'type': 'genre', 'value': 'samba', 'name': 'Samba'},
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.linkedAccountProfiles, hasLength(1));
+    expect(domain.linkedAccountProfiles.first.profileType, 'artist');
+    expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
+    expect(
+      domain.linkedAccountProfiles.first.taxonomyTerms.first.labelValue.value,
+      'Samba',
+    );
+  });
+
+  test('does not synthesize linked account profiles from artists or venue', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909080f',
+      'slug': 'evt-linked-cutover',
+      'type': {
+        'id': '69a77aa3680219d569090810',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento canônico',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'venue': {
+        'id': '69c558629b497835b900ac86',
+        'display_name': 'Carvoeiro',
+        'slug': 'carvoeiro',
+      },
+      'artists': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'slug': 'ananda-torres',
+          'profile_type': 'artist',
+        },
+      ],
+      'linked_account_profiles': const [],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.linkedAccountProfiles, isEmpty);
+  });
+
+  test('accepts account-profile slug aliases in linked account profiles', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909081a',
+      'slug': 'evt-aliased-slug',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com alias',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'artists': const [],
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'profile_type': 'artist',
+          'account_profile_slug': 'ananda-torres',
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.linkedAccountProfiles, hasLength(1));
+    expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
+  });
+
+  test('throws when linked account profile slug is missing after enrichment', () {
+    expect(
+      () => EventDTO.fromJson({
+        'event_id': '69a77aa3680219d56909081b',
+        'slug': 'evt-missing-linked-slug',
+        'type': {
+          'id': 'show',
+          'name': 'Show',
+          'slug': 'show',
+          'description': '',
+        },
+        'title': 'Evento inconsistente',
+        'content': 'Descricao',
+        'location': 'Carvoeiro',
+        'date_time_start': '2026-03-03T10:00:00+00:00',
+        'artists': const [],
+        'linked_account_profiles': [
+          {
+            'id': 'artist-1',
+            'display_name': 'Ananda Torres',
+            'profile_type': 'artist',
+          },
+        ],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('linked_account_profiles[artist-1].slug'),
+        ),
+      ),
     );
   });
 }

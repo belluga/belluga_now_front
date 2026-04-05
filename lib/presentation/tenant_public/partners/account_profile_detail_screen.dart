@@ -1,28 +1,40 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
-import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart' hide Marker;
+import 'package:flutter_map/flutter_map.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class AccountProfileDetailScreen extends StatefulWidget {
   const AccountProfileDetailScreen({
     super.key,
     required this.accountProfile,
+    this.directionsAppChooser,
   });
 
   final AccountProfileModel accountProfile;
+  final DirectionsAppChooserContract? directionsAppChooser;
 
   @override
   State<AccountProfileDetailScreen> createState() =>
@@ -33,6 +45,8 @@ class _AccountProfileDetailScreenState
     extends State<AccountProfileDetailScreen> {
   final AccountProfileDetailController _controller =
       GetIt.I.get<AccountProfileDetailController>();
+  late final DirectionsAppChooserContract _directionsAppChooser =
+      widget.directionsAppChooser ?? DirectionsAppChooser();
 
   @override
   void initState() {
@@ -52,40 +66,75 @@ class _AccountProfileDetailScreenState
         streamValue: _controller.isLoadingStreamValue,
         builder: (context, isLoading) {
           if (isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildLoadingState();
           }
-          return StreamValueBuilder<AccountProfileModel?>(
-            streamValue: _controller.accountProfileStreamValue,
-            onNullWidget: const Center(child: Text('Perfil não encontrado')),
-            builder: (context, accountProfile) {
-              return StreamValueBuilder<PartnerProfileConfig?>(
-                streamValue: _controller.profileConfigStreamValue,
-                onNullWidget: const Center(child: CircularProgressIndicator()),
-                builder: (context, config) {
-                  final resolvedAccountProfile = accountProfile!;
-                  final resolvedConfig = config!;
-                  return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
-                    streamValue: _controller.moduleDataStreamValue,
-                    builder: (context, moduleData) {
-                      return StreamValueBuilder<Set<String>>(
-                        streamValue: _controller.favoriteIdsStream,
-                        builder: (context, favorites) {
-                          final isFav =
-                              favorites.contains(resolvedAccountProfile.id);
-                          final isFavoritable =
-                              _controller.isFavoritable(resolvedAccountProfile);
-                          final configTabs =
-                              _buildTabsFromConfig(resolvedConfig, moduleData);
-                          final screen = ImmersiveDetailScreen(
-                            heroContent: _buildHero(
-                                resolvedAccountProfile, isFav, isFavoritable),
-                            title: resolvedAccountProfile.name,
-                            tabs: configTabs,
-                            betweenHeroAndTabs:
-                                _buildBetweenHero(resolvedAccountProfile),
-                            footer: _buildFooter(isFav, isFavoritable),
+          return StreamValueBuilder<String>(
+            streamValue: _controller.errorMessageStreamValue,
+            builder: (context, errorMessage) {
+              if (errorMessage.trim().isNotEmpty) {
+                return _buildErrorState(errorMessage);
+              }
+              return StreamValueBuilder<AccountProfileModel?>(
+                streamValue: _controller.accountProfileStreamValue,
+                onNullWidget: _buildEmptyState(),
+                builder: (context, accountProfile) {
+                  return StreamValueBuilder<PartnerProfileConfig?>(
+                    streamValue: _controller.profileConfigStreamValue,
+                    onNullWidget: _buildLoadingState(),
+                    builder: (context, config) {
+                      final resolvedAccountProfile = accountProfile!;
+                      final resolvedConfig = config!;
+                      return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
+                        streamValue: _controller.moduleDataStreamValue,
+                        builder: (context, moduleData) {
+                          return StreamValueBuilder<Set<String>>(
+                            streamValue: _controller.favoriteIdsStream,
+                            builder: (context, favorites) {
+                              return StreamValueBuilder<int>(
+                                streamValue:
+                                    _controller.agendaStatusRevisionStreamValue,
+                                builder: (context, _) {
+                                  final isFav = favorites
+                                      .contains(resolvedAccountProfile.id);
+                                  final isFavoritable = _controller
+                                      .isFavoritable(resolvedAccountProfile);
+                                  final configTabs = _buildTabsFromConfig(
+                                    resolvedAccountProfile,
+                                    resolvedConfig,
+                                    moduleData,
+                                    isFav: isFav,
+                                    isFavoritable: isFavoritable,
+                                  );
+                                  final effectiveTabs = configTabs.isEmpty
+                                      ? <ImmersiveTabItem>[
+                                          _buildFallbackTab(
+                                            resolvedAccountProfile,
+                                          ),
+                                        ]
+                                      : configTabs;
+                                  return ImmersiveDetailScreen(
+                                    heroContent: _buildHero(
+                                      resolvedAccountProfile,
+                                    ),
+                                    title: resolvedAccountProfile.name,
+                                    collapsedToolbarHeight: 72,
+                                    centerCollapsedTitle: false,
+                                    appBarActionsBuilder:
+                                        (context, innerBoxIsScrolled) =>
+                                            _buildAppBarActions(
+                                      context,
+                                      innerBoxIsScrolled,
+                                      resolvedAccountProfile,
+                                      isFav: isFav,
+                                      isFavoritable: isFavoritable,
+                                    ),
+                                    tabs: effectiveTabs,
+                                    betweenHeroAndTabs: null,
+                                  );
+                                },
+                              );
+                            },
                           );
-                          return screen;
                         },
                       );
                     },
@@ -99,157 +148,301 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildHero(
-      AccountProfileModel accountProfile, bool isFav, bool isFavoritable) {
+  Widget _buildHero(AccountProfileModel accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
+    final fallbackHero = _buildHeroFallback(
+      colorScheme: colorScheme,
+      visual: resolvedVisual.typeVisual,
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
-        accountProfile.coverUrl != null
+        resolvedVisual.surfaceImageUrl != null
             ? BellugaNetworkImage(
-                accountProfile.coverUrl!,
+                resolvedVisual.surfaceImageUrl!,
                 fit: BoxFit.cover,
-                errorWidget: Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    _iconForType(accountProfile.type),
-                    size: 64,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                errorWidget: fallbackHero,
               )
-            : Container(
-                color: colorScheme.surfaceContainerHighest,
-                child: Icon(
-                  _iconForType(accountProfile.type),
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            : fallbackHero,
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Colors.transparent,
+                  colorScheme.surface.withValues(alpha: 0.16),
+                  colorScheme.surface.withValues(alpha: 0.9),
+                ],
+                stops: const <double>[0, 0.62, 1],
               ),
-        Positioned(
-          right: 16,
-          top: 16,
-          child: isFavoritable
-              ? CircleAvatar(
-                  backgroundColor: Colors.black.withValues(alpha: 0.6),
-                  child: IconButton(
-                    icon: Icon(
-                      isFav ? Icons.favorite : Icons.favorite_border,
-                      color: isFav ? Colors.red : Colors.white,
-                    ),
-                    onPressed: () => _handleFavoriteTap(accountProfile.id),
-                  ),
-                )
-              : const SizedBox.shrink(),
+            ),
+          ),
         ),
         Positioned(
           left: 16,
+          right: 16,
           bottom: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                accountProfile.name,
-                style: const TextStyle(
+          child: AccountProfileIdentityBlock(
+            name: accountProfile.name,
+            avatarUrl: resolvedVisual.identityAvatarUrl,
+            typeVisual: resolvedVisual.typeVisual,
+            identityAvatarKey: const Key('accountProfileHeroIdentityAvatar'),
+            typeAvatarKey: const Key('accountProfileHeroTypeAvatar'),
+            avatarSize: 56,
+            avatarSpacing: 14,
+            typeAvatarSize: 28,
+            typeAvatarIconSize: 16,
+            titleSpacing: 10,
+            supportingSpacing: 12,
+            titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
+                  height: 0.95,
                 ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                children: [
-                  Chip(
-                    label: Text(_labelForType(accountProfile.type)),
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    labelStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (accountProfile.isVerified)
-                    const Chip(
-                      label: Text('Verificado'),
-                      avatar:
-                          Icon(Icons.verified, color: Colors.white, size: 16),
-                      backgroundColor: Colors.green,
-                      labelStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
+            titleTrailing: [
+              if (accountProfile.isVerified)
+                _buildVerifiedBadge(onDarkBackground: true),
             ],
+            supporting: _buildHeroSupporting(accountProfile),
           ),
         ),
       ],
     );
   }
 
-  Widget? _buildBetweenHero(AccountProfileModel accountProfile) {
-    if (accountProfile.tags.isEmpty && accountProfile.engagementData == null) {
-      return null;
+  List<Widget> _buildAppBarActions(
+    BuildContext context,
+    bool innerBoxIsScrolled,
+    AccountProfileModel accountProfile, {
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
+    if (!isFavoritable) {
+      return const <Widget>[];
     }
+
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      color: colorScheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (accountProfile.tags.isNotEmpty) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: accountProfile.tags
-                  .map((t) => Chip(
-                        label: Text(t.value),
-                        backgroundColor: colorScheme.secondaryContainer,
-                      ))
-                  .toList(),
+    final backgroundColor = innerBoxIsScrolled
+        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.96)
+        : Colors.black.withValues(alpha: 0.28);
+    final foregroundColor = _contentColorForBackground(backgroundColor);
+    final iconColor = isFav
+        ? (ThemeData.estimateBrightnessForColor(backgroundColor) ==
+                Brightness.dark
+            ? Colors.red.shade200
+            : Colors.red.shade700)
+        : foregroundColor;
+
+    return <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: innerBoxIsScrolled
+                  ? colorScheme.outlineVariant.withValues(alpha: 0.42)
+                  : Colors.white.withValues(alpha: 0.12),
             ),
-            const SizedBox(height: 8),
-          ],
-          Row(
-            children: [
-              _metricPill(
-                  BooraIcons.invite_solid,
-                  accountProfile.acceptedInvites.toString(),
-                  'Convites aceitos'),
-              if (accountProfile.engagementData != null) ...[
-                const SizedBox(width: 8),
-                _metricPill(
-                    Icons.trending_up,
-                    _engagementLabel(accountProfile.engagementData!),
-                    'Engajamento'),
-              ],
-            ],
           ),
-        ],
+          child: IconButton(
+            key: const Key('accountProfileFavoriteAction'),
+            icon: Icon(
+              isFav ? Icons.favorite : Icons.favorite_border,
+              color: iconColor,
+            ),
+            tooltip: isFav ? 'Favoritado' : 'Favoritar',
+            onPressed: () => _handleFavoriteTap(accountProfile.id),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildHeroFallback({
+    required ColorScheme colorScheme,
+    required ResolvedProfileTypeVisual? visual,
+  }) {
+    if (visual?.isImage == true && visual?.imageUrl != null) {
+      return BellugaNetworkImage(
+        visual!.imageUrl!,
+        fit: BoxFit.cover,
+        errorWidget: _buildDefaultHeroFallback(
+          colorScheme: colorScheme,
+          visual: null,
+        ),
+      );
+    }
+
+    return _buildDefaultHeroFallback(
+      colorScheme: colorScheme,
+      visual: visual,
+    );
+  }
+
+  Widget _buildDefaultHeroFallback({
+    required ColorScheme colorScheme,
+    required ResolvedProfileTypeVisual? visual,
+  }) {
+    return Container(
+      color: visual?.backgroundColor ?? colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Icon(
+        visual?.iconData ?? Icons.account_circle,
+        size: 64,
+        color: visual?.iconColor ?? colorScheme.onSurfaceVariant,
       ),
     );
   }
 
+  Widget? _buildHeroSupporting(AccountProfileModel accountProfile) {
+    final children = <Widget>[
+      if (accountProfile.distanceMeters != null)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.place_outlined,
+              size: 16,
+              color: Colors.white70,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _distanceLabelFromMeters(accountProfile.distanceMeters!),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      if (accountProfile.tags.isNotEmpty)
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: accountProfile.tags
+              .map(
+                (tag) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Text(
+                    tag.value,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+    ];
+
+    if (children.isEmpty) {
+      return null;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < children.length; index++) ...[
+          if (index > 0) const SizedBox(height: 12),
+          children[index],
+        ],
+      ],
+    );
+  }
+
   List<ImmersiveTabItem> _buildTabsFromConfig(
+    AccountProfileModel accountProfile,
     PartnerProfileConfig config,
     Map<ProfileModuleId, Object?> moduleData,
+    {
+    required bool isFav,
+    required bool isFavoritable,
+  }
   ) {
-    return config.tabs
+    final agendaEvents = _agendaEventsFromModuleData(moduleData);
+    final locationView = _locationFromModuleData(moduleData);
+
+    final tabs = config.tabs
+        .where(
+          (tab) => _shouldRenderTab(
+            tab,
+            agendaEvents: agendaEvents,
+            location: locationView,
+          ),
+        )
         .map(
           (tab) => ImmersiveTabItem(
             title: tab.title,
             content: _buildModules(tab.modules, moduleData),
-            footer: _actionFooter('Seguir'),
+            footer: _buildTabFooter(
+              accountProfile,
+              tab,
+              location: locationView,
+              isFav: isFav,
+              isFavoritable: isFavoritable,
+            ),
           ),
         )
         .toList();
+
+    tabs.sort(
+      (left, right) =>
+          _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
+    );
+
+    return tabs;
   }
 
-  Widget _buildFooter(bool isFav, bool isFavoritable) {
-    if (!isFavoritable) return const SizedBox.shrink();
-    return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
+  int _tabOrderRank(String title) {
+    final normalized = title.trim().toLowerCase();
+    if (normalized == 'sobre') {
+      return 0;
+    }
+    if (normalized == 'agenda' || normalized == 'eventos') {
+      return 1;
+    }
+    if (normalized.contains('chegar')) {
+      return 2;
+    }
+    return 100;
+  }
+
+  bool _shouldRenderTab(
+    ProfileTabConfig tab, {
+    required List<PartnerEventView> agendaEvents,
+    required PartnerLocationView? location,
+  }) {
+    final lowerTitle = tab.title.toLowerCase();
+    if (lowerTitle.contains('chegar')) {
+      return _canRenderLocationSection(location);
+    }
+    if (lowerTitle.contains('evento') || lowerTitle.contains('agenda')) {
+      return agendaEvents.isNotEmpty;
+    }
+    return true;
+  }
+
+  ImmersiveTabItem _buildFallbackTab(AccountProfileModel accountProfile) {
+    return ImmersiveTabItem(
+      title: 'Perfil',
+      content: _buildNoSectionsFallback(accountProfile),
+    );
   }
 
   @override
@@ -259,8 +452,7 @@ class _AccountProfileDetailScreenState
   }
 
   void _checkPendingIntent() {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final redirectPath = _safeRedirectPath();
     final action = AuthWallTelemetry.consumePendingAction(redirectPath);
     if (action != null && action.actionType == AuthWallActionType.favorite) {
       final partnerId = action.payload?['partnerId'] as String?;
@@ -271,15 +463,14 @@ class _AccountProfileDetailScreenState
   }
 
   void _handleFavoriteTap(String accountProfileId) {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final redirectPath = _safeRedirectPath();
     if (kIsWeb) {
       AuthWallTelemetry.trackTriggered(
         actionType: AuthWallActionType.favorite,
         redirectPath: redirectPath,
         payload: {'partnerId': accountProfileId},
       );
-      context.router.pushPath(
+      _safeRouterPushPath(
         buildWebPromotionBoundaryPath(
           redirectPath: redirectPath,
         ),
@@ -297,63 +488,37 @@ class _AccountProfileDetailScreenState
       payload: {'partnerId': accountProfileId},
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
-    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+    _safeRouterReplacePath('/auth/login?redirect=$encodedRedirect');
   }
 
-  IconData _iconForType(String type) {
-    switch (type) {
-      case 'artist':
-        return Icons.music_note;
-      case 'venue':
-        return Icons.place;
-      case 'experience_provider':
-        return Icons.explore;
-      case 'influencer':
-        return Icons.person;
-      case 'curator':
-        return Icons.bookmark;
-      default:
-        return Icons.account_circle;
-    }
+  Widget _buildLoadingState() {
+    return const Center(
+      key: Key('accountProfileLoadingState'),
+      child: CircularProgressIndicator(),
+    );
   }
 
-  String _labelForType(String type) {
-    switch (type) {
-      case 'artist':
-        return 'Artista';
-      case 'venue':
-        return 'Local';
-      case 'experience_provider':
-        return 'Experiência';
-      case 'influencer':
-        return 'Conector';
-      case 'curator':
-        return 'Curador';
-      default:
-        return type;
-    }
-  }
-
-  Widget _metricPill(IconData icon, String value, String tooltip) {
-    return Tooltip(
-      message: tooltip,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
+  Widget _buildEmptyState() {
+    return Center(
+      key: const Key('accountProfileEmptyState'),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 4),
+            const Icon(Icons.person_search_outlined, size: 40),
+            const SizedBox(height: 12),
             Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
+              'Perfil não encontrado',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Esse parceiro não está disponível neste momento.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
@@ -361,34 +526,201 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  String _engagementLabel(EngagementData data) {
-    switch (data) {
-      case ArtistEngagementData():
-        return data.status;
-      case VenueEngagementData():
-        return '${data.presenceCount} presenças';
-      case ExperienceEngagementData():
-        return '${data.experienceCount} exp.';
-      case InfluencerEngagementData():
-        return '${data.inviteCount} convites';
-      case CuratorEngagementData():
-        return '${data.articleCount + data.docCount} itens';
-    }
-    return '';
-  }
-
-  Widget _actionFooter(String label) {
-    return Container(
-      color: Colors.transparent,
-      padding: const EdgeInsets.all(12),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {},
-          child: Text(label),
+  Widget _buildErrorState(String message) {
+    return Center(
+      key: const Key('accountProfileErrorState'),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              'Não foi possível abrir o perfil',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildNoSectionsFallback(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final typeLabel = _controller.typeLabelFor(accountProfile);
+    return Padding(
+      key: const Key('accountProfileNoSectionsFallback'),
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Mais sobre este perfil',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Este $typeLabel ainda não publicou módulos adicionais por aqui. '
+              'Novas informações devem aparecer em breve.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerifiedBadge({required bool onDarkBackground}) {
+    final background = onDarkBackground
+        ? Colors.white.withValues(alpha: 0.12)
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
+    final foreground =
+        onDarkBackground ? Colors.white : Theme.of(context).colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: onDarkBackground
+              ? Colors.white.withValues(alpha: 0.14)
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Icon(Icons.verified, size: 16, color: foreground),
+    );
+  }
+
+  String _safeRedirectPath() {
+    try {
+      return buildRedirectPathFromRouteMatch(context.routeData.route);
+    } catch (_) {
+      return '/';
+    }
+  }
+
+  void _safeRouterPushPath(String path) {
+    try {
+      context.router.pushPath(path);
+    } catch (_) {
+      // Tests and non-router surfaces can ignore this safely.
+    }
+  }
+
+  void _safeRouterReplacePath(String path) {
+    try {
+      context.router.replacePath(path);
+    } catch (_) {
+      // Tests and non-router surfaces can ignore this safely.
+    }
+  }
+
+  List<PartnerEventView> _agendaEventsFromModuleData(
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
+    final raw = moduleData[ProfileModuleId.agendaList];
+    if (raw is List<PartnerEventView>) {
+      return raw;
+    }
+    return const <PartnerEventView>[];
+  }
+
+  PartnerLocationView? _locationFromModuleData(
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
+    final raw = moduleData[ProfileModuleId.locationInfo];
+    return raw is PartnerLocationView ? raw : null;
+  }
+
+  PartnerEventView? _resolveLiveEvent(List<PartnerEventView> events) {
+    for (final event in events) {
+      if (_isHappeningNow(event)) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  bool _isHappeningNow(PartnerEventView event) {
+    final now = DateTime.now();
+    final start = event.startDateTime;
+    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
+    return !now.isBefore(start) && !now.isAfter(end);
+  }
+
+  Widget? _buildTabFooter(
+    AccountProfileModel accountProfile,
+    ProfileTabConfig tab, {
+    required PartnerLocationView? location,
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
+    final lowerTitle = tab.title.toLowerCase();
+    if (lowerTitle.contains('evento') || lowerTitle.contains('agenda')) {
+      if (!isFavoritable || isFav) {
+        return null;
+      }
+      return _favoriteFooter(accountProfile);
+    }
+
+    if (lowerTitle.contains('chegar') && _canOpenMaps(location)) {
+      return _routeFooter(location!);
+    }
+
+    return null;
+  }
+
+  Widget _favoriteFooter(AccountProfileModel accountProfile) {
+    return _buildFooterShell(
+      child: FilledButton.icon(
+        key: const Key('accountProfileFavoriteFooterButton'),
+        onPressed: () => _handleFavoriteTap(accountProfile.id),
+        icon: const Icon(Icons.favorite_border),
+        label: const Text('Favoritar'),
+        style: _primaryFooterButtonStyle(),
+      ),
+    );
+  }
+
+  Widget _routeFooter(PartnerLocationView location) {
+    return _buildFooterShell(
+      child: FilledButton.icon(
+        key: const Key('accountProfileRouteFooterButton'),
+        onPressed: () => _presentDirectionsChooser(location),
+        icon: const Icon(Icons.navigation_outlined),
+        label: const Text('Traçar rota'),
+        style: _primaryFooterButtonStyle(),
+      ),
+    );
+  }
+
+  String _distanceLabelFromMeters(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m de você';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} km de você';
   }
 
   // Placeholder module widgets
@@ -432,7 +764,7 @@ class _AccountProfileDetailScreenState
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            e.date,
+                            _eventDateLabel(e),
                             style: const TextStyle(fontSize: 11),
                           ),
                         ],
@@ -500,85 +832,210 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _agendaList(List<PartnerEventView>? events) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: events == null || events.isEmpty
-          ? const Text('Nenhum evento disponível')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: events
-                  .map(
-                    (e) => Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.event),
-                        title: Text(e.title),
-                        subtitle: Text('${e.date} • ${e.location}'),
-                        trailing: const Icon(Icons.chevron_right),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-    );
-  }
+  Widget _agendaList(
+    AccountProfileModel accountProfile,
+    List<PartnerEventView>? events,
+  ) {
+    final agenda = events ?? const <PartnerEventView>[];
+    if (agenda.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'Nenhum evento disponível por enquanto.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
 
-  Widget _locationInfo(PartnerLocationView? location) {
-    final mapPreviewUri = _buildMapPreviewUri(location);
+    final featuredEvent = _resolveLiveEvent(agenda);
+    final upcomingEvents = agenda
+        .where(
+          (event) =>
+              featuredEvent == null ||
+              event.uniqueId != featuredEvent.uniqueId,
+        )
+        .toList(growable: false);
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            leading: const Icon(Icons.place),
-            title: Text(location?.address ?? 'Endere??o n??o informado'),
-            subtitle: Text(location?.status ?? ''),
+          if (featuredEvent != null) ...[
+            Text(
+              'Acontecendo Agora',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            _buildAgendaLiveHighlightCard(accountProfile, featuredEvent),
+            const SizedBox(height: 28),
+          ],
+          if (upcomingEvents.isNotEmpty) ...[
+            Text(
+              'Próximos Eventos',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            ...upcomingEvents.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildAgendaEventCard(accountProfile, event),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _locationInfo(PartnerLocationView? location) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final distanceLabel = widget.accountProfile.distanceMeters == null
+        ? null
+        : _distanceLabelFromMeters(widget.accountProfile.distanceMeters!);
+    final resolvedAddress = location?.address.trim();
+    final hasAddress = resolvedAddress != null && resolvedAddress.isNotEmpty;
+    final canOpenProfileMap = _canOpenProfileMap(location);
+    final distanceBadgeBackground = Colors.white.withValues(alpha: 0.96);
+    final distanceBadgeForeground =
+        _contentColorForBackground(distanceBadgeBackground);
+    final addressCardBackground = colorScheme.surface.withValues(alpha: 0.95);
+    final addressCardForeground =
+        _contentColorForBackground(addressCardBackground);
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Como Chegar',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
           ),
           const SizedBox(height: 12),
           GestureDetector(
-            onTap: () => _openMaps(location),
+            key: const Key('accountProfileLocationTile'),
+            onTap: canOpenProfileMap ? _openProfileMap : null,
             child: Container(
-              height: 180,
+              height: 260,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(28),
+                color: colorScheme.surfaceContainerHighest,
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (mapPreviewUri != null)
-                    BellugaNetworkImage(
-                      mapPreviewUri.toString(),
-                      fit: BoxFit.cover,
-                      errorWidget: _buildMapFallback(location),
-                    )
-                  else
-                    _buildMapFallback(location),
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(20),
+                  _buildLocationMapCanvas(location),
+                  if (distanceLabel != null)
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: Container(
+                        key: const Key('accountProfileLocationDistanceBadge'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: distanceBadgeBackground,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          distanceLabel,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: distanceBadgeForeground,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
                       ),
-                      child: const Icon(Icons.open_in_new, size: 18),
+                    ),
+                  Positioned(
+                    left: 18,
+                    right: 18,
+                    bottom: 18,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: addressCardBackground,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.near_me_outlined,
+                              color: _contentColorForBackground(
+                                colorScheme.primaryContainer,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hasAddress
+                                      ? 'Endereço'
+                                      : 'Ver no mapa',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(
+                                        color: addressCardForeground,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                if (hasAddress) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    resolvedAddress,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: addressCardForeground,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (canOpenProfileMap)
+                            Icon(
+                              Icons.map_outlined,
+                              color: addressCardForeground,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _openMaps(location),
-              icon: const Icon(Icons.navigation),
-              label: const Text('Tra??ar rota'),
             ),
           ),
         ],
@@ -586,14 +1043,76 @@ class _AccountProfileDetailScreenState
     );
   }
 
+  Widget _buildLocationMapCanvas(PartnerLocationView? location) {
+    final lat = double.tryParse(location?.lat ?? '');
+    final lng = double.tryParse(location?.lng ?? '');
+    if (lat == null || lng == null) {
+      return _buildMapFallback(location);
+    }
+
+    final point = LatLng(lat, lng);
+    final colorScheme = Theme.of(context).colorScheme;
+    return IgnorePointer(
+      child: FlutterMap(
+        key: const Key('accountProfileEmbeddedMapPreview'),
+        options: MapOptions(
+          initialCenter: point,
+          initialZoom: 15,
+          minZoom: 15,
+          maxZoom: 15,
+          interactionOptions: InteractionOptions(
+            flags: InteractiveFlag.none,
+            rotationWinGestures: MultiFingerGesture.none,
+            cursorKeyboardRotationOptions:
+                CursorKeyboardRotationOptions.disabled(),
+          ),
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.belluganow.app',
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: point,
+                width: 64,
+                height: 64,
+                child: Center(
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.onPrimary,
+                        width: 3,
+                      ),
+                    ),
+                    child: Icon(
+                      BooraIcons.store_mall_directory,
+                      color: colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMapFallback(PartnerLocationView? location) {
+    final colorScheme = Theme.of(context).colorScheme;
     final address = location?.address;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.blueGrey.shade200,
-            Colors.blueGrey.shade100,
+            colorScheme.surfaceContainerHighest,
+            colorScheme.secondaryContainer,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -603,12 +1122,25 @@ class _AccountProfileDetailScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.map_outlined, size: 32),
-            const SizedBox(height: 6),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                BooraIcons.store_mall_directory,
+                color: colorScheme.onPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
               address?.isNotEmpty == true ? address! : 'Mapa do local',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -618,38 +1150,630 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Uri? _buildMapPreviewUri(PartnerLocationView? location) {
-    if (location == null) return null;
-    final lat = double.tryParse(location.lat ?? '');
-    final lng = double.tryParse(location.lng ?? '');
-    if (lat == null || lng == null) return null;
-    return Uri.https(
-      'staticmap.openstreetmap.de',
-      '/staticmap.php',
-      {
-        'center': '$lat,$lng',
-        'zoom': '15',
-        'size': '640x360',
-        'markers': '$lat,$lng,red-pushpin',
+  void _openProfileMap() {
+    final path = Uri(
+      path: '/mapa',
+      queryParameters: {
+        'poi': 'account_profile:${widget.accountProfile.id}',
       },
+    ).toString();
+    _safeRouterPushPath(path);
+  }
+
+  void _presentDirectionsChooser(PartnerLocationView? location) {
+    final target = _directionsTargetFromLocation(location);
+    if (target == null) {
+      return;
+    }
+    _directionsAppChooser.present(
+      context,
+      target: target,
+      onStatusMessage: _showStatusMessage,
     );
   }
 
-  Future<void> _openMaps(PartnerLocationView? location) async {
-    if (location == null) return;
-    final lat = double.tryParse(location.lat ?? '');
-    final lng = double.tryParse(location.lng ?? '');
-    final hasCoords = lat != null && lng != null;
-    final destination = hasCoords
-        ? '$lat,$lng'
-        : (location.address.isNotEmpty ? location.address : null);
-    if (destination == null) return;
+  bool _canOpenMaps(PartnerLocationView? location) {
+    return _directionsTargetFromLocation(location) != null;
+  }
 
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destination)}',
+  bool _canOpenProfileMap(PartnerLocationView? location) {
+    if (location == null) {
+      return false;
+    }
+    return widget.accountProfile.id.trim().isNotEmpty;
+  }
+
+  bool _canRenderLocationSection(PartnerLocationView? location) {
+    if (location == null) {
+      return false;
+    }
+    return _canOpenMaps(location);
+  }
+
+  DirectionsLaunchTarget? _directionsTargetFromLocation(
+    PartnerLocationView? location,
+  ) {
+    if (location == null) {
+      return null;
+    }
+    final latitude = double.tryParse(location.lat ?? '');
+    final longitude = double.tryParse(location.lng ?? '');
+    final address = location.address.trim();
+    if (latitude == null || longitude == null) {
+      if (address.isEmpty) {
+        return null;
+      }
+      return DirectionsLaunchTarget(
+        destinationName: widget.accountProfile.name,
+        address: address,
+      );
+    }
+    return DirectionsLaunchTarget(
+      destinationName: widget.accountProfile.name,
+      latitude: latitude,
+      longitude: longitude,
+      address: address.isEmpty ? null : address,
     );
-    if (!await canLaunchUrl(uri)) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _showStatusMessage(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildFooterShell({
+    required Widget child,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.98),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(width: double.infinity, child: child),
+      ),
+    );
+  }
+
+  ButtonStyle _primaryFooterButtonStyle() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = colorScheme.primary;
+    final foregroundColor = _contentColorForBackground(backgroundColor);
+    return FilledButton.styleFrom(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      minimumSize: const Size.fromHeight(60),
+      textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      elevation: 0,
+    );
+  }
+
+  Color _contentColorForBackground(Color backgroundColor) {
+    final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
+    return brightness == Brightness.dark ? Colors.white : Colors.black87;
+  }
+
+  Widget _buildAgendaLiveHighlightCard(
+    AccountProfileModel accountProfile,
+    PartnerEventView event,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final headline = _agendaPrimaryLabel(accountProfile, event);
+    final eyebrow = _agendaEyebrowLabel(event);
+    final statusWidget = _buildAgendaStatusWidget(
+      event: event,
+      backgroundColor: colorScheme.secondary.withValues(alpha: 0.3),
+      size: 18,
+    );
+    final statusTint = _agendaStatusTint(
+      colorScheme: colorScheme,
+      event: event,
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: Key('accountProfileAgendaLiveCard_${event.uniqueId}'),
+          onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+          child: Stack(
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 10,
+                child: _buildAgendaImage(event),
+              ),
+              if (statusTint != null)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: statusTint,
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.72),
+                      ],
+                      stops: const [0, 0.5, 1],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                top: 16,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (statusWidget != null) ...[
+                      statusWidget,
+                      const SizedBox(width: 10),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'AO VIVO',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (eyebrow != null) ...[
+                      Text(
+                        eyebrow,
+                        key: Key(
+                          'accountProfileAgendaLiveEyebrow_${event.uniqueId}',
+                        ),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      headline,
+                      key: Key('accountProfileAgendaLiveHeadline_${event.uniqueId}'),
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            height: 0.95,
+                          ),
+                    ),
+                    if (_agendaCounterparts(accountProfile, event).isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildAgendaCounterpartsLine(
+                        accountProfile,
+                        event,
+                        keyPrefix: 'accountProfileAgendaLiveCounterparts',
+                        textColor: Colors.white70,
+                        iconColor: Colors.white,
+                        chipBackground: Colors.black.withValues(alpha: 0.28),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      key: Key(
+                        'accountProfileAgendaLiveSchedule_${event.uniqueId}',
+                      ),
+                      children: [
+                        const Icon(
+                          Icons.schedule_outlined,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _eventExpandedTimeRangeLabel(event),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_buildAgendaVenueLine(
+                      accountProfile,
+                      event,
+                      keyPrefix: 'accountProfileAgendaLiveVenue',
+                      textColor: Colors.white,
+                    )
+                        case final venueLine?) ...[
+                      const SizedBox(height: 10),
+                      venueLine,
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAgendaEventCard(
+    AccountProfileModel accountProfile,
+    PartnerEventView event,
+  ) {
+    return UpcomingEventCard(
+      data: UpcomingEventCardData(
+        imageUri: event.imageUri,
+        headline: _agendaPrimaryLabel(accountProfile, event),
+        metaLabel: _eventDateLabel(event),
+        counterparts: _agendaCounterparts(accountProfile, event)
+            .map(
+              (counterpart) => (
+                label: counterpart.label,
+                thumbUrl: counterpart.thumbUrl,
+                fallbackIcon: Icons.music_note,
+              ),
+            )
+            .toList(growable: false),
+        venueName: _agendaVenueName(event),
+        venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
+        venueAddress: _agendaVenueAddress(event),
+      ),
+      onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+      isConfirmed: _controller.isEventConfirmed(event.eventId),
+      pendingInvitesCount: _controller.pendingInviteCount(event.eventId),
+      statusIconSize: 24,
+      keyNamespace: 'accountProfileAgendaCard',
+      cardId: event.uniqueId,
+    );
+  }
+
+  Widget _buildAgendaImage(PartnerEventView event) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final imageUri = event.imageUri;
+    if (imageUri == null) {
+      return Container(
+        color: colorScheme.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.event_outlined,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
+    return BellugaNetworkImage(
+      imageUri.toString(),
+      fit: BoxFit.cover,
+      errorWidget: Container(
+        color: colorScheme.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: colorScheme.onSurfaceVariant,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  String _agendaPrimaryLabel(
+    AccountProfileModel accountProfile,
+    PartnerEventView event,
+  ) {
+    return event.title;
+  }
+
+  String? _agendaEyebrowLabel(PartnerEventView event) {
+    return event.eventTypeLabel;
+  }
+
+  List<_AgendaCounterpart> _agendaCounterparts(
+    AccountProfileModel accountProfile,
+    PartnerEventView event,
+  ) {
+    final counterparts = <_AgendaCounterpart>[];
+    final seen = <String>{};
+
+    for (final artist in _agendaCounterpartArtists(accountProfile, event)) {
+      final title = artist.title.trim();
+      if (title.isEmpty) {
+        continue;
+      }
+      final normalized = _normalizedAgendaIdentity(title);
+      if (normalized == null || seen.contains(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      counterparts.add(
+        _AgendaCounterpart(
+          label: title,
+          thumbUrl: artist.thumb,
+        ),
+      );
+    }
+
+    return counterparts;
+  }
+
+  List<PartnerSupportedEntityView> _agendaCounterpartArtists(
+    AccountProfileModel accountProfile,
+    PartnerEventView event,
+  ) {
+    return event.artists
+        .where(
+          (artist) => !_agendaMatchesHost(
+            accountProfile,
+            candidateId: artist.id,
+            candidateTitle: artist.title,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  bool _agendaMatchesHost(
+    AccountProfileModel accountProfile, {
+    String? candidateId,
+    String? candidateTitle,
+  }) {
+    final normalizedCandidateId = candidateId?.trim();
+    if (normalizedCandidateId != null &&
+        normalizedCandidateId.isNotEmpty &&
+        normalizedCandidateId == accountProfile.id) {
+      return true;
+    }
+
+    final normalizedCandidateTitle = _normalizedAgendaIdentity(candidateTitle);
+    if (normalizedCandidateTitle == null) {
+      return false;
+    }
+
+    return normalizedCandidateTitle ==
+        _normalizedAgendaIdentity(accountProfile.name);
+  }
+
+  String? _normalizedAgendaIdentity(String? raw) {
+    final trimmed = raw?.trim().toLowerCase();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  Widget _buildAgendaCounterpartsLine(
+    AccountProfileModel accountProfile,
+    PartnerEventView event, {
+    required String keyPrefix,
+    required Color textColor,
+    required Color iconColor,
+    required Color chipBackground,
+  }) {
+    final textStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w700,
+        );
+    final counterparts = _agendaCounterparts(accountProfile, event);
+    return Wrap(
+      key: Key('${keyPrefix}_${event.uniqueId}'),
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6,
+      runSpacing: 6,
+      children: counterparts
+          .asMap()
+          .entries
+          .map(
+            (entry) => _buildAgendaCounterpartBadge(
+              entry.value,
+              labelStyle: textStyle,
+              iconColor: iconColor,
+              chipBackground: chipBackground,
+              key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Widget _buildAgendaCounterpartBadge(
+    _AgendaCounterpart counterpart, {
+    required TextStyle? labelStyle,
+    required Color iconColor,
+    required Color chipBackground,
+    required Key key,
+  }) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipBackground,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildAgendaCounterpartVisual(counterpart, iconColor: iconColor),
+          const SizedBox(width: 6),
+          Text(counterpart.label, style: labelStyle),
+        ],
+      ),
+    );
+  }
+
+  Widget? _buildAgendaVenueLine(
+    AccountProfileModel accountProfile,
+    PartnerEventView event, {
+    required String keyPrefix,
+    required Color textColor,
+  }) {
+    final venueName = _agendaVenueName(event);
+    if (venueName == null) {
+      return null;
+    }
+    final distanceLabel = _controller.distanceLabelFor(accountProfile, event);
+    final address = _agendaVenueAddress(event);
+    final buffer = StringBuffer(venueName);
+    if (distanceLabel != null && distanceLabel.trim().isNotEmpty) {
+      buffer.write(' (${distanceLabel.trim()})');
+    }
+    if (address != null && address.trim().isNotEmpty) {
+      buffer.write(' - ${address.trim()}');
+    }
+
+    return Row(
+      key: Key('${keyPrefix}_${event.uniqueId}'),
+      children: [
+        Icon(Icons.place_outlined, size: 16, color: textColor),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            buffer.toString(),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _agendaVenueName(PartnerEventView event) {
+    final venueTitle = event.venueTitle?.trim();
+    if (venueTitle != null && venueTitle.isNotEmpty) {
+      return venueTitle;
+    }
+    final fallback = event.location.trim();
+    if (fallback.isEmpty) {
+      return null;
+    }
+    return fallback;
+  }
+
+  String? _agendaVenueAddress(PartnerEventView event) {
+    return null;
+  }
+
+  Widget _buildAgendaCounterpartVisual(
+    _AgendaCounterpart counterpart, {
+    required Color iconColor,
+  }) {
+    final fallbackIcon = Icons.music_note;
+    if (counterpart.thumbUrl case final thumbUrl?) {
+      return ClipOval(
+        child: BellugaNetworkImage(
+          thumbUrl,
+          width: 18,
+          height: 18,
+          fit: BoxFit.cover,
+          errorWidget: Icon(
+            fallbackIcon,
+            size: 16,
+            color: iconColor,
+          ),
+        ),
+      );
+    }
+
+    return Icon(
+      fallbackIcon,
+      size: 16,
+      color: iconColor,
+    );
+  }
+
+  String _eventDateLabel(PartnerEventView event) {
+    final start = event.startDateTime;
+    final weekday = DateFormat.E().format(start);
+    final day = start.day.toString().padLeft(2, '0');
+    return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
+  }
+
+  String _eventExpandedTimeRangeLabel(PartnerEventView event) {
+    final start = event.startDateTime;
+    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
+    final startWeekday = DateFormat.E().format(start).toUpperCase();
+    final startDay = start.day.toString().padLeft(2, '0');
+    final endWeekday = DateFormat.E().format(end).toUpperCase();
+    final endDay = end.day.toString().padLeft(2, '0');
+    return '$startWeekday, $startDay • ${start.timeLabel} - '
+        '$endWeekday, $endDay • ${end.timeLabel}';
+  }
+
+  Color? _agendaStatusTint({
+    required ColorScheme colorScheme,
+    required PartnerEventView event,
+  }) {
+    if (_controller.isEventConfirmed(event.eventId)) {
+      return colorScheme.primary.withValues(alpha: 0.08);
+    }
+    if (_controller.pendingInviteCount(event.eventId) > 0) {
+      return colorScheme.secondary.withValues(alpha: 0.08);
+    }
+    return null;
+  }
+
+  Widget? _buildAgendaStatusWidget({
+    required PartnerEventView event,
+    required Color backgroundColor,
+    required double size,
+  }) {
+    final isConfirmed = _controller.isEventConfirmed(event.eventId);
+    final pendingInvitesCount = _controller.pendingInviteCount(event.eventId);
+    if (!isConfirmed && pendingInvitesCount == 0) {
+      return null;
+    }
+    return InviteStatusIcon(
+      isConfirmed: isConfirmed,
+      pendingInvitesCount: pendingInvitesCount,
+      size: size,
+      backgroundColor: backgroundColor,
+    );
   }
 
   Widget _experienceCards(List<PartnerExperienceView>? experiences) {
@@ -861,23 +1985,6 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _socialScore(PartnerScoreView? score) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          const Icon(BooraIcons.invite_solid, size: 20),
-          const SizedBox(width: 8),
-          Text('${score?.invites ?? '--'} Convites Feitos'),
-          const SizedBox(width: 16),
-          const Icon(Icons.check_circle, size: 20),
-          const SizedBox(width: 8),
-          Text('${score?.presences ?? '--'} Presenças Reais'),
-        ],
-      ),
-    );
-  }
-
   Widget _supportedEntities(
       String title, List<PartnerSupportedEntityView>? data) {
     return Padding(
@@ -960,6 +2067,7 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _richTextBlock(String title, String body) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -967,12 +2075,34 @@ class _AccountProfileDetailScreenState
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
           ),
           const SizedBox(height: 8),
-          Text(
-            body,
-            style: const TextStyle(fontSize: 14, height: 1.4),
+          Html(
+            data: body,
+            style: {
+              'body': Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                color: colorScheme.onSurfaceVariant,
+                fontSize: FontSize(
+                  Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                ),
+                lineHeight: const LineHeight(1.45),
+              ),
+              'p': Style(
+                margin: Margins.only(bottom: 12),
+              ),
+              'strong': Style(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+              'br': Style(
+                display: Display.block,
+              ),
+            },
           ),
         ],
       ),
@@ -992,13 +2122,14 @@ class _AccountProfileDetailScreenState
   Widget _buildModule(ProfileModuleConfig module, dynamic data) {
     switch (module.id) {
       case ProfileModuleId.socialScore:
-        return _socialScore(data as PartnerScoreView?);
+        return const SizedBox.shrink();
       case ProfileModuleId.agendaCarousel:
         return _artistHighlights(
           data is List<PartnerEventView> ? data : null,
         );
       case ProfileModuleId.agendaList:
         return _agendaList(
+          widget.accountProfile,
           data is List<PartnerEventView> ? data : null,
         );
       case ProfileModuleId.musicPlayer:
@@ -1051,4 +2182,14 @@ class _AccountProfileDetailScreenState
         return _sponsorBanner(data is String ? data : null);
     }
   }
+}
+
+class _AgendaCounterpart {
+  const _AgendaCounterpart({
+    required this.label,
+    this.thumbUrl,
+  });
+
+  final String label;
+  final String? thumbUrl;
 }

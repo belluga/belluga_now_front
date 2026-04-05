@@ -23,9 +23,7 @@ import 'package:belluga_now/domain/services/location_origin_service_contract.dar
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -74,6 +72,7 @@ void main() {
     expect(controller.availableTypesStreamValue.value, ['artist']);
     expect(controller.filteredPartnersStreamValue.value, hasLength(1));
     expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
+    expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
     controller.onDispose();
   });
 
@@ -672,7 +671,7 @@ void main() {
   });
 
   testWidgets(
-      'DiscoveryFilterChips defers selected and unselected colors to the theme',
+      'DiscoveryFilterChips uses the shared bordered chip styling',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -694,14 +693,14 @@ void main() {
       find.widgetWithText(ChoiceChip, 'Todos'),
     );
 
-    expect(selectedChip.selectedColor, isNull);
-    expect(selectedChip.backgroundColor, isNull);
-    expect(selectedChip.side, isNull);
-    expect(selectedChip.shape, isNull);
-    expect(unselectedChip.selectedColor, isNull);
-    expect(unselectedChip.backgroundColor, isNull);
-    expect(unselectedChip.side, isNull);
-    expect(unselectedChip.shape, isNull);
+    expect(selectedChip.selectedColor, isNotNull);
+    expect(selectedChip.backgroundColor, isNotNull);
+    expect(selectedChip.side, isNotNull);
+    expect(selectedChip.shape, isNotNull);
+    expect(unselectedChip.selectedColor, isNotNull);
+    expect(unselectedChip.backgroundColor, isNotNull);
+    expect(unselectedChip.side, isNotNull);
+    expect(unselectedChip.shape, isNotNull);
   });
 
   testWidgets(
@@ -1123,21 +1122,13 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> init() async {
-    final all =
-        pages.values.expand((entry) => entry.profiles).toList(growable: false);
-    allAccountProfilesStreamValue.addValue(all);
     favoriteAccountProfileIdsStreamValue
         .addValue(<AccountProfilesRepositoryContractPrimString>{});
+    final all = _allProfiles();
+    allAccountProfilesStreamValue.addValue(all);
     for (final profile in all) {
       _bySlug[profile.slug] = profile;
     }
-  }
-
-  @override
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
-    return pages.values
-        .expand((entry) => entry.profiles)
-        .toList(growable: false);
   }
 
   @override
@@ -1193,30 +1184,6 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    AccountProfilesRepositoryContractPrimString? query,
-    AccountProfilesRepositoryContractPrimString? typeFilter,
-  }) async {
-    final all = await fetchAllAccountProfiles();
-    final normalizedType = typeFilter?.value.trim();
-    final normalizedQuery = query?.value.trim().toLowerCase();
-
-    return all.where((profile) {
-      final typeMatches = normalizedType == null ||
-          normalizedType.isEmpty ||
-          profile.type == normalizedType;
-      if (!typeMatches) return false;
-      if (normalizedQuery == null || normalizedQuery.isEmpty) {
-        return true;
-      }
-      return profile.name.toLowerCase().contains(normalizedQuery) ||
-          profile.slug.toLowerCase().contains(normalizedQuery) ||
-          profile.tags
-              .any((tag) => tag.value.toLowerCase().contains(normalizedQuery));
-    }).toList(growable: false);
-  }
-
-  @override
   Future<AccountProfileModel?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
@@ -1228,9 +1195,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimInt? pageSize,
   }) async {
     nearbyFetchCalls += 1;
-    final source = nearbyProfiles.isEmpty
-        ? await fetchAllAccountProfiles()
-        : nearbyProfiles;
+    final source = nearbyProfiles.isEmpty ? _allProfiles() : nearbyProfiles;
     return source.take(pageSize?.value ?? 10).toList(growable: false);
   }
 
@@ -1276,6 +1241,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         .where((profile) => ids.any((id) => id.value == profile.id))
         .toList(growable: false);
   }
+
+  List<AccountProfileModel> _allProfiles() {
+    return pages.values
+        .expand((entry) => entry.profiles)
+        .toList(growable: false);
+  }
 }
 
 class _FailingAccountProfilesRepository
@@ -1288,11 +1259,6 @@ class _FailingAccountProfilesRepository
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
-    return const <AccountProfileModel>[];
-  }
-
-  @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required AccountProfilesRepositoryContractPrimInt page,
     required AccountProfilesRepositoryContractPrimInt pageSize,
@@ -1300,14 +1266,6 @@ class _FailingAccountProfilesRepository
     AccountProfilesRepositoryContractPrimString? typeFilter,
   }) async {
     throw Exception('forced discovery page failure');
-  }
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    AccountProfilesRepositoryContractPrimString? query,
-    AccountProfilesRepositoryContractPrimString? typeFilter,
-  }) async {
-    return const <AccountProfileModel>[];
   }
 
   @override
@@ -1361,11 +1319,6 @@ class _InitFailingAccountProfilesRepository
   }
 
   @override
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
-    return firstPage.profiles;
-  }
-
-  @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required AccountProfilesRepositoryContractPrimInt page,
     required AccountProfilesRepositoryContractPrimInt pageSize,
@@ -1380,14 +1333,6 @@ class _InitFailingAccountProfilesRepository
       );
     }
     return firstPage;
-  }
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    AccountProfilesRepositoryContractPrimString? query,
-    AccountProfilesRepositoryContractPrimString? typeFilter,
-  }) async {
-    return firstPage.profiles;
   }
 
   @override
@@ -1565,26 +1510,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    return const <EventModel>[];
-  }
-
-  @override
-  Future<List<EventModel>> getAllEvents() async {
-    return const <EventModel>[];
-  }
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
     return null;
   }
@@ -1633,18 +1558,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
       events: const <EventModel>[],
       hasMore: false,
     );
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-    ScheduleRepoDateTime date,
-  ) async {
-    return const <VenueEventResume>[];
-  }
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
-    return const <VenueEventResume>[];
   }
 
   @override

@@ -16,6 +16,7 @@ class DiscoveryFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final orderedTypes = availableTypes;
     final items = <_FilterChipData>[
       _FilterChipData(label: 'Todos', type: null),
@@ -34,7 +35,18 @@ class DiscoveryFilterChips extends StatelessWidget {
                   label: Text(item.label),
                   selected: selectedType == item.type,
                   showCheckmark: false,
+                  selectedColor: colorScheme.primaryContainer,
+                  backgroundColor: colorScheme.surfaceContainerLow,
+                  side: BorderSide(
+                    color: selectedType == item.type
+                        ? colorScheme.primary.withValues(alpha: 0.35)
+                        : colorScheme.outlineVariant,
+                  ),
+                  shape: const StadiumBorder(),
                   labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: selectedType == item.type
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                       ),
                   onSelected: (_) => onSelectType(item.type),

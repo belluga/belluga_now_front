@@ -31,11 +31,11 @@ void main() {
     expect(config.tabs.map((t) => t.title).toList(), [
       'Sobre',
       'Como Chegar',
-      'Eventos',
+      'Agenda',
     ]);
   });
 
-  testWidgets('Location section shows venue profile CTA', (tester) async {
+  testWidgets('Location section shows map CTA copy', (tester) async {
     final dto = EventDTO(
       id: MockScheduleBackend.generateMongoId('event-1'),
       slug: 'event-1',
@@ -70,7 +70,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Ver perfil do local'), findsOneWidget);
+    expect(find.text('Ver no mapa'), findsOneWidget);
   });
 
   testWidgets('Venue card shows profile button', (tester) async {

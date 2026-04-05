@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
 import 'package:flutter/material.dart';
 
 class DiscoveryPartnerCard extends StatelessWidget {
@@ -11,7 +13,7 @@ class DiscoveryPartnerCard extends StatelessWidget {
     required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onTap,
-    required this.typeLabel,
+    required this.resolvedVisual,
     this.showDetails = true,
   });
 
@@ -20,7 +22,7 @@ class DiscoveryPartnerCard extends StatelessWidget {
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
-  final String typeLabel;
+  final ResolvedAccountProfileVisual resolvedVisual;
   final bool showDetails;
 
   @override
@@ -35,6 +37,7 @@ class DiscoveryPartnerCard extends StatelessWidget {
         children: [
           _CardImage(
             partner: partner,
+            resolvedVisual: resolvedVisual,
             isFavorite: isFavorite,
             isFavoritable: isFavoritable,
             onFavoriteTap: onFavoriteTap,
@@ -42,31 +45,23 @@ class DiscoveryPartnerCard extends StatelessWidget {
           if (showDetails)
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    typeLabel.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      letterSpacing: 1.1,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    partner.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _CardSubtitle(partner: partner),
-                ],
+              child: AccountProfileIdentityBlock(
+                name: partner.name,
+                avatarUrl: resolvedVisual.identityAvatarUrl,
+                typeVisual: resolvedVisual.typeVisual,
+                identityAvatarKey: const Key('discoveryPartnerIdentityAvatar'),
+                typeAvatarKey: const Key('discoveryPartnerTypeAvatar'),
+                avatarSize: 44,
+                avatarSpacing: 10,
+                typeAvatarSize: 26,
+                typeAvatarIconSize: 15,
+                titleSpacing: 8,
+                supportingSpacing: 10,
+                titleStyle: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                supporting:
+                    partner.tags.isEmpty ? null : _CardTags(partner: partner),
               ),
             ),
         ],
@@ -75,15 +70,62 @@ class DiscoveryPartnerCard extends StatelessWidget {
   }
 }
 
+class _CardTags extends StatelessWidget {
+  const _CardTags({required this.partner});
+
+  final AccountProfileModel partner;
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = partner.tags.take(2).toList(growable: false);
+    if (tags.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: tags
+          .map(
+            (tag) => Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: colorScheme.outlineVariant,
+                ),
+              ),
+              child: Text(
+                tag.value,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
 class _CardImage extends StatelessWidget {
   const _CardImage({
     required this.partner,
+    required this.resolvedVisual,
     required this.isFavorite,
     required this.isFavoritable,
     required this.onFavoriteTap,
   });
 
   final AccountProfileModel partner;
+  final ResolvedAccountProfileVisual resolvedVisual;
   final bool isFavorite;
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
@@ -91,7 +133,7 @@ class _CardImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final imageUrl = partner.coverUrl ?? partner.avatarUrl;
+    final imageUrl = resolvedVisual.surfaceImageUrl;
     final isLiveNow = _isLiveNow(partner);
 
     return AspectRatio(
@@ -168,6 +210,20 @@ class _CardImage extends StatelessWidget {
   }
 
   Widget _fallback(ColorScheme colorScheme) {
+    final typeVisual = resolvedVisual.typeVisual;
+    if (typeVisual?.isIcon == true && typeVisual?.iconData != null) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: typeVisual?.backgroundColor ?? colorScheme.surfaceContainer,
+        ),
+        child: Icon(
+          typeVisual!.iconData,
+          color: typeVisual.iconColor ?? colorScheme.onSurfaceVariant,
+          size: 42,
+        ),
+      );
+    }
+
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -188,49 +244,6 @@ class _CardImage extends StatelessWidget {
   }
 }
 
-class _CardSubtitle extends StatelessWidget {
-  const _CardSubtitle({required this.partner});
-
-  final AccountProfileModel partner;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final distanceLabel = _distanceLabel(partner.distanceMeters);
-    final secondary =
-        partner.tags.isNotEmpty ? partner.tags.first.value.trim() : null;
-    final text = <String>[
-      if (secondary != null && secondary.isNotEmpty) secondary,
-      if (distanceLabel != null) distanceLabel,
-    ].join(' • ');
-
-    if (text.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      children: [
-        Icon(
-          Icons.place,
-          size: 14,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 bool _isLiveNow(AccountProfileModel partner) {
   if (partner.type != 'artist') {
     return false;
@@ -240,14 +253,4 @@ bool _isLiveNow(AccountProfileModel partner) {
     return false;
   }
   return engagement.status.toLowerCase().contains('agora');
-}
-
-String? _distanceLabel(double? distanceMeters) {
-  if (distanceMeters == null) {
-    return null;
-  }
-  if (distanceMeters >= 1000) {
-    return '${(distanceMeters / 1000).toStringAsFixed(1)} km';
-  }
-  return '${distanceMeters.toStringAsFixed(0)} m';
 }

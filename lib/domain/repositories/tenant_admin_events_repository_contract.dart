@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_event
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -154,6 +155,16 @@ abstract class TenantAdminEventsRepositoryContract {
   });
 
   Future<void> deleteEvent(TenantAdminEventsRepoString eventId);
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() {
+    throw UnimplementedError();
+  }
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() {
+    throw UnimplementedError();
+  }
 
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
     return const <TenantAdminEventType>[];

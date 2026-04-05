@@ -54,9 +54,6 @@ abstract class AccountProfilesRepositoryContract {
   /// Initialize repository and load data
   Future<void> init();
 
-  /// Fetch all account profiles
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles();
-
   /// Fetch paged account profiles for scrolling surfaces.
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required AccountProfilesRepositoryContractPrimInt page,
@@ -118,12 +115,6 @@ abstract class AccountProfilesRepositoryContract {
     pagedAccountProfilesStreamValue.addValue(null);
     pagedAccountProfilesErrorStreamValue.addValue(null);
   }
-
-  /// Search account profiles by query and optional type filter
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    AccountProfilesRepositoryContractPrimString? query,
-    AccountProfilesRepositoryContractPrimString? typeFilter,
-  });
 
   /// Get account profile by slug
   Future<AccountProfileModel?> getAccountProfileBySlug(

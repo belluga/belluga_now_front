@@ -10,9 +10,11 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -379,6 +381,29 @@ class _FakeTenantAdminEventsRepository
     return tenantAdminPagedResultFromRaw(
       items: const <TenantAdminAccountProfile>[],
       hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
     );
   }
 }

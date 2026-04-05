@@ -53,6 +53,8 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
               child: FavoritesStrip(
                 items: items,
                 pinned: pinned,
+                resolvedVisualForItem: _controller.resolvedVisualFor,
+                haloStateForItem: _controller.haloStateFor,
                 onSearchTap: () {
                   router.push(DiscoveryRoute());
                 },

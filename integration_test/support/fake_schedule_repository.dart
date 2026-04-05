@@ -3,8 +3,6 @@ import 'package:belluga_now/domain/repositories/value_objects/schedule_repositor
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
@@ -45,19 +43,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<EventModel>> getAllEvents() async => const <EventModel>[];
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      const <EventModel>[];
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -75,19 +61,6 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? maxDistanceMeters,
   }) async =>
       pagedEventsResultFromRaw(events: <EventModel>[], hasMore: false);
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async =>
-      ScheduleSummaryModel(items: const []);
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-          ScheduleRepoDateTime date) async =>
-      const <VenueEventResume>[];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
-      const <VenueEventResume>[];
 
   @override
   Stream<EventDeltaModel> watchEventsStream({

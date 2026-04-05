@@ -182,6 +182,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
                                               ),
+                                              resolvedVisualForItem: _controller
+                                                  .resolvedVisualForAccountProfile,
                                             );
                                           },
                                         ),
@@ -288,11 +290,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             PartnerDetailRoute(
                                                 slug: partner.slug),
                                           ),
-                                          typeLabelForPartner: (partner) =>
-                                              _controller
-                                                  .labelForAccountProfileType(
-                                            partner.type,
-                                          ),
+                                          resolvedVisualForPartner: _controller
+                                              .resolvedVisualForAccountProfile,
                                         ),
                                       ),
                                     SliverToBoxAdapter(

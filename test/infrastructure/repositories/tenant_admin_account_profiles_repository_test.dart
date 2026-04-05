@@ -262,22 +262,22 @@ void main() {
 
     expect(page.items, hasLength(2));
     expect(page.hasMore, isTrue);
-    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.icon);
-    expect(page.items.first.poiVisual?.icon, 'place');
-    expect(page.items.first.poiVisual?.color, '#FF8800');
-    expect(page.items.first.poiVisual?.iconColor, '#FFFFFF');
+    expect(page.items.first.visual?.mode, TenantAdminPoiVisualMode.icon);
+    expect(page.items.first.visual?.icon, 'place');
+    expect(page.items.first.visual?.color, '#FF8800');
+    expect(page.items.first.visual?.iconColor, '#FFFFFF');
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 1);
     expect(adapter.requests.single.queryParameters['page_size'], 2);
   });
 
-  test('createProfileTypeWithPoiVisual sends poi_visual icon payload',
+  test('createProfileTypeWithVisual sends canonical and legacy visual payloads',
       () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    await repository.createProfileTypeWithPoiVisual(
+    await repository.createProfileTypeWithVisual(
       type: tenantAdminAccountProfilesRepoString(
         'venue',
         defaultValue: '',
@@ -305,13 +305,19 @@ void main() {
         hasCover: TenantAdminFlagValue(true),
         hasEvents: TenantAdminFlagValue(true),
       ),
-      poiVisual: TenantAdminPoiVisual.icon(
+      visual: TenantAdminPoiVisual.icon(
         iconValue: TenantAdminRequiredTextValue()..parse('place'),
         colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
       ),
     );
 
     final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['visual'], <String, dynamic>{
+      'mode': 'icon',
+      'icon': 'place',
+      'color': '#FF8800',
+      'icon_color': '#FFFFFF',
+    });
     expect(payload['poi_visual'], <String, dynamic>{
       'mode': 'icon',
       'icon': 'place',
@@ -320,13 +326,12 @@ void main() {
     });
   });
 
-  test('updateProfileTypeWithPoiVisual sends nullable poi_visual payload',
-      () async {
+  test('updateProfileTypeWithVisual sends nullable visual payloads', () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    await repository.updateProfileTypeWithPoiVisual(
+    await repository.updateProfileTypeWithVisual(
       type: tenantAdminAccountProfilesRepoString(
         'venue',
         defaultValue: '',
@@ -342,12 +347,117 @@ void main() {
         hasCover: TenantAdminFlagValue(true),
         hasEvents: TenantAdminFlagValue(true),
       ),
-      poiVisual: null,
+      visual: null,
     );
 
     final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('visual'), isTrue);
+    expect(payload['visual'], isNull);
     expect(payload.containsKey('poi_visual'), isTrue);
     expect(payload['poi_visual'], isNull);
+  });
+
+  test('createProfileTypeWithVisual uses multipart when type_asset upload exists',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createProfileTypeWithVisual(
+      type: tenantAdminAccountProfilesRepoString(
+        'restaurant',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      label: tenantAdminAccountProfilesRepoString(
+        'Restaurant',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasEvents: TenantAdminFlagValue(true),
+      ),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([7, 8, 9]),
+        fileName: 'type-asset.png',
+      ),
+    );
+
+    expect(adapter.lastRequest?.method, 'POST');
+    expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
+    final payload = adapter.lastRequest?.data;
+    expect(payload, isA<FormData>());
+    final formData = payload as FormData;
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    expect(
+      formData.fields.any((entry) => entry.key == 'visual[image_source]'),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'capabilities[is_favoritable]' && entry.value == '1',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'capabilities[is_poi_enabled]' && entry.value == '1',
+      ),
+      isTrue,
+    );
+  });
+
+  test(
+      'updateProfileTypeWithVisual uses multipart patch tunnel for type_asset upload and removal',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateProfileTypeWithVisual(
+      type: tenantAdminAccountProfilesRepoString(
+        'restaurant',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([7, 8, 9]),
+        fileName: 'type-asset.png',
+      ),
+      removeTypeAsset: tenantAdminAccountProfilesRepoBool(
+        true,
+        defaultValue: false,
+      ),
+    );
+
+    expect(adapter.lastRequest?.method, 'POST');
+    expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
+    final payload = adapter.lastRequest?.data;
+    expect(payload, isA<FormData>());
+    final formData = payload as FormData;
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'remove_type_asset' && entry.value == '1',
+      ),
+      isTrue,
+    );
   });
 
   test('fetchProfileTypeMapPoiProjectionImpact returns projection count',

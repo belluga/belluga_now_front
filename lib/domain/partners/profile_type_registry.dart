@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_definition.dart';
+import 'package:belluga_now/domain/partners/profile_type_visual.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 
 typedef ProfileTypeRegistryTypeKey = ProfileTypeKeyValue;
@@ -35,6 +36,12 @@ class ProfileTypeRegistry {
 
   String labelForType(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.label ?? typeValue.value;
+
+  String pluralLabelForType(ProfileTypeKeyValue typeValue) =>
+      _byType(typeValue)?.pluralLabel ?? labelForType(typeValue);
+
+  ProfileTypeVisual? visualForType(ProfileTypeKeyValue typeValue) =>
+      _byType(typeValue)?.visual;
 
   List<ProfileTypeKeyValue> enabledAccountProfileTypes() =>
       List<ProfileTypeKeyValue>.unmodifiable(

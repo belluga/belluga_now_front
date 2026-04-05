@@ -115,6 +115,46 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('horizontal swipe end moves to adjacent tab and clamps at edges', () {
+    final controller = ImmersiveDetailScreenController(
+      tabItems: [
+        ImmersiveTabItem(
+          title: 'Overview',
+          content: const SizedBox.shrink(),
+        ),
+        ImmersiveTabItem(
+          title: 'Details',
+          content: const SizedBox.shrink(),
+        ),
+        ImmersiveTabItem(
+          title: 'Route',
+          content: const SizedBox.shrink(),
+        ),
+      ],
+    );
+
+    expect(controller.currentTabIndexStreamValue.value, 0);
+
+    controller.onHorizontalSwipeEnd(-1000);
+    expect(controller.currentTabIndexStreamValue.value, 1);
+
+    controller.onHorizontalSwipeEnd(-1000);
+    expect(controller.currentTabIndexStreamValue.value, 2);
+
+    controller.onHorizontalSwipeEnd(-1000);
+    expect(controller.currentTabIndexStreamValue.value, 2);
+
+    controller.onHorizontalSwipeEnd(1000);
+    expect(controller.currentTabIndexStreamValue.value, 1);
+
+    controller.onHorizontalSwipeEnd(250);
+    expect(controller.currentTabIndexStreamValue.value, 1);
+
+    controller.dispose();
+  });
+
   test('logs section_viewed when tab visibility changes', () async {
     final telemetryRepository = _FakeTelemetryRepository();
     final controller = ImmersiveDetailScreenController(

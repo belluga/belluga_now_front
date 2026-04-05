@@ -13,6 +13,7 @@ class PartnerProfileConfigBuilder {
   }) {
     if (capabilities != null) {
       final tabs = <ProfileTabConfig>[];
+      final hasAgenda = capabilities.hasEvents || partner.agendaEvents.isNotEmpty;
       if (capabilities.hasBio &&
           partner.bio != null &&
           partner.bio!.trim().isNotEmpty) {
@@ -35,10 +36,10 @@ class PartnerProfileConfigBuilder {
           ),
         );
       }
-      if (capabilities.hasEvents) {
+      if (hasAgenda) {
         tabs.add(
           ProfileTabConfig(
-            titleValue: partnerProjectionRequiredText('Próximos Eventos'),
+            titleValue: partnerProjectionRequiredText('Agenda'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.agendaList),
             ],
@@ -98,7 +99,7 @@ class PartnerProfileConfigBuilder {
             ],
           ),
           ProfileTabConfig(
-            titleValue: partnerProjectionRequiredText('Eventos'),
+            titleValue: partnerProjectionRequiredText('Agenda'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.agendaList),
             ],

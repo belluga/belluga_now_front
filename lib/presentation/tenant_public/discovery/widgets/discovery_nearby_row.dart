@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -7,10 +8,13 @@ class DiscoveryNearbyRow extends StatelessWidget {
     super.key,
     required this.items,
     required this.onTap,
+    required this.resolvedVisualForItem,
   });
 
   final List<AccountProfileModel> items;
   final ValueChanged<AccountProfileModel> onTap;
+  final ResolvedAccountProfileVisual Function(AccountProfileModel)
+      resolvedVisualForItem;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +44,7 @@ class DiscoveryNearbyRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final item = items[index];
+              final resolvedVisual = resolvedVisualForItem(item);
               final distanceLabel = _distanceLabel(item.distanceMeters);
               return SizedBox(
                 width: 108,
@@ -51,20 +56,14 @@ class DiscoveryNearbyRow extends StatelessWidget {
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          Container(
+                          SizedBox(
                             width: 72,
                             height: 72,
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color:
-                                    colorScheme.primary.withValues(alpha: 0.5),
-                                width: 2,
-                              ),
-                            ),
                             child: ClipOval(
-                              child: _NearbyAvatar(item: item),
+                              child: _NearbyAvatar(
+                                item: item,
+                                resolvedVisual: resolvedVisual,
+                              ),
                             ),
                           ),
                           if (distanceLabel != null)
@@ -136,15 +135,30 @@ String? _distanceLabel(double? distanceMeters) {
 }
 
 class _NearbyAvatar extends StatelessWidget {
-  const _NearbyAvatar({required this.item});
+  const _NearbyAvatar({
+    required this.item,
+    required this.resolvedVisual,
+  });
 
   final AccountProfileModel item;
+  final ResolvedAccountProfileVisual resolvedVisual;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final imageUrl = item.avatarUrl ?? item.coverUrl;
+    final imageUrl = resolvedVisual.compactImageUrl;
     if (imageUrl == null || imageUrl.isEmpty) {
+      final typeVisual = resolvedVisual.typeVisual;
+      if (typeVisual?.isIcon == true && typeVisual?.iconData != null) {
+        return Container(
+          color: typeVisual?.backgroundColor ?? colorScheme.surfaceContainer,
+          alignment: Alignment.center,
+          child: Icon(
+            typeVisual!.iconData,
+            color: typeVisual.iconColor ?? colorScheme.onSurfaceVariant,
+          ),
+        );
+      }
       return Container(
         color: colorScheme.surfaceContainerHighest,
         alignment: Alignment.center,

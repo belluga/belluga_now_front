@@ -73,7 +73,7 @@ class MockAccountProfilesDatabase {
           coverUrl: null, // Artists don't have cover images in current data
           bio: 'Artista talentoso apresentando shows incríveis em Guarapari.',
           tags: ['música', 'show', 'entretenimento'],
-          upcomingEventIds: artistEventIds,
+          agendaEvents: const [],
         ),
       );
     }
@@ -101,7 +101,7 @@ class MockAccountProfilesDatabase {
       bio:
           'O melhor beach club do litoral. Gastronomia, música e vibes à beira-mar.',
       tags: ['beach club', 'restaurante', 'festas', 'praia'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       isVerified: true,
       engagementData: VenueEngagementData(
         presenceCountValue: _engagementCount(120),
@@ -122,7 +122,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200',
       bio: 'Culinária francesa intimista no coração da cidade.',
       tags: ['bistrô', 'francês', 'jantar', 'romântico'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       isVerified: true,
       engagementData: VenueEngagementData(
         presenceCountValue: _engagementCount(45),
@@ -143,7 +143,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=1200',
       bio: 'Residente do Beach Club. House music e vibes eletrônicas.',
       tags: ['dj', 'house', 'eletrônica', 'música'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       engagementData: ArtistEngagementData(
         statusValue: _engagementStatus('TOCANDO AGORA'),
       ),
@@ -162,7 +162,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=1200',
       bio: 'Indie e MPB com clima de pôr do sol.',
       tags: ['indie', 'mpb', 'show'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       engagementData: ArtistEngagementData(
         statusValue: _engagementStatus('COMEÇA EM BREVE'),
       ),
@@ -181,7 +181,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200',
       bio: 'Eletrônica e deep house para madrugadas intensas.',
       tags: ['eletrônica', 'house', 'dj'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       engagementData: ArtistEngagementData(
         statusValue: _engagementStatus('TOCANDO AGORA'),
       ),
@@ -201,7 +201,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=1200',
       bio: 'Guias locais especializados em trilhas e mergulho.',
       tags: ['aventura', 'trilhas', 'mergulho', 'turismo'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       engagementData: ExperienceEngagementData(
         experienceCountValue: _engagementCount(12),
       ),
@@ -223,7 +223,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1516455207990-7a41ce80f7ee?w=1200',
       bio: 'Dicas de lifestyle, moda e os melhores points de Guarapari.',
       tags: ['lifestyle', 'moda', 'dicas', 'influencer'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       isVerified: true,
       engagementData: InfluencerEngagementData(
         inviteCountValue: _engagementCount(150),
@@ -244,7 +244,7 @@ class MockAccountProfilesDatabase {
           'https://images.unsplash.com/photo-1459749411177-287ce1465101?w=1200',
       bio: 'A curadoria mais completa dos eventos culturais do Espírito Santo.',
       tags: ['cultura', 'arte', 'teatro', 'agenda'],
-      upcomingEventIds: [],
+      agendaEvents: const [],
       engagementData: CuratorEngagementData(
         articleCountValue: _engagementCount(50),
         docCountValue: _engagementCount(20),
@@ -286,7 +286,7 @@ class MockAccountProfilesDatabase {
               'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1200',
           bio: 'Local incrível para eventos em ${venue['address']}.',
           tags: ['venue', 'local', 'eventos'],
-          upcomingEventIds: [],
+          agendaEvents: const [],
           distanceMeters: 2800,
         ),
       );
@@ -382,7 +382,7 @@ class MockAccountProfilesDatabase {
                   : type == 'venue' && i % 3 == 0
                       ? [...tags, 'vista-mar', 'romântico']
                       : tags,
-          upcomingEventIds: const [],
+          agendaEvents: const [],
           engagementData: type == 'artist'
               ? ArtistEngagementData(
                   statusValue: _engagementStatus('COMEÇA EM BREVE'),

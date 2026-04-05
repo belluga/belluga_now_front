@@ -26,7 +26,6 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -292,9 +291,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   final StreamValue<List<EventModel>> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   @override
-  final StreamValue<List<EventModel>> eventsByDateStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
-  @override
   final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
       StreamValue<PagedEventsResult?>(defaultValue: null);
   @override
@@ -375,35 +371,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   ScheduleRepoInt get currentPagedEventsPage => _currentPagedEventsPage;
 
   @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<void> refreshEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    final events = await getEventsByDate(
-      date,
-      originLat: originLat,
-      originLng: originLng,
-      maxDistanceMeters: maxDistanceMeters,
-    );
-    eventsByDateStreamValue.addValue(events);
-  }
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -571,20 +539,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     pagedEventsErrorStreamValue.addValue(null);
   }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-          ScheduleRepoDateTime date) async =>
-      const <VenueEventResume>[];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
-      const <VenueEventResume>[];
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
