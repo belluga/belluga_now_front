@@ -41,6 +41,7 @@ class FilteredDeck extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AnimatedContainer(
+          key: const ValueKey<String>('poi-deck-container'),
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
           height: deckHeight,
@@ -81,7 +82,7 @@ class FilteredDeck extends StatelessWidget {
                     right: index == pois.length - 1 ? 0 : 4,
                   ),
                   child: OverflowBox(
-                    alignment: Alignment.topCenter,
+                    alignment: Alignment.bottomCenter,
                     minHeight: 0,
                     maxHeight: double.infinity,
                     child: SizeReportingWidget(
@@ -117,8 +118,9 @@ class FilteredDeck extends StatelessWidget {
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width:
-                      controller.poiDeckIndexStreamValue.value == index ? 18 : 7,
+                  width: controller.poiDeckIndexStreamValue.value == index
+                      ? 18
+                      : 7,
                   height: 7,
                   decoration: BoxDecoration(
                     color: controller.poiDeckIndexStreamValue.value == index

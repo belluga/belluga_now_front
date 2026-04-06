@@ -54,6 +54,7 @@ import 'package:belluga_now/infrastructure/services/location_origin_service.dart
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -855,6 +856,66 @@ void main() {
 
       expect(localController.selectedPoiStreamValue.value, isNull);
       expect(localController.lastSelectedPoiMemoryStreamValue.value, isNull);
+    });
+
+    test('empty tap on map collapses search tray back to discovery', () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+      });
+
+      await localController.init();
+      localController.showSearchTray();
+      await _flushMicrotasks();
+
+      fakeMapHandle.emitInteraction(
+        const BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.emptyTap,
+          userGesture: true,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(
+          localController.mapTrayModeStreamValue.value, MapTrayMode.discovery);
+    });
+
+    test('pan gesture on map collapses expanded filters back to discovery',
+        () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+      });
+
+      await localController.init();
+      localController.showFiltersTray();
+      await _flushMicrotasks();
+
+      fakeMapHandle.emitInteraction(
+        const BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.pan,
+          zoom: 16,
+          userGesture: true,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(
+          localController.mapTrayModeStreamValue.value, MapTrayMode.discovery);
     });
 
     test('logs search submit and clear events', () async {
@@ -2424,6 +2485,33 @@ void main() {
       expect(find.text('Buscar lugares ou eventos'), findsOneWidget);
     });
 
+    testWidgets('status banner renders above the dock instead of over it',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.statusMessageStreamValue.addValue('Atualizando pontos...');
+      await tester.pump();
+
+      final bannerFinder = find.byKey(
+        const ValueKey<String>('map-status-banner'),
+      );
+      final trayFinder =
+          find.byKey(const ValueKey<String>('map-tray-surface-discovery'));
+
+      expect(bannerFinder, findsOneWidget);
+      expect(trayFinder, findsOneWidget);
+      expect(
+        tester.getBottomLeft(bannerFinder).dy,
+        lessThan(tester.getTopLeft(trayFinder).dy),
+      );
+    });
+
     testWidgets(
         'location utility stays circular and dock search launcher keeps tray height',
         (tester) async {
@@ -2445,6 +2533,60 @@ void main() {
       expect(locationSize.width, locationSize.height);
       expect(searchSize.width, searchSize.height);
       expect(searchSize.height, 48);
+    });
+
+    testWidgets('selected deck keeps max measured height across stacked items',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final firstPoi = _buildPoi(
+        id: 'stack-a',
+        name: 'Primeiro',
+        category: CityPoiCategory.beach,
+        stackKey: 'stack-key',
+        stackCount: 2,
+      );
+      final secondPoi = _buildPoi(
+        id: 'stack-b',
+        name: 'Segundo',
+        category: CityPoiCategory.restaurant,
+        stackKey: 'stack-key',
+        stackCount: 2,
+      );
+      final selectedPoi = _buildPoi(
+        id: 'stack-a',
+        name: 'Primeiro',
+        category: CityPoiCategory.beach,
+        stackKey: 'stack-key',
+        stackCount: 2,
+        stackItems: [firstPoi, secondPoi],
+      );
+
+      controller.selectPoi(selectedPoi);
+      controller.updatePoiDeckHeight('stack-a', 320);
+      controller.updatePoiDeckHeight('stack-b', 440);
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      final viewportHeight =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final expectedDeckHeight =
+          (viewportHeight * 0.56).clamp(340.0, 480.0).toDouble();
+      final deckFinder =
+          find.byKey(const ValueKey<String>('poi-deck-container'));
+      expect(deckFinder, findsOneWidget);
+      expect(tester.getSize(deckFinder).height, expectedDeckHeight);
+
+      controller.setPoiDeckIndex(1);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(tester.getSize(deckFinder).height, expectedDeckHeight);
     });
 
     testWidgets('selected filter state exposes an explicit clear affordance',

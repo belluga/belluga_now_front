@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_filter_category_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -713,6 +713,8 @@ class _SearchSuggestionCard extends StatelessWidget {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
         );
+    final liveBadgeLabel =
+        poi.isHappeningNow ? PoiContentResolver.badgeLabel(poi) : null;
 
     return Material(
       color: scheme.surfaceContainerHigh.withValues(alpha: 0.72),
@@ -731,6 +733,32 @@ class _SearchSuggestionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (liveBadgeLabel != null) ...[
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.errorContainer,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          child: Text(
+                            liveBadgeLabel.toUpperCase(),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: scheme.onErrorContainer,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     Text(
                       poi.name,
                       maxLines: 1,
@@ -739,7 +767,7 @@ class _SearchSuggestionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _resolveSearchSuggestionMeta(),
+                      PoiContentResolver.searchMeta(poi),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: subtitleStyle,
@@ -759,66 +787,6 @@ class _SearchSuggestionCard extends StatelessWidget {
       ),
     );
   }
-
-  String _resolveSearchSuggestionMeta() {
-    final meta = <String>[];
-    final distance = _formatDistance();
-    final address = _formatLocationContext();
-    if (distance != null) {
-      meta.add(distance);
-    }
-    if (address != null) {
-      meta.add(address);
-    }
-    if (meta.isEmpty) {
-      meta.add(_categoryLabel());
-    }
-    return meta.join(' • ');
-  }
-
-  String _categoryLabel() {
-    return switch (poi.category) {
-      CityPoiCategory.restaurant => 'Restaurante',
-      CityPoiCategory.health => 'Saúde',
-      CityPoiCategory.monument => 'Monumento',
-      CityPoiCategory.church => 'Igreja',
-      CityPoiCategory.beach => 'Praia',
-      CityPoiCategory.lodging => 'Hospedagem',
-      CityPoiCategory.culture => poi.isDynamic ? 'Evento' : 'Cultura',
-      CityPoiCategory.nature => 'Natureza',
-      CityPoiCategory.sponsor => 'Destaque',
-      CityPoiCategory.attraction => 'Lugar',
-    };
-  }
-
-  String? _formatDistance() {
-    final distance = poi.distanceMeters;
-    if (distance == null || !distance.isFinite || distance <= 0) {
-      return null;
-    }
-    if (distance < 1000) {
-      return '${distance.round()}m';
-    }
-    final inKm = distance / 1000;
-    return '${inKm.toStringAsFixed(inKm >= 10 ? 0 : 1)} km';
-  }
-
-  String? _formatLocationContext() {
-    final address = poi.address.trim();
-    if (address.isEmpty) {
-      return null;
-    }
-    final compact = address
-        .split(',')
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .toList(growable: false);
-    if (compact.isEmpty) {
-      return address;
-    }
-    return compact.join(' • ');
-  }
 }
 
 class _SearchSuggestionVisual extends StatelessWidget {
@@ -831,9 +799,8 @@ class _SearchSuggestionVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final imageUri =
-        poi.visual?.isImage == true ? poi.visual?.imageUri?.trim() : null;
-    final assetPath = poi.assetPath?.trim();
+    final imageUri = PoiContentResolver.imageUri(poi);
+    final assetPath = PoiContentResolver.assetPath(poi);
 
     Widget child;
     if (imageUri != null && imageUri.isNotEmpty) {
@@ -867,15 +834,19 @@ class _SearchSuggestionVisual extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(ColorScheme scheme) {
+    final backgroundColor =
+        PoiContentResolver.accentColor(poi) ?? scheme.primaryContainer;
+    final iconColor =
+        PoiContentResolver.iconColor(poi) ?? scheme.onPrimaryContainer;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.primaryContainer,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Center(
         child: Icon(
-          Icons.place_outlined,
-          color: scheme.onPrimaryContainer,
+          PoiContentResolver.icon(poi),
+          color: iconColor,
           size: 20,
         ),
       ),

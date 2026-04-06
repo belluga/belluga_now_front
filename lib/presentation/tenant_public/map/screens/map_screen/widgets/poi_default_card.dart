@@ -12,8 +12,5 @@ class PoiDefaultCard extends PoiBaseCard {
   });
 
   @override
-  List<Widget Function(BuildContext)> buildSections() => [
-        addressSection,
-        tagsSection,
-      ];
+  List<Widget Function(BuildContext)> buildSections() => [tagsSection];
 }

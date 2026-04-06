@@ -1,6 +1,6 @@
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:flutter/material.dart';
 
 abstract class PoiBaseCard extends StatelessWidget {
@@ -32,9 +32,10 @@ abstract class PoiBaseCard extends StatelessWidget {
     final secondaryLabel = emphasizesPrimaryAction
         ? routeActionLabel(context)
         : primaryActionLabel(context);
-    final secondaryCallback = emphasizesPrimaryAction ? onRoute : onPrimaryAction;
-    final trimmedDescription = poi.description.trim();
-    final hasDescription = trimmedDescription.isNotEmpty;
+    final secondaryCallback =
+        emphasizesPrimaryAction ? onRoute : onPrimaryAction;
+    final description = PoiContentResolver.sanitizedDescription(poi);
+    final hasDescription = description != null;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -115,11 +116,12 @@ abstract class PoiBaseCard extends StatelessWidget {
                         poi.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              height: 1.02,
-                              letterSpacing: -0.5,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.02,
+                                  letterSpacing: -0.5,
+                                ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -135,7 +137,7 @@ abstract class PoiBaseCard extends StatelessWidget {
                 if (hasDescription) ...[
                   const SizedBox(height: 12),
                   Text(
-                    trimmedDescription,
+                    description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -173,8 +175,7 @@ abstract class PoiBaseCard extends StatelessWidget {
                         onPressed: secondaryCallback,
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(54),
-                          backgroundColor:
-                              colorScheme.surfaceContainerHighest,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
                           foregroundColor: colorScheme.onSurface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
@@ -199,28 +200,24 @@ abstract class PoiBaseCard extends StatelessWidget {
     required Color accentColor,
     required Color accentForeground,
   }) {
-    final imageUri =
-        poi.visual?.isImage == true ? poi.visual?.imageUri?.trim() : null;
-    final assetPath = poi.assetPath?.trim();
-    final hasMedia =
-        imageUri != null && imageUri.isNotEmpty ||
+    final imageUri = PoiContentResolver.imageUri(poi);
+    final assetPath = PoiContentResolver.assetPath(poi);
+    final hasMedia = imageUri != null && imageUri.isNotEmpty ||
         assetPath != null && assetPath.isNotEmpty;
-    final heroChild =
-        imageUri != null && imageUri.isNotEmpty
-            ? Image.network(
-                imageUri,
+    final heroChild = imageUri != null && imageUri.isNotEmpty
+        ? BellugaNetworkImage(
+            imageUri,
+            fit: BoxFit.cover,
+            errorWidget: _HeroPlaceholder(accentColor: accentColor, poi: poi),
+          )
+        : assetPath != null && assetPath.isNotEmpty
+            ? Image.asset(
+                assetPath,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) =>
                     _HeroPlaceholder(accentColor: accentColor, poi: poi),
               )
-            : assetPath != null && assetPath.isNotEmpty
-                ? Image.asset(
-                    assetPath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _HeroPlaceholder(accentColor: accentColor, poi: poi),
-                  )
-                : _HeroPlaceholder(accentColor: accentColor, poi: poi);
+            : _HeroPlaceholder(accentColor: accentColor, poi: poi);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -268,8 +265,10 @@ abstract class PoiBaseCard extends StatelessWidget {
           color: colorScheme.onSurfaceVariant,
         );
 
-    final distance = formatDistance();
-    final locationLine = formatLocationContext();
+    final distance =
+        PoiContentResolver.distanceLabel(poi, includeAudienceSuffix: true);
+    final locationLine = PoiContentResolver.compactAddress(poi);
+    final fallbackType = PoiContentResolver.typeLabel(poi);
 
     return Wrap(
       spacing: 10,
@@ -297,74 +296,24 @@ abstract class PoiBaseCard extends StatelessWidget {
             style: mutedStyle,
             overflow: TextOverflow.ellipsis,
           ),
+        if (distance == null && locationLine == null && fallbackType.isNotEmpty)
+          Text(
+            fallbackType,
+            style: mutedStyle,
+            overflow: TextOverflow.ellipsis,
+          ),
       ],
     );
   }
 
   String badgeLabel(BuildContext context) {
-    return switch (poi.category) {
-      CityPoiCategory.restaurant => 'Restaurante',
-      CityPoiCategory.health => 'Saúde',
-      CityPoiCategory.monument => 'Monumento',
-      CityPoiCategory.church => 'Igreja',
-      CityPoiCategory.beach => 'Praia',
-      CityPoiCategory.lodging => 'Hospedagem',
-      CityPoiCategory.culture => poi.isDynamic ? 'Evento' : 'Cultura',
-      CityPoiCategory.nature => 'Natureza',
-      CityPoiCategory.sponsor => 'Destaque',
-      CityPoiCategory.attraction => 'Lugar',
-    };
+    return PoiContentResolver.badgeLabel(poi);
   }
 
   String routeActionLabel(BuildContext context) => 'Traçar rota';
 
-  String? formatDistance() {
-    final distance = poi.distanceMeters;
-    if (distance == null || !distance.isFinite || distance <= 0) {
-      return null;
-    }
-    if (distance < 1000) {
-      return '${distance.round()}m de você';
-    }
-    final inKm = distance / 1000;
-    return '${inKm.toStringAsFixed(inKm >= 10 ? 0 : 1)} km de você';
-  }
-
-  String? formatLocationContext() {
-    final address = poi.address.trim();
-    if (address.isEmpty) {
-      return null;
-    }
-    final compact = address
-        .split(',')
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .toList(growable: false);
-    if (compact.isEmpty) {
-      return address;
-    }
-    return compact.join(' • ');
-  }
-
   Color resolveAccentColor() {
-    final visual = poi.visual;
-    if (visual?.isIcon == true) {
-      return MapMarkerIconResolver.tryParseHexColor(visual?.colorHex) ??
-          colorScheme.primary;
-    }
-    return switch (poi.category) {
-      CityPoiCategory.beach => const Color(0xFF1478C8),
-      CityPoiCategory.restaurant => const Color(0xFF8F27C7),
-      CityPoiCategory.lodging => const Color(0xFF355C7D),
-      CityPoiCategory.health => const Color(0xFF117E96),
-      CityPoiCategory.monument => const Color(0xFF805437),
-      CityPoiCategory.church => const Color(0xFF6A4FB3),
-      CityPoiCategory.culture => const Color(0xFFD64D4D),
-      CityPoiCategory.nature => const Color(0xFF2D8A52),
-      CityPoiCategory.sponsor => const Color(0xFFB26B13),
-      CityPoiCategory.attraction => colorScheme.primary,
-    };
+    return PoiContentResolver.accentColor(poi) ?? colorScheme.primary;
   }
 
   Color _foregroundFor(Color background) {
@@ -373,32 +322,8 @@ abstract class PoiBaseCard extends StatelessWidget {
         : Colors.black87;
   }
 
-  Widget addressSection(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.place_outlined,
-          size: 18,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            poi.address,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget tagsSection(BuildContext context) {
-    final tags = poi.tags.take(4).toList(growable: false);
+    final tags = PoiContentResolver.tags(poi);
     if (tags.isEmpty) return const SizedBox.shrink();
     return Wrap(
       spacing: 8,
@@ -406,7 +331,7 @@ abstract class PoiBaseCard extends StatelessWidget {
       children: tags
           .map(
             (tag) => Chip(
-              label: Text(tag.value),
+              label: Text(tag),
               visualDensity: VisualDensity.compact,
               side: BorderSide.none,
               backgroundColor: colorScheme.surfaceContainerHigh,
@@ -430,13 +355,8 @@ class _HeroPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = poi.visual?.isIcon == true
-        ? MapMarkerIconResolver.resolve(poi.visual?.icon)
-        : MapMarkerIconResolver.fallbackIcon;
-    final iconColor = poi.visual?.isIcon == true
-        ? (MapMarkerIconResolver.tryParseHexColor(poi.visual?.iconColorHex) ??
-            Colors.white)
-        : Colors.white;
+    final icon = PoiContentResolver.icon(poi);
+    final iconColor = PoiContentResolver.iconColor(poi) ?? Colors.white;
 
     return DecoratedBox(
       decoration: BoxDecoration(

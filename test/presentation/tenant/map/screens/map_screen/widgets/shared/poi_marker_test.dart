@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.
 import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_marker.dart';
 import 'package:flutter/material.dart';
@@ -20,12 +21,14 @@ import 'package:flutter_test/flutter_test.dart';
 CityPoiModel _buildPoi({
   required CityPoiCategory category,
   CityPoiVisual? visual,
+  int stackCount = 1,
 }) {
   final idValue = CityPoiIdValue()..parse('poi-1');
   final nameValue = CityPoiNameValue()..parse('POI');
   final descriptionValue = CityPoiDescriptionValue()..parse('Desc');
   final addressValue = CityPoiAddressValue()..parse('Address');
   final priorityValue = PoiPriorityValue()..parse('10');
+  final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
   final coordinate = CityCoordinate(
     latitudeValue: LatitudeValue()..parse('-20.0'),
     longitudeValue: LongitudeValue()..parse('-40.0'),
@@ -39,6 +42,7 @@ CityPoiModel _buildPoi({
     category: category,
     coordinate: coordinate,
     priorityValue: priorityValue,
+    stackCountValue: stackCountValue,
     visual: visual,
   );
 }
@@ -408,4 +412,33 @@ void main() {
       );
     },
   );
+
+  testWidgets('stack badge shows total count instead of plus delta', (
+    tester,
+  ) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      stackCount: 4,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('4'), findsOneWidget);
+    expect(find.text('+3'), findsNothing);
+  });
 }

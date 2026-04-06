@@ -12,19 +12,5 @@ class PoiLodgingCard extends PoiBaseCard {
   });
 
   @override
-  List<Widget Function(BuildContext)> buildSections() => [
-        addressSection,
-        (context) => Row(
-              children: const [
-                Icon(Icons.king_bed_outlined, size: 18),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Conferimos disponibilidade especial para você.',
-                  ),
-                ),
-              ],
-            ),
-        tagsSection,
-      ];
+  List<Widget Function(BuildContext)> buildSections() => [tagsSection];
 }

@@ -12,26 +12,5 @@ class PoiRestaurantCard extends PoiBaseCard {
   });
 
   @override
-  String primaryActionLabel(BuildContext context) => 'Ver cardápio';
-
-  @override
-  List<Widget Function(BuildContext)> buildSections() => [
-        addressSection,
-        (context) => Row(
-              children: [
-                const Icon(Icons.local_dining, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Sabores indicados pela curadoria Belluga.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(fontStyle: FontStyle.italic),
-                  ),
-                ),
-              ],
-            ),
-        tagsSection,
-      ];
+  List<Widget Function(BuildContext)> buildSections() => [tagsSection];
 }

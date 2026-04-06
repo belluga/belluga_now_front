@@ -12,19 +12,5 @@ class PoiBeachCard extends PoiBaseCard {
   });
 
   @override
-  List<Widget Function(BuildContext)> buildSections() => [
-        addressSection,
-        (context) => Row(
-              children: const [
-                Icon(Icons.sunny, size: 18),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Melhor aproveitada durante o dia de hoje.',
-                  ),
-                ),
-              ],
-            ),
-        tagsSection,
-      ];
+  List<Widget Function(BuildContext)> buildSections() => [tagsSection];
 }

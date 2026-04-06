@@ -22,7 +22,7 @@ class PoiMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final hasStack = poi.stackCount > 1;
-    final stackLabel = '+${poi.stackCount - 1}';
+    final stackLabel = poi.stackCount.toString();
     final visual = _resolvedVisual();
 
     if (visual?.isImage == true) {

@@ -7,8 +7,8 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_location_utility_button.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_soft_location_notice_banner.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_status_message_listener.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/status_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -60,11 +60,9 @@ class _MapScreenState extends State<MapScreen> {
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
-    return MapStatusMessageListener(
-      child: Theme(
-        data: theme,
-        child: _buildScaffold(),
-      ),
+    return Theme(
+      data: theme,
+      child: _buildScaffold(),
     );
   }
 
@@ -108,12 +106,11 @@ class _MapScreenState extends State<MapScreen> {
                         MapLocationUtilityButton(controller: _controller),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    MapSoftLocationNoticeBanner(controller: _controller),
                   ],
                 ),
               ),
             ),
+            _buildFeedbackOverlay(),
             _buildBottomControlsOverlay(),
             _buildSelectedCardOverlay(),
           ],
@@ -155,6 +152,54 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeedbackOverlay() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.hasSelectedPoiStreamValue,
+      builder: (_, hasSelectedPoi) {
+        return StreamValueBuilder<int>(
+          streamValue: _controller.poiDeckHeightRevisionStreamValue,
+          builder: (_, __) {
+            final selectedPoi = _controller.selectedPoiStreamValue.value;
+            final selectedDeckHeight = selectedPoi == null
+                ? 0.0
+                : (_controller.getPoiDeckHeight(selectedPoi.id) ?? 356);
+            final double bottomOffset =
+                hasSelectedPoi ? 24.0 + selectedDeckHeight + 20.0 : 16.0 + 88.0;
+            return Positioned(
+              key: const ValueKey<String>('map-feedback-overlay'),
+              left: 16,
+              right: 16,
+              bottom: bottomOffset,
+              child: SafeArea(
+                top: false,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        MapSoftLocationNoticeBanner(controller: _controller),
+                        StreamValueBuilder<String>(
+                          streamValue:
+                              _controller.softLocationNoticeStreamValue,
+                          builder: (_, message) => message.trim().isEmpty
+                              ? const SizedBox.shrink()
+                              : const SizedBox(height: 8),
+                        ),
+                        StatusBanner(controller: _controller),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );

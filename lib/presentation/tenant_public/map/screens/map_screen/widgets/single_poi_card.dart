@@ -30,11 +30,12 @@ class SinglePoiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
+      key: const ValueKey<String>('poi-deck-container'),
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       height: deckHeight,
       child: OverflowBox(
-        alignment: Alignment.topCenter,
+        alignment: Alignment.bottomCenter,
         minHeight: 0,
         maxHeight: double.infinity,
         child: SizeReportingWidget(

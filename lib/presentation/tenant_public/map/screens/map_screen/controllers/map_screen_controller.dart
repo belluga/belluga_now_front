@@ -113,6 +113,8 @@ class MapScreenController implements Disposable {
   String? _activePoiId;
   final StreamValue<int> poiDeckIndexStreamValue =
       StreamValue<int>(defaultValue: 0);
+  final StreamValue<int> poiDeckHeightRevisionStreamValue =
+      StreamValue<int>(defaultValue: 0);
   final Map<String, double> poiDeckHeights = <String, double>{};
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
@@ -1821,7 +1823,13 @@ class MapScreenController implements Disposable {
   }
 
   void updatePoiDeckHeight(String poiId, double height) {
+    final previous = poiDeckHeights[poiId];
+    if (previous != null && (previous - height).abs() < 1) {
+      return;
+    }
     poiDeckHeights[poiId] = height;
+    poiDeckHeightRevisionStreamValue
+        .addValue(poiDeckHeightRevisionStreamValue.value + 1);
   }
 
   double? getPoiDeckHeight(String poiId) {
@@ -1857,6 +1865,7 @@ class MapScreenController implements Disposable {
     activeFilterLabelStreamValue.dispose();
     pendingFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
+    poiDeckHeightRevisionStreamValue.dispose();
     filterInteractionLockedStreamValue.dispose();
     mapInteractionGuardActiveStreamValue.dispose();
     mapTrayModeStreamValue.dispose();
@@ -1880,6 +1889,12 @@ class MapScreenController implements Disposable {
       }
       if (event.isViewportChange) {
         clearSelectedPoi(preserveMarkerMemory: false);
+      }
+      if (event.userGesture &&
+          mapTrayModeStreamValue.value != MapTrayMode.discovery &&
+          (event.type == BellugaMapInteractionType.emptyTap ||
+              event.isViewportChange)) {
+        showDiscoveryTray();
       }
       if (event.type == BellugaMapInteractionType.ready) {
         _tryApplyPendingInitialPoiFocus();
