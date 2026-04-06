@@ -46,6 +46,14 @@ import 'package:stream_value/core/stream_value.dart';
 class MapScreenController implements Disposable {
   static const double minZoom = 14.5;
   static const double maxZoom = 17.0;
+  static const double _selectedPoiViewportAnchor = 0.28;
+  static const double _filteredPreviewViewportAnchor = 0.40;
+  static const Duration _postFilterMarkerTapSuppression = Duration(
+    milliseconds: 1000,
+  );
+  static const Duration _searchInputDebounceDelay = Duration(
+    milliseconds: 260,
+  );
   MapScreenController({
     PoiRepositoryContract? poiRepository,
     UserLocationRepositoryContract? userLocationRepository,
@@ -88,6 +96,8 @@ class MapScreenController implements Disposable {
   final isLoading = StreamValue<bool>(defaultValue: false);
   final filterInteractionLockedStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final mapInteractionGuardActiveStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final mapTrayModeStreamValue =
       StreamValue<MapTrayMode>(defaultValue: MapTrayMode.discovery);
   final errorMessage = StreamValue<String?>();
@@ -97,6 +107,7 @@ class MapScreenController implements Disposable {
   final hasSelectedPoiStreamValue = StreamValue<bool>(defaultValue: false);
   final zoomStreamValue = StreamValue<double>(defaultValue: 16);
   Timer? _zoomThrottle;
+  Timer? _searchInputDebounceTimer;
   double? _pendingZoom;
   Future<EventTrackerTimedEventHandle?>? _activePoiTimedEventFuture;
   String? _activePoiId;
@@ -159,6 +170,8 @@ class MapScreenController implements Disposable {
   bool _locationFeedbackNoticesArmed = false;
   MapLocationFeedbackState? _lastTerminalLocationFeedbackState;
   Timer? _softLocationNoticeTimer;
+  Timer? _postFilterMarkerTapSuppressionTimer;
+  bool _markerTapSuppressedAfterFilterReload = false;
   bool _isReconcilingLocationOrigin = false;
 
   Future<void> init({
@@ -621,7 +634,8 @@ class MapScreenController implements Disposable {
     final nextSettings = nextResolution.settings;
     final nextOrigin = _resolveCurrentEffectiveOrigin();
     final semanticOriginChanged =
-        !(_currentQueryOriginSettings?.sameAs(nextSettings) ?? nextSettings == null);
+        !(_currentQueryOriginSettings?.sameAs(nextSettings) ??
+            nextSettings == null);
     if (!semanticOriginChanged) {
       return;
     }
@@ -656,38 +670,85 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> searchPois(String query) async {
-    final trimmed = query.trim();
-    final nextQuery = _composeQuery(searchTerm: query);
-    clearSelectedPoi(preserveMarkerMemory: false);
-    _logMapTelemetry(
-      EventTrackerEvents.search,
-      eventName: telemetryRepoString('map_search_submitted'),
-      properties: {
-        'query_len': trimmed.length,
-        'filter_mode': filterModeStreamValue.value.name,
-      },
+    _searchInputDebounceTimer?.cancel();
+    await _runSearchQuery(
+      query,
+      logTelemetry: true,
     );
-    statusMessageStreamValue.addValue('Buscando pontos...');
-    await loadPois(nextQuery);
-    statusMessageStreamValue.addValue(null);
   }
 
-  Future<void> clearSearch() async {
+  void handleSearchInputChanged(String query) {
+    _searchInputDebounceTimer?.cancel();
+    final trimmed = query.trim();
+    final currentTerm = searchTermStreamValue.value?.trim() ?? '';
+
+    if (trimmed == currentTerm) {
+      return;
+    }
+
+    _searchInputDebounceTimer = Timer(_searchInputDebounceDelay, () {
+      if (trimmed.isEmpty) {
+        unawaited(
+          clearSearch(
+            logTelemetry: false,
+          ),
+        );
+        return;
+      }
+      unawaited(
+        _runSearchQuery(
+          query,
+          logTelemetry: false,
+        ),
+      );
+    });
+  }
+
+  Future<void> clearSearch({
+    bool logTelemetry = true,
+  }) async {
+    _searchInputDebounceTimer?.cancel();
     final previousQueryLen =
         _currentQuery.searchTermValue?.value.trim().length ?? 0;
     clearSelectedPoi(preserveMarkerMemory: false);
-    _logMapTelemetry(
-      EventTrackerEvents.buttonClick,
-      eventName: telemetryRepoString('map_search_cleared'),
-      properties: {
-        'previous_query_len': previousQueryLen,
-        'filter_mode': filterModeStreamValue.value.name,
-      },
-    );
+    if (logTelemetry) {
+      _logMapTelemetry(
+        EventTrackerEvents.buttonClick,
+        eventName: telemetryRepoString('map_search_cleared'),
+        properties: {
+          'previous_query_len': previousQueryLen,
+          'filter_mode': filterModeStreamValue.value.name,
+        },
+      );
+    }
     final query = _composeQuery(searchTerm: '');
-    statusMessageStreamValue.addValue('Carregando pontos...');
-    await loadPois(query, loadingMessage: 'Carregando pontos...');
-    statusMessageStreamValue.addValue(null);
+    await loadPois(
+      query,
+      announceLoadingMessage: false,
+    );
+  }
+
+  Future<void> _runSearchQuery(
+    String query, {
+    required bool logTelemetry,
+  }) async {
+    final trimmed = query.trim();
+    final nextQuery = _composeQuery(searchTerm: query);
+    clearSelectedPoi(preserveMarkerMemory: false);
+    if (logTelemetry) {
+      _logMapTelemetry(
+        EventTrackerEvents.search,
+        eventName: telemetryRepoString('map_search_submitted'),
+        properties: {
+          'query_len': trimmed.length,
+          'filter_mode': filterModeStreamValue.value.name,
+        },
+      );
+    }
+    await loadPois(
+      nextQuery,
+      announceLoadingMessage: false,
+    );
   }
 
   Future<void> loadPois(
@@ -706,7 +767,9 @@ class MapScreenController implements Disposable {
 
     _setMapStatus(MapStatus.fetching);
     _setMapMessage(
-      announceLoadingMessage ? (loadingMessage ?? 'Carregando pontos...') : null,
+      announceLoadingMessage
+          ? (loadingMessage ?? 'Carregando pontos...')
+          : null,
     );
     _setLoadingState();
 
@@ -986,6 +1049,9 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> handleMarkerTap(CityPoiModel poi) async {
+    if (_filterInteractionLocked || _markerTapSuppressedAfterFilterReload) {
+      return;
+    }
     if (mapTrayModeStreamValue.value != MapTrayMode.discovery) {
       mapTrayModeStreamValue.addValue(MapTrayMode.discovery);
     }
@@ -1142,6 +1208,7 @@ class MapScreenController implements Disposable {
         'filter_mode': mode.name,
       },
     );
+    _beginFilterReloadInteraction();
     unawaited(
       _runFilterReload(
         _composeQuery(
@@ -1152,6 +1219,7 @@ class MapScreenController implements Disposable {
           types: const <String>{},
         ),
         appliedCatalogFilterKeyOnSuccess: null,
+        focusLeadingResultOnSuccess: true,
       ),
     );
   }
@@ -1185,6 +1253,7 @@ class MapScreenController implements Disposable {
     if (!wasFiltered) {
       return;
     }
+    _beginFilterReloadInteraction();
     unawaited(
       _runFilterReload(
         _composeQuery(
@@ -1195,6 +1264,7 @@ class MapScreenController implements Disposable {
           types: const <String>{},
         ),
         appliedCatalogFilterKeyOnSuccess: null,
+        focusLeadingResultOnSuccess: false,
       ),
     );
     _logMapTelemetry(
@@ -1258,6 +1328,7 @@ class MapScreenController implements Disposable {
         'tags': tags.toList(growable: false),
       },
     );
+    _beginFilterReloadInteraction();
     unawaited(
       _runFilterReload(
         _composeQuery(
@@ -1268,6 +1339,7 @@ class MapScreenController implements Disposable {
           tags: _activeTags,
         ),
         appliedCatalogFilterKeyOnSuccess: _activeCatalogFilterKey,
+        focusLeadingResultOnSuccess: true,
       ),
     );
   }
@@ -1275,12 +1347,8 @@ class MapScreenController implements Disposable {
   Future<void> _runFilterReload(
     PoiQuery query, {
     required String? appliedCatalogFilterKeyOnSuccess,
+    required bool focusLeadingResultOnSuccess,
   }) async {
-    if (_filterInteractionLocked) {
-      return;
-    }
-    _filterInteractionLocked = true;
-    filterInteractionLockedStreamValue.addValue(true);
     try {
       await loadPois(
         query,
@@ -1288,11 +1356,52 @@ class MapScreenController implements Disposable {
       );
       _appliedCatalogFilterKey = appliedCatalogFilterKeyOnSuccess;
       appliedCatalogFilterKeyStreamValue.addValue(_appliedCatalogFilterKey);
+      if (focusLeadingResultOnSuccess) {
+        await _focusLeadingFilteredResult();
+      }
     } finally {
+      _armPostFilterMarkerTapSuppression();
       _filterInteractionLocked = false;
       filterInteractionLockedStreamValue.addValue(false);
       pendingFilterLabelStreamValue.addValue(null);
     }
+  }
+
+  void _beginFilterReloadInteraction() {
+    if (_filterInteractionLocked) {
+      return;
+    }
+    _filterInteractionLocked = true;
+    filterInteractionLockedStreamValue.addValue(true);
+    mapInteractionGuardActiveStreamValue.addValue(true);
+  }
+
+  void _armPostFilterMarkerTapSuppression() {
+    _postFilterMarkerTapSuppressionTimer?.cancel();
+    _markerTapSuppressedAfterFilterReload = true;
+    mapInteractionGuardActiveStreamValue.addValue(true);
+    _postFilterMarkerTapSuppressionTimer = Timer(
+      _postFilterMarkerTapSuppression,
+      () {
+        _markerTapSuppressedAfterFilterReload = false;
+        mapInteractionGuardActiveStreamValue.addValue(false);
+      },
+    );
+  }
+
+  Future<void> _focusLeadingFilteredResult() async {
+    if (selectedPoiStreamValue.value != null) {
+      clearSelectedPoi(preserveMarkerMemory: false);
+    }
+    final pois = filteredPoisStreamValue.value ?? const <CityPoiModel>[];
+    if (pois.isEmpty) {
+      return;
+    }
+    await _focusOnPoi(
+      pois.first,
+      zoom: mapHandle.currentZoom,
+      verticalViewportAnchor: _filteredPreviewViewportAnchor,
+    );
   }
 
   bool isCategoryFilterActive(PoiFilterCategory category) {
@@ -1318,8 +1427,7 @@ class MapScreenController implements Disposable {
   }
 
   List<PoiFilterCategory> visibleCatalogCategories(PoiFilterOptions? options) {
-    final categories =
-        options?.sortedCategories ?? const <PoiFilterCategory>[];
+    final categories = options?.sortedCategories ?? const <PoiFilterCategory>[];
     if (categories.isEmpty) {
       return const <PoiFilterCategory>[];
     }
@@ -1391,11 +1499,23 @@ class MapScreenController implements Disposable {
     );
   }
 
-  Future<void> focusOnPoi(CityPoiModel poi, {double? zoom}) async {
-    await _focusOnPoi(poi, zoom: zoom);
+  Future<void> focusOnPoi(
+    CityPoiModel poi, {
+    double? zoom,
+    double verticalViewportAnchor = _selectedPoiViewportAnchor,
+  }) async {
+    await _focusOnPoi(
+      poi,
+      zoom: zoom,
+      verticalViewportAnchor: verticalViewportAnchor,
+    );
   }
 
-  Future<bool> _focusOnPoi(CityPoiModel poi, {double? zoom}) async {
+  Future<bool> _focusOnPoi(
+    CityPoiModel poi, {
+    double? zoom,
+    double verticalViewportAnchor = _selectedPoiViewportAnchor,
+  }) async {
     final isMapReady = await ensureMapReady();
     if (!isMapReady) {
       return false;
@@ -1405,7 +1525,7 @@ class MapScreenController implements Disposable {
     final didMove = mapHandle.moveToAnchored(
       coordinate,
       zoom: _clampZoom(targetZoom.toDouble()),
-      verticalViewportAnchor: 0.34,
+      verticalViewportAnchor: verticalViewportAnchor,
     );
     if (!didMove) {
       debugPrint('Failed to focus on poi ${poi.id}: map handle rejected move');
@@ -1712,7 +1832,9 @@ class MapScreenController implements Disposable {
   FutureOr onDispose() async {
     _finishPoiTimedEvent();
     _zoomThrottle?.cancel();
+    _searchInputDebounceTimer?.cancel();
     _cancelSoftLocationNoticeTimer();
+    _postFilterMarkerTapSuppressionTimer?.cancel();
     await _mapInteractionSubscription?.cancel();
     await _filteredPoisSubscription?.cancel();
     await _selectedPoiSubscription?.cancel();
@@ -1736,6 +1858,7 @@ class MapScreenController implements Disposable {
     pendingFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
     filterInteractionLockedStreamValue.dispose();
+    mapInteractionGuardActiveStreamValue.dispose();
     mapTrayModeStreamValue.dispose();
     mapHandle.dispose();
   }

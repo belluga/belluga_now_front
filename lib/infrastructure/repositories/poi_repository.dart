@@ -158,14 +158,12 @@ class PoiRepository implements PoiRepositoryContract {
     }
 
     final selected = selectedPoiStreamValue.value;
-    final stillContains =
-        selected != null && snapshot.any((poi) => poi.id == selected.id);
+    if (selected == null) {
+      return;
+    }
+    final stillContains = snapshot.any((poi) => poi.id == selected.id);
     if (!stillContains) {
-      if (snapshot.isEmpty) {
-        clearSelection();
-      } else {
-        selectedPoiStreamValue.addValue(snapshot.first);
-      }
+      clearSelection();
     }
   }
 }

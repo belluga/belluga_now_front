@@ -86,9 +86,9 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   }) {
     try {
       final camera = _mapController.camera;
-      final targetOffset = Offset(
-        0,
-        (0.5 - verticalViewportAnchor) * camera.nonRotatedSize.height,
+      final targetOffset = calculateAnchoredMoveOffset(
+        viewportHeight: camera.nonRotatedSize.height,
+        verticalViewportAnchor: verticalViewportAnchor,
       );
       return _mapController.move(
         LatLng(coordinate.latitude, coordinate.longitude),
@@ -98,6 +98,17 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     } catch (_) {
       return false;
     }
+  }
+
+  @visibleForTesting
+  static Offset calculateAnchoredMoveOffset({
+    required double viewportHeight,
+    required double verticalViewportAnchor,
+  }) {
+    return Offset(
+      0,
+      (verticalViewportAnchor - 0.5) * viewportHeight,
+    );
   }
 
   bool _matchesCurrentCamera(CityCoordinate coordinate, double zoom) {
@@ -130,7 +141,8 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     try {
       final bounds = LatLngBounds.fromPoints(
         coordinates
-            .map((coordinate) => LatLng(coordinate.latitude, coordinate.longitude))
+            .map((coordinate) =>
+                LatLng(coordinate.latitude, coordinate.longitude))
             .toList(growable: false),
       );
       return _mapController.fitCamera(

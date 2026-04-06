@@ -1,15 +1,22 @@
+import 'dart:math' as math;
+
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_filter_category_icon.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-const double _kTrayActionButtonHeight = 40;
-const double _kTrayActionButtonMinWidth = 84;
 const double _kFilterPillMinHeight = 48;
+const double _kCompactFilterChipSize = 48;
+const double _kFilterClusterSpacing = 10;
+const int _kCollapsedFilterRows = 2;
+const double _kSearchLauncherSize = 48;
+const double _kSearchPreviewVisualSize = 46;
 
 class MapAdaptiveTray extends StatelessWidget {
   const MapAdaptiveTray({
@@ -64,62 +71,44 @@ class MapAdaptiveTray extends StatelessWidget {
                                             const Duration(milliseconds: 220),
                                         switchInCurve: Curves.easeOutCubic,
                                         switchOutCurve: Curves.easeInCubic,
-                                        child: DecoratedBox(
-                                          key: ValueKey<String>(
-                                            '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .surface
-                                                .withValues(alpha: 0.96),
-                                            borderRadius:
-                                                BorderRadius.circular(28),
-                                            boxShadow: const [
-                                              BoxShadow(
-                                                color: Colors.black26,
-                                                blurRadius: 18,
-                                                offset: Offset(0, 8),
+                                        child: trayMode == MapTrayMode.search
+                                            ? _TraySurface(
+                                                key: const ValueKey<String>(
+                                                  'map-tray-surface-search',
+                                                ),
+                                                dragEnabled: true,
+                                                onCollapse: controller
+                                                    .showDiscoveryTray,
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                    18,
+                                                    14,
+                                                    18,
+                                                    18,
+                                                  ),
+                                                  child: _SearchTrayBody(
+                                                    controller: controller,
+                                                    filteredPois: filteredPois,
+                                                  ),
+                                                ),
+                                              )
+                                            : _FloatingFilterCluster(
+                                                key: ValueKey<String>(
+                                                  '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
+                                                ),
+                                                controller: controller,
+                                                filterOptions: filterOptions,
+                                                activeFilterLabel:
+                                                    visualFilterLabel,
+                                                activeCatalogFilterKey:
+                                                    activeCatalogFilterKey,
+                                                appliedCatalogFilterKey:
+                                                    appliedCatalogFilterKey,
+                                                filterPending: filterPending,
+                                                expanded: trayMode ==
+                                                    MapTrayMode.filters,
                                               ),
-                                            ],
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              18,
-                                              14,
-                                              18,
-                                              18,
-                                            ),
-                                            child: switch (trayMode) {
-                                              MapTrayMode.discovery =>
-                                                _DiscoveryTrayBody(
-                                                  controller: controller,
-                                                  filterOptions: filterOptions,
-                                                  filteredPois: filteredPois,
-                                                  activeFilterLabel:
-                                                      visualFilterLabel,
-                                                  activeCatalogFilterKey:
-                                                      activeCatalogFilterKey,
-                                                  appliedCatalogFilterKey:
-                                                      appliedCatalogFilterKey,
-                                                  filterPending: filterPending,
-                                                ),
-                                              MapTrayMode.filters =>
-                                                _FiltersTrayBody(
-                                                  controller: controller,
-                                                  filterOptions: filterOptions,
-                                                  activeFilterLabel:
-                                                      visualFilterLabel,
-                                                  filterPending: filterPending,
-                                                ),
-                                              MapTrayMode.search =>
-                                                _SearchTrayBody(
-                                                  controller: controller,
-                                                  filteredPois: filteredPois,
-                                                ),
-                                            },
-                                          ),
-                                        ),
                                       );
                                     },
                                   );
@@ -141,84 +130,171 @@ class MapAdaptiveTray extends StatelessWidget {
   }
 }
 
-class _DiscoveryTrayBody extends StatelessWidget {
-  const _DiscoveryTrayBody({
+class _TraySurface extends StatelessWidget {
+  const _TraySurface({
+    super.key,
+    required this.child,
+    this.dragEnabled = false,
+    this.onExpand,
+    this.onCollapse,
+  });
+
+  final Widget child;
+  final bool dragEnabled;
+  final VoidCallback? onExpand;
+  final VoidCallback? onCollapse;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: dragEnabled
+          ? (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -240) {
+                onExpand?.call();
+              } else if (velocity > 240) {
+                onCollapse?.call();
+              }
+            }
+          : null,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _FloatingFilterCluster extends StatelessWidget {
+  const _FloatingFilterCluster({
+    super.key,
     required this.controller,
     required this.filterOptions,
-    required this.filteredPois,
     required this.activeFilterLabel,
     required this.activeCatalogFilterKey,
     required this.appliedCatalogFilterKey,
     required this.filterPending,
+    required this.expanded,
   });
 
   final MapScreenController controller;
   final PoiFilterOptions? filterOptions;
-  final List<CityPoiModel> filteredPois;
   final String? activeFilterLabel;
   final String? activeCatalogFilterKey;
   final String? appliedCatalogFilterKey;
   final bool filterPending;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
     final categories = controller.visibleCatalogCategories(filterOptions);
-    final hasActiveFilter = (activeFilterLabel?.trim().isNotEmpty ?? false);
     final activeCategory = _resolveDisplayedCategory(categories);
-    final surfaceTitle =
-        hasActiveFilter ? activeFilterLabel!.trim() : 'Perto de você';
-    final surfaceSubtitle = hasActiveFilter
-        ? 'Filtro ativo na exploração local'
-        : '${filteredPois.length} lugares e eventos por perto';
+    final activeLabel = activeFilterLabel?.trim();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _TrayGrabber(),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    surfaceTitle,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    surfaceSubtitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            _TrayActionTextButton(
-              label: 'Ver tudo',
-              onPressed: controller.showFiltersTray,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (hasActiveFilter)
-          _SelectedFilterChip(
-            controller: controller,
-            category: activeCategory,
-            activeFilterLabel: activeFilterLabel!,
-            pending: filterPending,
-          )
-        else
-          _CollapsedFilterScroller(
-            controller: controller,
-            categories: categories,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final collapsedCapacity = _collapsedCapacity(
+          maxWidth: constraints.maxWidth,
+          hasExpandedActiveChip: activeCategory != null &&
+              activeLabel != null &&
+              activeLabel.isNotEmpty,
+        );
+        final hasOverflow = categories.length > collapsedCapacity;
+        final visibleCategories = expanded || !hasOverflow
+            ? categories
+            : categories.take(collapsedCapacity).toList(growable: false);
+
+        return _TraySurface(
+          key: ValueKey<String>(
+            'map-tray-surface-${expanded ? 'filters' : 'discovery'}',
           ),
-      ],
+          dragEnabled: hasOverflow,
+          onExpand: hasOverflow ? controller.showFiltersTray : null,
+          onCollapse: hasOverflow ? controller.showDiscoveryTray : null,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasOverflow) ...[
+                  _FilterClusterHandle(
+                    expanded: expanded,
+                    onToggle: expanded
+                        ? controller.showDiscoveryTray
+                        : controller.showFiltersTray,
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: visibleCategories.isEmpty
+                          ? const SizedBox.shrink()
+                          : Wrap(
+                              key: ValueKey<String>(
+                                'map-filter-cluster-wrap-${expanded ? 'expanded' : 'collapsed'}',
+                              ),
+                              spacing: _kFilterClusterSpacing,
+                              runSpacing: _kFilterClusterSpacing,
+                              children: visibleCategories.map(
+                                (category) {
+                                  final matchesPersistedKey =
+                                      _matchesCategoryKey(
+                                    category,
+                                    activeCatalogFilterKey:
+                                        activeCatalogFilterKey,
+                                    appliedCatalogFilterKey:
+                                        appliedCatalogFilterKey,
+                                  );
+                                  return _FloatingFilterChip(
+                                    category: category,
+                                    isActive: controller.isCategoryFilterActive(
+                                          category,
+                                        ) ||
+                                        matchesPersistedKey,
+                                    activeFilterLabel: activeLabel,
+                                    pending:
+                                        filterPending && matchesPersistedKey,
+                                    enabled: !filterPending,
+                                    onTap: () {
+                                      controller.toggleCatalogCategoryFilter(
+                                        category,
+                                      );
+                                      controller.showDiscoveryTray();
+                                    },
+                                    onClear: controller.clearFilters,
+                                  );
+                                },
+                              ).toList(growable: false),
+                            ),
+                    ),
+                    if (visibleCategories.isNotEmpty) const SizedBox(width: 16),
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: _DockSearchLauncher(
+                        onTap: controller.showSearchTray,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -254,6 +330,42 @@ class _DiscoveryTrayBody extends StatelessWidget {
       }
     }
     return null;
+  }
+
+  int _collapsedCapacity({
+    required double maxWidth,
+    required bool hasExpandedActiveChip,
+  }) {
+    final effectiveWidth =
+        maxWidth.isFinite ? math.max(0, maxWidth - 36) : 384.0;
+    final perRow = math.max(
+      1,
+      ((effectiveWidth + _kFilterClusterSpacing) /
+              (_kCompactFilterChipSize + _kFilterClusterSpacing))
+          .floor(),
+    );
+    final baseCapacity = perRow * _kCollapsedFilterRows;
+    if (!hasExpandedActiveChip) {
+      return baseCapacity;
+    }
+    return math.max(1, baseCapacity - math.min(2, perRow - 1));
+  }
+
+  bool _matchesCategoryKey(
+    PoiFilterCategory category, {
+    required String? activeCatalogFilterKey,
+    required String? appliedCatalogFilterKey,
+  }) {
+    final normalizedKey = category.key.trim().toLowerCase();
+    if (normalizedKey.isEmpty) {
+      return false;
+    }
+    final activeKey = activeCatalogFilterKey?.trim().toLowerCase();
+    if (activeKey != null && activeKey == normalizedKey) {
+      return true;
+    }
+    final appliedKey = appliedCatalogFilterKey?.trim().toLowerCase();
+    return appliedKey != null && appliedKey == normalizedKey;
   }
 }
 
@@ -308,52 +420,30 @@ class _FilterChipPalette {
   }
 }
 
-class _TrayActionTextButton extends StatelessWidget {
-  const _TrayActionTextButton({
-    required this.label,
-    required this.onPressed,
-    this.loading = false,
+class _FilterClusterHandle extends StatelessWidget {
+  const _FilterClusterHandle({
+    required this.expanded,
+    required this.onToggle,
   });
 
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: _kTrayActionButtonMinWidth,
-        minHeight: _kTrayActionButtonHeight,
-      ),
-      child: SizedBox(
-        key: ValueKey<String>('tray-action-button-$label'),
-        height: _kTrayActionButtonHeight,
-        child: TextButton(
-          onPressed: loading ? null : onPressed,
-          style: TextButton.styleFrom(
-            minimumSize: const Size(
-              _kTrayActionButtonMinWidth,
-              _kTrayActionButtonHeight,
+    return Center(
+      child: Tooltip(
+        message: expanded ? 'Recolher filtros' : 'Expandir filtros',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const ValueKey<String>('map-filter-cluster-handle'),
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: _TrayGrabber(),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            child: loading
-                ? const SizedBox(
-                    key: ValueKey<String>('tray-action-button-loading'),
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2.0),
-                  )
-                : Text(
-                    label,
-                    key: ValueKey<String>('tray-action-button-label-$label'),
-                  ),
           ),
         ),
       ),
@@ -361,59 +451,24 @@ class _TrayActionTextButton extends StatelessWidget {
   }
 }
 
-class _CollapsedFilterScroller extends StatelessWidget {
-  const _CollapsedFilterScroller({
-    required this.controller,
-    required this.categories,
-  });
-
-  final MapScreenController controller;
-  final List<PoiFilterCategory> categories;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleCategories = categories.take(6).toList(growable: false);
-    final shouldCenter = visibleCategories.length <= 3;
-
-    final row = Row(
-      mainAxisSize: shouldCenter ? MainAxisSize.min : MainAxisSize.max,
-      children: [
-        for (var index = 0; index < visibleCategories.length; index++) ...[
-          _CollapsedFilterIconChip(
-            category: visibleCategories[index],
-            isActive:
-                controller.isCategoryFilterActive(visibleCategories[index]),
-            onTap: () {
-              controller.toggleCatalogCategoryFilter(visibleCategories[index]);
-              controller.showDiscoveryTray();
-            },
-          ),
-          if (index < visibleCategories.length - 1) const SizedBox(width: 10),
-        ],
-      ],
-    );
-
-    if (shouldCenter) {
-      return Center(child: row);
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: row,
-    );
-  }
-}
-
-class _CollapsedFilterIconChip extends StatelessWidget {
-  const _CollapsedFilterIconChip({
+class _FloatingFilterChip extends StatelessWidget {
+  const _FloatingFilterChip({
     required this.category,
     required this.isActive,
+    required this.activeFilterLabel,
+    required this.pending,
+    required this.enabled,
     required this.onTap,
+    required this.onClear,
   });
 
   final PoiFilterCategory category;
   final bool isActive;
+  final String? activeFilterLabel;
+  final bool pending;
+  final bool enabled;
   final VoidCallback onTap;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -423,54 +478,36 @@ class _CollapsedFilterIconChip extends StatelessWidget {
       isActive: isActive,
     );
 
-    return Tooltip(
-      message:
-          category.label.trim().isEmpty ? category.key.trim() : category.label,
-      child: Material(
-        color: palette.backgroundColor,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: MapFilterCategoryIcon(
-                category: category,
-                isActive: isActive,
-                fallbackIcon: Icons.filter_alt_rounded,
-                fallbackColor: palette.foregroundColor,
-                size: 20,
+    if (!isActive) {
+      return Tooltip(
+        message: category.label.trim().isEmpty
+            ? category.key.trim()
+            : category.label,
+        child: Material(
+          key: ValueKey<String>('map-compact-filter-chip-${category.key}'),
+          color: palette.backgroundColor,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: _kCompactFilterChipSize,
+              height: _kCompactFilterChipSize,
+              child: Center(
+                child: MapFilterCategoryIcon(
+                  category: category,
+                  isActive: false,
+                  fallbackIcon: Icons.filter_alt_rounded,
+                  fallbackColor: palette.foregroundColor,
+                  size: 20,
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
+      );
+    }
 
-class _SelectedFilterChip extends StatelessWidget {
-  const _SelectedFilterChip({
-    required this.controller,
-    required this.category,
-    required this.activeFilterLabel,
-    required this.pending,
-  });
-
-  final MapScreenController controller;
-  final PoiFilterCategory? category;
-  final String activeFilterLabel;
-  final bool pending;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = _FilterChipPalette.resolve(
-      context,
-      category,
-      isActive: true,
-    );
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _kFilterPillMinHeight),
       child: DecoratedBox(
@@ -484,23 +521,20 @@ class _SelectedFilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (category != null)
-                MapFilterCategoryIcon(
-                  category: category!,
-                  isActive: true,
-                  fallbackIcon: Icons.tune_rounded,
-                  fallbackColor: palette.foregroundColor,
-                )
-              else
-                Icon(
-                  Icons.tune_rounded,
-                  size: 18,
-                  color: palette.foregroundColor,
-                ),
+              MapFilterCategoryIcon(
+                category: category,
+                isActive: true,
+                fallbackIcon: Icons.tune_rounded,
+                fallbackColor: palette.foregroundColor,
+              ),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  activeFilterLabel,
+                  (activeFilterLabel?.trim().isNotEmpty ?? false)
+                      ? activeFilterLabel!.trim()
+                      : (category.label.trim().isEmpty
+                          ? category.key.trim()
+                          : category.label),
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: palette.foregroundColor,
@@ -529,7 +563,7 @@ class _SelectedFilterChip extends StatelessWidget {
                     shape: const CircleBorder(),
                     child: InkWell(
                       key: const ValueKey<String>('map-selected-filter-clear'),
-                      onTap: controller.clearFilters,
+                      onTap: onClear,
                       customBorder: const CircleBorder(),
                       child: SizedBox(
                         width: 28,
@@ -544,130 +578,6 @@ class _SelectedFilterChip extends StatelessWidget {
                   ),
                 ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FiltersTrayBody extends StatelessWidget {
-  const _FiltersTrayBody({
-    required this.controller,
-    required this.filterOptions,
-    required this.activeFilterLabel,
-    required this.filterPending,
-  });
-
-  final MapScreenController controller;
-  final PoiFilterOptions? filterOptions;
-  final String? activeFilterLabel;
-  final bool filterPending;
-
-  @override
-  Widget build(BuildContext context) {
-    final categories = controller.visibleCatalogCategories(filterOptions);
-    final hasActiveFilter = (activeFilterLabel?.trim().isNotEmpty ?? false);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _TrayGrabber(),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Filtrar experiências',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ),
-            if (hasActiveFilter)
-              _TrayActionTextButton(
-                label: 'Limpar',
-                onPressed: filterPending ? null : controller.clearFilters,
-                loading: filterPending,
-              ),
-            _TrayActionTextButton(
-              label: 'Fechar',
-              onPressed: controller.showDiscoveryTray,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: categories
-              .map(
-                (category) => _CategoryChoiceChip(
-                  category: category,
-                  isActive: controller.isCategoryFilterActive(category),
-                  onTap: () {
-                    controller.toggleCatalogCategoryFilter(category);
-                    controller.showDiscoveryTray();
-                  },
-                ),
-              )
-              .toList(growable: false),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryChoiceChip extends StatelessWidget {
-  const _CategoryChoiceChip({
-    required this.category,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final PoiFilterCategory category;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = _FilterChipPalette.resolve(
-      context,
-      category,
-      isActive: isActive,
-    );
-    return Material(
-      color: palette.backgroundColor,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: _kFilterPillMinHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                MapFilterCategoryIcon(
-                  category: category,
-                  isActive: isActive,
-                  fallbackIcon: Icons.filter_alt_rounded,
-                  fallbackColor: palette.foregroundColor,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  category.label.trim().isEmpty
-                      ? category.key.trim()
-                      : category.label,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: palette.foregroundColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -698,6 +608,7 @@ class _SearchTrayBody extends StatelessWidget {
         TextField(
           controller: controller.searchTextController,
           textInputAction: TextInputAction.search,
+          onChanged: controller.handleSearchInputChanged,
           onSubmitted: controller.searchPois,
           decoration: InputDecoration(
             hintText: 'Buscar lugares ou eventos',
@@ -723,13 +634,6 @@ class _SearchTrayBody extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        FilledButton.tonalIcon(
-          onPressed: () =>
-              controller.searchPois(controller.searchTextController.text),
-          icon: const Icon(Icons.search_rounded),
-          label: const Text('Buscar nesta área'),
-        ),
         if (previewPois.isNotEmpty) ...[
           const SizedBox(height: 18),
           Text(
@@ -742,18 +646,239 @@ class _SearchTrayBody extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           for (final poi in previewPois)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: const Icon(Icons.place_outlined),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _SearchSuggestionCard(
+                poi: poi,
+                onTap: () => controller.handleMarkerTap(poi),
               ),
-              title: Text(poi.name),
-              subtitle: poi.address.trim().isEmpty ? null : Text(poi.address),
-              onTap: () => controller.handleMarkerTap(poi),
             ),
         ],
       ],
+    );
+  }
+}
+
+class _DockSearchLauncher extends StatelessWidget {
+  const _DockSearchLauncher({
+    required this.onTap,
+  });
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: 'Buscar',
+      child: Material(
+        key: const ValueKey<String>('map-dock-search-launcher'),
+        color: Colors.transparent,
+        child: InkResponse(
+          onTap: onTap,
+          radius: _kSearchLauncherSize * 0.62,
+          highlightShape: BoxShape.circle,
+          child: SizedBox(
+            width: _kSearchLauncherSize,
+            height: _kSearchLauncherSize,
+            child: Center(
+              child: Icon(
+                Icons.search_rounded,
+                size: 21,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchSuggestionCard extends StatelessWidget {
+  const _SearchSuggestionCard({
+    required this.poi,
+    required this.onTap,
+  });
+
+  final CityPoiModel poi;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        );
+    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+        );
+
+    return Material(
+      color: scheme.surfaceContainerHigh.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _SearchSuggestionVisual(poi: poi),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      poi.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _resolveSearchSuggestionMeta(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: subtitleStyle,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _resolveSearchSuggestionMeta() {
+    final meta = <String>[];
+    final distance = _formatDistance();
+    final address = _formatLocationContext();
+    if (distance != null) {
+      meta.add(distance);
+    }
+    if (address != null) {
+      meta.add(address);
+    }
+    if (meta.isEmpty) {
+      meta.add(_categoryLabel());
+    }
+    return meta.join(' • ');
+  }
+
+  String _categoryLabel() {
+    return switch (poi.category) {
+      CityPoiCategory.restaurant => 'Restaurante',
+      CityPoiCategory.health => 'Saúde',
+      CityPoiCategory.monument => 'Monumento',
+      CityPoiCategory.church => 'Igreja',
+      CityPoiCategory.beach => 'Praia',
+      CityPoiCategory.lodging => 'Hospedagem',
+      CityPoiCategory.culture => poi.isDynamic ? 'Evento' : 'Cultura',
+      CityPoiCategory.nature => 'Natureza',
+      CityPoiCategory.sponsor => 'Destaque',
+      CityPoiCategory.attraction => 'Lugar',
+    };
+  }
+
+  String? _formatDistance() {
+    final distance = poi.distanceMeters;
+    if (distance == null || !distance.isFinite || distance <= 0) {
+      return null;
+    }
+    if (distance < 1000) {
+      return '${distance.round()}m';
+    }
+    final inKm = distance / 1000;
+    return '${inKm.toStringAsFixed(inKm >= 10 ? 0 : 1)} km';
+  }
+
+  String? _formatLocationContext() {
+    final address = poi.address.trim();
+    if (address.isEmpty) {
+      return null;
+    }
+    final compact = address
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+    if (compact.isEmpty) {
+      return address;
+    }
+    return compact.join(' • ');
+  }
+}
+
+class _SearchSuggestionVisual extends StatelessWidget {
+  const _SearchSuggestionVisual({
+    required this.poi,
+  });
+
+  final CityPoiModel poi;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final imageUri =
+        poi.visual?.isImage == true ? poi.visual?.imageUri?.trim() : null;
+    final assetPath = poi.assetPath?.trim();
+
+    Widget child;
+    if (imageUri != null && imageUri.isNotEmpty) {
+      child = BellugaNetworkImage(
+        imageUri,
+        width: _kSearchPreviewVisualSize,
+        height: _kSearchPreviewVisualSize,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(14),
+      );
+    } else if (assetPath != null && assetPath.isNotEmpty) {
+      child = ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.asset(
+          assetPath,
+          width: _kSearchPreviewVisualSize,
+          height: _kSearchPreviewVisualSize,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(scheme),
+        ),
+      );
+    } else {
+      child = _buildPlaceholder(scheme);
+    }
+
+    return SizedBox(
+      width: _kSearchPreviewVisualSize,
+      height: _kSearchPreviewVisualSize,
+      child: child,
+    );
+  }
+
+  Widget _buildPlaceholder(ColorScheme scheme) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.place_outlined,
+          color: scheme.onPrimaryContainer,
+          size: 20,
+        ),
+      ),
     );
   }
 }

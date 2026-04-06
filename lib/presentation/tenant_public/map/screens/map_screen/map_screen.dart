@@ -5,7 +5,7 @@ import 'package:belluga_now/application/router/support/tenant_public_safe_back.d
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_local_action_row.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_location_utility_button.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_soft_location_notice_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_status_message_listener.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
@@ -94,17 +94,21 @@ class _MapScreenState extends State<MapScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: IconButton.filled(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black54,
-                          foregroundColor: Colors.white,
+                    Row(
+                      children: [
+                        IconButton.filled(
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black54,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: _handleBack,
+                          icon: const Icon(Icons.arrow_back),
                         ),
-                        onPressed: _handleBack,
-                        icon: const Icon(Icons.arrow_back),
-                      ),
+                        const Spacer(),
+                        MapLocationUtilityButton(controller: _controller),
+                      ],
                     ),
+                    const SizedBox(height: 8),
                     MapSoftLocationNoticeBanner(controller: _controller),
                   ],
                 ),
@@ -145,8 +149,6 @@ class _MapScreenState extends State<MapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    MapLocalActionRow(controller: _controller),
-                    const SizedBox(height: 12),
                     MapAdaptiveTray(controller: _controller),
                   ],
                 ),

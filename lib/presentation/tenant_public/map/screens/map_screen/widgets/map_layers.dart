@@ -24,42 +24,50 @@ class MapLayers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<PoiFilterOptions?>(
-      streamValue: _controller.filterOptionsStreamValue,
-      builder: (_, filterOptions) {
-        return StreamValueBuilder<String?>(
-          streamValue: _controller.appliedCatalogFilterKeyStreamValue,
-          builder: (_, appliedCatalogFilterKey) {
-            final markerOverrideVisual = _resolveMarkerOverrideVisual(
-              filterOptions: filterOptions,
-              activeCatalogFilterKey: appliedCatalogFilterKey,
-            );
-            return StreamValueBuilder<List<CityPoiModel>?>(
-              streamValue: _controller.filteredPoisStreamValue,
-              onNullWidget: _MapViewport(
-                controller: _controller,
-                markerBuilder: _markerBuilder,
-                markerOverrideVisual: markerOverrideVisual,
-                pois: const <CityPoiModel>[],
-              ),
-              builder: (_, pois) {
-                return StreamValueBuilder<CityPoiModel?>(
-                  streamValue: _controller.selectedPoiStreamValue,
-                  builder: (_, selectedPoi) {
-                    return StreamValueBuilder<CityCoordinate?>(
-                      streamValue: _controller.userLocationStreamValue,
-                      builder: (_, userCoordinate) {
-                        return StreamValueBuilder<double>(
-                          streamValue: _controller.zoomStreamValue,
-                          builder: (_, zoom) {
-                            return _MapViewport(
-                              controller: _controller,
-                              markerBuilder: _markerBuilder,
-                              markerOverrideVisual: markerOverrideVisual,
-                              pois: pois!,
-                              selectedPoi: selectedPoi,
-                              userCoordinate: userCoordinate,
-                              zoom: zoom,
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.mapInteractionGuardActiveStreamValue,
+      builder: (_, interactionGuardActive) {
+        return StreamValueBuilder<PoiFilterOptions?>(
+          streamValue: _controller.filterOptionsStreamValue,
+          builder: (_, filterOptions) {
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.appliedCatalogFilterKeyStreamValue,
+              builder: (_, appliedCatalogFilterKey) {
+                final markerOverrideVisual = _resolveMarkerOverrideVisual(
+                  filterOptions: filterOptions,
+                  activeCatalogFilterKey: appliedCatalogFilterKey,
+                );
+                return StreamValueBuilder<List<CityPoiModel>?>(
+                  streamValue: _controller.filteredPoisStreamValue,
+                  onNullWidget: _MapViewport(
+                    controller: _controller,
+                    markerBuilder: _markerBuilder,
+                    markerOverrideVisual: markerOverrideVisual,
+                    pois: const <CityPoiModel>[],
+                    interactionGuardActive: interactionGuardActive,
+                  ),
+                  builder: (_, pois) {
+                    return StreamValueBuilder<CityPoiModel?>(
+                      streamValue: _controller.selectedPoiStreamValue,
+                      builder: (_, selectedPoi) {
+                        return StreamValueBuilder<CityCoordinate?>(
+                          streamValue: _controller.userLocationStreamValue,
+                          builder: (_, userCoordinate) {
+                            return StreamValueBuilder<double>(
+                              streamValue: _controller.zoomStreamValue,
+                              builder: (_, zoom) {
+                                return _MapViewport(
+                                  controller: _controller,
+                                  markerBuilder: _markerBuilder,
+                                  markerOverrideVisual: markerOverrideVisual,
+                                  pois: pois!,
+                                  selectedPoi: selectedPoi,
+                                  userCoordinate: userCoordinate,
+                                  zoom: zoom,
+                                  interactionGuardActive:
+                                      interactionGuardActive,
+                                );
+                              },
                             );
                           },
                         );
@@ -113,6 +121,7 @@ class _MapViewport extends StatelessWidget {
     this.selectedPoi,
     this.userCoordinate,
     this.zoom = 16,
+    this.interactionGuardActive = false,
   });
 
   final MapScreenController controller;
@@ -122,6 +131,7 @@ class _MapViewport extends StatelessWidget {
   final CityPoiModel? selectedPoi;
   final CityCoordinate? userCoordinate;
   final double zoom;
+  final bool interactionGuardActive;
 
   @override
   Widget build(BuildContext context) {
@@ -156,14 +166,29 @@ class _MapViewport extends StatelessWidget {
       ...poiMarkers,
     ];
 
-    return BellugaMapSurface(
-      handle: controller.mapHandle,
-      initialCenter: controller.defaultCenter,
-      initialZoom: 16,
-      minZoom: MapLayers._minZoom,
-      maxZoom: MapLayers._maxZoom,
-      annotations: markers,
-      onEmptyTap: () => controller.clearSelectedPoi(),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        BellugaMapSurface(
+          handle: controller.mapHandle,
+          initialCenter: controller.defaultCenter,
+          initialZoom: 16,
+          minZoom: MapLayers._minZoom,
+          maxZoom: MapLayers._maxZoom,
+          annotations: markers,
+          onEmptyTap: () => controller.clearSelectedPoi(),
+        ),
+        if (interactionGuardActive)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              onPanStart: (_) {},
+              onPanUpdate: (_) {},
+              onPanEnd: (_) {},
+            ),
+          ),
+      ],
     );
   }
 

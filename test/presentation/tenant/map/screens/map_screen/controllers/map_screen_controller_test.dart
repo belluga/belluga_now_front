@@ -383,6 +383,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
   int moveCallCount = 0;
   CityCoordinate? lastMoveCoordinate;
   double? lastMoveZoom;
+  double? lastVerticalViewportAnchor;
 
   @override
   Stream<BellugaMapInteractionEvent> get interactionStream => _events.stream;
@@ -418,6 +419,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
     required double zoom,
     required double verticalViewportAnchor,
   }) {
+    lastVerticalViewportAnchor = verticalViewportAnchor;
     return moveTo(coordinate, zoom: zoom);
   }
 
@@ -809,7 +811,8 @@ void main() {
       expect(event.properties?['poi_id'], 'poi-123');
     });
 
-    test('keeps last selected poi memory when closing the card explicitly', () async {
+    test('keeps last selected poi memory when closing the card explicitly',
+        () async {
       final poi = _buildPoi(id: 'poi-memory');
 
       controller.selectPoi(poi);
@@ -868,6 +871,59 @@ void main() {
       expect(telemetry.events[1].eventName, 'map_search_cleared');
       expect(telemetry.events[1].event, EventTrackerEvents.buttonClick);
       expect(telemetry.events[1].properties?['previous_query_len'], 5);
+    });
+
+    test('typing search text debounces requests and uses the latest term',
+        () async {
+      controller.handleSearchInputChanged('pi');
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      controller.handleSearchInputChanged('pizza');
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 1);
+      expect(_querySearchTerm(mapRepository.lastQuery), 'pizza');
+      expect(telemetry.events, isEmpty);
+    });
+
+    test('clearing typed search restores nearby suggestions payload', () async {
+      final searchResults = <CityPoiModel>[
+        _buildPoi(id: 'poi-search', name: 'Pizza do Porto'),
+      ];
+      final nearbyResults = <CityPoiModel>[
+        _buildPoi(id: 'poi-near', name: 'Palco Praia do Morro'),
+      ];
+      final searchRequest = Completer<List<CityPoiModel>>();
+      final clearRequest = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters
+        ..add(searchRequest)
+        ..add(clearRequest);
+
+      controller.handleSearchInputChanged('pizza');
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      await _flushMicrotasks();
+      searchRequest.complete(searchResults);
+      await _flushMicrotasks();
+
+      expect(_querySearchTerm(mapRepository.lastQuery), 'pizza');
+      expect(
+        controller.filteredPoisStreamValue.value?.map((poi) => poi.id),
+        equals(<String>['poi-search']),
+      );
+
+      controller.handleSearchInputChanged('');
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      await _flushMicrotasks();
+      clearRequest.complete(nearbyResults);
+      await _flushMicrotasks();
+
+      expect(_querySearchTerm(mapRepository.lastQuery), isNull);
+      expect(controller.searchTermStreamValue.value, anyOf(isNull, ''));
+      expect(
+        controller.filteredPoisStreamValue.value?.map((poi) => poi.id),
+        equals(<String>['poi-near']),
+      );
+      expect(telemetry.events, isEmpty);
     });
 
     test('logs filter apply and clear events', () async {
@@ -959,6 +1015,52 @@ void main() {
       expect(_queryCategoryKeys(mapRepository.lastQuery), equals({'nature'}));
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
     });
+
+    test(
+      'catalog filter focuses first result without auto-selecting a poi',
+      () async {
+        final fakeMapHandle = _FakeMapHandle(
+          initialZoom: 15.2,
+          initialCenter: _buildPoi(id: 'seed').coordinate,
+        );
+        final localController = _buildMapController(
+          poiRepository: PoiRepository(dataSource: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: fakeMapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+          fakeMapHandle.dispose();
+        });
+
+        mapRepository.nextPois = <CityPoiModel>[
+          _buildPoi(id: 'poi-first'),
+          _buildPoi(id: 'poi-second', name: 'Segundo ponto'),
+        ];
+
+        localController.toggleCatalogCategoryFilter(
+          _buildCategory(
+            key: 'nature',
+            label: 'Natureza',
+            tags: const {},
+          ),
+        );
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(localController.selectedPoiStreamValue.value, isNull);
+        expect(fakeMapHandle.moveCallCount, 1);
+        expect(fakeMapHandle.lastMoveCoordinate, isNotNull);
+        expect(
+            fakeMapHandle.lastMoveCoordinate!.latitude, closeTo(-20.0, 1e-9));
+        expect(
+          fakeMapHandle.lastVerticalViewportAnchor,
+          closeTo(0.40, 1e-9),
+        );
+      },
+    );
 
     test('applies catalog filter query metadata when available', () async {
       controller.toggleCatalogCategoryFilter(
@@ -1103,6 +1205,123 @@ void main() {
       await _flushMicrotasks();
 
       expect(mapRepository.fetchPointsCallCount, 2);
+    });
+
+    test('ignores marker taps while a filter reload is in flight', () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      final pendingFetch = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters.add(pendingFetch);
+
+      localController.toggleCatalogCategoryFilter(
+        _buildCategory(
+          key: 'events',
+          label: 'Eventos',
+          tags: const {},
+          serverQuery: _buildServerQuery(source: 'event'),
+        ),
+      );
+      await _flushMicrotasks();
+
+      await localController.handleMarkerTap(_buildPoi(id: 'poi-ignored'));
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(fakeMapHandle.moveCallCount, 0);
+
+      pendingFetch.complete(<CityPoiModel>[]);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+    });
+
+    test('ignores marker taps immediately after a filter reload settles',
+        () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      await localController.init();
+      await _flushMicrotasks();
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(id: 'filtered-first'),
+      ];
+
+      localController.toggleCatalogCategoryFilter(
+        _buildCategory(
+          key: 'events',
+          label: 'Eventos',
+          tags: const {},
+          serverQuery: _buildServerQuery(source: 'event'),
+        ),
+      );
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      final focusMovesAfterFilter = fakeMapHandle.moveCallCount;
+      await localController.handleMarkerTap(_buildPoi(id: 'poi-ignored'));
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(fakeMapHandle.moveCallCount, focusMovesAfterFilter);
+    });
+
+    test('accepts marker taps after post-filter suppression window expires',
+        () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(id: 'filtered-first'),
+      ];
+
+      localController.toggleCatalogCategoryFilter(
+        _buildCategory(
+          key: 'events',
+          label: 'Eventos',
+          tags: const {},
+          serverQuery: _buildServerQuery(source: 'event'),
+        ),
+      );
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+
+      await localController.handleMarkerTap(_buildPoi(id: 'poi-allowed'));
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-allowed');
+      expect(fakeMapHandle.moveCallCount, greaterThanOrEqualTo(2));
     });
 
     test(
@@ -1298,7 +1517,8 @@ void main() {
       expect(controller.softLocationNoticeStreamValue.value, '');
 
       final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
-      userLocationRepository.userLocationStreamValue.addValue(resolvedCoordinate);
+      userLocationRepository.userLocationStreamValue
+          .addValue(resolvedCoordinate);
       userLocationRepository.lastKnownLocationStreamValue
           .addValue(resolvedCoordinate);
       userLocationRepository.lastKnownCapturedAtStreamValue
@@ -1336,7 +1556,8 @@ void main() {
       userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
       final firstFetch = Completer<List<CityPoiModel>>();
       final reconcileFetch = Completer<List<CityPoiModel>>();
-      mapRepository.queuedFetchCompleters.addAll(<Completer<List<CityPoiModel>>>[
+      mapRepository.queuedFetchCompleters
+          .addAll(<Completer<List<CityPoiModel>>>[
         firstFetch,
         reconcileFetch,
       ]);
@@ -1421,17 +1642,20 @@ void main() {
       expect(
         statusMessages.where((message) => message == 'Atualizando pontos...'),
         hasLength(1),
-        reason: 'controller must not re-emit the updating banner during burst churn',
+        reason:
+            'controller must not re-emit the updating banner during burst churn',
       );
       expect(
         loadingStates.where((value) => value),
         hasLength(2),
-        reason: 'controller must not re-enter loading for semantically equivalent live updates',
+        reason:
+            'controller must not re-enter loading for semantically equivalent live updates',
       );
       expect(
         mapStatuses.where((status) => status == MapStatus.fetching),
         hasLength(2),
-        reason: 'controller must not re-enter fetching for semantically equivalent live updates',
+        reason:
+            'controller must not re-enter fetching for semantically equivalent live updates',
       );
 
       reconcileFetch.complete(const <CityPoiModel>[]);
@@ -1445,7 +1669,8 @@ void main() {
       expect(
         mapRepository.fetchPointsCallCount,
         2,
-        reason: 'same live-location semantic state must not trigger map reload loop',
+        reason:
+            'same live-location semantic state must not trigger map reload loop',
       );
       expect(
         statusMessages.where((message) => message == 'Atualizando pontos...'),
@@ -1476,7 +1701,8 @@ void main() {
       userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
       final firstFetch = Completer<List<CityPoiModel>>();
       final reconcileFetch = Completer<List<CityPoiModel>>();
-      mapRepository.queuedFetchCompleters.addAll(<Completer<List<CityPoiModel>>>[
+      mapRepository.queuedFetchCompleters
+          .addAll(<Completer<List<CityPoiModel>>>[
         firstFetch,
         reconcileFetch,
       ]);
@@ -1508,7 +1734,8 @@ void main() {
       expect(mapRepository.fetchPointsCallCount, 1);
 
       final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
-      userLocationRepository.userLocationStreamValue.addValue(resolvedCoordinate);
+      userLocationRepository.userLocationStreamValue
+          .addValue(resolvedCoordinate);
       userLocationRepository.lastKnownLocationStreamValue
           .addValue(resolvedCoordinate);
       userLocationRepository.lastKnownCapturedAtStreamValue
@@ -1760,6 +1987,36 @@ void main() {
       expect(controller.buildPoiQueryKey(canonicalPoi), 'event:evt-9000');
     });
 
+    test('handleMarkerTap focuses selected poi in the upper viewport safe zone',
+        () async {
+      final fakeMapHandle = _FakeMapHandle(
+        initialZoom: 15.4,
+        initialCenter: _buildPoi(id: 'seed').coordinate,
+      );
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      final poi = _buildPoi(id: 'poi-focus');
+      await localController.handleMarkerTap(poi);
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-focus');
+      expect(fakeMapHandle.moveCallCount, 1);
+      expect(
+        fakeMapHandle.lastVerticalViewportAnchor,
+        closeTo(0.28, 1e-9),
+      );
+    });
+
     test(
         'applies initial poi focus after first map event when deep link query is present',
         () async {
@@ -1920,7 +2177,7 @@ void main() {
       expect(router.replaceAllRoutes, isEmpty);
     });
 
-    testWidgets('map screen shows local action row and discovery tray',
+    testWidgets('map screen shows filter-first bottom dock and discovery tray',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -1930,14 +2187,52 @@ void main() {
         fallbackRoute: const TenantHomeRoute(),
       );
 
-      expect(find.text('Você'), findsOneWidget);
-      expect(find.text('Buscar'), findsOneWidget);
-      expect(find.text('Filtros'), findsOneWidget);
-      expect(find.text('Perto de você'), findsOneWidget);
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(
+              key: 'events',
+              label: 'Events',
+            ),
+            _buildCategory(
+              key: 'praia',
+              label: 'Praia',
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey<String>('map-location-floating-button')),
+        findsOneWidget,
+      );
+      expect(find.text('Você'), findsNothing);
+      expect(find.text('Buscar'), findsNothing);
+      expect(find.text('Filtros'), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-discovery')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('map-filter-cluster-wrap-collapsed'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-dock-search-launcher')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-filter-cluster-handle')),
+        findsNothing,
+      );
+      expect(find.text('Perto de você'), findsNothing);
+      expect(find.text('Ver tudo'), findsNothing);
     });
 
-    testWidgets(
-        'selected poi lifts card focus and hides bottom controls band',
+    testWidgets('selected poi lifts card focus and hides bottom controls band',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -1966,6 +2261,10 @@ void main() {
         findsNothing,
       );
       expect(cardOpacity.opacity, 1);
+      expect(
+        find.byKey(const ValueKey<String>('map-location-floating-button')),
+        findsOneWidget,
+      );
       expect(find.text('Você'), findsNothing);
       expect(find.text('Buscar'), findsNothing);
       expect(find.text('Filtros'), findsNothing);
@@ -1973,7 +2272,7 @@ void main() {
       expect(find.text('Praia das Castanheiras'), findsOneWidget);
     });
 
-    testWidgets('map local action buttons keep the same height',
+    testWidgets('overflowing filter cluster exposes handle and expands on tap',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -1983,18 +2282,169 @@ void main() {
         fallbackRoute: const TenantHomeRoute(),
       );
 
-      final youSize = tester.getSize(
-        find.byKey(const ValueKey<String>('map-local-action-Você')),
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: List<PoiFilterCategory>.generate(
+            13,
+            (index) => _buildCategory(
+              key: 'category_$index',
+              label: 'Categoria $index',
+            ),
+          ),
+        ),
       );
-      final searchSize = tester.getSize(
-        find.byKey(const ValueKey<String>('map-local-action-Buscar')),
-      );
-      final filtersSize = tester.getSize(
-        find.byKey(const ValueKey<String>('map-local-action-Filtros')),
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey<String>('map-filter-cluster-handle')),
+        findsOneWidget,
       );
 
-      expect(youSize.height, searchSize.height);
-      expect(searchSize.height, filtersSize.height);
+      await tester.tap(
+        find.byKey(const ValueKey<String>('map-filter-cluster-handle')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-filters')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-filter-cluster-wrap-expanded')),
+        findsOneWidget,
+      );
+      expect(find.text('Filtrar experiências'), findsNothing);
+      expect(find.text('Fechar'), findsNothing);
+    });
+
+    testWidgets(
+        'dragging overflowing collapsed filter cluster upward expands it',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: List<PoiFilterCategory>.generate(
+            13,
+            (index) => _buildCategory(
+              key: 'drag_category_$index',
+              label: 'Categoria $index',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.fling(
+        find.byKey(const ValueKey<String>('map-tray-surface-discovery')),
+        const Offset(0, -160),
+        1400,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-filters')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'dragging expanded filter cluster downward collapses to discovery',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: List<PoiFilterCategory>.generate(
+            13,
+            (index) => _buildCategory(
+              key: 'collapse_category_$index',
+              label: 'Categoria $index',
+            ),
+          ),
+        ),
+      );
+      controller.showFiltersTray();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      await tester.fling(
+        find.byKey(const ValueKey<String>('map-tray-surface-filters')),
+        const Offset(0, 160),
+        1400,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-discovery')),
+        findsOneWidget,
+      );
+      expect(find.text('Filtrar experiências'), findsNothing);
+    });
+
+    testWidgets('tapping dock search launcher opens search mode',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('map-dock-search-launcher')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-search')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-dock-search-launcher')),
+        findsNothing,
+      );
+      expect(find.text('Buscar lugares ou eventos'), findsOneWidget);
+    });
+
+    testWidgets(
+        'location utility stays circular and dock search launcher keeps tray height',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      final locationSize = tester.getSize(
+        find.byKey(const ValueKey<String>('map-location-floating-button')),
+      );
+      final searchSize = tester.getSize(
+        find.byKey(const ValueKey<String>('map-dock-search-launcher')),
+      );
+
+      expect(locationSize.width, locationSize.height);
+      expect(searchSize.width, searchSize.height);
+      expect(searchSize.height, 48);
     });
 
     testWidgets('selected filter state exposes an explicit clear affordance',
@@ -2007,6 +2457,17 @@ void main() {
         fallbackRoute: const TenantHomeRoute(),
       );
 
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(
+              key: 'restaurant',
+              label: 'Restaurantes',
+            ),
+          ],
+        ),
+      );
+      controller.activeCatalogFilterKeyStreamValue.addValue('restaurant');
       controller.activeFilterLabelStreamValue.addValue('Restaurantes');
       await tester.pump();
 
@@ -2021,10 +2482,16 @@ void main() {
       await tester.pump();
 
       expect(controller.activeFilterLabelStreamValue.value, isNull);
-      expect(find.text('Perto de você'), findsOneWidget);
+      expect(
+        find.byKey(
+          const ValueKey<String>('map-filter-cluster-wrap-collapsed'),
+        ),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('selected filter chip shows spinner while filter update is pending',
+    testWidgets(
+        'selected filter chip shows spinner while filter update is pending',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -2034,6 +2501,17 @@ void main() {
         fallbackRoute: const TenantHomeRoute(),
       );
 
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(
+              key: 'events',
+              label: 'Eventos',
+            ),
+          ],
+        ),
+      );
+      controller.activeCatalogFilterKeyStreamValue.addValue('events');
       controller.pendingFilterLabelStreamValue.addValue('Eventos');
       controller.filterInteractionLockedStreamValue.addValue(true);
       await tester.pump();
@@ -2147,7 +2625,7 @@ void main() {
     });
 
     testWidgets(
-        'filter tray header actions keep the same height in idle and loading states',
+        'active filter keeps backend position instead of jumping to the first slot',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -2157,31 +2635,87 @@ void main() {
         fallbackRoute: const TenantHomeRoute(),
       );
 
-      controller.activeFilterLabelStreamValue.addValue('Eventos');
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(
+              key: 'events',
+              label: 'Eventos',
+            ),
+            _buildCategory(
+              key: 'praia',
+              label: 'Praia',
+            ),
+            _buildCategory(
+              key: 'food',
+              label: 'Gastronomia',
+            ),
+          ],
+        ),
+      );
+      controller.activeCatalogFilterKeyStreamValue.addValue('food');
+      controller.activeFilterLabelStreamValue.addValue('Gastronomia');
+      await tester.pump();
+
+      final positions = <String, Offset>{
+        'events': tester.getTopLeft(
+          find.byKey(const ValueKey<String>('map-compact-filter-chip-events')),
+        ),
+        'praia': tester.getTopLeft(
+          find.byKey(const ValueKey<String>('map-compact-filter-chip-praia')),
+        ),
+        'food': tester.getTopLeft(
+          find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+        ),
+      };
+
+      final visualOrder = positions.entries.toList()
+        ..sort((left, right) {
+          final dy = left.value.dy.compareTo(right.value.dy);
+          if (dy != 0) {
+            return dy;
+          }
+          return left.value.dx.compareTo(right.value.dx);
+        });
+
+      expect(
+        visualOrder.map((entry) => entry.key).toList(growable: false),
+        const <String>['events', 'praia', 'food'],
+      );
+    });
+
+    testWidgets(
+        'expanded filter cluster uses only the handle as the collapse affordance',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: List<PoiFilterCategory>.generate(
+            13,
+            (index) => _buildCategory(
+              key: 'expanded_$index',
+              label: 'Expanded $index',
+            ),
+          ),
+        ),
+      );
       controller.showFiltersTray();
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
 
-      final clearButtonSize = tester.getSize(
-        find.byKey(const ValueKey<String>('tray-action-button-Limpar')),
+      expect(
+        find.byKey(const ValueKey<String>('map-filter-cluster-handle')),
+        findsOneWidget,
       );
-      final closeButtonSize = tester.getSize(
-        find.byKey(const ValueKey<String>('tray-action-button-Fechar')),
-      );
-
-      expect(clearButtonSize.height, closeButtonSize.height);
-
-      controller.filterInteractionLockedStreamValue.addValue(true);
-      await tester.pump();
-
-      final loadingClearButtonSize = tester.getSize(
-        find.byKey(const ValueKey<String>('tray-action-button-Limpar')),
-      );
-      final loadingCloseButtonSize = tester.getSize(
-        find.byKey(const ValueKey<String>('tray-action-button-Fechar')),
-      );
-
-      expect(loadingClearButtonSize.height, loadingCloseButtonSize.height);
-      expect(loadingClearButtonSize.height, clearButtonSize.height);
+      expect(find.text('Fechar'), findsNothing);
+      expect(find.text('Filtrar experiências'), findsNothing);
     });
 
     testWidgets('filter tray renders only backend catalog entries',
@@ -2221,12 +2755,18 @@ void main() {
       controller.showFiltersTray();
       await tester.pump();
 
-      expect(find.text('Filtro Curado'), findsOneWidget);
+      expect(
+        find.byKey(
+          const ValueKey<String>('map-compact-filter-chip-curated_backend'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Praias'), findsNothing);
       expect(find.text('Restaurantes'), findsNothing);
     });
 
-    test('visible catalog categories preserve backend entries and honor tenant ordering',
+    test(
+        'visible catalog categories preserve backend entries and honor tenant ordering',
         () {
       final mapRepository = _FakeCityMapRepository();
       final poiRepository = PoiRepository(dataSource: mapRepository);
@@ -2297,7 +2837,8 @@ void main() {
       orderedController.onDispose();
     });
 
-    testWidgets('showFiltersTray retries backend filter fetch when catalog is still missing',
+    testWidgets(
+        'showFiltersTray retries backend filter fetch when catalog is still missing',
         (tester) async {
       final mapRepository = _FakeCityMapRepository()
         ..throwOnFetchFilters = true;
