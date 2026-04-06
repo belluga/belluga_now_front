@@ -9,7 +9,10 @@ class PoiRestaurantCard extends PoiBaseCard {
     required super.onPrimaryAction,
     required super.onShare,
     required super.onRoute,
-  }) : super(primaryLabel: 'Ver cardápio');
+  });
+
+  @override
+  String primaryActionLabel(BuildContext context) => 'Ver cardápio';
 
   @override
   List<Widget Function(BuildContext)> buildSections() => [

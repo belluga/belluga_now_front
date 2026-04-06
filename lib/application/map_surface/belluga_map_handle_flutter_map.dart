@@ -8,6 +8,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class BellugaMapHandle implements BellugaMapHandleContract {
+  static const double _cameraCoordinateTolerance = 0.000001;
+  static const double _cameraZoomTolerance = 0.01;
+
   BellugaMapHandle() : _mapController = MapController();
 
   final MapController _mapController;
@@ -63,6 +66,9 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     required double zoom,
   }) {
     try {
+      if (_matchesCurrentCamera(coordinate, zoom)) {
+        return true;
+      }
       return _mapController.move(
         LatLng(coordinate.latitude, coordinate.longitude),
         zoom,
@@ -89,6 +95,20 @@ class BellugaMapHandle implements BellugaMapHandleContract {
         zoom,
         offset: targetOffset,
       );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _matchesCurrentCamera(CityCoordinate coordinate, double zoom) {
+    try {
+      final camera = _mapController.camera;
+      final center = camera.center;
+      return (center.latitude - coordinate.latitude).abs() <=
+              _cameraCoordinateTolerance &&
+          (center.longitude - coordinate.longitude).abs() <=
+              _cameraCoordinateTolerance &&
+          (camera.zoom - zoom).abs() <= _cameraZoomTolerance;
     } catch (_) {
       return false;
     }

@@ -1,10 +1,7 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
-import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:flutter/material.dart';
 
 class FilteredDeck extends StatelessWidget {
@@ -39,31 +36,10 @@ class FilteredDeck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visual = _resolveDeckVisual();
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(
-              _iconForDeckVisual(visual),
-              color: _accentColorForDeckVisual(
-                visual: visual,
-                scheme: colorScheme,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _titleForFilterMode(controller.filterModeStreamValue.value),
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
@@ -75,29 +51,55 @@ class FilteredDeck extends StatelessWidget {
             onPageChanged: onChanged,
             itemBuilder: (context, index) {
               final poi = pois[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index == pois.length - 1 ? 0 : 12,
-                ),
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minHeight: 0,
-                  maxHeight: double.infinity,
-                  child: SizeReportingWidget(
-                    onSizeChanged: (size) => onCardHeightChanged(
-                      poi.id,
-                      size.height + deckMeasurementPadding,
+              return AnimatedBuilder(
+                animation: pageController,
+                builder: (context, child) {
+                  final selectedPage =
+                      controller.poiDeckIndexStreamValue.value.toDouble();
+                  final page = pageController.hasClients
+                      ? (pageController.page ?? selectedPage)
+                      : selectedPage;
+                  final delta = (page - index).abs();
+                  final scale = (1 - (delta * 0.06)).clamp(0.92, 1.0);
+                  final opacity = (1 - (delta * 0.18)).clamp(0.72, 1.0);
+                  final verticalOffset = (delta * 12).clamp(0, 14).toDouble();
+
+                  return Opacity(
+                    opacity: opacity,
+                    child: Transform.translate(
+                      offset: Offset(0, verticalOffset),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: child,
+                      ),
                     ),
-                    child: cardBuilder.build(
-                      context: context,
-                      poi: poi,
-                      colorScheme: colorScheme,
-                      onPrimaryAction: () {
-                        controller.selectPoi(poi);
-                        onPrimaryAction(poi);
-                      },
-                      onShare: () => onShare(poi),
-                      onRoute: () => onRoute(poi),
+                  );
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: index == 0 ? 0 : 4,
+                    right: index == pois.length - 1 ? 0 : 4,
+                  ),
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: SizeReportingWidget(
+                      onSizeChanged: (size) => onCardHeightChanged(
+                        poi.id,
+                        size.height + deckMeasurementPadding,
+                      ),
+                      child: cardBuilder.build(
+                        context: context,
+                        poi: poi,
+                        colorScheme: colorScheme,
+                        onPrimaryAction: () {
+                          controller.selectPoi(poi);
+                          onPrimaryAction(poi);
+                        },
+                        onShare: () => onShare(poi),
+                        onRoute: () => onRoute(poi),
+                      ),
                     ),
                   ),
                 ),
@@ -105,71 +107,31 @@ class FilteredDeck extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 8),
+        if (pois.length > 1) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List<Widget>.generate(pois.length, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width:
+                      controller.poiDeckIndexStreamValue.value == index ? 18 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: controller.poiDeckIndexStreamValue.value == index
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ],
     );
-  }
-
-  String _titleForFilterMode(PoiFilterMode mode) {
-    switch (mode) {
-      case PoiFilterMode.events:
-        return 'Eventos em destaque';
-      case PoiFilterMode.restaurants:
-        return 'Sugestões gastronômicas';
-      case PoiFilterMode.beaches:
-        return 'Praias recomendadas';
-      case PoiFilterMode.lodging:
-        return 'Hospedagens parceiras';
-      case PoiFilterMode.server:
-        return controller.activeFilterLabelStreamValue.value ??
-            'Filtro do mapa';
-      case PoiFilterMode.none:
-        return 'Pontos selecionados';
-    }
-  }
-
-  IconData _iconForFilterMode(PoiFilterMode mode) {
-    return switch (mode) {
-      PoiFilterMode.server => Icons.tune,
-      PoiFilterMode.none => Icons.map,
-      _ => MapMarkerIconResolver.fallbackIcon,
-    };
-  }
-
-  CityPoiVisual? _resolveDeckVisual() {
-    final selected = controller.selectedPoiStreamValue.value?.visual;
-    if (selected != null && selected.isValid) {
-      return selected;
-    }
-    for (final poi in pois) {
-      final candidate = poi.visual;
-      if (candidate != null && candidate.isValid) {
-        return candidate;
-      }
-    }
-    return null;
-  }
-
-  IconData _iconForDeckVisual(CityPoiVisual? visual) {
-    if (visual?.isIcon == true) {
-      return MapMarkerIconResolver.resolve(visual?.icon);
-    }
-    if (visual?.isImage == true) {
-      return Icons.image_outlined;
-    }
-
-    return _iconForFilterMode(controller.filterModeStreamValue.value);
-  }
-
-  Color _accentColorForDeckVisual({
-    required CityPoiVisual? visual,
-    required ColorScheme scheme,
-  }) {
-    if (visual?.isIcon == true) {
-      return MapMarkerIconResolver.tryParseHexColor(visual?.colorHex) ??
-          scheme.primary;
-    }
-
-    return scheme.primary;
   }
 }

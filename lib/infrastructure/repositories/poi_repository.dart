@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
-import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
@@ -41,10 +40,6 @@ class PoiRepository implements PoiRepositoryContract {
   final filterOptionsStreamValue = StreamValue<PoiFilterOptions?>();
 
   @override
-  final mainFilterOptionsStreamValue = StreamValue<List<MainFilterOption>>(
-      defaultValue: const <MainFilterOption>[]);
-
-  @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
     final cityPois = await _dataSource.fetchPoints(query);
     final snapshot = List<CityPoiModel>.unmodifiable(cityPois);
@@ -55,9 +50,6 @@ class PoiRepository implements PoiRepositoryContract {
   Future<void> initializePoiStreams() async {
     if (filterOptionsStreamValue.value == null) {
       await fetchFilters();
-    }
-    if (mainFilterOptionsStreamValue.value.isEmpty) {
-      await fetchMainFilters();
     }
   }
 
@@ -106,15 +98,6 @@ class PoiRepository implements PoiRepositoryContract {
     filterOptionsStreamValue.addValue(filters);
     return filters;
   }
-
-  @override
-  Future<List<MainFilterOption>> fetchMainFilters() =>
-      _dataSource.fetchMainFilters().then((filters) {
-        mainFilterOptionsStreamValue.addValue(
-          List<MainFilterOption>.unmodifiable(filters),
-        );
-        return filters;
-      });
 
   Future<List<MapRegionDefinition>> fetchRegions() =>
       _dataSource.fetchRegions();

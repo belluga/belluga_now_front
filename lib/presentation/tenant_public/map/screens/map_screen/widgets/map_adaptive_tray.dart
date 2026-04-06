@@ -3,8 +3,13 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_filter_category_icon.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+
+const double _kTrayActionButtonHeight = 40;
+const double _kTrayActionButtonMinWidth = 84;
+const double _kFilterPillMinHeight = 48;
 
 class MapAdaptiveTray extends StatelessWidget {
   const MapAdaptiveTray({
@@ -32,48 +37,97 @@ class MapAdaptiveTray extends StatelessWidget {
                   return StreamValueBuilder<String?>(
                     streamValue: controller.activeFilterLabelStreamValue,
                     builder: (_, activeFilterLabel) {
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        child: DecoratedBox(
-                          key: ValueKey<String>(
-                            '${trayMode.name}|${activeFilterLabel ?? 'none'}',
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surface
-                                .withValues(alpha: 0.96),
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 18,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                            child: switch (trayMode) {
-                              MapTrayMode.discovery => _DiscoveryTrayBody(
-                                  controller: controller,
-                                  filterOptions: filterOptions,
-                                  filteredPois: filteredPois,
-                                  activeFilterLabel: activeFilterLabel,
-                                ),
-                              MapTrayMode.filters => _FiltersTrayBody(
-                                  controller: controller,
-                                  filterOptions: filterOptions,
-                                ),
-                              MapTrayMode.search => _SearchTrayBody(
-                                  controller: controller,
-                                  filteredPois: filteredPois,
-                                ),
+                      return StreamValueBuilder<String?>(
+                        streamValue: controller.pendingFilterLabelStreamValue,
+                        builder: (_, pendingFilterLabel) {
+                          return StreamValueBuilder<String?>(
+                            streamValue:
+                                controller.activeCatalogFilterKeyStreamValue,
+                            builder: (_, activeCatalogFilterKey) {
+                              return StreamValueBuilder<String?>(
+                                streamValue: controller
+                                    .appliedCatalogFilterKeyStreamValue,
+                                builder: (_, appliedCatalogFilterKey) {
+                                  return StreamValueBuilder<bool>(
+                                    streamValue: controller
+                                        .filterInteractionLockedStreamValue,
+                                    builder: (_, filterPending) {
+                                      final visualFilterLabel =
+                                          activeFilterLabel
+                                                      ?.trim()
+                                                      .isNotEmpty ==
+                                                  true
+                                              ? activeFilterLabel!.trim()
+                                              : pendingFilterLabel?.trim();
+                                      return AnimatedSwitcher(
+                                        duration:
+                                            const Duration(milliseconds: 220),
+                                        switchInCurve: Curves.easeOutCubic,
+                                        switchOutCurve: Curves.easeInCubic,
+                                        child: DecoratedBox(
+                                          key: ValueKey<String>(
+                                            '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surface
+                                                .withValues(alpha: 0.96),
+                                            borderRadius:
+                                                BorderRadius.circular(28),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Colors.black26,
+                                                blurRadius: 18,
+                                                offset: Offset(0, 8),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              18,
+                                              14,
+                                              18,
+                                              18,
+                                            ),
+                                            child: switch (trayMode) {
+                                              MapTrayMode.discovery =>
+                                                _DiscoveryTrayBody(
+                                                  controller: controller,
+                                                  filterOptions: filterOptions,
+                                                  filteredPois: filteredPois,
+                                                  activeFilterLabel:
+                                                      visualFilterLabel,
+                                                  activeCatalogFilterKey:
+                                                      activeCatalogFilterKey,
+                                                  appliedCatalogFilterKey:
+                                                      appliedCatalogFilterKey,
+                                                  filterPending: filterPending,
+                                                ),
+                                              MapTrayMode.filters =>
+                                                _FiltersTrayBody(
+                                                  controller: controller,
+                                                  filterOptions: filterOptions,
+                                                  activeFilterLabel:
+                                                      visualFilterLabel,
+                                                  filterPending: filterPending,
+                                                ),
+                                              MapTrayMode.search =>
+                                                _SearchTrayBody(
+                                                  controller: controller,
+                                                  filteredPois: filteredPois,
+                                                ),
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
                             },
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   );
@@ -93,19 +147,24 @@ class _DiscoveryTrayBody extends StatelessWidget {
     required this.filterOptions,
     required this.filteredPois,
     required this.activeFilterLabel,
+    required this.activeCatalogFilterKey,
+    required this.appliedCatalogFilterKey,
+    required this.filterPending,
   });
 
   final MapScreenController controller;
   final PoiFilterOptions? filterOptions;
   final List<CityPoiModel> filteredPois;
   final String? activeFilterLabel;
+  final String? activeCatalogFilterKey;
+  final String? appliedCatalogFilterKey;
+  final bool filterPending;
 
   @override
   Widget build(BuildContext context) {
-    final categories =
-        filterOptions?.sortedCategories ?? const <PoiFilterCategory>[];
+    final categories = controller.visibleCatalogCategories(filterOptions);
     final hasActiveFilter = (activeFilterLabel?.trim().isNotEmpty ?? false);
-    final activeCategory = _resolveActiveCategory(categories);
+    final activeCategory = _resolveDisplayedCategory(categories);
     final surfaceTitle =
         hasActiveFilter ? activeFilterLabel!.trim() : 'Perto de você';
     final surfaceSubtitle = hasActiveFilter
@@ -140,17 +199,19 @@ class _DiscoveryTrayBody extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton(
+            _TrayActionTextButton(
+              label: 'Ver tudo',
               onPressed: controller.showFiltersTray,
-              child: const Text('Ver tudo'),
             ),
           ],
         ),
         const SizedBox(height: 16),
         if (hasActiveFilter)
           _SelectedFilterChip(
+            controller: controller,
             category: activeCategory,
             activeFilterLabel: activeFilterLabel!,
+            pending: filterPending,
           )
         else
           _CollapsedFilterScroller(
@@ -161,14 +222,142 @@ class _DiscoveryTrayBody extends StatelessWidget {
     );
   }
 
-  PoiFilterCategory? _resolveActiveCategory(
+  PoiFilterCategory? _resolveDisplayedCategory(
       List<PoiFilterCategory> categories) {
+    final activeKey = activeCatalogFilterKey?.trim().toLowerCase();
+    if (activeKey != null && activeKey.isNotEmpty) {
+      for (final category in categories) {
+        if (category.key.trim().toLowerCase() == activeKey) {
+          return category;
+        }
+      }
+    }
+    final appliedKey = appliedCatalogFilterKey?.trim().toLowerCase();
+    if (appliedKey != null && appliedKey.isNotEmpty) {
+      for (final category in categories) {
+        if (category.key.trim().toLowerCase() == appliedKey) {
+          return category;
+        }
+      }
+    }
     for (final category in categories) {
       if (controller.isCategoryFilterActive(category)) {
         return category;
       }
     }
+    final normalizedLabel = activeFilterLabel?.trim().toLowerCase();
+    if (normalizedLabel != null && normalizedLabel.isNotEmpty) {
+      for (final category in categories) {
+        if (category.label.trim().toLowerCase() == normalizedLabel) {
+          return category;
+        }
+      }
+    }
     return null;
+  }
+}
+
+class _FilterChipPalette {
+  const _FilterChipPalette({
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.controlBackgroundColor,
+  });
+
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final Color controlBackgroundColor;
+
+  factory _FilterChipPalette.resolve(
+    BuildContext context,
+    PoiFilterCategory? category, {
+    required bool isActive,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final fallback = _FilterChipPalette(
+      backgroundColor:
+          isActive ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      foregroundColor:
+          isActive ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+      controlBackgroundColor: isActive
+          ? scheme.onPrimaryContainer.withValues(alpha: 0.12)
+          : scheme.onSurfaceVariant.withValues(alpha: 0.08),
+    );
+
+    if (!isActive || category == null) {
+      return fallback;
+    }
+
+    final overrideVisual = category.markerOverrideVisual;
+    if (overrideVisual == null || !overrideVisual.isIcon) {
+      return fallback;
+    }
+
+    final background =
+        MapMarkerVisualResolver.tryParseHexColor(overrideVisual.colorHex) ??
+            fallback.backgroundColor;
+    final foreground =
+        MapMarkerVisualResolver.tryParseHexColor(overrideVisual.iconColorHex) ??
+            fallback.foregroundColor;
+
+    return _FilterChipPalette(
+      backgroundColor: background,
+      foregroundColor: foreground,
+      controlBackgroundColor: foreground.withValues(alpha: 0.16),
+    );
+  }
+}
+
+class _TrayActionTextButton extends StatelessWidget {
+  const _TrayActionTextButton({
+    required this.label,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: _kTrayActionButtonMinWidth,
+        minHeight: _kTrayActionButtonHeight,
+      ),
+      child: SizedBox(
+        key: ValueKey<String>('tray-action-button-$label'),
+        height: _kTrayActionButtonHeight,
+        child: TextButton(
+          onPressed: loading ? null : onPressed,
+          style: TextButton.styleFrom(
+            minimumSize: const Size(
+              _kTrayActionButtonMinWidth,
+              _kTrayActionButtonHeight,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: loading
+                ? const SizedBox(
+                    key: ValueKey<String>('tray-action-button-loading'),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2.0),
+                  )
+                : Text(
+                    label,
+                    key: ValueKey<String>('tray-action-button-label-$label'),
+                  ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -228,17 +417,17 @@ class _CollapsedFilterIconChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final backgroundColor =
-        isActive ? scheme.primaryContainer : scheme.surfaceContainerHigh;
-    final foregroundColor =
-        isActive ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
+    final palette = _FilterChipPalette.resolve(
+      context,
+      category,
+      isActive: isActive,
+    );
 
     return Tooltip(
       message:
           category.label.trim().isEmpty ? category.key.trim() : category.label,
       child: Material(
-        color: backgroundColor,
+        color: palette.backgroundColor,
         shape: const CircleBorder(),
         child: InkWell(
           onTap: onTap,
@@ -251,7 +440,7 @@ class _CollapsedFilterIconChip extends StatelessWidget {
                 category: category,
                 isActive: isActive,
                 fallbackIcon: Icons.filter_alt_rounded,
-                fallbackColor: foregroundColor,
+                fallbackColor: palette.foregroundColor,
                 size: 20,
               ),
             ),
@@ -264,51 +453,98 @@ class _CollapsedFilterIconChip extends StatelessWidget {
 
 class _SelectedFilterChip extends StatelessWidget {
   const _SelectedFilterChip({
+    required this.controller,
     required this.category,
     required this.activeFilterLabel,
+    required this.pending,
   });
 
+  final MapScreenController controller;
   final PoiFilterCategory? category;
   final String activeFilterLabel;
+  final bool pending;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (category != null)
-              MapFilterCategoryIcon(
-                category: category!,
-                isActive: true,
-                fallbackIcon: Icons.tune_rounded,
-                fallbackColor: scheme.onPrimaryContainer,
-              )
-            else
-              Icon(
-                Icons.tune_rounded,
-                size: 18,
-                color: scheme.onPrimaryContainer,
+    final palette = _FilterChipPalette.resolve(
+      context,
+      category,
+      isActive: true,
+    );
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _kFilterPillMinHeight),
+      child: DecoratedBox(
+        key: const ValueKey<String>('map-selected-filter-chip'),
+        decoration: BoxDecoration(
+          color: palette.backgroundColor,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (category != null)
+                MapFilterCategoryIcon(
+                  category: category!,
+                  isActive: true,
+                  fallbackIcon: Icons.tune_rounded,
+                  fallbackColor: palette.foregroundColor,
+                )
+              else
+                Icon(
+                  Icons.tune_rounded,
+                  size: 18,
+                  color: palette.foregroundColor,
+                ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  activeFilterLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: palette.foregroundColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
               ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                activeFilterLabel,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: 10),
+              if (pending)
+                SizedBox(
+                  key: const ValueKey<String>('map-selected-filter-loading'),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      palette.foregroundColor,
                     ),
-              ),
-            ),
-          ],
+                  ),
+                )
+              else
+                Tooltip(
+                  message: 'Remover filtro',
+                  child: Material(
+                    color: palette.controlBackgroundColor,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const ValueKey<String>('map-selected-filter-clear'),
+                      onTap: controller.clearFilters,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: palette.foregroundColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -319,17 +555,19 @@ class _FiltersTrayBody extends StatelessWidget {
   const _FiltersTrayBody({
     required this.controller,
     required this.filterOptions,
+    required this.activeFilterLabel,
+    required this.filterPending,
   });
 
   final MapScreenController controller;
   final PoiFilterOptions? filterOptions;
+  final String? activeFilterLabel;
+  final bool filterPending;
 
   @override
   Widget build(BuildContext context) {
-    final categories =
-        filterOptions?.sortedCategories ?? const <PoiFilterCategory>[];
-    final taxonomyGroups =
-        filterOptions?.taxonomyGroups ?? const <PoiFilterTaxonomyGroup>[];
+    final categories = controller.visibleCatalogCategories(filterOptions);
+    final hasActiveFilter = (activeFilterLabel?.trim().isNotEmpty ?? false);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -347,9 +585,15 @@ class _FiltersTrayBody extends StatelessWidget {
                     ),
               ),
             ),
-            TextButton(
+            if (hasActiveFilter)
+              _TrayActionTextButton(
+                label: 'Limpar',
+                onPressed: filterPending ? null : controller.clearFilters,
+                loading: filterPending,
+              ),
+            _TrayActionTextButton(
+              label: 'Fechar',
               onPressed: controller.showDiscoveryTray,
-              child: const Text('Fechar'),
             ),
           ],
         ),
@@ -370,32 +614,6 @@ class _FiltersTrayBody extends StatelessWidget {
               )
               .toList(growable: false),
         ),
-        for (final group in taxonomyGroups) ...[
-          const SizedBox(height: 18),
-          Text(
-            group.label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: group.terms
-                .map(
-                  (term) => FilterChip(
-                    selected: controller.isTaxonomyFilterActive(term),
-                    label: Text(term.label),
-                    onSelected: (_) {
-                      controller.toggleTaxonomyFilter(term);
-                      controller.showDiscoveryTray();
-                    },
-                  ),
-                )
-                .toList(growable: false),
-          ),
-        ],
       ],
     );
   }
@@ -414,39 +632,42 @@ class _CategoryChoiceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final palette = _FilterChipPalette.resolve(
+      context,
+      category,
+      isActive: isActive,
+    );
     return Material(
-      color: isActive ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+      color: palette.backgroundColor,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MapFilterCategoryIcon(
-                category: category,
-                isActive: isActive,
-                fallbackIcon: Icons.filter_alt_rounded,
-                fallbackColor: isActive
-                    ? scheme.onPrimaryContainer
-                    : scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                category.label.trim().isEmpty
-                    ? category.key.trim()
-                    : category.label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: isActive
-                          ? scheme.onPrimaryContainer
-                          : scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: _kFilterPillMinHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MapFilterCategoryIcon(
+                  category: category,
+                  isActive: isActive,
+                  fallbackIcon: Icons.filter_alt_rounded,
+                  fallbackColor: palette.foregroundColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  category.label.trim().isEmpty
+                      ? category.key.trim()
+                      : category.label,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: palette.foregroundColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

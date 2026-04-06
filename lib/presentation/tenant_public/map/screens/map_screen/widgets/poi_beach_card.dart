@@ -9,7 +9,7 @@ class PoiBeachCard extends PoiBaseCard {
     required super.onPrimaryAction,
     required super.onShare,
     required super.onRoute,
-  }) : super(primaryLabel: 'Ver rota');
+  });
 
   @override
   List<Widget Function(BuildContext)> buildSections() => [

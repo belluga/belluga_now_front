@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
-import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
@@ -14,9 +13,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
-import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_term_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
-import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
@@ -168,66 +165,10 @@ class CityMapRepository extends CityMapRepositoryContract {
       );
     }
 
-    final groupedTaxonomy = <String, List<PoiFilterTaxonomyTerm>>{};
-    for (final term in filters.taxonomyTerms) {
-      final type = term.type.trim().toLowerCase();
-      final value = term.value.trim().toLowerCase();
-      if (type.isEmpty || value.isEmpty) {
-        continue;
-      }
-      groupedTaxonomy.putIfAbsent(type, () => <PoiFilterTaxonomyTerm>[]).add(
-            PoiFilterTaxonomyTerm(
-              typeValue: _parseTaxonomyTypeValue(type),
-              valueValue: _parseTaxonomyTermValue(value),
-              labelValue: _parseLabelValue(
-                term.label.trim().isEmpty ? value : term.label.trim(),
-              ),
-              countValue: _parseCountValue(term.count),
-            ),
-          );
-    }
-
-    final taxonomyGroups = groupedTaxonomy.entries.map((entry) {
-      final terms = List<PoiFilterTaxonomyTerm>.from(entry.value)
-        ..sort((left, right) => left.label.compareTo(right.label));
-      final taxonomyTerms = PoiFilterTaxonomyTerms();
-      for (final term in terms) {
-        taxonomyTerms.add(term);
-      }
-      return PoiFilterTaxonomyGroup(
-        typeValue: _parseTaxonomyTypeValue(entry.key),
-        labelValue: _parseLabelValue(_humanizeTaxonomyType(entry.key)),
-        terms: taxonomyTerms,
-      );
-    }).toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
     return PoiFilterOptions(
       categories: List<PoiFilterCategory>.unmodifiable(categories),
-      taxonomyGroups: taxonomyGroups,
     );
   }
-
-  String _humanizeTaxonomyType(String type) {
-    final normalized = type.trim();
-    if (normalized.isEmpty) {
-      return 'Taxonomia';
-    }
-    return normalized
-        .split(RegExp(r'[_\s-]+'))
-        .where((segment) => segment.isNotEmpty)
-        .map(
-          (segment) =>
-              segment[0].toUpperCase() + segment.substring(1).toLowerCase(),
-        )
-        .join(' ');
-  }
-
-  @override
-  Future<List<MainFilterOption>> fetchMainFilters() async {
-    return const <MainFilterOption>[];
-  }
-
   @override
   Future<List<MapRegionDefinition>> fetchRegions() async {
     return const <MapRegionDefinition>[];
@@ -355,18 +296,6 @@ class CityMapRepository extends CityMapRepositoryContract {
     return List<PoiFilterTaxonomyTokenValue>.unmodifiable(
       values.toSet().toList(),
     );
-  }
-
-  PoiFilterTaxonomyTypeValue _parseTaxonomyTypeValue(String raw) {
-    final value = PoiFilterTaxonomyTypeValue();
-    value.parse(raw.trim().toLowerCase());
-    return value;
-  }
-
-  PoiFilterTaxonomyTermValue _parseTaxonomyTermValue(String raw) {
-    final value = PoiFilterTaxonomyTermValue();
-    value.parse(raw.trim().toLowerCase());
-    return value;
   }
 
   PoiStackKeyValue _parseStackKeyValue(String raw) {

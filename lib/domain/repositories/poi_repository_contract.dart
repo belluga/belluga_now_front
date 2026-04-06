@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
@@ -15,7 +14,6 @@ abstract class PoiRepositoryContract {
   StreamValue<List<CityPoiModel>?> get stackItemsStreamValue;
   StreamValue<PoiFilterMode> get filterModeStreamValue;
   StreamValue<PoiFilterOptions?> get filterOptionsStreamValue;
-  StreamValue<List<MainFilterOption>> get mainFilterOptionsStreamValue;
 
   CityCoordinate get defaultCenter;
 
@@ -41,7 +39,6 @@ abstract class PoiRepositoryContract {
   }
 
   Future<PoiFilterOptions> fetchFilters();
-  Future<List<MainFilterOption>> fetchMainFilters();
 
   void selectPoi(CityPoiModel? poi);
   void clearSelection();

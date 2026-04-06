@@ -9,7 +9,7 @@ class PoiLodgingCard extends PoiBaseCard {
     required super.onPrimaryAction,
     required super.onShare,
     required super.onRoute,
-  }) : super(primaryLabel: 'Reservar agora');
+  });
 
   @override
   List<Widget Function(BuildContext)> buildSections() => [

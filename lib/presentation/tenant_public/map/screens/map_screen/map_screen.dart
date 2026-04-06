@@ -12,6 +12,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({
@@ -62,98 +63,133 @@ class _MapScreenState extends State<MapScreen> {
     return MapStatusMessageListener(
       child: Theme(
         data: theme,
-        child: PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) {
-            if (didPop) {
-              return;
-            }
-            _handleBack();
-          },
-          child: Scaffold(
-            body: Stack(
+        child: _buildScaffold(),
+      ),
+    );
+  }
+
+  Widget _buildScaffold() {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBack();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Column(
               children: [
-                Column(
-                  children: [
-                    Expanded(
-                      child: MapLayers(controller: _controller),
-                    ),
-                  ],
-                ),
-                // SafeArea(
-                //   child: SizedBox(
-                //     height: 120,
-                //     child: Padding(
-                //       padding: const EdgeInsets.symmetric(horizontal: 16),
-                //       child: Column(
-                //         crossAxisAlignment: CrossAxisAlignment.stretch,
-                //         children: [
-                //           MapHeader(onSearch: _openSearchDialog),
-                //           const SizedBox(height: 8),
-                //           StatusBanner(),
-                //         ],
-                //       ),
-                //     ),
-                //   ),
-                // ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: IconButton.filled(
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: _handleBack,
-                            icon: const Icon(Icons.arrow_back),
-                          ),
-                        ),
-                        MapSoftLocationNoticeBanner(controller: _controller),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 148,
-                  child: SafeArea(
-                    top: false,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: PoiDetailDeck(controller: _controller),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        MapLocalActionRow(controller: _controller),
-                        const SizedBox(height: 12),
-                        MapAdaptiveTray(controller: _controller),
-                      ],
-                    ),
-                  ),
+                Expanded(
+                  child: MapLayers(controller: _controller),
                 ),
               ],
             ),
-            bottomNavigationBar:
-                const BellugaBottomNavigationBar(currentIndex: 1),
-          ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: IconButton.filled(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _handleBack,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                    ),
+                    MapSoftLocationNoticeBanner(controller: _controller),
+                  ],
+                ),
+              ),
+            ),
+            _buildBottomControlsOverlay(),
+            _buildSelectedCardOverlay(),
+          ],
         ),
+        bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 1),
       ),
+    );
+  }
+
+  Widget _buildBottomControlsOverlay() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.hasSelectedPoiStreamValue,
+      builder: (_, hasSelectedPoi) {
+        if (hasSelectedPoi) {
+          return const SizedBox.shrink();
+        }
+        return Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: SafeArea(
+            top: false,
+            child: AnimatedSlide(
+              key: const ValueKey<String>('map-bottom-controls-slide'),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: Offset.zero,
+              child: AnimatedOpacity(
+                key: const ValueKey<String>('map-bottom-controls-opacity'),
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                opacity: 1,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MapLocalActionRow(controller: _controller),
+                    const SizedBox(height: 12),
+                    MapAdaptiveTray(controller: _controller),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSelectedCardOverlay() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.hasSelectedPoiStreamValue,
+      builder: (_, hasSelectedPoi) {
+        if (!hasSelectedPoi) {
+          return const SizedBox.shrink();
+        }
+        return Positioned(
+          left: 16,
+          right: 16,
+          bottom: 24,
+          child: SafeArea(
+            top: false,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedSlide(
+                key: const ValueKey<String>('map-selected-card-slide'),
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                offset: Offset.zero,
+                child: AnimatedOpacity(
+                  key: const ValueKey<String>('map-selected-card-opacity'),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  opacity: 1,
+                  child: PoiDetailDeck(controller: _controller),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

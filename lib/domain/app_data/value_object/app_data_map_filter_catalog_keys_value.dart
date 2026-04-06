@@ -14,6 +14,12 @@ class AppDataMapFilterCatalogKeysValue extends ValueObject<List<String>> {
       );
     }
 
+    if (parseValue is String) {
+      return List<String>.unmodifiable(
+        _sanitize(parseValue.split(RegExp(r'[\n,]+'))),
+      );
+    }
+
     return defaultValue;
   }
 

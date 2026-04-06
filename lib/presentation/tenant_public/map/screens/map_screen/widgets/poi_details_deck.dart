@@ -39,12 +39,12 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   late final MapScreenController _controller = widget.controller;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
-  final PageController _pageController = PageController(viewportFraction: 0.8);
+  final PageController _pageController = PageController(viewportFraction: 0.9);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   int? _lastPoiDeckIndex;
 
-  static const double _defaultCardHeight = 320;
-  static const double _minCardHeight = 220;
+  static const double _defaultCardHeight = 356;
+  static const double _minCardHeight = 280;
 
   @override
   void initState() {
@@ -89,13 +89,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           alignment: Alignment.topRight,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 18, right: 6),
+              padding: const EdgeInsets.only(top: 16, right: 2),
               child: child,
             ),
             Material(
-              color: scheme.surface.withValues(alpha: 0.96),
+              color: scheme.surface.withValues(alpha: 0.98),
               shape: const CircleBorder(),
-              elevation: 6,
+              elevation: 10,
               child: IconButton(
                 tooltip: 'Fechar',
                 onPressed: _controller.clearSelectedPoi,
@@ -392,7 +392,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   double _clampHeight(BuildContext context, double raw) {
     final viewportHeight = MediaQuery.of(context).size.height;
-    final maxHeight = (viewportHeight * 0.42).clamp(280.0, 360.0);
+    final maxHeight = (viewportHeight * 0.56).clamp(340.0, 480.0);
     return raw.clamp(_minCardHeight, maxHeight);
   }
 }
