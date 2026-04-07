@@ -153,6 +153,18 @@ class TenantAdminEventsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'load events page');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'load events page',
+        uri: '$_apiBaseUrl/v1/events',
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'load events page',
+        uri: '$_apiBaseUrl/v1/events',
+      );
     }
   }
 
@@ -168,6 +180,18 @@ class TenantAdminEventsRepository
       return _responseDecoder.decodeEventItem(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load event');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'load event',
+        uri: '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'load event',
+        uri: '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
+      );
     }
   }
 
@@ -448,6 +472,26 @@ class TenantAdminEventsRepository
     );
     return FormatException(
       'Failed to $context [status=$status] ($uri): $message',
+    );
+  }
+
+  FormatException _wrapDecodeError(
+    FormatException error, {
+    required String context,
+    required String uri,
+  }) {
+    return FormatException(
+      'Failed to $context [decode] ($uri): ${error.message}',
+    );
+  }
+
+  FormatException _wrapUnknownDecodeError(
+    Object error, {
+    required String context,
+    required String uri,
+  }) {
+    return FormatException(
+      'Failed to $context [decode] ($uri): $error',
     );
   }
 

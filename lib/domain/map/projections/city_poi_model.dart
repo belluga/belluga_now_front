@@ -17,6 +17,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 
@@ -29,6 +31,8 @@ class CityPoiModel implements MapPoi {
     required this.category,
     required this.coordinate,
     required this.priorityValue,
+    this.categoryLabelValue,
+    this.coverImageUriValue,
     this.assetPathValue,
     PoiBooleanValue? isDynamicValue,
     this.movementRadiusValue,
@@ -62,6 +66,8 @@ class CityPoiModel implements MapPoi {
   final CityPoiAddressValue addressValue;
   @override
   final CityPoiCategory category;
+  final PoiTypeLabelValue? categoryLabelValue;
+  final PoiFilterImageUriValue? coverImageUriValue;
 
   @override
   final CityCoordinate coordinate;
@@ -93,6 +99,22 @@ class CityPoiModel implements MapPoi {
 
   @override
   String get address => addressValue.value;
+
+  String? get resolvedCategoryLabel {
+    final raw = categoryLabelValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  String? get coverImageUri {
+    final raw = coverImageUriValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
 
   @override
   int get priority => priorityValue.value;
@@ -142,6 +164,8 @@ class CityPoiModel implements MapPoi {
     CityPoiDescriptionValue? descriptionValue,
     CityPoiAddressValue? addressValue,
     CityPoiCategory? category,
+    PoiTypeLabelValue? categoryLabelValue,
+    PoiFilterImageUriValue? coverImageUriValue,
     CityCoordinate? coordinate,
     PoiPriorityValue? priorityValue,
     AssetPathValue? assetPathValue,
@@ -173,6 +197,8 @@ class CityPoiModel implements MapPoi {
       descriptionValue: descriptionValue ?? this.descriptionValue,
       addressValue: addressValue ?? this.addressValue,
       category: category ?? this.category,
+      categoryLabelValue: categoryLabelValue ?? this.categoryLabelValue,
+      coverImageUriValue: coverImageUriValue ?? this.coverImageUriValue,
       coordinate: coordinate ?? this.coordinate,
       priorityValue: priorityValue ?? this.priorityValue,
       assetPathValue: assetPathValue ?? this.assetPathValue,

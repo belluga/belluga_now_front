@@ -441,4 +441,32 @@ void main() {
     expect(find.text('4'), findsOneWidget);
     expect(find.text('+3'), findsNothing);
   });
+
+  testWidgets('shows loading badge while selected poi is hydrating', (
+    tester,
+  ) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.restaurant,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+                isLoading: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
 }

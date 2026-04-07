@@ -10,6 +10,7 @@ class PoiMarkerBuilder {
   BellugaMapAnnotation build({
     required CityPoiModel poi,
     required bool isSelected,
+    required bool isLoading,
     required VoidCallback onTap,
     required double size,
     CityPoiVisual? overrideVisual,
@@ -22,6 +23,7 @@ class PoiMarkerBuilder {
       child: PoiMarker(
         poi: poi,
         isSelected: isSelected,
+        isLoading: isLoading,
         overrideVisual: overrideVisual,
       ),
       onTap: onTap,

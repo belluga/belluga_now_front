@@ -50,22 +50,31 @@ class MapLayers extends StatelessWidget {
                     return StreamValueBuilder<CityPoiModel?>(
                       streamValue: _controller.selectedPoiStreamValue,
                       builder: (_, selectedPoi) {
-                        return StreamValueBuilder<CityCoordinate?>(
-                          streamValue: _controller.userLocationStreamValue,
-                          builder: (_, userCoordinate) {
-                            return StreamValueBuilder<double>(
-                              streamValue: _controller.zoomStreamValue,
-                              builder: (_, zoom) {
-                                return _MapViewport(
-                                  controller: _controller,
-                                  markerBuilder: _markerBuilder,
-                                  markerOverrideVisual: markerOverrideVisual,
-                                  pois: pois!,
-                                  selectedPoi: selectedPoi,
-                                  userCoordinate: userCoordinate,
-                                  zoom: zoom,
-                                  interactionGuardActive:
-                                      interactionGuardActive,
+                        return StreamValueBuilder<String?>(
+                          streamValue:
+                              _controller.selectedPoiLoadingIdStreamValue,
+                          builder: (_, selectedPoiLoadingId) {
+                            return StreamValueBuilder<CityCoordinate?>(
+                              streamValue: _controller.userLocationStreamValue,
+                              builder: (_, userCoordinate) {
+                                return StreamValueBuilder<double>(
+                                  streamValue: _controller.zoomStreamValue,
+                                  builder: (_, zoom) {
+                                    return _MapViewport(
+                                      controller: _controller,
+                                      markerBuilder: _markerBuilder,
+                                      markerOverrideVisual:
+                                          markerOverrideVisual,
+                                      pois: pois!,
+                                      selectedPoi: selectedPoi,
+                                      selectedPoiLoadingId:
+                                          selectedPoiLoadingId,
+                                      userCoordinate: userCoordinate,
+                                      zoom: zoom,
+                                      interactionGuardActive:
+                                          interactionGuardActive,
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -119,6 +128,7 @@ class _MapViewport extends StatelessWidget {
     required this.markerOverrideVisual,
     required this.pois,
     this.selectedPoi,
+    this.selectedPoiLoadingId,
     this.userCoordinate,
     this.zoom = 16,
     this.interactionGuardActive = false,
@@ -129,6 +139,7 @@ class _MapViewport extends StatelessWidget {
   final CityPoiVisual? markerOverrideVisual;
   final List<CityPoiModel> pois;
   final CityPoiModel? selectedPoi;
+  final String? selectedPoiLoadingId;
   final CityCoordinate? userCoordinate;
   final double zoom;
   final bool interactionGuardActive;
@@ -149,16 +160,28 @@ class _MapViewport extends StatelessWidget {
     );
 
     final poiMarkers = pois.map(
-      (poi) => markerBuilder.build(
-        poi: poi,
-        isSelected: _isPoiSelected(
+      (poi) {
+        final isSelected = _isPoiSelected(
           selectedPoi: selectedPoi,
           markerPoi: poi,
-        ),
-        onTap: () => controller.handleMarkerTap(poi),
-        size: poi.isDynamic ? eventSize : poiSize,
-        overrideVisual: markerOverrideVisual,
-      ),
+          selectedPoiLoadingId: selectedPoiLoadingId,
+        );
+        final isLoading = selectedPoiLoadingId == poi.id;
+        final displayPoi = _displayPoiForMarker(
+          markerPoi: poi,
+          selectedPoi: selectedPoi,
+          selectedPoiLoadingId: selectedPoiLoadingId,
+        );
+        return markerBuilder.build(
+          poi: displayPoi,
+          isSelected: isSelected,
+          isLoading: isLoading,
+          onTap: () => controller.handleMarkerTap(poi),
+          size: poi.isDynamic ? eventSize : poiSize,
+          overrideVisual:
+              (isSelected || isLoading) ? null : markerOverrideVisual,
+        );
+      },
     );
 
     final markers = <BellugaMapAnnotation>[
@@ -218,7 +241,11 @@ class _MapViewport extends StatelessWidget {
   bool _isPoiSelected({
     required CityPoiModel? selectedPoi,
     required CityPoiModel markerPoi,
+    required String? selectedPoiLoadingId,
   }) {
+    if (selectedPoiLoadingId != null) {
+      return selectedPoiLoadingId == markerPoi.id;
+    }
     if (selectedPoi != null) {
       if (selectedPoi.id == markerPoi.id) {
         return true;
@@ -235,5 +262,45 @@ class _MapViewport extends StatelessWidget {
       return true;
     }
     return memory.stackKey.isNotEmpty && memory.stackKey == markerPoi.stackKey;
+  }
+
+  CityPoiModel _displayPoiForMarker({
+    required CityPoiModel markerPoi,
+    required CityPoiModel? selectedPoi,
+    required String? selectedPoiLoadingId,
+  }) {
+    if (selectedPoiLoadingId != null) {
+      return markerPoi;
+    }
+
+    if (selectedPoi != null) {
+      if (selectedPoi.id == markerPoi.id) {
+        return selectedPoi;
+      }
+      final selectedStackKey = selectedPoi.stackKey.trim();
+      if (selectedStackKey.isNotEmpty &&
+          selectedStackKey == markerPoi.stackKey) {
+        return markerPoi.copyWith(
+          visual: selectedPoi.visual,
+        );
+      }
+      return markerPoi;
+    }
+
+    final memory = controller.lastSelectedPoiMemoryStreamValue.value;
+    if (memory == null) {
+      return markerPoi;
+    }
+    if (memory.poiId == markerPoi.id) {
+      return markerPoi.copyWith(
+        visual: memory.visual,
+      );
+    }
+    if (memory.stackKey.isNotEmpty && memory.stackKey == markerPoi.stackKey) {
+      return markerPoi.copyWith(
+        visual: memory.visual,
+      );
+    }
+    return markerPoi;
   }
 }

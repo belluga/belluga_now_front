@@ -89,7 +89,7 @@ class PoiRepository implements PoiRepositoryContract {
       stackKey: stackKey,
       query: query,
     );
-    stackItemsStreamValue.addValue(stackItems);
+    setStackItems(stackItems);
   }
 
   @override
@@ -119,9 +119,22 @@ class PoiRepository implements PoiRepositoryContract {
   void clearSelection() => selectPoi(null);
 
   @override
+  void setStackItems(List<CityPoiModel>? items) {
+    if (items == null) {
+      stackItemsStreamValue.addValue(null);
+      return;
+    }
+    stackItemsStreamValue.addValue(List<CityPoiModel>.unmodifiable(items));
+  }
+
+  @override
+  void clearStackItems() => setStackItems(null);
+
+  @override
   void clearLoadedPois() {
     _setAllPois(const <CityPoiModel>[]);
     clearSelection();
+    clearStackItems();
   }
 
   @override

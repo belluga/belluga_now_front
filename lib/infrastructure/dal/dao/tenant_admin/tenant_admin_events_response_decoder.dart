@@ -211,7 +211,7 @@ class TenantAdminEventsResponseDecoder {
               _asString(placeRefRow['type']) ?? '',
             ),
             idValue: tenantAdminRequiredText(
-              _asString(placeRefRow['id']) ?? '',
+              _extractPlaceRefId(placeRefRow) ?? '',
             ),
           );
 
@@ -442,6 +442,23 @@ class TenantAdminEventsResponseDecoder {
       return null;
     }
     return normalized;
+  }
+
+  String? _extractPlaceRefId(Map<String, dynamic> placeRefRow) {
+    final direct = _asString(placeRefRow['id']);
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final legacy = placeRefRow['_id'];
+    if (legacy is Map) {
+      final oid = _asString(legacy[r'$oid'] ?? legacy['oid']);
+      if (oid != null && oid.isNotEmpty) {
+        return oid;
+      }
+    }
+
+    return _asString(legacy);
   }
 
   double? _toDouble(Object? value) {

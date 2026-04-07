@@ -13,9 +13,6 @@ class EventPoiDetailCard extends PoiBaseCard {
   });
 
   @override
-  bool emphasizePrimaryAction(BuildContext context) => true;
-
-  @override
   Color resolveAccentColor() {
     if (poi.isHappeningNow) {
       return const Color(0xFFD93A56);

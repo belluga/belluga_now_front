@@ -39,6 +39,16 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   }
 
   @override
+  CityCoordinate? get currentCenter {
+    try {
+      final center = _mapController.camera.center;
+      return CityCoordinate.fromLatLng(center);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   void markReady() {
     if (_isDisposed || _isReady) {
       return;
@@ -97,6 +107,17 @@ class BellugaMapHandle implements BellugaMapHandleContract {
       );
     } catch (_) {
       return false;
+    }
+  }
+
+  @override
+  Offset? projectToViewport(CityCoordinate coordinate) {
+    try {
+      return _mapController.camera.latLngToScreenOffset(
+        LatLng(coordinate.latitude, coordinate.longitude),
+      );
+    } catch (_) {
+      return null;
     }
   }
 

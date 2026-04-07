@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:flutter/widgets.dart';
 
 class BellugaMapHandle implements BellugaMapHandleContract {
   final StreamController<BellugaMapInteractionEvent> _interactionController =
@@ -11,6 +12,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
   bool _isDisposed = false;
   bool _isReady = false;
   double? _currentZoom;
+  CityCoordinate? _currentCenter;
 
   @override
   Stream<BellugaMapInteractionEvent> get interactionStream =>
@@ -21,6 +23,9 @@ class BellugaMapHandle implements BellugaMapHandleContract {
 
   @override
   double? get currentZoom => _currentZoom;
+
+  @override
+  CityCoordinate? get currentCenter => _currentCenter;
 
   @override
   void markReady() {
@@ -50,6 +55,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     required double zoom,
   }) {
     _currentZoom = zoom;
+    _currentCenter = coordinate;
     return false;
   }
 
@@ -60,6 +66,7 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     required double verticalViewportAnchor,
   }) {
     _currentZoom = zoom;
+    _currentCenter = coordinate;
     return false;
   }
 
@@ -70,6 +77,11 @@ class BellugaMapHandle implements BellugaMapHandleContract {
     double? maxZoom,
   }) {
     return false;
+  }
+
+  @override
+  Offset? projectToViewport(CityCoordinate coordinate) {
+    return null;
   }
 
   @override

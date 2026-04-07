@@ -13,11 +13,11 @@ class PoiContentResolver {
   }
 
   static String typeLabel(CityPoiModel poi) {
-    final refType = poi.refType.trim();
-    if (refType.isNotEmpty && refType.toLowerCase() != 'static') {
-      return _humanizeToken(refType);
+    final rawCategory = _humanizeToken(poi.resolvedCategoryLabel ?? '');
+    if (rawCategory.isNotEmpty) {
+      return rawCategory;
     }
-    return _humanizeToken(poi.category.name);
+    return '';
   }
 
   static String? sanitizedDescription(CityPoiModel poi) {
@@ -85,7 +85,10 @@ class PoiContentResolver {
       meta.add(address);
     }
     if (meta.isEmpty) {
-      meta.add(typeLabel(poi));
+      final type = typeLabel(poi);
+      if (type.isNotEmpty) {
+        meta.add(type);
+      }
     }
     return meta.join(' • ');
   }
@@ -105,7 +108,17 @@ class PoiContentResolver {
     return List<String>.unmodifiable(values);
   }
 
-  static String? imageUri(CityPoiModel poi) {
+  static String? coverImageUri(CityPoiModel poi) {
+    final imageUri = poi.coverImageUri ??
+        (poi.visual?.isImage == true ? poi.visual?.imageUri : null);
+    final trimmed = imageUri?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  static String? thumbnailImageUri(CityPoiModel poi) {
     final imageUri = poi.visual?.isImage == true ? poi.visual?.imageUri : null;
     final trimmed = imageUri?.trim();
     if (trimmed == null || trimmed.isEmpty) {

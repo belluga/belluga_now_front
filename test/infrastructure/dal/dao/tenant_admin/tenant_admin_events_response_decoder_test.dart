@@ -62,4 +62,35 @@ void main() {
     expect(summary.unchanged, 6);
     expect(summary.failed, 1);
   });
+
+  test('decodes event place_ref from legacy _id payload', () {
+    final event = decoder.decodeEventItem({
+      'data': {
+        'event_id': 'evt-legacy-place',
+        'slug': 'evento-legado',
+        'title': 'Evento legado',
+        'content': 'Conteudo',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+        },
+        'place_ref': {
+          'type': 'account_profile',
+          '_id': '507f1f77bcf86cd799439011',
+        },
+        'date_time_start': '2026-04-05T20:00:00+00:00',
+        'publication': {'status': 'draft'},
+        'occurrences': [
+          {
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+          },
+        ],
+      },
+    });
+
+    expect(event.placeRef, isNotNull);
+    expect(event.placeRef!.type, 'account_profile');
+    expect(event.placeRef!.id, '507f1f77bcf86cd799439011');
+  });
 }

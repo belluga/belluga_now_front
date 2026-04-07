@@ -15,9 +15,9 @@ class LaravelMapPoiHttpService {
             Dio(
               BaseOptions(
                 baseUrl: _resolveBaseUrl(context),
-                connectTimeout: const Duration(seconds: 2),
-                receiveTimeout: const Duration(seconds: 4),
-                sendTimeout: const Duration(seconds: 4),
+                connectTimeout: const Duration(seconds: 5),
+                receiveTimeout: const Duration(seconds: 12),
+                sendTimeout: const Duration(seconds: 12),
                 listFormat: ListFormat.multiCompatible,
               ),
             );

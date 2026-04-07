@@ -24,18 +24,9 @@ abstract class PoiBaseCard extends StatelessWidget {
     final accentColor = resolveAccentColor();
     final accentForeground = _foregroundFor(accentColor);
     final sections = buildSections();
-    final emphasizesPrimaryAction = emphasizePrimaryAction(context);
-    final filledLabel = emphasizesPrimaryAction
-        ? primaryActionLabel(context)
-        : routeActionLabel(context);
-    final filledCallback = emphasizesPrimaryAction ? onPrimaryAction : onRoute;
-    final secondaryLabel = emphasizesPrimaryAction
-        ? routeActionLabel(context)
-        : primaryActionLabel(context);
-    final secondaryCallback =
-        emphasizesPrimaryAction ? onRoute : onPrimaryAction;
     final description = PoiContentResolver.sanitizedDescription(poi);
     final hasDescription = description != null;
+    final badge = badgeLabel(context).trim();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -69,37 +60,39 @@ abstract class PoiBaseCard extends StatelessWidget {
                   accentForeground: accentForeground,
                 ),
               ),
-              Positioned(
-                top: 24,
-                left: 24,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withValues(alpha: 0.28),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
+              if (badge.isNotEmpty)
+                Positioned(
+                  top: 24,
+                  left: 24,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.28),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      badgeLabel(context).toUpperCase(),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: accentForeground,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      child: Text(
+                        badge.toUpperCase(),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: accentForeground,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
+                                ),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
           Padding(
@@ -111,6 +104,13 @@ abstract class PoiBaseCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_shouldShowHeaderAvatar()) ...[
+                      _CardAvatar(
+                        poi: poi,
+                        accentColor: accentColor,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: Text(
                         poi.name,
@@ -155,8 +155,8 @@ abstract class PoiBaseCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: filledCallback,
-                        icon: Icon(filledButtonIcon(context)),
+                        onPressed: onRoute,
+                        icon: Icon(routeButtonIcon(context)),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(54),
                           backgroundColor: accentColor,
@@ -166,13 +166,13 @@ abstract class PoiBaseCard extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        label: Text(filledLabel),
+                        label: Text(routeActionLabel(context)),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.tonal(
-                        onPressed: secondaryCallback,
+                        onPressed: onPrimaryAction,
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(54),
                           backgroundColor: colorScheme.surfaceContainerHighest,
@@ -182,7 +182,7 @@ abstract class PoiBaseCard extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: Text(secondaryLabel),
+                        child: Text(primaryActionLabel(context)),
                       ),
                     ),
                   ],
@@ -200,7 +200,7 @@ abstract class PoiBaseCard extends StatelessWidget {
     required Color accentColor,
     required Color accentForeground,
   }) {
-    final imageUri = PoiContentResolver.imageUri(poi);
+    final imageUri = PoiContentResolver.coverImageUri(poi);
     final assetPath = PoiContentResolver.assetPath(poi);
     final hasMedia = imageUri != null && imageUri.isNotEmpty ||
         assetPath != null && assetPath.isNotEmpty;
@@ -247,14 +247,9 @@ abstract class PoiBaseCard extends StatelessWidget {
     );
   }
 
-  bool emphasizePrimaryAction(BuildContext context) => false;
-
   String primaryActionLabel(BuildContext context) => 'Ver detalhes';
 
-  IconData filledButtonIcon(BuildContext context) =>
-      emphasizePrimaryAction(context)
-          ? Icons.visibility_outlined
-          : Icons.near_me_rounded;
+  IconData routeButtonIcon(BuildContext context) => Icons.near_me_rounded;
 
   Widget buildPrimaryMeta(BuildContext context, Color accentColor) {
     final metaStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -322,6 +317,10 @@ abstract class PoiBaseCard extends StatelessWidget {
         : Colors.black87;
   }
 
+  bool _shouldShowHeaderAvatar() {
+    return poi.refType.trim().toLowerCase() == 'account_profile';
+  }
+
   Widget tagsSection(BuildContext context) {
     final tags = PoiContentResolver.tags(poi);
     if (tags.isEmpty) return const SizedBox.shrink();
@@ -342,6 +341,74 @@ abstract class PoiBaseCard extends StatelessWidget {
   }
 
   List<Widget Function(BuildContext)> buildSections();
+}
+
+class _CardAvatar extends StatelessWidget {
+  const _CardAvatar({
+    required this.poi,
+    required this.accentColor,
+  });
+
+  final CityPoiModel poi;
+  final Color accentColor;
+
+  static const double _size = 44;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUri = PoiContentResolver.thumbnailImageUri(poi);
+    final assetPath = PoiContentResolver.assetPath(poi);
+
+    Widget child;
+    if (imageUri != null && imageUri.isNotEmpty) {
+      child = BellugaNetworkImage(
+        imageUri,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(_size / 2),
+      );
+    } else if (assetPath != null && assetPath.isNotEmpty) {
+      child = ClipOval(
+        child: Image.asset(
+          assetPath,
+          width: _size,
+          height: _size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(context),
+        ),
+      );
+    } else {
+      child = _buildPlaceholder(context);
+    }
+
+    return SizedBox(
+      key: const ValueKey<String>('poi-card-avatar'),
+      width: _size,
+      height: _size,
+      child: child,
+    );
+  }
+
+  Widget _buildPlaceholder(BuildContext context) {
+    final iconColor = PoiContentResolver.iconColor(poi) ??
+        Theme.of(context).colorScheme.onPrimaryContainer;
+    final backgroundColor = PoiContentResolver.accentColor(poi) ?? accentColor;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor.withValues(alpha: 0.16),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: backgroundColor.withValues(alpha: 0.38),
+        ),
+      ),
+      child: Icon(
+        PoiContentResolver.icon(poi),
+        size: 22,
+        color: iconColor,
+      ),
+    );
+  }
 }
 
 class _HeroPlaceholder extends StatelessWidget {

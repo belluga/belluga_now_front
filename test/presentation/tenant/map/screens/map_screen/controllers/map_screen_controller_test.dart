@@ -37,10 +37,16 @@ import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
@@ -52,10 +58,12 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -361,6 +369,97 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   }
 }
 
+class _FakeAccountProfilesRepository
+    implements AccountProfilesRepositoryContract {
+  int getAccountProfileBySlugCallCount = 0;
+  @override
+  final selectedAccountProfileStreamValue =
+      StreamValue<AccountProfileModel?>(defaultValue: null);
+  final List<String> requestedSlugs = <String>[];
+  final Map<String, AccountProfileModel?> profilesBySlug =
+      <String, AccountProfileModel?>{};
+  final Map<String, Completer<AccountProfileModel?>> pendingBySlug =
+      <String, Completer<AccountProfileModel?>>{};
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+  }) async {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    getAccountProfileBySlugCallCount += 1;
+    requestedSlugs.add(slug.value);
+    final pending = pendingBySlug[slug.value];
+    if (pending != null) {
+      return pending.future;
+    }
+    return profilesBySlug[slug.value];
+  }
+
+  @override
+  Future<void> loadAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async {
+    final profile = await getAccountProfileBySlug(slug);
+    selectedAccountProfileStreamValue.addValue(profile);
+  }
+
+  @override
+  void clearSelectedAccountProfile() {
+    selectedAccountProfileStreamValue.addValue(null);
+  }
+
+  @override
+  void setSelectedAccountProfile(AccountProfileModel? profile) {
+    selectedAccountProfileStreamValue.addValue(profile);
+  }
+
+  @override
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    return super.noSuchMethod(invocation);
+  }
+}
+
 class _FakeMapHandle implements BellugaMapHandleContract {
   static const double _cameraCoordinateTolerance = 0.000001;
   static const double _cameraZoomTolerance = 0.01;
@@ -385,6 +484,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
   CityCoordinate? lastMoveCoordinate;
   double? lastMoveZoom;
   double? lastVerticalViewportAnchor;
+  Offset projectedViewportOffset = const Offset(180, 220);
 
   @override
   Stream<BellugaMapInteractionEvent> get interactionStream => _events.stream;
@@ -394,6 +494,9 @@ class _FakeMapHandle implements BellugaMapHandleContract {
 
   @override
   double? get currentZoom => _currentZoom;
+
+  @override
+  CityCoordinate? get currentCenter => _currentCenter;
 
   @override
   bool moveTo(
@@ -438,6 +541,10 @@ class _FakeMapHandle implements BellugaMapHandleContract {
     lastMoveZoom = maxZoom ?? _currentZoom;
     return true;
   }
+
+  @override
+  Offset? projectToViewport(CityCoordinate coordinate) =>
+      projectedViewportOffset;
 
   @override
   void markReady() {
@@ -492,9 +599,12 @@ CityPoiModel _buildPoi({
   String name = 'Beach Bar',
   String refType = 'static',
   String refId = 'poi-1',
+  String? refSlug,
+  String? refPath,
   String stackKey = '',
   int stackCount = 1,
   CityPoiCategory category = CityPoiCategory.restaurant,
+  String? categoryLabel,
   List<CityPoiModel>? stackItems,
 }) {
   final idValue = CityPoiIdValue()..parse(id);
@@ -504,6 +614,14 @@ CityPoiModel _buildPoi({
   final priorityValue = PoiPriorityValue()..parse('1');
   final refTypeValue = PoiReferenceTypeValue()..parse(refType);
   final refIdValue = PoiReferenceIdValue()..parse(refId);
+  final refSlugValue =
+      refSlug == null ? null : (PoiReferenceSlugValue()..parse(refSlug));
+  final refPathValue =
+      refPath == null ? null : (PoiReferencePathValue()..parse(refPath));
+  final categoryLabelValue =
+      categoryLabel == null || categoryLabel.trim().isEmpty
+          ? null
+          : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
   final stackKeyValue = PoiStackKeyValue()..parse(stackKey);
   final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
   final stackItemCollection = CityPoiStackItems();
@@ -523,10 +641,13 @@ CityPoiModel _buildPoi({
     descriptionValue: descriptionValue,
     addressValue: addressValue,
     category: category,
+    categoryLabelValue: categoryLabelValue,
     coordinate: coordinate,
     priorityValue: priorityValue,
     refTypeValue: refTypeValue,
     refIdValue: refIdValue,
+    refSlugValue: refSlugValue,
+    refPathValue: refPathValue,
     stackKeyValue: stackKeyValue,
     stackCountValue: stackCountValue,
     stackItems: stackItemCollection,
@@ -553,6 +674,12 @@ PoiQuery _buildQuery({
     categoryKeyValues:
         categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
   );
+}
+
+DistanceInMetersValue _buildDistanceValue(double raw) {
+  final value = DistanceInMetersValue();
+  value.parse(raw.toString());
+  return value;
 }
 
 Set<String>? _queryCategoryKeys(PoiQuery? query) {
@@ -598,6 +725,8 @@ String? _querySearchTerm(PoiQuery? query) {
   }
   return raw;
 }
+
+CityCoordinate? _queryOrigin(PoiQuery? query) => query?.origin;
 
 PoiFilterCategory _buildCategory({
   required String key,
@@ -772,6 +901,7 @@ void main() {
     late _FakeTelemetryRepository telemetry;
     late _FakeCityMapRepository mapRepository;
     late _FakeUserLocationRepository userLocationRepository;
+    late _FakeAccountProfilesRepository accountProfilesRepository;
     late MapScreenController controller;
 
     setUp(() {
@@ -779,6 +909,7 @@ void main() {
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
       userLocationRepository = _FakeUserLocationRepository();
+      accountProfilesRepository = _FakeAccountProfilesRepository();
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
       );
@@ -787,6 +918,7 @@ void main() {
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         appData: _buildAppData(),
+        accountProfilesRepository: accountProfilesRepository,
       );
     });
 
@@ -987,6 +1119,55 @@ void main() {
       expect(telemetry.events, isEmpty);
     });
 
+    test('search tray captures current map center and preserves it on clear',
+        () async {
+      final fakeMapHandle = _FakeMapHandle(
+        initialCenter: _buildCoordinate('-20.673100', '-40.495200'),
+      );
+      final localMapRepository = _FakeCityMapRepository();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: localMapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        localMapRepository.dispose();
+        await localController.onDispose();
+      });
+
+      localController.showSearchTray();
+      await _flushMicrotasks();
+
+      final trayOrigin = _queryOrigin(localMapRepository.lastQuery);
+      expect(trayOrigin, isNotNull);
+      expect(trayOrigin!.latitude, closeTo(-20.6731, 0.000001));
+      expect(trayOrigin.longitude, closeTo(-40.4952, 0.000001));
+      expect(localController.mapTrayModeStreamValue.value, MapTrayMode.search);
+
+      await localController.searchPois('pizza');
+      await _flushMicrotasks();
+      expect(_querySearchTerm(localMapRepository.lastQuery), 'pizza');
+      expect(
+        _queryOrigin(localMapRepository.lastQuery)?.latitude,
+        closeTo(-20.6731, 0.000001),
+      );
+
+      await localController.clearSearch(logTelemetry: false);
+      await _flushMicrotasks();
+
+      expect(_querySearchTerm(localMapRepository.lastQuery), isNull);
+      expect(
+        _queryOrigin(localMapRepository.lastQuery)?.latitude,
+        closeTo(-20.6731, 0.000001),
+      );
+      expect(
+        _queryOrigin(localMapRepository.lastQuery)?.longitude,
+        closeTo(-40.4952, 0.000001),
+      );
+    });
+
     test('logs filter apply and clear events', () async {
       controller.applyFilterMode(PoiFilterMode.events);
       await _flushMicrotasks();
@@ -1027,6 +1208,21 @@ void main() {
       await _flushMicrotasks();
       await _flushMicrotasks();
       await subscription.cancel();
+    });
+
+    test('catalog filter apply opens filter results tray', () async {
+      controller.toggleCatalogCategoryFilter(
+        _buildCategory(
+          key: 'beach',
+          label: 'Praia',
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(
+        controller.mapTrayModeStreamValue.value,
+        MapTrayMode.filterResults,
+      );
     });
 
     test('filter clear keeps pending chip label without global loading message',
@@ -1181,7 +1377,7 @@ void main() {
       },
     );
 
-    test('clears stale map data when loadPois fails', () async {
+    test('keeps stale map data visible when loadPois fails', () async {
       mapRepository.nextPois = <CityPoiModel>[
         _buildPoi(id: 'poi-a'),
       ];
@@ -1202,9 +1398,13 @@ void main() {
 
       expect(
         controller.filteredPoisStreamValue.value ?? const <CityPoiModel>[],
-        isEmpty,
+        hasLength(1),
       );
-      expect(controller.selectedPoiStreamValue.value, isNull);
+      expect(controller.selectedPoiStreamValue.value?.id, 'poi-a');
+      expect(
+        controller.errorMessage.value,
+        'Nao foi possivel carregar os pontos de interesse.',
+      );
     });
 
     test('locks filter interactions while a filter reload is in flight',
@@ -1383,6 +1583,541 @@ void main() {
 
       expect(localController.selectedPoiStreamValue.value?.id, 'poi-allowed');
       expect(fakeMapHandle.moveCallCount, greaterThanOrEqualTo(2));
+    });
+
+    test(
+        'marker tap keeps card closed until account profile hydration completes and keeps avatar cover scoped to selection',
+        () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+      final poi = localController.filteredPoisStreamValue.value!.single;
+
+      final hydration = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
+          hydration;
+
+      final tapFuture = localController.handleMarkerTap(poi);
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiLoadingIdStreamValue.value, poi.id);
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(
+          localAccountProfilesRepository.getAccountProfileBySlugCallCount, 1);
+
+      hydration.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'restaurant',
+          avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+          coverUrl: 'https://tenant.test/media/casa-cover.png',
+          bio: 'Cozinha autoral perto do mar.',
+          locationAddress: 'Rua da Praia, 10',
+        ),
+      );
+
+      await tapFuture;
+      await _flushMicrotasks();
+
+      final selected = localController.selectedPoiStreamValue.value;
+      expect(localController.selectedPoiLoadingIdStreamValue.value, isNull);
+      expect(selected?.id, 'poi-partner');
+      expect(selected?.visual?.isImage, isTrue);
+      expect(
+        selected?.visual?.imageUri,
+        'https://tenant.test/media/casa-avatar.png',
+      );
+      expect(
+        selected?.coverImageUri,
+        'https://tenant.test/media/casa-cover.png',
+      );
+      expect(selected?.description, 'Cozinha autoral perto do mar.');
+      expect(selected?.address, 'Av. Brasil');
+      expect(
+        localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
+        isNull,
+      );
+      expect(
+        localController.filteredPoisStreamValue.value?.single.coverImageUri,
+        isNull,
+      );
+      expect(
+        localController
+            .lastSelectedPoiMemoryStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/casa-avatar.png',
+      );
+      expect(fakeMapHandle.moveCallCount, greaterThanOrEqualTo(2));
+    });
+
+    test('duplicate tap on the same poi while hydrating is dropped', () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-partner',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+      final poi = localController.filteredPoisStreamValue.value!.single;
+
+      final hydration = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
+          hydration;
+
+      final firstTap = localController.handleMarkerTap(poi);
+      await _flushMicrotasks();
+      final secondTap = localController.handleMarkerTap(poi);
+      await _flushMicrotasks();
+
+      expect(
+          localAccountProfilesRepository.getAccountProfileBySlugCallCount, 1);
+      expect(localController.selectedPoiLoadingIdStreamValue.value, poi.id);
+
+      hydration.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'restaurant',
+        ),
+      );
+
+      await Future.wait<void>([firstTap, secondTap]);
+      await _flushMicrotasks();
+      expect(localController.selectedPoiStreamValue.value?.id, poi.id);
+    });
+
+    test('cluster marker tap opens picker dock instead of detailed card',
+        () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-stack-top',
+          name: 'Cluster Top',
+          stackKey: 'stack-cluster',
+          stackCount: 4,
+        ),
+      ];
+      mapRepository.nextStackItems = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-stack-a',
+          name: 'Cluster A',
+          stackKey: 'stack-cluster',
+          stackCount: 4,
+        ),
+        _buildPoi(
+          id: 'poi-stack-b',
+          name: 'Cluster B',
+          stackKey: 'stack-cluster',
+          stackCount: 4,
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+
+      await localController.handleMarkerTap(
+        localController.filteredPoisStreamValue.value!.single,
+      );
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(localController.selectedPoiLoadingIdStreamValue.value, isNull);
+      expect(localController.hasClusterPickerStreamValue.value, isTrue);
+      expect(
+        localController.clusterPickerPoisStreamValue.value
+            ?.map((poi) => poi.id)
+            .toList(growable: false),
+        ['poi-stack-a', 'poi-stack-b'],
+      );
+      expect(fakeMapHandle.lastVerticalViewportAnchor, 0.40);
+    });
+
+    test('cluster picker selection hydrates chosen poi like direct selection',
+        () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      final poiA = _buildPoi(
+        id: 'poi-stack-a',
+        name: 'Casa A',
+        refType: 'account_profile',
+        refId: 'profile-a',
+        refSlug: 'casa-a',
+        refPath: '/parceiro/casa-a',
+        stackKey: 'stack-cluster',
+        stackCount: 2,
+      );
+      final poiB = _buildPoi(
+        id: 'poi-stack-b',
+        name: 'Casa B',
+        refType: 'account_profile',
+        refId: 'profile-b',
+        refSlug: 'casa-b',
+        refPath: '/parceiro/casa-b',
+        stackKey: 'stack-cluster',
+        stackCount: 2,
+      );
+
+      localController.showClusterPicker(
+        <CityPoiModel>[poiA, poiB],
+        anchorCoordinate: poiA.coordinate,
+      );
+      final hydration = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-b'] = hydration;
+
+      final selectionFuture = localController.handleClusterPickerPoiSelection(
+        poiB,
+      );
+      await _flushMicrotasks();
+
+      expect(localController.hasClusterPickerStreamValue.value, isFalse);
+      expect(
+          localController.selectedPoiLoadingIdStreamValue.value, 'poi-stack-b');
+      expect(localController.selectedPoiStreamValue.value, isNull);
+
+      hydration.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439023',
+          name: 'Casa B',
+          slug: 'casa-b',
+          type: 'beach_club_custom',
+          avatarUrl: 'https://tenant.test/media/casa-b-avatar.png',
+          coverUrl: 'https://tenant.test/media/casa-b-cover.png',
+        ),
+      );
+
+      await selectionFuture;
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-stack-b');
+      expect(
+        localController.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/casa-b-avatar.png',
+      );
+      expect(
+        localController.selectedPoiStreamValue.value?.coverImageUri,
+        'https://tenant.test/media/casa-b-cover.png',
+      );
+    });
+
+    test('deck poi selection hydrates account profile with avatar and cover',
+        () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+      final poi = localController.filteredPoisStreamValue.value!.single;
+
+      final hydration = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
+          hydration;
+
+      final selectionFuture = localController.handleDeckPoiSelection(poi);
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiLoadingIdStreamValue.value, poi.id);
+      expect(localController.selectedPoiStreamValue.value, isNull);
+
+      hydration.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'beach_club_custom',
+          avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+          coverUrl: 'https://tenant.test/media/casa-cover.png',
+        ),
+      );
+
+      await selectionFuture;
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-partner');
+      expect(
+        localController.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/casa-avatar.png',
+      );
+      expect(
+        localController.selectedPoiStreamValue.value?.coverImageUri,
+        'https://tenant.test/media/casa-cover.png',
+      );
+      expect(
+        localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
+        isNull,
+      );
+    });
+
+    test('clearing selection before hydration completes ignores stale result',
+        () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-partner',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+      final poi = localController.filteredPoisStreamValue.value!.single;
+
+      final hydration = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
+          hydration;
+
+      final tapFuture = localController.handleMarkerTap(poi);
+      await _flushMicrotasks();
+      localController.clearSelectedPoi(preserveMarkerMemory: false);
+
+      hydration.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'restaurant',
+          coverUrl: 'https://tenant.test/media/casa-cover.png',
+        ),
+      );
+
+      await tapFuture;
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiLoadingIdStreamValue.value, isNull);
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(localController.lastSelectedPoiMemoryStreamValue.value, isNull);
+      expect(
+        localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
+        isNull,
+      );
+    });
+
+    test('different poi taps are last-write-wins during hydration', () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        accountProfilesRepository: localAccountProfilesRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-a',
+          name: 'Casa A',
+          refType: 'account_profile',
+          refId: 'profile-a',
+          refSlug: 'casa-a',
+          refPath: '/parceiro/casa-a',
+        ),
+        _buildPoi(
+          id: 'poi-b',
+          name: 'Casa B',
+          refType: 'account_profile',
+          refId: 'profile-b',
+          refSlug: 'casa-b',
+          refPath: '/parceiro/casa-b',
+        ),
+      ];
+      await localController.loadPois(PoiQuery());
+      final pois = localController.filteredPoisStreamValue.value!;
+
+      final hydrationA = Completer<AccountProfileModel?>();
+      final hydrationB = Completer<AccountProfileModel?>();
+      localAccountProfilesRepository.pendingBySlug['casa-a'] = hydrationA;
+      localAccountProfilesRepository.pendingBySlug['casa-b'] = hydrationB;
+
+      final tapA = localController.handleMarkerTap(pois[0]);
+      await _flushMicrotasks();
+      final tapB = localController.handleMarkerTap(pois[1]);
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiLoadingIdStreamValue.value, 'poi-b');
+
+      hydrationA.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439021',
+          name: 'Casa A',
+          slug: 'casa-a',
+          type: 'restaurant',
+          coverUrl: 'https://tenant.test/media/casa-a.png',
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value, isNull);
+      expect(localController.selectedPoiLoadingIdStreamValue.value, 'poi-b');
+
+      hydrationB.complete(
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439022',
+          name: 'Casa B',
+          slug: 'casa-b',
+          type: 'restaurant',
+          coverUrl: 'https://tenant.test/media/casa-b.png',
+        ),
+      );
+
+      await Future.wait<void>([tapA, tapB]);
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-b');
+      expect(
+        localController.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/casa-b.png',
+      );
+      expect(
+        localController.filteredPoisStreamValue.value?.first.visual?.imageUri,
+        isNull,
+      );
+      expect(
+        localController.filteredPoisStreamValue.value?[1].visual?.imageUri,
+        isNull,
+      );
+    });
+
+    test('empty tap on the map closes an open cluster picker', () async {
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      await localController.init();
+      await _flushMicrotasks();
+
+      final anchorPoi = _buildPoi(id: 'poi-a');
+      localController.showClusterPicker(
+        <CityPoiModel>[anchorPoi, _buildPoi(id: 'poi-b')],
+        anchorCoordinate: anchorPoi.coordinate,
+      );
+
+      fakeMapHandle.emitInteraction(
+        const BellugaMapInteractionEvent(
+          type: BellugaMapInteractionType.emptyTap,
+          userGesture: true,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(localController.hasClusterPickerStreamValue.value, isFalse);
+      expect(localController.clusterPickerPoisStreamValue.value, isNull);
     });
 
     test(
@@ -2071,7 +2806,7 @@ void main() {
       await _flushMicrotasks();
 
       expect(localController.selectedPoiStreamValue.value?.id, 'poi-focus');
-      expect(fakeMapHandle.moveCallCount, 1);
+      expect(fakeMapHandle.moveCallCount, greaterThanOrEqualTo(2));
       expect(
         fakeMapHandle.lastVerticalViewportAnchor,
         closeTo(0.28, 1e-9),
@@ -2333,6 +3068,46 @@ void main() {
       expect(find.text('Praia das Castanheiras'), findsOneWidget);
     });
 
+    testWidgets(
+        'starting a new poi loading hides the previous selected card immediately',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.selectPoi(
+        _buildPoi(
+          id: 'poi-selected',
+          name: 'Praia das Castanheiras',
+          category: CityPoiCategory.beach,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
+      expect(
+        find.byKey(const ValueKey<String>('map-selected-card-opacity')),
+        findsOneWidget,
+      );
+
+      controller.selectedPoiLoadingIdStreamValue.addValue('poi-loading');
+      controller.hasSelectedPoiLoadingStreamValue.addValue(true);
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey<String>('map-selected-card-opacity')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-bottom-controls-opacity')),
+        findsNothing,
+      );
+    });
+
     testWidgets('overflowing filter cluster exposes handle and expands on tap',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
@@ -2535,7 +3310,8 @@ void main() {
       expect(searchSize.height, 48);
     });
 
-    testWidgets('selected deck keeps max measured height across stacked items',
+    testWidgets(
+        'selected card height follows the selected poi even when stack metadata exists',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
       final firstPoi = _buildPoi(
@@ -2575,18 +3351,126 @@ void main() {
 
       final viewportHeight =
           tester.view.physicalSize.height / tester.view.devicePixelRatio;
-      final expectedDeckHeight =
-          (viewportHeight * 0.56).clamp(340.0, 480.0).toDouble();
+      final expectedDeckHeight = 320.0.clamp(
+        280.0,
+        (viewportHeight * 0.56).clamp(340.0, 480.0).toDouble(),
+      );
       final deckFinder =
           find.byKey(const ValueKey<String>('poi-deck-container'));
       expect(deckFinder, findsOneWidget);
       expect(tester.getSize(deckFinder).height, expectedDeckHeight);
+    });
 
-      controller.setPoiDeckIndex(1);
+    testWidgets(
+        'cluster picker popover stays near map while discovery dock remains active',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      controller.showClusterPicker(
+        <CityPoiModel>[
+          _buildPoi(id: 'poi-a', name: 'Casa A'),
+          _buildPoi(id: 'poi-b', name: 'Casa B'),
+        ],
+        anchorCoordinate: _buildPoi(id: 'poi-anchor').coordinate,
+      );
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 260));
 
-      expect(tester.getSize(deckFinder).height, expectedDeckHeight);
+      expect(
+        find.byKey(const ValueKey<String>('map-cluster-picker-popover')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-tray-surface-discovery')),
+        findsOneWidget,
+      );
+      expect(find.text('Casa A'), findsOneWidget);
+      expect(find.text('Casa B'), findsOneWidget);
+    });
+
+    testWidgets('search tray shows Nessa área with a scrollable result list',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.mapTrayModeStreamValue.addValue(MapTrayMode.search);
+      controller.filteredPoisStreamValue.addValue(
+        List<CityPoiModel>.generate(
+          6,
+          (index) => _buildPoi(
+            id: 'poi-search-$index',
+            name: 'Resultado $index',
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Nessa área'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('map-search-results-scroll')),
+        findsOneWidget,
+      );
+      expect(find.text('Resultado 0'), findsOneWidget);
+      expect(find.text('Resultado 5'), findsOneWidget);
+    });
+
+    testWidgets('filter results tray keeps filters on top and orders nearest first',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(key: 'event', label: 'Eventos'),
+            _buildCategory(key: 'beach', label: 'Praia'),
+          ],
+        ),
+      );
+      controller.activeCatalogFilterKeyStreamValue.addValue('beach');
+      controller.activeFilterLabelStreamValue.addValue('Praia');
+      controller.filteredPoisStreamValue.addValue(
+        <CityPoiModel>[
+          _buildPoi(id: 'poi-far', name: 'Mais longe').copyWith(
+            distanceMetersValue: _buildDistanceValue(900),
+          ),
+          _buildPoi(id: 'poi-near', name: 'Mais perto').copyWith(
+            distanceMetersValue: _buildDistanceValue(120),
+          ),
+        ],
+      );
+      await tester.pump();
+
+      expect(find.text('Mais próximos de você'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('map-filter-results-scroll')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+        findsOneWidget,
+      );
+
+      final nearTop = tester.getTopLeft(find.text('Mais perto')).dy;
+      final farTop = tester.getTopLeft(find.text('Mais longe')).dy;
+      expect(nearTop, lessThan(farTop));
     });
 
     testWidgets('selected filter state exposes an explicit clear affordance',
@@ -3023,6 +3907,60 @@ void main() {
       );
       await retryController.onDispose();
     });
+
+    testWidgets(
+        'ver detalhes pushes partner detail route for account profile poi',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final poi = _buildPoi(
+        id: 'poi-partner',
+        name: 'Casa Marracini',
+        refType: 'account_profile',
+        refId: '507f1f77bcf86cd799439011',
+        refSlug: 'casa-marracini',
+        refPath: '/parceiro/casa-marracini',
+        category: CityPoiCategory.restaurant,
+      );
+
+      controller.selectPoi(poi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      await tester.tap(find.text('Ver detalhes'));
+      await tester.pump();
+
+      expect(router.pushedRoutes, hasLength(1));
+      final route = router.pushedRoutes.single;
+      expect(route, isA<PartnerDetailRoute>());
+      expect((route as PartnerDetailRoute).args?.slug, 'casa-marracini');
+    });
+
+    testWidgets('event cards keep the same CTA labels as other pois',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final poi = _buildPoi(
+        id: 'poi-event',
+        name: 'Show na Praia',
+        refType: 'event',
+        refId: 'event-1',
+        refSlug: 'show-na-praia',
+      );
+
+      controller.selectPoi(poi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      expect(find.text('Traçar rota'), findsOneWidget);
+      expect(find.text('Ver detalhes'), findsOneWidget);
+    });
   });
 }
 
@@ -3048,11 +3986,33 @@ Future<void> _pumpMapScreen(
   await tester.pump(const Duration(milliseconds: 120));
 }
 
+Future<void> _pumpPoiDetailDeck(
+  WidgetTester tester, {
+  required MapScreenController controller,
+  required _RecordingStackRouter router,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: Scaffold(
+          body: PoiDetailDeck(controller: controller),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 120));
+}
+
 class _RecordingStackRouter extends Fake implements StackRouter {
   bool canPopResult = false;
   int canPopCallCount = 0;
   int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+  final List<PageRouteInfo<dynamic>> pushedRoutes = [];
+  final List<PageRouteInfo<dynamic>> replacedRoutes = [];
 
   @override
   bool canPop({
@@ -3078,6 +4038,26 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   }) async {
     replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
   }
+
+  @override
+  Future<T?> push<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+    bool notify = true,
+  }) async {
+    pushedRoutes.add(route);
+    return null;
+  }
+
+  @override
+  Future<T?> replace<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+    bool notify = true,
+  }) async {
+    replacedRoutes.add(route);
+    return null;
+  }
 }
 
 MapScreenController _buildMapController({
@@ -3087,6 +4067,7 @@ MapScreenController _buildMapController({
   BellugaMapHandleContract? mapHandle,
   AppData? appData,
   AppDataRepositoryContract? appDataRepository,
+  AccountProfilesRepositoryContract? accountProfilesRepository,
 }) {
   final resolvedAppData = appData ?? _buildAppData();
   final resolvedAppDataRepository =
@@ -3098,6 +4079,7 @@ MapScreenController _buildMapController({
     mapHandle: mapHandle,
     appData: resolvedAppData,
     appDataRepository: resolvedAppDataRepository,
+    accountProfilesRepository: accountProfilesRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: resolvedAppDataRepository,
       userLocationRepository: userLocationRepository,

@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_layers.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_location_utility_button.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_soft_location_notice_banner.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_cluster_picker_dock.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/status_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
@@ -111,6 +113,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             _buildFeedbackOverlay(),
+            _buildClusterPickerOverlay(),
             _buildBottomControlsOverlay(),
             _buildSelectedCardOverlay(),
           ],
@@ -124,34 +127,41 @@ class _MapScreenState extends State<MapScreen> {
     return StreamValueBuilder<bool>(
       streamValue: _controller.hasSelectedPoiStreamValue,
       builder: (_, hasSelectedPoi) {
-        if (hasSelectedPoi) {
-          return const SizedBox.shrink();
-        }
-        return Positioned(
-          left: 16,
-          right: 16,
-          bottom: 16,
-          child: SafeArea(
-            top: false,
-            child: AnimatedSlide(
-              key: const ValueKey<String>('map-bottom-controls-slide'),
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              offset: Offset.zero,
-              child: AnimatedOpacity(
-                key: const ValueKey<String>('map-bottom-controls-opacity'),
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                opacity: 1,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    MapAdaptiveTray(controller: _controller),
-                  ],
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.hasSelectedPoiLoadingStreamValue,
+          builder: (_, hasSelectedPoiLoading) {
+            if (hasSelectedPoi || hasSelectedPoiLoading) {
+              return const SizedBox.shrink();
+            }
+            return Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: SafeArea(
+                top: false,
+                child: AnimatedSlide(
+                  key: const ValueKey<String>('map-bottom-controls-slide'),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  offset: Offset.zero,
+                  child: AnimatedOpacity(
+                    key: const ValueKey<String>(
+                      'map-bottom-controls-opacity',
+                    ),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    opacity: 1,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MapAdaptiveTray(controller: _controller),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -168,8 +178,9 @@ class _MapScreenState extends State<MapScreen> {
             final selectedDeckHeight = selectedPoi == null
                 ? 0.0
                 : (_controller.getPoiDeckHeight(selectedPoi.id) ?? 356);
-            final double bottomOffset =
-                hasSelectedPoi ? 24.0 + selectedDeckHeight + 20.0 : 16.0 + 88.0;
+            final double bottomOffset = !hasSelectedPoi
+                ? 16.0 + 88.0
+                : 24.0 + selectedDeckHeight + 20.0;
             return Positioned(
               key: const ValueKey<String>('map-feedback-overlay'),
               left: 16,
@@ -205,36 +216,104 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildClusterPickerOverlay() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.hasSelectedPoiStreamValue,
+      builder: (_, hasSelectedPoi) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.hasSelectedPoiLoadingStreamValue,
+          builder: (_, hasSelectedPoiLoading) {
+            if (hasSelectedPoi || hasSelectedPoiLoading) {
+              return const SizedBox.shrink();
+            }
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.hasClusterPickerStreamValue,
+              builder: (_, hasClusterPicker) {
+                if (!hasClusterPicker) {
+                  return const SizedBox.shrink();
+                }
+                return _buildAnchoredClusterPicker();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAnchoredClusterPicker() {
+    final pois = _controller.clusterPickerPoisStreamValue.value ??
+        const <CityPoiModel>[];
+    if (pois.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final anchorCoordinate =
+        _controller.clusterPickerAnchorCoordinateStreamValue.value;
+    if (anchorCoordinate == null) {
+      return const SizedBox.shrink();
+    }
+    final anchorOffset = _controller.mapHandle.projectToViewport(
+      anchorCoordinate,
+    );
+    if (anchorOffset == null) {
+      return const SizedBox.shrink();
+    }
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return CustomSingleChildLayout(
+            delegate: _ClusterPickerPopoverLayoutDelegate(
+              anchorOffset: anchorOffset,
+              screenSize: Size(
+                constraints.maxWidth,
+                constraints.maxHeight,
+              ),
+            ),
+            child: PoiClusterPickerPopover(
+              controller: _controller,
+              pois: pois,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSelectedCardOverlay() {
     return StreamValueBuilder<bool>(
       streamValue: _controller.hasSelectedPoiStreamValue,
       builder: (_, hasSelectedPoi) {
-        if (!hasSelectedPoi) {
-          return const SizedBox.shrink();
-        }
-        return Positioned(
-          left: 16,
-          right: 16,
-          bottom: 24,
-          child: SafeArea(
-            top: false,
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: AnimatedSlide(
-                key: const ValueKey<String>('map-selected-card-slide'),
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-                offset: Offset.zero,
-                child: AnimatedOpacity(
-                  key: const ValueKey<String>('map-selected-card-opacity'),
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  opacity: 1,
-                  child: PoiDetailDeck(controller: _controller),
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.hasSelectedPoiLoadingStreamValue,
+          builder: (_, hasSelectedPoiLoading) {
+            if (!hasSelectedPoi || hasSelectedPoiLoading) {
+              return const SizedBox.shrink();
+            }
+            return Positioned(
+              left: 16,
+              right: 16,
+              bottom: 24,
+              child: SafeArea(
+                top: false,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: AnimatedSlide(
+                    key: const ValueKey<String>('map-selected-card-slide'),
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    offset: Offset.zero,
+                    child: AnimatedOpacity(
+                      key: const ValueKey<String>('map-selected-card-opacity'),
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      opacity: 1,
+                      child: PoiDetailDeck(controller: _controller),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -252,5 +331,59 @@ class _MapScreenState extends State<MapScreen> {
       context.router,
       fallbackRoute: widget.backFallbackRoute,
     );
+  }
+}
+
+class _ClusterPickerPopoverLayoutDelegate extends SingleChildLayoutDelegate {
+  const _ClusterPickerPopoverLayoutDelegate({
+    required this.anchorOffset,
+    required this.screenSize,
+  });
+
+  static const double _sidePadding = 16;
+  static const double _topPadding = 88;
+  static const double _bottomPadding = 128;
+  static const double _anchorGap = 18;
+
+  final Offset anchorOffset;
+  final Size screenSize;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    final maxWidth =
+        (screenSize.width - (_sidePadding * 2)).clamp(220.0, 320.0).toDouble();
+    final maxHeight = (screenSize.height - _topPadding - _bottomPadding)
+        .clamp(120.0, 320.0)
+        .toDouble();
+    return BoxConstraints(
+      minWidth: 220,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+    );
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final maxLeft = size.width - childSize.width - _sidePadding;
+    final maxTop = size.height - childSize.height - _bottomPadding;
+
+    final centeredLeft = anchorOffset.dx - (childSize.width / 2);
+    final clampedLeft = centeredLeft.clamp(_sidePadding, maxLeft);
+
+    final preferredTop = anchorOffset.dy - childSize.height - _anchorGap;
+    double resolvedTop = preferredTop;
+    if (resolvedTop < _topPadding) {
+      resolvedTop = anchorOffset.dy + _anchorGap;
+    }
+    resolvedTop = resolvedTop.clamp(_topPadding, maxTop);
+
+    return Offset(clampedLeft.toDouble(), resolvedTop.toDouble());
+  }
+
+  @override
+  bool shouldRelayout(
+      covariant _ClusterPickerPopoverLayoutDelegate oldDelegate) {
+    return oldDelegate.anchorOffset != anchorOffset ||
+        oldDelegate.screenSize != screenSize;
   }
 }

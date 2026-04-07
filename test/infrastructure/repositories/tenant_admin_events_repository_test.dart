@@ -334,6 +334,38 @@ void main() {
         result.items.first.artistProfiles.first.accountId, 'artist-summary-1');
   });
 
+  test('fetchEventsPage wraps decoder failures with readable repository error',
+      () async {
+    final adapter = _MalformedEventsPayloadAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        archived: _repoBool(true),
+      ),
+      throwsA(
+        isA<FormatException>()
+            .having(
+              (error) => error.message,
+              'message',
+              contains('Failed to load events page [decode]'),
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('/admin/api/v1/events'),
+            ),
+      ),
+    );
+  });
+
   test('fetchEventTypes prefers landlord token and maps payload', () async {
     final adapter = _EventTypesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -997,6 +1029,65 @@ class _NotFoundEventsAdapter implements HttpClientAdapter {
 
     return ResponseBody.fromString(
       jsonEncode({'data': []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _MalformedEventsPayloadAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': [
+            {
+              'event_id': 'evt-bad',
+              'slug': 'bad-event',
+              'title': 'Bad Event',
+              'content': 'Content',
+              'type': {
+                'name': 'Show',
+                'slug': 'show',
+              },
+              'publication': {
+                'status': 'draft',
+              },
+              'place_ref': {
+                'type': 'account_profile',
+              },
+              'occurrences': [
+                {
+                  'date_time_start': '2026-03-05T20:00:00Z',
+                }
+              ],
+            },
+          ],
+          'current_page': 1,
+          'last_page': 1,
+          'per_page': 20,
+          'total': 1,
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

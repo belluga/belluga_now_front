@@ -9,12 +9,14 @@ class PoiMarker extends StatelessWidget {
     super.key,
     required this.poi,
     required this.isSelected,
+    this.isLoading = false,
     this.isHovered = false,
     this.overrideVisual,
   });
 
   final CityPoiModel poi;
   final bool isSelected;
+  final bool isLoading;
   final bool isHovered;
   final CityPoiVisual? overrideVisual;
 
@@ -24,6 +26,7 @@ class PoiMarker extends StatelessWidget {
     final hasStack = poi.stackCount > 1;
     final stackLabel = poi.stackCount.toString();
     final visual = _resolvedVisual();
+    final isEmphasized = isSelected || isLoading;
 
     if (visual?.isImage == true) {
       return _buildImageMarker(
@@ -31,6 +34,7 @@ class PoiMarker extends StatelessWidget {
         imageProvider: NetworkImage(visual!.imageUri!),
         hasStack: hasStack,
         stackLabel: stackLabel,
+        isEmphasized: isEmphasized,
       );
     }
 
@@ -41,11 +45,12 @@ class PoiMarker extends StatelessWidget {
         imageProvider: AssetImage(legacyAssetPath),
         hasStack: hasStack,
         stackLabel: stackLabel,
+        isEmphasized: isEmphasized,
       );
     }
 
-    final scale = isSelected ? 1.12 : (isHovered ? 1.06 : 1.0);
-    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final scale = isEmphasized ? 1.12 : (isHovered ? 1.06 : 1.0);
+    final shadowOpacity = isEmphasized ? 0.35 : (isHovered ? 0.3 : 0.25);
     final icon = visual?.isIcon == true
         ? MapMarkerIconResolver.resolve(visual?.icon)
         : MapMarkerIconResolver.fallbackIcon;
@@ -100,6 +105,12 @@ class PoiMarker extends StatelessWidget {
                     label: stackLabel,
                   ),
                 ),
+              if (isLoading)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: _buildLoadingBadge(context),
+                ),
             ],
           );
         },
@@ -126,10 +137,11 @@ class PoiMarker extends StatelessWidget {
     required ImageProvider<Object> imageProvider,
     required bool hasStack,
     required String stackLabel,
+    required bool isEmphasized,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
-    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final scale = isEmphasized ? 1.18 : (isHovered ? 1.08 : 1.0);
+    final shadowOpacity = isEmphasized ? 0.35 : (isHovered ? 0.3 : 0.25);
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 200),
@@ -180,25 +192,30 @@ class PoiMarker extends StatelessWidget {
                 Positioned(
                   right: 2,
                   bottom: 2,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.85),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: scheme.surface,
-                        width: 2,
-                      ),
-                    ),
-                    child: SizedBox(
-                      width: badgeDiameter,
-                      height: badgeDiameter,
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: badgeDiameter * 0.55,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  child: isLoading
+                      ? _buildLoadingBadge(
+                          context,
+                          diameter: badgeDiameter,
+                        )
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: scheme.surface,
+                              width: 2,
+                            ),
+                          ),
+                          child: SizedBox(
+                            width: badgeDiameter,
+                            height: badgeDiameter,
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: badgeDiameter * 0.55,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                 ),
                 if (hasStack)
                   Positioned(
@@ -238,6 +255,34 @@ class PoiMarker extends StatelessWidget {
             color: Colors.white,
             fontSize: 10,
             fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingBadge(
+    BuildContext context, {
+    double diameter = 18,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: scheme.surface,
+          width: 2,
+        ),
+      ),
+      child: SizedBox(
+        width: diameter,
+        height: diameter,
+        child: Padding(
+          padding: EdgeInsets.all((diameter * 0.18).clamp(2, 4).toDouble()),
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         ),
       ),

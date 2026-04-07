@@ -11,20 +11,31 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_search_term_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -62,6 +73,7 @@ class MapScreenController implements Disposable {
     AppData? appData,
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
+    AccountProfilesRepositoryContract? accountProfilesRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
@@ -72,6 +84,10 @@ class MapScreenController implements Disposable {
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>(),
+        _accountProfilesRepository = accountProfilesRepository ??
+            (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
+                ? GetIt.I.get<AccountProfilesRepositoryContract>()
+                : null),
         mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
@@ -80,6 +96,7 @@ class MapScreenController implements Disposable {
   final AppData _appData;
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final AccountProfilesRepositoryContract? _accountProfilesRepository;
 
   final BellugaMapHandleContract mapHandle;
 
@@ -104,7 +121,13 @@ class MapScreenController implements Disposable {
   final searchTermStreamValue = StreamValue<String?>();
   final searchTextController = TextEditingController();
   final lastSelectedPoiMemoryStreamValue = StreamValue<MapSelectedPoiMemory?>();
+  final selectedPoiLoadingIdStreamValue = StreamValue<String?>();
+  final hasSelectedPoiLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final hasSelectedPoiStreamValue = StreamValue<bool>(defaultValue: false);
+  final hasClusterPickerStreamValue = StreamValue<bool>(defaultValue: false);
+  final clusterPickerAnchorCoordinateStreamValue =
+      StreamValue<CityCoordinate?>();
   final zoomStreamValue = StreamValue<double>(defaultValue: 16);
   Timer? _zoomThrottle;
   Timer? _searchInputDebounceTimer;
@@ -126,6 +149,9 @@ class MapScreenController implements Disposable {
 
   StreamValue<CityPoiModel?> get selectedPoiStreamValue =>
       _poiRepository.selectedPoiStreamValue;
+
+  StreamValue<List<CityPoiModel>?> get clusterPickerPoisStreamValue =>
+      _poiRepository.stackItemsStreamValue;
 
   StreamValue<PoiFilterMode> get filterModeStreamValue =>
       _poiRepository.filterModeStreamValue;
@@ -175,6 +201,10 @@ class MapScreenController implements Disposable {
   Timer? _postFilterMarkerTapSuppressionTimer;
   bool _markerTapSuppressedAfterFilterReload = false;
   bool _isReconcilingLocationOrigin = false;
+  int _selectedPoiHydrationSequence = 0;
+  final Map<String, CityPoiModel> _hydratedPoiCacheById =
+      <String, CityPoiModel>{};
+  CityCoordinate? _searchTrayOrigin;
 
   Future<void> init({
     String? initialPoiQuery,
@@ -723,7 +753,10 @@ class MapScreenController implements Disposable {
         },
       );
     }
-    final query = _composeQuery(searchTerm: '');
+    final query = _composeQuery(
+      searchTerm: '',
+      origin: _searchTrayOrigin,
+    );
     await loadPois(
       query,
       announceLoadingMessage: false,
@@ -735,7 +768,10 @@ class MapScreenController implements Disposable {
     required bool logTelemetry,
   }) async {
     final trimmed = query.trim();
-    final nextQuery = _composeQuery(searchTerm: query);
+    final nextQuery = _composeQuery(
+      searchTerm: query,
+      origin: _searchTrayOrigin,
+    );
     clearSelectedPoi(preserveMarkerMemory: false);
     if (logTelemetry) {
       _logMapTelemetry(
@@ -788,8 +824,6 @@ class MapScreenController implements Disposable {
         return;
       }
       const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
-      _poiRepository.clearLoadedPois();
-      resetPoiDeckIndex();
       _setErrorState(errorMessage);
       _setMapStatus(MapStatus.error);
       _setMapMessage(errorMessage);
@@ -809,7 +843,7 @@ class MapScreenController implements Disposable {
     );
     _currentQueryOriginSettings = resolution.settings;
     _refreshLocationFeedback(emitNotice: false);
-    final origin = resolution.effectiveCoordinate ?? query.origin;
+    final origin = _searchTrayOrigin ?? resolution.effectiveCoordinate ?? query.origin;
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,
@@ -1050,6 +1084,254 @@ class MapScreenController implements Disposable {
     }());
   }
 
+  int _beginSelectedPoiLoading(CityPoiModel poi) {
+    _selectedPoiHydrationSequence += 1;
+    selectedPoiLoadingIdStreamValue.addValue(poi.id);
+    hasSelectedPoiLoadingStreamValue.addValue(true);
+    _poiRepository.clearSelection();
+    clearLastSelectedPoiMemory();
+    _finishPoiTimedEvent();
+    return _selectedPoiHydrationSequence;
+  }
+
+  bool _isLatestSelectedPoiHydration(int sequence) {
+    return sequence == _selectedPoiHydrationSequence;
+  }
+
+  Future<void> _selectPoiFromMarkerTap(
+    CityPoiModel poi, {
+    int? loadingSequence,
+  }) async {
+    final sequence = loadingSequence ?? _beginSelectedPoiLoading(poi);
+    try {
+      final hydratedPoi = await _hydratePoiForSelection(poi);
+      if (!_isLatestSelectedPoiHydration(sequence)) {
+        return;
+      }
+      final resolvedPoi = hydratedPoi ?? poi;
+      if (hydratedPoi != null) {
+        _cacheHydratedPoi(resolvedPoi);
+      }
+      selectedPoiLoadingIdStreamValue.addValue(null);
+      hasSelectedPoiLoadingStreamValue.addValue(false);
+      selectPoi(resolvedPoi);
+      await _focusOnPoi(resolvedPoi);
+    } catch (error) {
+      if (!_isLatestSelectedPoiHydration(sequence)) {
+        return;
+      }
+      debugPrint('Failed to hydrate selected poi ${poi.id}: $error');
+      selectedPoiLoadingIdStreamValue.addValue(null);
+      hasSelectedPoiLoadingStreamValue.addValue(false);
+      selectPoi(poi);
+      await _focusOnPoi(poi);
+    }
+  }
+
+  Future<CityPoiModel?> _hydratePoiForSelection(CityPoiModel poi) async {
+    final cachedHydratedPoi = _hydratedPoiCacheById[poi.id];
+    if (cachedHydratedPoi != null) {
+      return _overlayHydratedPoi(base: poi, hydrated: cachedHydratedPoi);
+    }
+    if (_isPartnerPoi(poi)) {
+      return _hydratePartnerPoi(poi);
+    }
+    return null;
+  }
+
+  void _cacheHydratedPoi(CityPoiModel poi) {
+    _hydratedPoiCacheById[poi.id] = poi;
+  }
+
+  Future<CityPoiModel?> _hydratePartnerPoi(CityPoiModel poi) async {
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return null;
+    }
+    final slug = _resolvePartnerSlug(poi);
+    if (slug == null) {
+      return null;
+    }
+
+    await repository.loadAccountProfileBySlug(
+      AccountProfilesRepositoryContractPrimString.fromRaw(slug),
+    );
+    final profile = repository.selectedAccountProfileStreamValue.value;
+    if (profile == null) {
+      return null;
+    }
+
+    try {
+      return _mergeAccountProfileIntoPoi(poi, profile);
+    } finally {
+      repository.clearSelectedAccountProfile();
+    }
+  }
+
+  CityPoiModel _mergeAccountProfileIntoPoi(
+    CityPoiModel poi,
+    AccountProfileModel profile,
+  ) {
+    final normalizedAvatarUrl = profile.avatarUrl?.trim();
+    final normalizedCoverUrl = profile.coverUrl?.trim();
+    final avatarUrl = normalizedAvatarUrl == null || normalizedAvatarUrl.isEmpty
+        ? null
+        : normalizedAvatarUrl;
+    final coverUrl = normalizedCoverUrl == null || normalizedCoverUrl.isEmpty
+        ? null
+        : normalizedCoverUrl;
+    final markerImageUrl = avatarUrl ?? coverUrl;
+    final mergedVisual = markerImageUrl == null
+        ? poi.visual
+        : CityPoiVisual.image(
+            imageUriValue: _parseImageUriValue(markerImageUrl),
+          );
+
+    final mergedDescription = _isWeakPoiDescription(poi.description) &&
+            !_isWeakPoiDescription(profile.bio ?? '')
+        ? _parsePoiDescriptionValue(profile.bio!)
+        : null;
+
+    final mergedAddress = _isWeakPoiAddress(poi.address) &&
+            !_isWeakPoiAddress(profile.locationAddress ?? '')
+        ? _parsePoiAddressValue(profile.locationAddress!)
+        : null;
+
+    final mergedDistance =
+        poi.distanceMeters == null && profile.distanceMeters != null
+            ? _parseDistanceValue(profile.distanceMeters)
+            : null;
+
+    final mergedCoordinate =
+        profile.locationLat != null && profile.locationLng != null
+            ? CityCoordinate(
+                latitudeValue: _parseLatitudeValue(profile.locationLat!),
+                longitudeValue: _parseLongitudeValue(profile.locationLng!),
+              )
+            : poi.coordinate;
+    final normalizedProfileType = profile.profileType.trim();
+    final categoryLabelValue = normalizedProfileType.isEmpty
+        ? null
+        : _parseTypeLabelValue(normalizedProfileType);
+
+    return poi.copyWith(
+      descriptionValue: mergedDescription,
+      addressValue: mergedAddress,
+      distanceMetersValue: mergedDistance,
+      categoryLabelValue: categoryLabelValue,
+      coverImageUriValue:
+          coverUrl == null ? null : _parseImageUriValue(coverUrl),
+      coordinate: mergedCoordinate,
+      visual: mergedVisual,
+      refSlugValue:
+          poi.refSlug == null ? _parseReferenceSlugValue(profile.slug) : null,
+      refPathValue: poi.refPath == null
+          ? _parseReferencePathValue('/parceiro/${profile.slug}')
+          : null,
+    );
+  }
+
+  CityPoiModel _overlayHydratedPoi({
+    required CityPoiModel base,
+    required CityPoiModel hydrated,
+  }) {
+    return base.copyWith(
+      descriptionValue: hydrated.descriptionValue,
+      addressValue: hydrated.addressValue,
+      categoryLabelValue: hydrated.categoryLabelValue,
+      coverImageUriValue: hydrated.coverImageUriValue,
+      coordinate: hydrated.coordinate,
+      distanceMetersValue: hydrated.distanceMetersValue,
+      visual: hydrated.visual,
+      refSlugValue: hydrated.refSlugValue,
+      refPathValue: hydrated.refPathValue,
+    );
+  }
+
+  bool _isPartnerPoi(CityPoiModel poi) {
+    return poi.refType.trim().toLowerCase() == 'account_profile';
+  }
+
+  String? _resolvePartnerSlug(CityPoiModel poi) {
+    final refSlug = poi.refSlug?.trim();
+    if (refSlug != null && refSlug.isNotEmpty) {
+      return refSlug;
+    }
+
+    final refPath = poi.refPath?.trim();
+    if (refPath == null || refPath.isEmpty) {
+      return null;
+    }
+
+    final segments = refPath
+        .split('/')
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList(growable: false);
+    if (segments.isEmpty) {
+      return null;
+    }
+    return segments.last;
+  }
+
+  bool _isWeakPoiDescription(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized.isEmpty || normalized.length < 12;
+  }
+
+  bool _isWeakPoiAddress(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized.isEmpty || normalized == 'mapa' || normalized.length < 4;
+  }
+
+  PoiFilterImageUriValue _parseImageUriValue(String raw) {
+    final value = PoiFilterImageUriValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiReferenceSlugValue _parseReferenceSlugValue(String raw) {
+    final value = PoiReferenceSlugValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiReferencePathValue _parseReferencePathValue(String raw) {
+    final value = PoiReferencePathValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiTypeLabelValue _parseTypeLabelValue(String raw) {
+    final value = PoiTypeLabelValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  CityPoiDescriptionValue _parsePoiDescriptionValue(String raw) {
+    final value = CityPoiDescriptionValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  CityPoiAddressValue _parsePoiAddressValue(String raw) {
+    final value = CityPoiAddressValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  LatitudeValue _parseLatitudeValue(double raw) {
+    final value = LatitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  LongitudeValue _parseLongitudeValue(double raw) {
+    final value = LongitudeValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
   Future<void> handleMarkerTap(CityPoiModel poi) async {
     if (_filterInteractionLocked || _markerTapSuppressedAfterFilterReload) {
       return;
@@ -1057,22 +1339,41 @@ class MapScreenController implements Disposable {
     if (mapTrayModeStreamValue.value != MapTrayMode.discovery) {
       mapTrayModeStreamValue.addValue(MapTrayMode.discovery);
     }
+    clearClusterPicker();
+    if (selectedPoiLoadingIdStreamValue.value == poi.id) {
+      return;
+    }
     final hasStackCandidates = poi.stackCount > 1 && poi.stackKey.isNotEmpty;
     if (!hasStackCandidates) {
-      selectPoi(poi);
+      final loadingSequence = _beginSelectedPoiLoading(poi);
       await _focusOnPoi(poi);
+      await _selectPoiFromMarkerTap(
+        poi,
+        loadingSequence: loadingSequence,
+      );
       return;
     }
 
+    final loadingSequence = _beginSelectedPoiLoading(poi);
+    await _focusOnPoi(
+      poi,
+      verticalViewportAnchor: _filteredPreviewViewportAnchor,
+    );
     try {
       await _poiRepository.loadStackItems(
         stackKey: PoiStackKeyValue()..parse(poi.stackKey),
         query: _currentQuery,
       );
+      if (!_isLatestSelectedPoiHydration(loadingSequence)) {
+        return;
+      }
       final stackItems =
           _poiRepository.stackItemsStreamValue.value ?? const <CityPoiModel>[];
       if (stackItems.isEmpty) {
-        selectPoi(poi);
+        await _selectPoiFromMarkerTap(
+          poi,
+          loadingSequence: loadingSequence,
+        );
         return;
       }
       final enrichedItems = _attachStackContext(
@@ -1080,19 +1381,81 @@ class MapScreenController implements Disposable {
         stackKey: poi.stackKey,
         stackCount: poi.stackCount,
       );
-      final selected = enrichedItems.firstWhere(
-        (candidate) => candidate.id == poi.id,
-        orElse: () => enrichedItems.first,
+      if (!_isLatestSelectedPoiHydration(loadingSequence)) {
+        return;
+      }
+      selectedPoiLoadingIdStreamValue.addValue(null);
+      hasSelectedPoiLoadingStreamValue.addValue(false);
+      showClusterPicker(
+        enrichedItems,
+        anchorCoordinate: poi.coordinate,
       );
-      final selectedIndex = enrichedItems.indexOf(selected);
-      setPoiDeckIndex(selectedIndex == -1 ? 0 : selectedIndex);
-      selectPoi(selected);
-      await _focusOnPoi(selected);
     } catch (error) {
       debugPrint('Failed to load stack ${poi.stackKey}: $error');
-      selectPoi(poi);
-      await _focusOnPoi(poi);
+      if (!_isLatestSelectedPoiHydration(loadingSequence)) {
+        return;
+      }
+      await _selectPoiFromMarkerTap(
+        poi,
+        loadingSequence: loadingSequence,
+      );
     }
+  }
+
+  Future<void> handleDeckPoiSelection(CityPoiModel poi) async {
+    clearClusterPicker();
+    if (selectedPoiLoadingIdStreamValue.value == poi.id) {
+      return;
+    }
+    if (selectedPoiStreamValue.value?.id == poi.id) {
+      await _focusOnPoi(poi);
+      return;
+    }
+    final loadingSequence = _beginSelectedPoiLoading(poi);
+    await _focusOnPoi(poi);
+    await _selectPoiFromMarkerTap(
+      poi,
+      loadingSequence: loadingSequence,
+    );
+  }
+
+  void showClusterPicker(
+    List<CityPoiModel> pois, {
+    required CityCoordinate anchorCoordinate,
+  }) {
+    final normalized = List<CityPoiModel>.unmodifiable(
+      pois.where((poi) => poi.id.trim().isNotEmpty),
+    );
+    if (normalized.isEmpty) {
+      clearClusterPicker();
+      return;
+    }
+    _selectedPoiHydrationSequence += 1;
+    selectedPoiLoadingIdStreamValue.addValue(null);
+    hasSelectedPoiLoadingStreamValue.addValue(false);
+    _poiRepository.clearSelection();
+    clearLastSelectedPoiMemory();
+    _finishPoiTimedEvent();
+    _poiRepository.setStackItems(normalized);
+    clusterPickerAnchorCoordinateStreamValue.addValue(anchorCoordinate);
+    hasClusterPickerStreamValue.addValue(true);
+  }
+
+  void clearClusterPicker() {
+    if (clusterPickerPoisStreamValue.value != null) {
+      _poiRepository.clearStackItems();
+    }
+    if (clusterPickerAnchorCoordinateStreamValue.value != null) {
+      clusterPickerAnchorCoordinateStreamValue.addValue(null);
+    }
+    if (hasClusterPickerStreamValue.value) {
+      hasClusterPickerStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> handleClusterPickerPoiSelection(CityPoiModel poi) async {
+    clearClusterPicker();
+    await handleDeckPoiSelection(poi);
   }
 
   List<CityPoiModel> _attachStackContext(
@@ -1137,7 +1500,11 @@ class MapScreenController implements Disposable {
   void clearSelectedPoi({
     bool preserveMarkerMemory = true,
   }) {
+    _selectedPoiHydrationSequence += 1;
+    selectedPoiLoadingIdStreamValue.addValue(null);
+    hasSelectedPoiLoadingStreamValue.addValue(false);
     _poiRepository.clearSelection();
+    clearClusterPicker();
     if (!preserveMarkerMemory) {
       clearLastSelectedPoiMemory();
     }
@@ -1151,6 +1518,7 @@ class MapScreenController implements Disposable {
   }
 
   void showDiscoveryTray() {
+    _searchTrayOrigin = null;
     if (mapTrayModeStreamValue.value != MapTrayMode.discovery) {
       mapTrayModeStreamValue.addValue(MapTrayMode.discovery);
     }
@@ -1158,8 +1526,18 @@ class MapScreenController implements Disposable {
   }
 
   void showFiltersTray() {
+    _searchTrayOrigin = null;
     if (mapTrayModeStreamValue.value != MapTrayMode.filters) {
       mapTrayModeStreamValue.addValue(MapTrayMode.filters);
+    }
+    clearSelectedPoi();
+    unawaited(loadFilters());
+  }
+
+  void showFilterResultsTray() {
+    _searchTrayOrigin = null;
+    if (mapTrayModeStreamValue.value != MapTrayMode.filterResults) {
+      mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
     }
     clearSelectedPoi();
     unawaited(loadFilters());
@@ -1170,6 +1548,18 @@ class MapScreenController implements Disposable {
       mapTrayModeStreamValue.addValue(MapTrayMode.search);
     }
     clearSelectedPoi();
+    _searchTrayOrigin = mapHandle.currentCenter ??
+        _resolveCurrentEffectiveOrigin() ??
+        defaultCenter;
+    unawaited(
+      loadPois(
+        _composeQuery(
+          searchTerm: searchTextController.text,
+          origin: _searchTrayOrigin,
+        ),
+        announceLoadingMessage: false,
+      ),
+    );
   }
 
   void applyFilterMode(PoiFilterMode mode) {
@@ -1250,6 +1640,9 @@ class MapScreenController implements Disposable {
           : previousFilterLabel,
     );
     activeFilterLabelStreamValue.addValue(null);
+    if (mapTrayModeStreamValue.value == MapTrayMode.filterResults) {
+      mapTrayModeStreamValue.addValue(MapTrayMode.discovery);
+    }
     _poiRepository.clearFilters();
     clearSelectedPoi(preserveMarkerMemory: false);
     if (!wasFiltered) {
@@ -1319,6 +1712,9 @@ class MapScreenController implements Disposable {
     pendingFilterLabelStreamValue.addValue(null);
     _poiRepository.applyFilterMode(PoiFilterMode.server);
     clearSelectedPoi(preserveMarkerMemory: false);
+    if (mapTrayModeStreamValue.value != MapTrayMode.filterResults) {
+      mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
+    }
     _logMapTelemetry(
       EventTrackerEvents.selectItem,
       eventName: telemetryRepoString('map_catalog_filter_applied'),
@@ -1857,7 +2253,11 @@ class MapScreenController implements Disposable {
     searchTermStreamValue.dispose();
     searchTextController.dispose();
     lastSelectedPoiMemoryStreamValue.dispose();
+    selectedPoiLoadingIdStreamValue.dispose();
+    hasSelectedPoiLoadingStreamValue.dispose();
     hasSelectedPoiStreamValue.dispose();
+    hasClusterPickerStreamValue.dispose();
+    clusterPickerAnchorCoordinateStreamValue.dispose();
     zoomStreamValue.dispose();
     activeCategoryKeysStreamValue.dispose();
     activeCatalogFilterKeyStreamValue.dispose();
@@ -1889,6 +2289,8 @@ class MapScreenController implements Disposable {
       }
       if (event.isViewportChange) {
         clearSelectedPoi(preserveMarkerMemory: false);
+      } else if (event.type == BellugaMapInteractionType.emptyTap) {
+        clearClusterPicker();
       }
       if (event.userGesture &&
           mapTrayModeStreamValue.value != MapTrayMode.discovery &&

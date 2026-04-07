@@ -42,6 +42,8 @@ abstract class PoiRepositoryContract {
 
   void selectPoi(CityPoiModel? poi);
   void clearSelection();
+  void setStackItems(List<CityPoiModel>? items);
+  void clearStackItems();
   void clearLoadedPois();
   void applyFilterMode(PoiFilterMode mode);
   void clearFilters();

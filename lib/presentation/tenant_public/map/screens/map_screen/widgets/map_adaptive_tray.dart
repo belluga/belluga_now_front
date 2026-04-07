@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:belluga_now/domain/map/city_poi_model.dart';
@@ -93,6 +94,42 @@ class MapAdaptiveTray extends StatelessWidget {
                                                   ),
                                                 ),
                                               )
+                                            : trayMode ==
+                                                    MapTrayMode.filterResults
+                                                ? _TraySurface(
+                                                    key:
+                                                        const ValueKey<String>(
+                                                      'map-tray-surface-filter-results',
+                                                    ),
+                                                    dragEnabled: true,
+                                                    onCollapse: controller
+                                                        .showDiscoveryTray,
+                                                    child: Padding(
+                                                      padding: const EdgeInsets
+                                                          .fromLTRB(
+                                                        18,
+                                                        14,
+                                                        18,
+                                                        18,
+                                                      ),
+                                                      child:
+                                                          _FilterResultsTrayBody(
+                                                        controller: controller,
+                                                        filterOptions:
+                                                            filterOptions,
+                                                        filteredPois:
+                                                            filteredPois,
+                                                        activeFilterLabel:
+                                                            visualFilterLabel,
+                                                        activeCatalogFilterKey:
+                                                            activeCatalogFilterKey,
+                                                        appliedCatalogFilterKey:
+                                                            appliedCatalogFilterKey,
+                                                        filterPending:
+                                                            filterPending,
+                                                      ),
+                                                    ),
+                                                  )
                                             : _FloatingFilterCluster(
                                                 key: ValueKey<String>(
                                                   '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
@@ -243,42 +280,17 @@ class _FloatingFilterCluster extends StatelessWidget {
                     Expanded(
                       child: visibleCategories.isEmpty
                           ? const SizedBox.shrink()
-                          : Wrap(
+                          : _FilterChipWrap(
                               key: ValueKey<String>(
                                 'map-filter-cluster-wrap-${expanded ? 'expanded' : 'collapsed'}',
                               ),
-                              spacing: _kFilterClusterSpacing,
-                              runSpacing: _kFilterClusterSpacing,
-                              children: visibleCategories.map(
-                                (category) {
-                                  final matchesPersistedKey =
-                                      _matchesCategoryKey(
-                                    category,
-                                    activeCatalogFilterKey:
-                                        activeCatalogFilterKey,
-                                    appliedCatalogFilterKey:
-                                        appliedCatalogFilterKey,
-                                  );
-                                  return _FloatingFilterChip(
-                                    category: category,
-                                    isActive: controller.isCategoryFilterActive(
-                                          category,
-                                        ) ||
-                                        matchesPersistedKey,
-                                    activeFilterLabel: activeLabel,
-                                    pending:
-                                        filterPending && matchesPersistedKey,
-                                    enabled: !filterPending,
-                                    onTap: () {
-                                      controller.toggleCatalogCategoryFilter(
-                                        category,
-                                      );
-                                      controller.showDiscoveryTray();
-                                    },
-                                    onClear: controller.clearFilters,
-                                  );
-                                },
-                              ).toList(growable: false),
+                              controller: controller,
+                              categories: visibleCategories,
+                              activeFilterLabel: activeLabel,
+                              activeCatalogFilterKey: activeCatalogFilterKey,
+                              appliedCatalogFilterKey:
+                                  appliedCatalogFilterKey,
+                              filterPending: filterPending,
                             ),
                     ),
                     if (visibleCategories.isNotEmpty) const SizedBox(width: 16),
@@ -349,6 +361,120 @@ class _FloatingFilterCluster extends StatelessWidget {
       return baseCapacity;
     }
     return math.max(1, baseCapacity - math.min(2, perRow - 1));
+  }
+}
+
+class _FilterResultsTrayBody extends StatelessWidget {
+  const _FilterResultsTrayBody({
+    required this.controller,
+    required this.filterOptions,
+    required this.filteredPois,
+    required this.activeFilterLabel,
+    required this.activeCatalogFilterKey,
+    required this.appliedCatalogFilterKey,
+    required this.filterPending,
+  });
+
+  final MapScreenController controller;
+  final PoiFilterOptions? filterOptions;
+  final List<CityPoiModel> filteredPois;
+  final String? activeFilterLabel;
+  final String? activeCatalogFilterKey;
+  final String? appliedCatalogFilterKey;
+  final bool filterPending;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = controller.visibleCatalogCategories(filterOptions);
+    final orderedPois = _sortPoisByDistance(filteredPois);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: categories.isEmpty
+                  ? const SizedBox.shrink()
+                  : _FilterChipWrap(
+                      key: const ValueKey<String>(
+                        'map-filter-results-chip-wrap',
+                      ),
+                      controller: controller,
+                      categories: categories,
+                      activeFilterLabel: activeFilterLabel,
+                      activeCatalogFilterKey: activeCatalogFilterKey,
+                      appliedCatalogFilterKey: appliedCatalogFilterKey,
+                      filterPending: filterPending,
+                    ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: controller.showDiscoveryTray,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              tooltip: 'Fechar filtros',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _PoiSuggestionSection(
+          title: 'Mais próximos de você',
+          pois: orderedPois,
+          scrollViewKey: const ValueKey<String>('map-filter-results-scroll'),
+          onPoiTap: controller.handleDeckPoiSelection,
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterChipWrap extends StatelessWidget {
+  const _FilterChipWrap({
+    super.key,
+    required this.controller,
+    required this.categories,
+    required this.activeFilterLabel,
+    required this.activeCatalogFilterKey,
+    required this.appliedCatalogFilterKey,
+    required this.filterPending,
+  });
+
+  final MapScreenController controller;
+  final List<PoiFilterCategory> categories;
+  final String? activeFilterLabel;
+  final String? activeCatalogFilterKey;
+  final String? appliedCatalogFilterKey;
+  final bool filterPending;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: _kFilterClusterSpacing,
+      runSpacing: _kFilterClusterSpacing,
+      children: categories.map(
+        (category) {
+          final matchesPersistedKey = _matchesCategoryKey(
+            category,
+            activeCatalogFilterKey: activeCatalogFilterKey,
+            appliedCatalogFilterKey: appliedCatalogFilterKey,
+          );
+          return _FloatingFilterChip(
+            category: category,
+            isActive:
+                controller.isCategoryFilterActive(category) || matchesPersistedKey,
+            activeFilterLabel: activeFilterLabel,
+            pending: filterPending && matchesPersistedKey,
+            enabled: !filterPending,
+            onTap: () {
+              controller.toggleCatalogCategoryFilter(category);
+            },
+            onClear: controller.clearFilters,
+          );
+        },
+      ).toList(growable: false),
+    );
   }
 
   bool _matchesCategoryKey(
@@ -597,7 +723,7 @@ class _SearchTrayBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appliedSearch = controller.searchTermStreamValue.value?.trim() ?? '';
-    final previewPois = filteredPois.take(3).toList(growable: false);
+    final orderedPois = _sortPoisByDistance(filteredPois);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -634,26 +760,62 @@ class _SearchTrayBody extends StatelessWidget {
             ),
           ),
         ),
-        if (previewPois.isNotEmpty) ...[
+        if (orderedPois.isNotEmpty) ...[
           const SizedBox(height: 18),
-          Text(
-            appliedSearch.isEmpty
-                ? 'Sugestões perto de você'
-                : 'Resultados rápidos',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+          _PoiSuggestionSection(
+            title: 'Nessa área',
+            pois: orderedPois,
+            scrollViewKey: const ValueKey<String>('map-search-results-scroll'),
+            onPoiTap: controller.handleDeckPoiSelection,
           ),
-          const SizedBox(height: 10),
-          for (final poi in previewPois)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _SearchSuggestionCard(
-                poi: poi,
-                onTap: () => controller.handleMarkerTap(poi),
-              ),
-            ),
         ],
+      ],
+    );
+  }
+}
+
+class _PoiSuggestionSection extends StatelessWidget {
+  const _PoiSuggestionSection({
+    required this.title,
+    required this.pois,
+    required this.scrollViewKey,
+    required this.onPoiTap,
+  });
+
+  final String title;
+  final List<CityPoiModel> pois;
+  final Key scrollViewKey;
+  final Future<void> Function(CityPoiModel poi) onPoiTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 320),
+          child: SingleChildScrollView(
+            key: scrollViewKey,
+            child: Column(
+              children: [
+                for (var index = 0; index < pois.length; index++) ...[
+                  _SearchSuggestionCard(
+                    poi: pois[index],
+                    onTap: () => unawaited(onPoiTap(pois[index])),
+                  ),
+                  if (index != pois.length - 1) const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -799,7 +961,7 @@ class _SearchSuggestionVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final imageUri = PoiContentResolver.imageUri(poi);
+    final imageUri = PoiContentResolver.thumbnailImageUri(poi);
     final assetPath = PoiContentResolver.assetPath(poi);
 
     Widget child;
@@ -868,4 +1030,18 @@ class _TrayGrabber extends StatelessWidget {
       ),
     );
   }
+}
+
+List<CityPoiModel> _sortPoisByDistance(List<CityPoiModel> pois) {
+  final ordered = List<CityPoiModel>.from(pois);
+  ordered.sort((left, right) {
+    final leftDistance = left.distanceMeters ?? double.infinity;
+    final rightDistance = right.distanceMeters ?? double.infinity;
+    final byDistance = leftDistance.compareTo(rightDistance);
+    if (byDistance != 0) {
+      return byDistance;
+    }
+    return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+  });
+  return List<CityPoiModel>.unmodifiable(ordered);
 }

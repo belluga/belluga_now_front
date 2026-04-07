@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
@@ -18,6 +19,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
@@ -32,6 +34,7 @@ class CityPoiDTO {
     required this.category,
     required this.latitude,
     required this.longitude,
+    this.categoryLabel,
     this.assetPath,
     this.isDynamic = false,
     this.movementRadiusMeters,
@@ -55,6 +58,7 @@ class CityPoiDTO {
   final String description;
   final String address;
   final CityPoiCategory category;
+  final String? categoryLabel;
   final double latitude;
   final double longitude;
   final String? assetPath;
@@ -119,6 +123,11 @@ class CityPoiDTO {
         updatedAtRaw == null ? null : DateTime.tryParse(updatedAtRaw);
     final visual =
         CityPoiVisualDTO.tryFromJson(json['visual'] ?? json['poi_visual']);
+    final rawCategoryLabel = (json['category_label'] ??
+            json['type_label'] ??
+            json['profile_type_label'])
+        ?.toString()
+        .trim();
 
     return CityPoiDTO(
       id: poiId,
@@ -130,6 +139,9 @@ class CityPoiDTO {
           ? json['address'].toString().trim()
           : (subtitle.isNotEmpty ? subtitle : fallbackAddress).trim(),
       category: parseCategory(json['category'] ?? json['category_slug']),
+      categoryLabel: rawCategoryLabel == null || rawCategoryLabel.isEmpty
+          ? null
+          : rawCategoryLabel,
       latitude: parseDouble(latitudeRaw),
       longitude: parseDouble(longitudeRaw),
       assetPath: json['asset_path'] as String?,
@@ -193,7 +205,7 @@ class CityPoiDTO {
       'name': name,
       'description': description,
       'address': address,
-      'category': category.name,
+      'category': categoryLabel ?? category.name,
       'latitude': latitude,
       'longitude': longitude,
       'asset_path': assetPath,
@@ -278,6 +290,16 @@ class CityPoiDTO {
       distanceMetersValue = DistanceInMetersValue()
         ..parse(distanceMeters!.toString());
     }
+    PoiFilterImageUriValue? coverImageUriValue;
+    final normalizedImageUri = visual?.imageUri?.trim();
+    if (normalizedImageUri != null && normalizedImageUri.isNotEmpty) {
+      coverImageUriValue = PoiFilterImageUriValue()..parse(normalizedImageUri);
+    }
+    PoiTypeLabelValue? categoryLabelValue;
+    final normalizedCategoryLabel = categoryLabel?.trim();
+    if (normalizedCategoryLabel != null && normalizedCategoryLabel.isNotEmpty) {
+      categoryLabelValue = PoiTypeLabelValue()..parse(normalizedCategoryLabel);
+    }
 
     return CityPoiModel(
       idValue: idValue,
@@ -285,6 +307,8 @@ class CityPoiDTO {
       descriptionValue: descriptionValue,
       addressValue: addressValue,
       category: category,
+      categoryLabelValue: categoryLabelValue,
+      coverImageUriValue: coverImageUriValue,
       coordinate: coordinate,
       priorityValue: priorityValue,
       assetPathValue: assetPathValue,

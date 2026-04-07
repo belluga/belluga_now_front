@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
@@ -34,10 +35,23 @@ void main() {
       expect(PoiContentResolver.badgeLabel(poi), 'Ao vivo');
     });
 
-    test('type label prefers payload refType over category switch', () {
-      final poi = _buildPoi(refType: 'accountProfile');
+    test('type label prefers payload category over technical refType', () {
+      final poi = _buildPoi(
+        refType: 'accountProfile',
+        category: CityPoiCategory.attraction,
+        categoryLabel: 'beach_club_custom',
+      );
 
-      expect(PoiContentResolver.typeLabel(poi), 'Account Profile');
+      expect(PoiContentResolver.typeLabel(poi), 'Beach Club Custom');
+    });
+
+    test('type label stays empty when payload does not provide factual label', () {
+      final poi = _buildPoi(
+        refType: 'accountProfile',
+        category: CityPoiCategory.attraction,
+      );
+
+      expect(PoiContentResolver.typeLabel(poi), isEmpty);
     });
 
     test('compact address hides generic map placeholders', () {
@@ -57,15 +71,18 @@ void main() {
       );
     });
 
-    test('search meta falls back to payload-derived type when address is weak',
+    test(
+        'search meta falls back to payload-derived category when address is weak',
         () {
       final poi = _buildPoi(
         refType: 'accountProfile',
+        category: CityPoiCategory.attraction,
+        categoryLabel: 'beach_club_custom',
         address: 'Mapa',
         distanceMeters: null,
       );
 
-      expect(PoiContentResolver.searchMeta(poi), 'Account Profile');
+      expect(PoiContentResolver.searchMeta(poi), 'Beach Club Custom');
     });
 
     test('image and icon helpers reuse payload visual contract', () {
@@ -85,7 +102,11 @@ void main() {
       );
 
       expect(
-        PoiContentResolver.imageUri(imagePoi),
+        PoiContentResolver.coverImageUri(imagePoi),
+        'https://cdn.example.com/praia.jpg',
+      );
+      expect(
+        PoiContentResolver.thumbnailImageUri(imagePoi),
         'https://cdn.example.com/praia.jpg',
       );
       expect(PoiContentResolver.assetPath(imagePoi), 'assets/images/poi.png');
@@ -104,6 +125,7 @@ CityPoiModel _buildPoi({
   String refType = 'static',
   String refId = 'poi-1',
   CityPoiCategory category = CityPoiCategory.beach,
+  String? categoryLabel,
   double? distanceMeters = 521,
   bool isHappeningNow = false,
   DateTime? updatedAt,
@@ -140,6 +162,9 @@ CityPoiModel _buildPoi({
   final updatedAtValue = updatedAt == null
       ? null
       : (PoiUpdatedAtValue()..parse(updatedAt.toUtc().toIso8601String()));
+  final categoryLabelValue = categoryLabel == null || categoryLabel.trim().isEmpty
+      ? null
+      : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
 
   return CityPoiModel(
     idValue: idValue,
@@ -147,6 +172,7 @@ CityPoiModel _buildPoi({
     descriptionValue: descriptionValue,
     addressValue: addressValue,
     category: category,
+    categoryLabelValue: categoryLabelValue,
     coordinate: coordinate,
     priorityValue: priorityValue,
     assetPathValue: assetPathValue,
