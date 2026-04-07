@@ -360,6 +360,11 @@ void main() {
             .having(
               (error) => error.message,
               'message',
+              contains('Invalid scalar text value'),
+            )
+            .having(
+              (error) => error.message,
+              'message',
               contains('/admin/api/v1/events'),
             ),
       ),
@@ -1055,7 +1060,7 @@ class _MalformedEventsPayloadAdapter implements HttpClientAdapter {
             {
               'event_id': 'evt-bad',
               'slug': 'bad-event',
-              'title': 'Bad Event',
+              'title': {'raw': 'Bad Event'},
               'content': 'Content',
               'type': {
                 'name': 'Show',
@@ -1063,9 +1068,6 @@ class _MalformedEventsPayloadAdapter implements HttpClientAdapter {
               },
               'publication': {
                 'status': 'draft',
-              },
-              'place_ref': {
-                'type': 'account_profile',
               },
               'occurrences': [
                 {

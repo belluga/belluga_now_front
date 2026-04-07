@@ -15,7 +15,7 @@ TenantAdminRequiredTextValue tenantAdminRequiredText(Object? raw) {
   }
 
   final value = TenantAdminRequiredTextValue();
-  value.parse(raw?.toString());
+  value.parse(_tenantAdminCoerceTextScalar(raw));
   return value;
 }
 
@@ -25,7 +25,7 @@ TenantAdminOptionalTextValue tenantAdminOptionalText(Object? raw) {
   }
 
   final value = TenantAdminOptionalTextValue();
-  value.parse(raw?.toString());
+  value.parse(_tenantAdminCoerceTextScalar(raw));
   return value;
 }
 
@@ -148,6 +148,22 @@ TenantAdminOptionalDoubleValue tenantAdminOptionalDouble(Object? raw) {
     return TenantAdminOptionalDoubleValue(null);
   }
   return TenantAdminOptionalDoubleValue(parsed);
+}
+
+String? _tenantAdminCoerceTextScalar(Object? raw) {
+  if (raw == null) {
+    return null;
+  }
+
+  if (raw is String) {
+    return raw;
+  }
+
+  if (raw is num || raw is bool) {
+    return raw.toString();
+  }
+
+  throw FormatException('Invalid text value: $raw');
 }
 
 TenantAdminDynamicMapValue tenantAdminDynamicMap(Object? raw) {

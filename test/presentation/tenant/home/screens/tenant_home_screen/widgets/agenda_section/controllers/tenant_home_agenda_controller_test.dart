@@ -1212,6 +1212,75 @@ void main() {
       controller.onDispose();
     });
 
+    test(
+      'auto refresh does not publish transient empty agenda before recovered first page',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final backend = _TransientEmptyThenFreshDataBackend();
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(backend: backend),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+        expect(controller.displayedEventsStreamValue.value, hasLength(1));
+        expect(
+          controller.displayedEventsStreamValue.value!.first.title.value,
+          'Evento Inicial',
+        );
+
+        final publishedTitles = <List<String>?>[
+          controller.displayedEventsStreamValue.value
+              ?.map((event) => event.title.value)
+              .toList(growable: false),
+        ];
+        final subscription =
+            controller.displayedEventsStreamValue.stream.listen((events) {
+          publishedTitles.add(
+            events?.map((event) => event.title.value).toList(growable: false),
+          );
+        });
+
+        locationRepository.userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.656339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 420));
+
+        expect(backend.fetchEventsPageCallCount, 3);
+        expect(
+          controller.displayedEventsStreamValue.value?.map((e) => e.title.value),
+          ['Evento Atualizado'],
+        );
+        expect(
+          publishedTitles.any((titles) => titles != null && titles.isEmpty),
+          isFalse,
+          reason:
+              'Auto refresh must not publish an empty agenda between non-empty snapshots.',
+        );
+
+        await subscription.cancel();
+        controller.onDispose();
+      },
+    );
+
     test('finishes init when location warm-up stalls', () async {
       final appData = _buildAppData(
         minKm: 1,
@@ -2247,6 +2316,119 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
       'slug': 'evento-recuperado',
       'title': 'Evento Recuperado',
       'content': 'Conteudo do evento recuperado',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+        'color': '#112233',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': '2026-03-05T20:00:00+00:00',
+      'artists': const [],
+      'tags': const ['music'],
+    });
+  }
+}
+
+class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
+  int fetchEventsPageCallCount = 0;
+
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      _eventDto(
+        eventId: '507f1f77bcf86cd799439311',
+        occurrenceId: '507f1f77bcf86cd799439312',
+        slug: 'evento-inicial',
+        title: 'Evento Inicial',
+      );
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    fetchEventsPageCallCount += 1;
+
+    if (page > 1) {
+      return EventPageDTO(events: const [], hasMore: false);
+    }
+
+    if (fetchEventsPageCallCount == 1) {
+      return EventPageDTO(
+        events: [
+          _eventDto(
+            eventId: '507f1f77bcf86cd799439311',
+            occurrenceId: '507f1f77bcf86cd799439312',
+            slug: 'evento-inicial',
+            title: 'Evento Inicial',
+          ),
+        ],
+        hasMore: false,
+      );
+    }
+
+    if (fetchEventsPageCallCount == 2) {
+      return EventPageDTO(events: const [], hasMore: false);
+    }
+
+    return EventPageDTO(
+      events: [
+        _eventDto(
+          eventId: '507f1f77bcf86cd799439321',
+          occurrenceId: '507f1f77bcf86cd799439322',
+          slug: 'evento-atualizado',
+          title: 'Evento Atualizado',
+        ),
+      ],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _eventDto({
+    required String eventId,
+    required String occurrenceId,
+    required String slug,
+    required String title,
+  }) {
+    return EventDTO.fromJson({
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'slug': slug,
+      'title': title,
+      'content': 'Conteudo do evento',
       'type': {
         'id': 'type-1',
         'name': 'Show',

@@ -437,6 +437,11 @@ class TenantAdminEventsResponseDecoder {
     if (value == null) {
       return null;
     }
+
+    if (value is! String && value is! num && value is! bool) {
+      throw FormatException('Invalid scalar text value: $value');
+    }
+
     final normalized = value.toString();
     if (normalized.trim().isEmpty) {
       return null;
@@ -477,6 +482,12 @@ class TenantAdminEventsResponseDecoder {
   DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
       return TimezoneConverter.utcToLocal(value);
+    }
+    if (value is Map) {
+      final wrapped = value[r'$date'] ?? value['date'];
+      if (wrapped != null && wrapped != value) {
+        return _parseDate(wrapped);
+      }
     }
     if (value is String && value.trim().isNotEmpty) {
       final parsed = DateTime.tryParse(value);

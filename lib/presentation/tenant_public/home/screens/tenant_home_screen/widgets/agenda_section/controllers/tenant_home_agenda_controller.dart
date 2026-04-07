@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
@@ -80,6 +81,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   static const double _fallbackRadiusMeters = 50000.0;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
+  static const Duration _preservedFirstPageEmptyRetryDelay =
+      Duration(milliseconds: 250);
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
       'Buscando eventos perto de você...';
@@ -239,11 +242,13 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
     _isRefreshing = true;
     final shouldShowInitialLoading = !preserveCurrentResults;
+    final previousCanonicalEvents = preserveCurrentResults
+        ? List<EventModel>.unmodifiable(_currentCanonicalEvents())
+        : const <EventModel>[];
     _currentPage = 1;
     _hasMore = true;
     _setValue(hasMoreStreamValue, true);
     if (shouldShowInitialLoading) {
-      _scheduleRepository.clearHomeAgendaCache();
       _setValue(isInitialLoadingStreamValue, true);
       _setValue(initialLoadingLabelStreamValue, _loadingLocationLabel);
     }
@@ -265,6 +270,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       await _fetchPage(
         page: 1,
         showPageLoadingForFirstPage: preserveCurrentResults,
+        previousCanonicalEvents: previousCanonicalEvents,
       );
       final totalElapsed = stopwatch.elapsedMilliseconds;
       debugPrint('TenantHomeAgendaController._refresh: '
@@ -341,6 +347,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   Future<void> _fetchPage({
     required int page,
     bool showPageLoadingForFirstPage = false,
+    List<EventModel> previousCanonicalEvents = const <EventModel>[],
   }) async {
     if (_isFetching) return;
     _isFetching = true;
@@ -349,63 +356,73 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
 
     try {
+      final showPastOnly = _toScheduleBool(showHistoryStreamValue.value);
+      final searchQuery = _toScheduleText(searchController.text);
+      final confirmedOnly = _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      );
+      final originLat = _toNullableScheduleDouble(_effectiveOriginLat);
+      final originLng = _toNullableScheduleDouble(_effectiveOriginLng);
+      final maxDistanceMeters =
+          _toScheduleDouble(radiusMetersStreamValue.value);
+
       if (page <= 1) {
         await _scheduleRepository.loadEventsPage(
-          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
-          searchQuery: _toScheduleText(searchController.text),
-          confirmedOnly: _toScheduleBool(
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          ),
-          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
-          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
-          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
+          showPastOnly: showPastOnly,
+          searchQuery: searchQuery,
+          confirmedOnly: confirmedOnly,
+          originLat: originLat,
+          originLng: originLng,
+          maxDistanceMeters: maxDistanceMeters,
         );
       } else {
         await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
-          searchQuery: _toScheduleText(searchController.text),
-          confirmedOnly: _toScheduleBool(
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          ),
-          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
-          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
-          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
+          showPastOnly: showPastOnly,
+          searchQuery: searchQuery,
+          confirmedOnly: confirmedOnly,
+          originLat: originLat,
+          originLng: originLng,
+          maxDistanceMeters: maxDistanceMeters,
         );
       }
 
-      final result = _scheduleRepository.pagedEventsStreamValue.value;
-      if (result == null) {
-        final firstPageError =
-            _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 &&
-            firstPageError != null &&
-            firstPageError.value.isNotEmpty) {
-          throw Exception(firstPageError.value);
-        }
-        return;
-      }
-      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
-      if (loadedPage <= 0) {
-        final firstPageError =
-            _scheduleRepository.pagedEventsErrorStreamValue.value;
-        if (page == 1 &&
-            firstPageError != null &&
-            firstPageError.value.isNotEmpty) {
-          throw Exception(firstPageError.value);
-        }
+      var resolvedPage = _readLoadedPage(requestedPage: page);
+      if (resolvedPage == null) {
         return;
       }
 
-      final canonicalEvents = loadedPage == 1
-          ? List<EventModel>.from(result.events)
+      if (page == 1 &&
+          showPageLoadingForFirstPage &&
+          previousCanonicalEvents.isNotEmpty &&
+          resolvedPage.result.events.isEmpty) {
+        await Future<void>.delayed(_preservedFirstPageEmptyRetryDelay);
+        if (_isDisposed) {
+          return;
+        }
+        await _scheduleRepository.loadEventsPage(
+          showPastOnly: showPastOnly,
+          searchQuery: searchQuery,
+          confirmedOnly: confirmedOnly,
+          originLat: originLat,
+          originLng: originLng,
+          maxDistanceMeters: maxDistanceMeters,
+        );
+        resolvedPage = _readLoadedPage(requestedPage: page);
+        if (resolvedPage == null || resolvedPage.result.events.isEmpty) {
+          return;
+        }
+      }
+
+      final canonicalEvents = resolvedPage.loadedPage == 1
+          ? List<EventModel>.from(resolvedPage.result.events)
           : [
               ..._currentCanonicalEvents(),
-              ...result.events,
+              ...resolvedPage.result.events,
             ];
 
-      _hasMore = result.hasMore;
+      _hasMore = resolvedPage.result.hasMore;
       _setValue(hasMoreStreamValue, _hasMore);
-      _currentPage = loadedPage;
+      _currentPage = resolvedPage.loadedPage;
       _writeRepositoryCacheSnapshot(canonicalEvents);
       _applyFiltersAndPublish();
     } finally {
@@ -507,26 +524,45 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   void _applyFiltersAndPublish() {
+    if (_scheduleRepository.homeAgendaCacheStreamValue.value == null &&
+        displayedEventsStreamValue.value == null) {
+      return;
+    }
     final inviteFiltered = _applyInviteFilter(_currentCanonicalEvents());
     _setValue(displayedEventsStreamValue, inviteFiltered);
   }
 
   List<EventModel> _currentCanonicalEvents() {
-    final cacheOrigin = _currentCacheReferenceOrigin();
-    final cache = _scheduleRepository.readHomeAgendaCache(
-      showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
-      searchQuery: _toScheduleText(searchController.text.trim()),
-      confirmedOnly: _toScheduleBool(
-        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-      ),
-      originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
-      originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
-      maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
-    );
-    if (cache == null) {
-      return const <EventModel>[];
+    return _scheduleRepository.homeAgendaCacheStreamValue.value?.events ??
+        const <EventModel>[];
+  }
+
+  ({PagedEventsResult result, int loadedPage})? _readLoadedPage({
+    required int requestedPage,
+  }) {
+    final result = _scheduleRepository.pagedEventsStreamValue.value;
+    if (result == null) {
+      final firstPageError = _scheduleRepository.pagedEventsErrorStreamValue.value;
+      if (requestedPage == 1 &&
+          firstPageError != null &&
+          firstPageError.value.isNotEmpty) {
+        throw Exception(firstPageError.value);
+      }
+      return null;
     }
-    return cache.events;
+
+    final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
+    if (loadedPage <= 0) {
+      final firstPageError = _scheduleRepository.pagedEventsErrorStreamValue.value;
+      if (requestedPage == 1 &&
+          firstPageError != null &&
+          firstPageError.value.isNotEmpty) {
+        throw Exception(firstPageError.value);
+      }
+      return null;
+    }
+
+    return (result: result, loadedPage: loadedPage);
   }
 
   bool _restoreFromRepositoryCache() {
