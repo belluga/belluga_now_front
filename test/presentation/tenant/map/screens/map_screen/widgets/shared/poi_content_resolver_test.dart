@@ -21,6 +21,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
@@ -32,7 +34,27 @@ void main() {
     test('badge label prefers ao vivo state from payload', () {
       final poi = _buildPoi(isHappeningNow: true, refType: 'event');
 
-      expect(PoiContentResolver.badgeLabel(poi), 'Ao vivo');
+      expect(PoiContentResolver.badgeLabel(poi), 'AGORA');
+    });
+
+    test('event timing badge uses start time when event is upcoming', () {
+      final poi = _buildPoi(
+        refType: 'event',
+        timeStart: DateTime(2026, 4, 7, 18, 30),
+      );
+
+      expect(PoiContentResolver.eventTimingBadgeLabel(poi), '18:30');
+    });
+
+    test('event schedule label exposes start and end time', () {
+      final poi = _buildPoi(
+        refType: 'event',
+        timeStart: DateTime(2026, 4, 7, 18, 30),
+        timeEnd: DateTime(2026, 4, 7, 20, 0),
+      );
+
+      expect(
+          PoiContentResolver.eventScheduleLabel(poi), '07/04 • 18:30 - 20:00');
     });
 
     test('type label prefers payload category over technical refType', () {
@@ -45,7 +67,8 @@ void main() {
       expect(PoiContentResolver.typeLabel(poi), 'Beach Club Custom');
     });
 
-    test('type label stays empty when payload does not provide factual label', () {
+    test('type label stays empty when payload does not provide factual label',
+        () {
       final poi = _buildPoi(
         refType: 'accountProfile',
         category: CityPoiCategory.attraction,
@@ -128,6 +151,8 @@ CityPoiModel _buildPoi({
   String? categoryLabel,
   double? distanceMeters = 521,
   bool isHappeningNow = false,
+  DateTime? timeStart,
+  DateTime? timeEnd,
   DateTime? updatedAt,
   List<String> tags = const ['Sol', 'Mar'],
   CityPoiVisual? visual,
@@ -155,6 +180,12 @@ CityPoiModel _buildPoi({
     ..parse(
       isHappeningNow ? 'true' : 'false',
     );
+  final timeStartValue = timeStart == null
+      ? null
+      : (PoiTimeStartValue()..parse(timeStart.toIso8601String()));
+  final timeEndValue = timeEnd == null
+      ? null
+      : (PoiTimeEndValue()..parse(timeEnd.toIso8601String()));
   final assetPathValue = AssetPathValue()..parse(assetPath);
   final distanceValue = distanceMeters == null
       ? null
@@ -162,9 +193,10 @@ CityPoiModel _buildPoi({
   final updatedAtValue = updatedAt == null
       ? null
       : (PoiUpdatedAtValue()..parse(updatedAt.toUtc().toIso8601String()));
-  final categoryLabelValue = categoryLabel == null || categoryLabel.trim().isEmpty
-      ? null
-      : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
+  final categoryLabelValue =
+      categoryLabel == null || categoryLabel.trim().isEmpty
+          ? null
+          : (PoiTypeLabelValue()..parse(categoryLabel.trim()));
 
   return CityPoiModel(
     idValue: idValue,
@@ -184,6 +216,8 @@ CityPoiModel _buildPoi({
     stackCountValue: stackCountValue,
     stackItems: stackItems,
     isHappeningNowValue: isHappeningNowValue,
+    timeStartValue: timeStartValue,
+    timeEndValue: timeEndValue,
     updatedAtValue: updatedAtValue,
     distanceMetersValue: distanceValue,
     visual: visual,

@@ -90,8 +90,8 @@ class _ClusterPickerItem extends StatelessWidget {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
         );
-    final liveBadgeLabel =
-        poi.isHappeningNow ? PoiContentResolver.badgeLabel(poi) : null;
+    final badgeLabel = PoiContentResolver.eventTimingBadgeLabel(poi);
+    final isLiveNow = poi.isHappeningNow && badgeLabel != null;
 
     return Material(
       color: scheme.surfaceContainerHigh.withValues(alpha: 0.72),
@@ -111,10 +111,12 @@ class _ClusterPickerItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (liveBadgeLabel != null) ...[
+                    if (badgeLabel != null) ...[
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: scheme.errorContainer,
+                          color: isLiveNow
+                              ? scheme.errorContainer
+                              : scheme.primaryContainer,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Padding(
@@ -123,12 +125,14 @@ class _ClusterPickerItem extends StatelessWidget {
                             vertical: 3,
                           ),
                           child: Text(
-                            liveBadgeLabel.toUpperCase(),
+                            badgeLabel.toUpperCase(),
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
                                 ?.copyWith(
-                                  color: scheme.onErrorContainer,
+                                  color: isLiveNow
+                                      ? scheme.onErrorContainer
+                                      : scheme.onPrimaryContainer,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.6,
                                 ),

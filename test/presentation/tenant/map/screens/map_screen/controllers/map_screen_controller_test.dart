@@ -50,9 +50,15 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract_delta_handler.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
@@ -460,6 +466,188 @@ class _FakeAccountProfilesRepository
   }
 }
 
+class _FakeScheduleRepository implements ScheduleRepositoryContract {
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+  @override
+  final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<List<EventModel>> discoveryLiveNowEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
+      StreamValue<PagedEventsResult?>(defaultValue: null);
+  @override
+  final StreamValue<ScheduleRepoBool> hasMorePagedEventsStreamValue =
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
+  @override
+  final StreamValue<ScheduleRepoBool> isPagedEventsPageLoadingStreamValue =
+      StreamValue<ScheduleRepoBool>(
+    defaultValue: ScheduleRepoBool.fromRaw(
+      false,
+      defaultValue: false,
+    ),
+  );
+  @override
+  final StreamValue<ScheduleRepoString?> pagedEventsErrorStreamValue =
+      StreamValue<ScheduleRepoString?>(defaultValue: null);
+
+  final Map<String, EventModel?> eventsBySlug = <String, EventModel?>{};
+  final List<String> requestedSlugs = <String>[];
+
+  @override
+  ScheduleRepoInt get currentPagedEventsPage =>
+      ScheduleRepoInt.fromRaw(0, defaultValue: 0);
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) {
+    return homeAgendaCacheStreamValue.value;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+  }
+
+  @override
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+    requestedSlugs.add(slug.value);
+    return eventsBySlug[slug.value];
+  }
+
+  @override
+  Future<PagedEventsResult> getEventsPage({
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    return pagedEventsResultFromRaw(events: const <EventModel>[], hasMore: false);
+  }
+
+  @override
+  Future<void> refreshEventsPage({
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {}
+
+  @override
+  Future<void> refreshDiscoveryLiveNowEvents({
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {}
+
+  @override
+  Future<void> loadEventsPage({
+    ScheduleRepoInt? pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {}
+
+  @override
+  Future<void> loadNextEventsPage({
+    ScheduleRepoInt? pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {}
+
+  @override
+  void resetPagedEventsState() {
+    pagedEventsStreamValue.addValue(null);
+    pagedEventsErrorStreamValue.addValue(null);
+  }
+
+  @override
+  Stream<EventDeltaModel> watchEventsStream({
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
+  }) {
+    return const Stream<EventDeltaModel>.empty();
+  }
+
+  @override
+  Stream<void> watchEventsSignal({
+    required ScheduleRepositoryContractDeltaHandler onDelta,
+    ScheduleRepoString? searchQuery,
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    ScheduleRepoTaxonomyEntries? taxonomy,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool? showPastOnly,
+  }) {
+    return const Stream<void>.empty();
+  }
+}
+
 class _FakeMapHandle implements BellugaMapHandleContract {
   static const double _cameraCoordinateTolerance = 0.000001;
   static const double _cameraZoomTolerance = 0.01;
@@ -606,6 +794,8 @@ CityPoiModel _buildPoi({
   CityPoiCategory category = CityPoiCategory.restaurant,
   String? categoryLabel,
   List<CityPoiModel>? stackItems,
+  CityCoordinate? coordinate,
+  double? distanceMeters,
 }) {
   final idValue = CityPoiIdValue()..parse(id);
   final nameValue = CityPoiNameValue()..parse(name);
@@ -628,12 +818,14 @@ CityPoiModel _buildPoi({
   for (final item in stackItems ?? const <CityPoiModel>[]) {
     stackItemCollection.add(item);
   }
-  final latitude = LatitudeValue()..parse('-20.0');
-  final longitude = LongitudeValue()..parse('-40.0');
-  final coordinate = CityCoordinate(
-    latitudeValue: latitude,
-    longitudeValue: longitude,
-  );
+  final resolvedCoordinate = coordinate ??
+      CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.0'),
+        longitudeValue: LongitudeValue()..parse('-40.0'),
+      );
+  final distanceMetersValue = distanceMeters == null
+      ? null
+      : (DistanceInMetersValue()..parse(distanceMeters.toString()));
 
   return CityPoiModel(
     idValue: idValue,
@@ -642,7 +834,7 @@ CityPoiModel _buildPoi({
     addressValue: addressValue,
     category: category,
     categoryLabelValue: categoryLabelValue,
-    coordinate: coordinate,
+    coordinate: resolvedCoordinate,
     priorityValue: priorityValue,
     refTypeValue: refTypeValue,
     refIdValue: refIdValue,
@@ -651,6 +843,7 @@ CityPoiModel _buildPoi({
     stackKeyValue: stackKeyValue,
     stackCountValue: stackCountValue,
     stackItems: stackItemCollection,
+    distanceMetersValue: distanceMetersValue,
   );
 }
 
@@ -680,6 +873,49 @@ DistanceInMetersValue _buildDistanceValue(double raw) {
   final value = DistanceInMetersValue();
   value.parse(raw.toString());
   return value;
+}
+
+EventModel _buildEventDetailModel({
+  required String slug,
+  String title = 'Evento Longo',
+  String? thumbUrl,
+  String? linkedArtistAvatarUrl,
+  String? linkedArtistCoverUrl,
+}) {
+  final dto = EventDTO.fromJson({
+    'id': '507f1f77bcf86cd799439099',
+    'slug': slug,
+    'type': {
+      'id': 'type-1',
+      'name': 'Feira',
+      'slug': 'feira',
+      'description': 'Evento',
+    },
+    'title': title,
+    'content': '<p>Evento detalhado</p>',
+    'location': 'Carvoeiro',
+    'date_time_start': '2026-04-07T18:00:00Z',
+    'date_time_end': '2026-04-07T21:00:00Z',
+    'thumb': thumbUrl == null
+        ? null
+        : {
+            'type': 'image',
+            'data': {'url': thumbUrl},
+          },
+    'artists': const [],
+    'linked_account_profiles': [
+      {
+        'id': 'artist-1',
+        'display_name': 'Ananda Torres',
+        'profile_type': 'artist',
+        'party_type': 'artist',
+        'slug': 'ananda-torres',
+        'avatar_url': linkedArtistAvatarUrl,
+        'cover_url': linkedArtistCoverUrl,
+      },
+    ],
+  });
+  return dto.toDomain();
 }
 
 Set<String>? _queryCategoryKeys(PoiQuery? query) {
@@ -1274,7 +1510,7 @@ void main() {
     });
 
     test(
-      'catalog filter focuses first result without auto-selecting a poi',
+      'catalog filter focuses the first dock result by distance without auto-selecting a poi',
       () async {
         final fakeMapHandle = _FakeMapHandle(
           initialZoom: 15.2,
@@ -1293,8 +1529,18 @@ void main() {
         });
 
         mapRepository.nextPois = <CityPoiModel>[
-          _buildPoi(id: 'poi-first'),
-          _buildPoi(id: 'poi-second', name: 'Segundo ponto'),
+          _buildPoi(
+            id: 'poi-far',
+            name: 'Mais longe',
+            coordinate: _buildCoordinate('-20.500000', '-40.500000'),
+            distanceMeters: 900,
+          ),
+          _buildPoi(
+            id: 'poi-near',
+            name: 'Mais perto',
+            coordinate: _buildCoordinate('-20.100000', '-40.100000'),
+            distanceMeters: 120,
+          ),
         ];
 
         localController.toggleCatalogCategoryFilter(
@@ -1311,13 +1557,43 @@ void main() {
         expect(fakeMapHandle.moveCallCount, 1);
         expect(fakeMapHandle.lastMoveCoordinate, isNotNull);
         expect(
-            fakeMapHandle.lastMoveCoordinate!.latitude, closeTo(-20.0, 1e-9));
+          fakeMapHandle.lastMoveCoordinate!.latitude,
+          closeTo(-20.1, 1e-9),
+        );
         expect(
           fakeMapHandle.lastVerticalViewportAnchor,
           closeTo(0.40, 1e-9),
         );
       },
     );
+
+    test('tapping the same active catalog filter reopens filter results tray',
+        () async {
+      final category = _buildCategory(
+        key: 'events',
+        label: 'Eventos',
+      );
+
+      controller.toggleCatalogCategoryFilter(category);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+          controller.mapTrayModeStreamValue.value, MapTrayMode.filterResults);
+
+      controller.showDiscoveryTray();
+      await _flushMicrotasks();
+
+      expect(controller.mapTrayModeStreamValue.value, MapTrayMode.discovery);
+      expect(controller.activeFilterLabelStreamValue.value, 'Eventos');
+
+      controller.toggleCatalogCategoryFilter(category);
+      await _flushMicrotasks();
+
+      expect(
+          controller.mapTrayModeStreamValue.value, MapTrayMode.filterResults);
+      expect(controller.activeFilterLabelStreamValue.value, 'Eventos');
+    });
 
     test('applies catalog filter query metadata when available', () async {
       controller.toggleCatalogCategoryFilter(
@@ -1928,6 +2204,61 @@ void main() {
       expect(
         localController.selectedPoiStreamValue.value?.coverImageUri,
         'https://tenant.test/media/casa-cover.png',
+      );
+      expect(
+        localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
+        isNull,
+      );
+    });
+
+    test('deck poi selection hydrates event cover and marker from details',
+        () async {
+      final localScheduleRepository = _FakeScheduleRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+        scheduleRepository: localScheduleRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-event',
+          name: 'Evento Longo',
+          refType: 'event',
+          refId: 'event-1',
+          refSlug: 'evento-longo',
+          refPath: '/event/evento-longo',
+        ),
+      ];
+      localScheduleRepository.eventsBySlug['evento-longo'] = _buildEventDetailModel(
+        slug: 'evento-longo',
+        linkedArtistAvatarUrl: 'https://tenant.test/media/ananda-avatar.png',
+        linkedArtistCoverUrl: 'https://tenant.test/media/ananda-cover.png',
+      );
+
+      await localController.loadPois(PoiQuery());
+      final poi = localController.filteredPoisStreamValue.value!.single;
+
+      await localController.handleDeckPoiSelection(poi);
+      await _flushMicrotasks();
+
+      expect(localScheduleRepository.requestedSlugs, ['evento-longo']);
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-event');
+      expect(
+        localController.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/ananda-avatar.png',
+      );
+      expect(
+        localController.selectedPoiStreamValue.value?.coverImageUri,
+        'https://tenant.test/media/ananda-cover.png',
       );
       expect(
         localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
@@ -3425,7 +3756,8 @@ void main() {
       expect(find.text('Resultado 5'), findsOneWidget);
     });
 
-    testWidgets('filter results tray keeps filters on top and orders nearest first',
+    testWidgets(
+        'filter results tray keeps filters on top and orders nearest first',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
 
@@ -3961,6 +4293,60 @@ void main() {
       expect(find.text('Traçar rota'), findsOneWidget);
       expect(find.text('Ver detalhes'), findsOneWidget);
     });
+
+    testWidgets(
+        'selected poi from filter results uses filtered carousel and keeps tapped item active',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+      final farPoi = _buildPoi(
+        id: 'poi-far',
+        name: 'Mais longe',
+        distanceMeters: 900,
+      );
+      final selectedPoi = _buildPoi(
+        id: 'poi-near',
+        name: 'Mais perto',
+        distanceMeters: 120,
+      );
+
+      localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        farPoi,
+        selectedPoi,
+      ]);
+      localController.mapTrayModeStreamValue
+          .addValue(MapTrayMode.filterResults);
+      localController.selectPoi(selectedPoi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: localController,
+        router: router,
+      );
+
+      expect(find.byType(PageView), findsOneWidget);
+      expect(find.text('Mais perto'), findsOneWidget);
+      expect(localController.poiDeckIndexStreamValue.value, 0);
+
+      await tester.fling(find.byType(PageView), const Offset(-320, 0), 1200);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 320));
+
+      expect(localController.poiDeckIndexStreamValue.value, 1);
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-far');
+      expect(find.text('Mais longe'), findsOneWidget);
+    });
   });
 }
 
@@ -4068,6 +4454,7 @@ MapScreenController _buildMapController({
   AppData? appData,
   AppDataRepositoryContract? appDataRepository,
   AccountProfilesRepositoryContract? accountProfilesRepository,
+  ScheduleRepositoryContract? scheduleRepository,
 }) {
   final resolvedAppData = appData ?? _buildAppData();
   final resolvedAppDataRepository =
@@ -4080,6 +4467,7 @@ MapScreenController _buildMapController({
     appData: resolvedAppData,
     appDataRepository: resolvedAppDataRepository,
     accountProfilesRepository: accountProfilesRepository,
+    scheduleRepository: scheduleRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: resolvedAppDataRepository,
       userLocationRepository: userLocationRepository,

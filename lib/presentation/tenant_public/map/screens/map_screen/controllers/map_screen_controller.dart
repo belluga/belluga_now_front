@@ -38,9 +38,12 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -74,6 +77,7 @@ class MapScreenController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
     AccountProfilesRepositoryContract? accountProfilesRepository,
+    ScheduleRepositoryContract? scheduleRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
@@ -88,6 +92,10 @@ class MapScreenController implements Disposable {
             (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
                 ? GetIt.I.get<AccountProfilesRepositoryContract>()
                 : null),
+        _scheduleRepository = scheduleRepository ??
+            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
+                ? GetIt.I.get<ScheduleRepositoryContract>()
+                : null),
         mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
@@ -97,6 +105,7 @@ class MapScreenController implements Disposable {
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
   final AccountProfilesRepositoryContract? _accountProfilesRepository;
+  final ScheduleRepositoryContract? _scheduleRepository;
 
   final BellugaMapHandleContract mapHandle;
 
@@ -1136,6 +1145,9 @@ class MapScreenController implements Disposable {
     if (_isPartnerPoi(poi)) {
       return _hydratePartnerPoi(poi);
     }
+    if (_isEventPoi(poi)) {
+      return _hydrateEventPoi(poi);
+    }
     return null;
   }
 
@@ -1148,7 +1160,7 @@ class MapScreenController implements Disposable {
     if (repository == null) {
       return null;
     }
-    final slug = _resolvePartnerSlug(poi);
+    final slug = _resolvePoiSlug(poi);
     if (slug == null) {
       return null;
     }
@@ -1166,6 +1178,29 @@ class MapScreenController implements Disposable {
     } finally {
       repository.clearSelectedAccountProfile();
     }
+  }
+
+  Future<CityPoiModel?> _hydrateEventPoi(CityPoiModel poi) async {
+    final repository = _scheduleRepository;
+    if (repository == null) {
+      return null;
+    }
+    final slug = _resolvePoiSlug(poi);
+    if (slug == null) {
+      return null;
+    }
+
+    final event = await repository.getEventBySlug(
+      ScheduleRepoString.fromRaw(
+        slug,
+        defaultValue: slug,
+        isRequired: true,
+      ),
+    );
+    if (event == null) {
+      return null;
+    }
+    return _mergeEventIntoPoi(poi, event);
   }
 
   CityPoiModel _mergeAccountProfileIntoPoi(
@@ -1231,6 +1266,28 @@ class MapScreenController implements Disposable {
     );
   }
 
+  CityPoiModel _mergeEventIntoPoi(CityPoiModel poi, EventModel event) {
+    final coverImageUrl = _resolveEventCoverImageUrl(event);
+    final markerImageUrl = _resolveEventMarkerImageUrl(event, coverImageUrl);
+    final mergedVisual = markerImageUrl == null
+        ? poi.visual
+        : CityPoiVisual.image(
+            imageUriValue: _parseImageUriValue(markerImageUrl),
+          );
+
+    return poi.copyWith(
+      coverImageUriValue:
+          coverImageUrl == null ? null : _parseImageUriValue(coverImageUrl),
+      visual: mergedVisual,
+      refSlugValue: poi.refSlug == null && event.slug.trim().isNotEmpty
+          ? _parseReferenceSlugValue(event.slug)
+          : null,
+      refPathValue: poi.refPath == null && event.slug.trim().isNotEmpty
+          ? _parseReferencePathValue('/event/${event.slug}')
+          : null,
+    );
+  }
+
   CityPoiModel _overlayHydratedPoi({
     required CityPoiModel base,
     required CityPoiModel hydrated,
@@ -1252,7 +1309,11 @@ class MapScreenController implements Disposable {
     return poi.refType.trim().toLowerCase() == 'account_profile';
   }
 
-  String? _resolvePartnerSlug(CityPoiModel poi) {
+  bool _isEventPoi(CityPoiModel poi) {
+    return poi.refType.trim().toLowerCase() == 'event';
+  }
+
+  String? _resolvePoiSlug(CityPoiModel poi) {
     final refSlug = poi.refSlug?.trim();
     if (refSlug != null && refSlug.isNotEmpty) {
       return refSlug;
@@ -1272,6 +1333,61 @@ class MapScreenController implements Disposable {
       return null;
     }
     return segments.last;
+  }
+
+  String? _resolveEventCoverImageUrl(EventModel event) {
+    final eventThumbUrl = _normalizeExternalImageUrl(
+      event.thumb?.thumbUri.value.toString(),
+    );
+    if (eventThumbUrl != null) {
+      return eventThumbUrl;
+    }
+
+    final linkedArtist = event.primaryLinkedArtist;
+    final linkedArtistCover = _normalizeExternalImageUrl(
+      linkedArtist?.coverUrl,
+    );
+    if (linkedArtistCover != null) {
+      return linkedArtistCover;
+    }
+
+    final linkedArtistAvatar = _normalizeExternalImageUrl(
+      linkedArtist?.avatarUrl,
+    );
+    if (linkedArtistAvatar != null) {
+      return linkedArtistAvatar;
+    }
+
+    final eventImageUri = VenueEventResume.resolvePreferredImageUri(event);
+    return _normalizeExternalImageUrl(eventImageUri.toString());
+  }
+
+  String? _resolveEventMarkerImageUrl(
+    EventModel event,
+    String? coverImageUrl,
+  ) {
+    final linkedArtistAvatar = _normalizeExternalImageUrl(
+      event.primaryLinkedArtist?.avatarUrl,
+    );
+    if (linkedArtistAvatar != null) {
+      return linkedArtistAvatar;
+    }
+
+    final leadingArtistAvatar = event.artists
+        .map((artist) => _normalizeExternalImageUrl(artist.avatarUri?.toString()))
+        .firstWhere((candidate) => candidate != null, orElse: () => null);
+    return leadingArtistAvatar ?? coverImageUrl;
+  }
+
+  String? _normalizeExternalImageUrl(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    if (normalized.toLowerCase().startsWith('asset://')) {
+      return null;
+    }
+    return normalized;
   }
 
   bool _isWeakPoiDescription(String raw) {
@@ -1336,13 +1452,17 @@ class MapScreenController implements Disposable {
     if (_filterInteractionLocked || _markerTapSuppressedAfterFilterReload) {
       return;
     }
-    if (mapTrayModeStreamValue.value != MapTrayMode.discovery) {
+    final preserveFilterContext =
+        mapTrayModeStreamValue.value == MapTrayMode.filterResults;
+    if (!preserveFilterContext &&
+        mapTrayModeStreamValue.value != MapTrayMode.discovery) {
       mapTrayModeStreamValue.addValue(MapTrayMode.discovery);
     }
     clearClusterPicker();
     if (selectedPoiLoadingIdStreamValue.value == poi.id) {
       return;
     }
+    _syncDeckIndexToPoi(poi);
     final hasStackCandidates = poi.stackCount > 1 && poi.stackKey.isNotEmpty;
     if (!hasStackCandidates) {
       final loadingSequence = _beginSelectedPoiLoading(poi);
@@ -1407,6 +1527,7 @@ class MapScreenController implements Disposable {
     if (selectedPoiLoadingIdStreamValue.value == poi.id) {
       return;
     }
+    _syncDeckIndexToPoi(poi);
     if (selectedPoiStreamValue.value?.id == poi.id) {
       await _focusOnPoi(poi);
       return;
@@ -1568,7 +1689,7 @@ class MapScreenController implements Disposable {
     }
     final current = filterModeStreamValue.value;
     if (current == mode) {
-      clearFilters();
+      showFilterResultsTray();
       return;
     }
     if (mode == PoiFilterMode.none) {
@@ -1697,7 +1818,7 @@ class MapScreenController implements Disposable {
       taxonomyTokens: taxonomyTokens,
       tags: tags,
     )) {
-      clearFilters();
+      showFilterResultsTray();
       return;
     }
 
@@ -1791,15 +1912,96 @@ class MapScreenController implements Disposable {
     if (selectedPoiStreamValue.value != null) {
       clearSelectedPoi(preserveMarkerMemory: false);
     }
-    final pois = filteredPoisStreamValue.value ?? const <CityPoiModel>[];
+    final pois = orderedPoisByDistance(
+      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+    );
     if (pois.isEmpty) {
       return;
     }
+    _syncDeckIndexToPoi(pois.first);
     await _focusOnPoi(
       pois.first,
       zoom: mapHandle.currentZoom,
       verticalViewportAnchor: _filteredPreviewViewportAnchor,
     );
+  }
+
+  List<CityPoiModel> orderedPoisByDistance(List<CityPoiModel> pois) {
+    final ordered = List<CityPoiModel>.from(pois);
+    ordered.sort((left, right) {
+      final leftDistance = left.distanceMeters ?? double.infinity;
+      final rightDistance = right.distanceMeters ?? double.infinity;
+      final byDistance = leftDistance.compareTo(rightDistance);
+      if (byDistance != 0) {
+        return byDistance;
+      }
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+    return List<CityPoiModel>.unmodifiable(ordered);
+  }
+
+  List<CityPoiModel> deckPoisForSelectedPoi(CityPoiModel selectedPoi) {
+    if (mapTrayModeStreamValue.value != MapTrayMode.filterResults) {
+      return <CityPoiModel>[selectedPoi];
+    }
+
+    final ordered = orderedPoisByDistance(
+      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+    );
+    final selectedIndex = ordered.indexWhere((poi) => poi.id == selectedPoi.id);
+    if (selectedIndex == -1) {
+      return <CityPoiModel>[selectedPoi];
+    }
+
+    return List<CityPoiModel>.unmodifiable(
+      ordered.map((poi) {
+        if (poi.id == selectedPoi.id) {
+          return selectedPoi;
+        }
+        final cachedHydratedPoi = _hydratedPoiCacheById[poi.id];
+        if (cachedHydratedPoi == null) {
+          return poi;
+        }
+        return _overlayHydratedPoi(base: poi, hydrated: cachedHydratedPoi);
+      }),
+    );
+  }
+
+  int deckIndexForSelectedPoi(
+    CityPoiModel selectedPoi,
+    List<CityPoiModel> deckPois,
+  ) {
+    final resolvedIndex = deckPois.indexWhere((poi) => poi.id == selectedPoi.id);
+    return resolvedIndex == -1 ? 0 : resolvedIndex;
+  }
+
+  Future<void> handleFilteredDeckPageChanged(int index) async {
+    setPoiDeckIndex(index);
+    final selectedPoi = selectedPoiStreamValue.value;
+    if (selectedPoi == null) {
+      return;
+    }
+    final deckPois = deckPoisForSelectedPoi(selectedPoi);
+    if (deckPois.isEmpty || index < 0 || index >= deckPois.length) {
+      return;
+    }
+    final targetPoi = deckPois[index];
+    if (selectedPoiStreamValue.value?.id != targetPoi.id) {
+      selectPoi(targetPoi);
+    }
+    await _focusOnPoi(targetPoi);
+  }
+
+  void _syncDeckIndexToPoi(CityPoiModel poi) {
+    final orderedPois = orderedPoisByDistance(
+      filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+    );
+    final index = orderedPois.indexWhere((entry) => entry.id == poi.id);
+    if (index == -1) {
+      resetPoiDeckIndex();
+      return;
+    }
+    setPoiDeckIndex(index);
   }
 
   bool isCategoryFilterActive(PoiFilterCategory category) {

@@ -16,6 +16,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart'
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
@@ -45,6 +47,8 @@ class CityPoiModel implements MapPoi {
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
     PoiBooleanValue? isHappeningNowValue,
+    this.timeStartValue,
+    this.timeEndValue,
     this.updatedAtValue,
     this.distanceMetersValue,
     this.visual,
@@ -84,6 +88,8 @@ class CityPoiModel implements MapPoi {
   final PoiStackCountValue stackCountValue;
   final List<CityPoiModel> stackItems;
   final PoiBooleanValue isHappeningNowValue;
+  final PoiTimeStartValue? timeStartValue;
+  final PoiTimeEndValue? timeEndValue;
   final PoiUpdatedAtValue? updatedAtValue;
   final DistanceInMetersValue? distanceMetersValue;
   final CityPoiVisual? visual;
@@ -153,6 +159,8 @@ class CityPoiModel implements MapPoi {
   String get stackKey => stackKeyValue.value;
   int get stackCount => stackCountValue.value;
   bool get isHappeningNow => isHappeningNowValue.value;
+  DateTime? get timeStart => timeStartValue?.value;
+  DateTime? get timeEnd => timeEndValue?.value;
   DateTime? get updatedAt => updatedAtValue?.value;
   double? get distanceMeters => distanceMetersValue?.value;
 
@@ -180,17 +188,20 @@ class CityPoiModel implements MapPoi {
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
     PoiBooleanValue? isHappeningNowValue,
+    PoiTimeStartValue? timeStartValue,
+    PoiTimeEndValue? timeEndValue,
     PoiUpdatedAtValue? updatedAtValue,
     DistanceInMetersValue? distanceMetersValue,
     CityPoiVisual? visual,
   }) {
-    final resolvedStackItems = stackItems ?? (() {
-      final collection = CityPoiStackItems();
-      for (final item in this.stackItems) {
-        collection.add(item);
-      }
-      return collection;
-    })();
+    final resolvedStackItems = stackItems ??
+        (() {
+          final collection = CityPoiStackItems();
+          for (final item in this.stackItems) {
+            collection.add(item);
+          }
+          return collection;
+        })();
     return CityPoiModel(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
@@ -213,6 +224,8 @@ class CityPoiModel implements MapPoi {
       stackCountValue: stackCountValue ?? this.stackCountValue,
       stackItems: resolvedStackItems,
       isHappeningNowValue: isHappeningNowValue ?? this.isHappeningNowValue,
+      timeStartValue: timeStartValue ?? this.timeStartValue,
+      timeEndValue: timeEndValue ?? this.timeEndValue,
       updatedAtValue: updatedAtValue ?? this.updatedAtValue,
       distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,
       visual: visual ?? this.visual,

@@ -21,6 +21,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_visual_dto.dart';
@@ -48,6 +50,8 @@ class CityPoiDTO {
     this.stackCount = 1,
     this.items = const <CityPoiDTO>[],
     this.isHappeningNow = false,
+    this.timeStart,
+    this.timeEnd,
     this.updatedAt,
     this.distanceMeters,
     this.visual,
@@ -74,6 +78,8 @@ class CityPoiDTO {
   final int stackCount;
   final List<CityPoiDTO> items;
   final bool isHappeningNow;
+  final DateTime? timeStart;
+  final DateTime? timeEnd;
   final DateTime? updatedAt;
   final double? distanceMeters;
   final CityPoiVisualDTO? visual;
@@ -119,8 +125,9 @@ class CityPoiDTO {
     final fallbackDescription = 'Ponto de interesse no mapa';
     final fallbackAddress = 'Mapa';
     final updatedAtRaw = json['updated_at']?.toString();
-    final updatedAt =
-        updatedAtRaw == null ? null : DateTime.tryParse(updatedAtRaw);
+    final updatedAt = _parseDateTime(json['updated_at'] ?? updatedAtRaw);
+    final timeStart = _parseDateTime(json['time_start']);
+    final timeEnd = _parseDateTime(json['time_end']);
     final visual =
         CityPoiVisualDTO.tryFromJson(json['visual'] ?? json['poi_visual']);
     final rawCategoryLabel = (json['category_label'] ??
@@ -163,6 +170,8 @@ class CityPoiDTO {
           .map(CityPoiDTO.fromJson)
           .toList(growable: false),
       isHappeningNow: json['is_happening_now'] as bool? ?? false,
+      timeStart: timeStart,
+      timeEnd: timeEnd,
       updatedAt: updatedAt,
       distanceMeters: (json['distance_meters'] as num?)?.toDouble(),
       visual: visual,
@@ -221,6 +230,12 @@ class CityPoiDTO {
       'stack_count': stackCount,
       'items': items.map((item) => item.toJson()).toList(growable: false),
       'is_happening_now': isHappeningNow,
+      'time_start': timeStart == null
+          ? null
+          : TimezoneConverter.localToUtc(timeStart!).toIso8601String(),
+      'time_end': timeEnd == null
+          ? null
+          : TimezoneConverter.localToUtc(timeEnd!).toIso8601String(),
       'updated_at': updatedAt == null
           ? null
           : TimezoneConverter.localToUtc(updatedAt!).toIso8601String(),
@@ -281,6 +296,14 @@ class CityPoiDTO {
     final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
     final isHappeningNowValue = PoiBooleanValue()
       ..parse(isHappeningNow.toString());
+    PoiTimeStartValue? timeStartValue;
+    if (timeStart != null) {
+      timeStartValue = PoiTimeStartValue()..parse(timeStart!.toIso8601String());
+    }
+    PoiTimeEndValue? timeEndValue;
+    if (timeEnd != null) {
+      timeEndValue = PoiTimeEndValue()..parse(timeEnd!.toIso8601String());
+    }
     PoiUpdatedAtValue? updatedAtValue;
     if (updatedAt != null) {
       updatedAtValue = PoiUpdatedAtValue()..parse(updatedAt!.toIso8601String());
@@ -323,6 +346,8 @@ class CityPoiDTO {
       stackCountValue: stackCountValue,
       stackItems: stackItemCollection,
       isHappeningNowValue: isHappeningNowValue,
+      timeStartValue: timeStartValue,
+      timeEndValue: timeEndValue,
       updatedAtValue: updatedAtValue,
       distanceMetersValue: distanceMetersValue,
       visual: visual?.toDomain(),
@@ -347,5 +372,28 @@ class CityPoiDTO {
         .map(_normalizeMap)
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
+  }
+
+  static DateTime? _parseDateTime(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    if (raw is DateTime) {
+      return raw;
+    }
+    if (raw is Map) {
+      final normalized = _normalizeMap(raw);
+      if (normalized == null) {
+        return null;
+      }
+      return _parseDateTime(
+        normalized[r'$date'] ?? normalized['date'] ?? normalized['value'],
+      );
+    }
+    final value = raw.toString().trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value);
   }
 }

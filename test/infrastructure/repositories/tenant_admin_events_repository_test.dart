@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -306,6 +307,33 @@ void main() {
           request.path.endsWith('/admin/api/v1/events'),
     );
     expect(request.queryParameters['archived'], 1);
+  });
+
+  test('fetchEventsPage serializes temporal filter as csv query parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      temporalBuckets: const <TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+        TenantAdminEventTemporalBucket.future,
+      },
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['temporal'], 'now,future');
   });
 
   test(

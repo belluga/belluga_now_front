@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/single_poi_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
@@ -36,9 +37,18 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
+  late final PageController _pageController = PageController(
+    viewportFraction: 0.94,
+  );
 
   static const double _defaultCardHeight = 356;
   static const double _minCardHeight = 280;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +58,48 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       onNullWidget: const SizedBox.shrink(),
       builder: (_, poi) {
         final selectedPoi = poi!;
+        final deckPois = _controller.deckPoisForSelectedPoi(selectedPoi);
+        final useFilteredDeck = deckPois.length > 1;
+        final deckIndex = _controller.deckIndexForSelectedPoi(
+          selectedPoi,
+          deckPois,
+        );
+        _syncPageController(deckIndex);
         return Stack(
           clipBehavior: Clip.none,
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 16, right: 2),
-              child: SinglePoiCard(
-                poi: selectedPoi,
-                colorScheme: scheme,
-                cardBuilder: _cardBuilder,
-                onPrimaryAction: _handlePoiAction,
-                onShare: _handleShare,
-                onRoute: _handleRoute,
-                onCardHeightChanged: (poiId, height) =>
-                    _handleMeasuredHeight(context, poiId, height),
-                deckHeight: _heightForPoi(context, selectedPoi),
-                deckMeasurementPadding: _kDeckMeasurementPadding,
-              ),
+              child: useFilteredDeck
+                  ? FilteredDeck(
+                      pois: deckPois,
+                      controller: _controller,
+                      colorScheme: scheme,
+                      pageController: _pageController,
+                      cardBuilder: _cardBuilder,
+                      onPrimaryAction: _handlePoiAction,
+                      onShare: _handleShare,
+                      onRoute: _handleRoute,
+                      onChanged: (index) => unawaited(
+                        _controller.handleFilteredDeckPageChanged(index),
+                      ),
+                      deckHeight: _heightForPoi(context, selectedPoi),
+                      onCardHeightChanged: (poiId, height) =>
+                          _handleMeasuredHeight(context, poiId, height),
+                      deckMeasurementPadding: _kDeckMeasurementPadding,
+                    )
+                  : SinglePoiCard(
+                      poi: selectedPoi,
+                      colorScheme: scheme,
+                      cardBuilder: _cardBuilder,
+                      onPrimaryAction: _handlePoiAction,
+                      onShare: _handleShare,
+                      onRoute: _handleRoute,
+                      onCardHeightChanged: (poiId, height) =>
+                          _handleMeasuredHeight(context, poiId, height),
+                      deckHeight: _heightForPoi(context, selectedPoi),
+                      deckMeasurementPadding: _kDeckMeasurementPadding,
+                    ),
             ),
             Positioned(
               top: 0,
@@ -84,6 +119,29 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         );
       },
     );
+  }
+
+  void _syncPageController(int index) {
+    if (!_pageController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          if (!_pageController.hasClients) {
+            return;
+          }
+          if (_pageController.page?.round() == index) {
+            return;
+          }
+          _pageController.jumpToPage(index);
+        } catch (_) {
+          return;
+        }
+      });
+      return;
+    }
+    if (_pageController.page?.round() == index) {
+      return;
+    }
+    _pageController.jumpToPage(index);
   }
 
   void _handlePoiAction(CityPoiModel poi) {

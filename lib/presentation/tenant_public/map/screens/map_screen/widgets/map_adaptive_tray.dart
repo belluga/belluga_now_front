@@ -97,8 +97,7 @@ class MapAdaptiveTray extends StatelessWidget {
                                             : trayMode ==
                                                     MapTrayMode.filterResults
                                                 ? _TraySurface(
-                                                    key:
-                                                        const ValueKey<String>(
+                                                    key: const ValueKey<String>(
                                                       'map-tray-surface-filter-results',
                                                     ),
                                                     dragEnabled: true,
@@ -130,22 +129,24 @@ class MapAdaptiveTray extends StatelessWidget {
                                                       ),
                                                     ),
                                                   )
-                                            : _FloatingFilterCluster(
-                                                key: ValueKey<String>(
-                                                  '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
-                                                ),
-                                                controller: controller,
-                                                filterOptions: filterOptions,
-                                                activeFilterLabel:
-                                                    visualFilterLabel,
-                                                activeCatalogFilterKey:
-                                                    activeCatalogFilterKey,
-                                                appliedCatalogFilterKey:
-                                                    appliedCatalogFilterKey,
-                                                filterPending: filterPending,
-                                                expanded: trayMode ==
-                                                    MapTrayMode.filters,
-                                              ),
+                                                : _FloatingFilterCluster(
+                                                    key: ValueKey<String>(
+                                                      '${trayMode.name}|${visualFilterLabel ?? 'none'}|${activeCatalogFilterKey ?? 'none'}|${appliedCatalogFilterKey ?? 'none'}|$filterPending',
+                                                    ),
+                                                    controller: controller,
+                                                    filterOptions:
+                                                        filterOptions,
+                                                    activeFilterLabel:
+                                                        visualFilterLabel,
+                                                    activeCatalogFilterKey:
+                                                        activeCatalogFilterKey,
+                                                    appliedCatalogFilterKey:
+                                                        appliedCatalogFilterKey,
+                                                    filterPending:
+                                                        filterPending,
+                                                    expanded: trayMode ==
+                                                        MapTrayMode.filters,
+                                                  ),
                                       );
                                     },
                                   );
@@ -288,8 +289,7 @@ class _FloatingFilterCluster extends StatelessWidget {
                               categories: visibleCategories,
                               activeFilterLabel: activeLabel,
                               activeCatalogFilterKey: activeCatalogFilterKey,
-                              appliedCatalogFilterKey:
-                                  appliedCatalogFilterKey,
+                              appliedCatalogFilterKey: appliedCatalogFilterKey,
                               filterPending: filterPending,
                             ),
                     ),
@@ -386,7 +386,7 @@ class _FilterResultsTrayBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = controller.visibleCatalogCategories(filterOptions);
-    final orderedPois = _sortPoisByDistance(filteredPois);
+    final orderedPois = controller.orderedPoisByDistance(filteredPois);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -462,8 +462,8 @@ class _FilterChipWrap extends StatelessWidget {
           );
           return _FloatingFilterChip(
             category: category,
-            isActive:
-                controller.isCategoryFilterActive(category) || matchesPersistedKey,
+            isActive: controller.isCategoryFilterActive(category) ||
+                matchesPersistedKey,
             activeFilterLabel: activeFilterLabel,
             pending: filterPending && matchesPersistedKey,
             enabled: !filterPending,
@@ -647,25 +647,46 @@ class _FloatingFilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              MapFilterCategoryIcon(
-                category: category,
-                isActive: true,
-                fallbackIcon: Icons.tune_rounded,
-                fallbackColor: palette.foregroundColor,
-              ),
-              const SizedBox(width: 8),
               Flexible(
-                child: Text(
-                  (activeFilterLabel?.trim().isNotEmpty ?? false)
-                      ? activeFilterLabel!.trim()
-                      : (category.label.trim().isEmpty
-                          ? category.key.trim()
-                          : category.label),
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: palette.foregroundColor,
-                        fontWeight: FontWeight.w700,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    key: const ValueKey<String>('map-selected-filter-body'),
+                    onTap: enabled ? onTap : null,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          MapFilterCategoryIcon(
+                            category: category,
+                            isActive: true,
+                            fallbackIcon: Icons.tune_rounded,
+                            fallbackColor: palette.foregroundColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              (activeFilterLabel?.trim().isNotEmpty ?? false)
+                                  ? activeFilterLabel!.trim()
+                                  : (category.label.trim().isEmpty
+                                      ? category.key.trim()
+                                      : category.label),
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: palette.foregroundColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -723,7 +744,7 @@ class _SearchTrayBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appliedSearch = controller.searchTermStreamValue.value?.trim() ?? '';
-    final orderedPois = _sortPoisByDistance(filteredPois);
+    final orderedPois = controller.orderedPoisByDistance(filteredPois);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -875,8 +896,8 @@ class _SearchSuggestionCard extends StatelessWidget {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
         );
-    final liveBadgeLabel =
-        poi.isHappeningNow ? PoiContentResolver.badgeLabel(poi) : null;
+    final badgeLabel = PoiContentResolver.eventTimingBadgeLabel(poi);
+    final isLiveNow = poi.isHappeningNow && badgeLabel != null;
 
     return Material(
       color: scheme.surfaceContainerHigh.withValues(alpha: 0.72),
@@ -895,10 +916,12 @@ class _SearchSuggestionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (liveBadgeLabel != null) ...[
+                    if (badgeLabel != null) ...[
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: scheme.errorContainer,
+                          color: isLiveNow
+                              ? scheme.errorContainer
+                              : scheme.primaryContainer,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Padding(
@@ -907,12 +930,14 @@ class _SearchSuggestionCard extends StatelessWidget {
                             vertical: 3,
                           ),
                           child: Text(
-                            liveBadgeLabel.toUpperCase(),
+                            badgeLabel.toUpperCase(),
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
                                 ?.copyWith(
-                                  color: scheme.onErrorContainer,
+                                  color: isLiveNow
+                                      ? scheme.onErrorContainer
+                                      : scheme.onPrimaryContainer,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.6,
                                 ),
@@ -1030,18 +1055,4 @@ class _TrayGrabber extends StatelessWidget {
       ),
     );
   }
-}
-
-List<CityPoiModel> _sortPoisByDistance(List<CityPoiModel> pois) {
-  final ordered = List<CityPoiModel>.from(pois);
-  ordered.sort((left, right) {
-    final leftDistance = left.distanceMeters ?? double.infinity;
-    final rightDistance = right.distanceMeters ?? double.infinity;
-    final byDistance = leftDistance.compareTo(rightDistance);
-    if (byDistance != 0) {
-      return byDistance;
-    }
-    return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-  });
-  return List<CityPoiModel>.unmodifiable(ordered);
 }

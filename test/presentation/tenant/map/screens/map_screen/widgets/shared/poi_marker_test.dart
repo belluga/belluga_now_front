@@ -9,10 +9,14 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_marker.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +26,9 @@ CityPoiModel _buildPoi({
   required CityPoiCategory category,
   CityPoiVisual? visual,
   int stackCount = 1,
+  String refType = 'static',
+  DateTime? timeStart,
+  bool isHappeningNow = false,
 }) {
   final idValue = CityPoiIdValue()..parse('poi-1');
   final nameValue = CityPoiNameValue()..parse('POI');
@@ -29,6 +36,13 @@ CityPoiModel _buildPoi({
   final addressValue = CityPoiAddressValue()..parse('Address');
   final priorityValue = PoiPriorityValue()..parse('10');
   final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
+  final refTypeValue = PoiReferenceTypeValue()..parse(refType);
+  final refIdValue = PoiReferenceIdValue()..parse('ref-1');
+  final isHappeningNowValue = PoiBooleanValue()
+    ..parse(isHappeningNow.toString());
+  final timeStartValue = timeStart == null
+      ? null
+      : (PoiTimeStartValue()..parse(timeStart.toIso8601String()));
   final coordinate = CityCoordinate(
     latitudeValue: LatitudeValue()..parse('-20.0'),
     longitudeValue: LongitudeValue()..parse('-40.0'),
@@ -42,7 +56,11 @@ CityPoiModel _buildPoi({
     category: category,
     coordinate: coordinate,
     priorityValue: priorityValue,
+    refTypeValue: refTypeValue,
+    refIdValue: refIdValue,
     stackCountValue: stackCountValue,
+    isHappeningNowValue: isHappeningNowValue,
+    timeStartValue: timeStartValue,
     visual: visual,
   );
 }
@@ -199,6 +217,62 @@ void main() {
 
     final image = tester.widget<Image>(find.byType(Image).first);
     expect(image.image, isA<NetworkImage>());
+  });
+
+  testWidgets('renders AGORA badge for live event marker', (tester) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      refType: 'event',
+      isHappeningNow: true,
+      timeStart: DateTime(2026, 4, 7, 18, 0),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('AGORA'), findsOneWidget);
+  });
+
+  testWidgets('renders start time badge for upcoming event marker',
+      (tester) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      refType: 'event',
+      timeStart: DateTime(2026, 4, 7, 18, 0),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('18:00'), findsOneWidget);
   });
 
   testWidgets(

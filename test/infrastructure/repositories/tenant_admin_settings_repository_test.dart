@@ -806,6 +806,77 @@ void main() {
     expect(adapter.requests[1].uri.host, 'tenant-b.test');
   });
 
+  test('fetchTelemetrySettings uses tenant admin telemetry endpoint', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final snapshot = await repository.fetchTelemetrySettings();
+
+    expect(snapshot.integrations, hasLength(1));
+    expect(snapshot.integrations.single.type, 'mixpanel');
+    expect(snapshot.integrations.single.token, 'token-a');
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
+  });
+
+  test('upsertTelemetryIntegration posts telemetry payload to tenant admin endpoint',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final snapshot = await repository.upsertTelemetryIntegration(
+      integration: TenantAdminTelemetryIntegration(
+        type: _tokenValue('mixpanel'),
+        trackAll: TenantAdminBooleanValue(defaultValue: false)..parse('false'),
+        eventValues: [_tokenValue('app_opened')],
+        token: TenantAdminOptionalTextValue()..parse('tenant-token'),
+      ),
+    );
+
+    expect(snapshot.integrations, hasLength(1));
+    expect(snapshot.integrations.single.type, 'mixpanel');
+    expect(snapshot.integrations.single.token, 'tenant-token');
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
+    expect(adapter.requests.single.data, isA<Map<String, dynamic>>());
+    final payload = Map<String, dynamic>.from(
+      adapter.requests.single.data as Map<String, dynamic>,
+    );
+    expect(payload['type'], 'mixpanel');
+    expect(payload['events'], equals(['app_opened']));
+    expect(payload['token'], 'tenant-token');
+    expect(payload.containsKey('url'), isFalse);
+  });
+
+  test('deleteTelemetryIntegration deletes by type at tenant admin endpoint',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final snapshot = await repository.deleteTelemetryIntegration(
+      type: _tokenValue('mixpanel'),
+    );
+
+    expect(snapshot.integrations, isEmpty);
+    expect(
+      adapter.requests.single.uri.path,
+      '/admin/api/v1/settings/telemetry/mixpanel',
+    );
+  });
+
   test(
       'fetchBrandingSettings uses tenant-admin resolved origin for environment endpoint',
       () async {

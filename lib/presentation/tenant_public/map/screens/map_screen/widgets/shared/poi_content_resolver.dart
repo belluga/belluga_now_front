@@ -1,15 +1,64 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PoiContentResolver {
   const PoiContentResolver._();
 
   static String badgeLabel(CityPoiModel poi) {
+    final eventBadge = eventTimingBadgeLabel(poi);
+    if (eventBadge != null) {
+      return eventBadge;
+    }
     if (poi.isHappeningNow) {
       return 'Ao vivo';
     }
     return typeLabel(poi);
+  }
+
+  static bool isEventPoi(CityPoiModel poi) {
+    return poi.refType.trim().toLowerCase() == 'event';
+  }
+
+  static String? eventTimingBadgeLabel(CityPoiModel poi) {
+    if (!isEventPoi(poi)) {
+      return null;
+    }
+    if (poi.isHappeningNow) {
+      return 'AGORA';
+    }
+    final start = poi.timeStart;
+    if (start == null) {
+      return null;
+    }
+    final localStart = TimezoneConverter.utcToLocal(start);
+    return DateFormat('HH:mm').format(localStart);
+  }
+
+  static String? eventScheduleLabel(CityPoiModel poi) {
+    if (!isEventPoi(poi)) {
+      return null;
+    }
+    final start = poi.timeStart;
+    if (start == null) {
+      return null;
+    }
+    final localStart = TimezoneConverter.utcToLocal(start);
+    final localEnd =
+        poi.timeEnd == null ? null : TimezoneConverter.utcToLocal(poi.timeEnd!);
+    final startDate = DateFormat('dd/MM').format(localStart);
+    final startTime = DateFormat('HH:mm').format(localStart);
+    if (localEnd == null) {
+      return '$startDate • $startTime';
+    }
+    final endDate = DateFormat('dd/MM').format(localEnd);
+    final endTime = DateFormat('HH:mm').format(localEnd);
+    if (startDate == endDate) {
+      return '$startDate • $startTime - $endTime';
+    }
+    return '$startDate $startTime - $endDate $endTime';
   }
 
   static String typeLabel(CityPoiModel poi) {

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
@@ -346,9 +347,46 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       },
     );
 
+    final temporalFilter =
+        StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
+      streamValue: _controller.temporalFilterStreamValue,
+      builder: (context, selectedBuckets) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Temporalidade',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: TenantAdminEventTemporalBucket.values
+                  .map(
+                    (bucket) => FilterChip(
+                      key: ValueKey<String>(
+                        'tenant-admin-events-temporal-${bucket.apiValue}',
+                      ),
+                      label: Text(bucket.label),
+                      selected: selectedBuckets.contains(bucket),
+                      onSelected: (_) {
+                        _controller.toggleTemporalFilter(bucket);
+                        _controller.applyFilters();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+        );
+      },
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (error != null && error.isNotEmpty)
             Padding(
@@ -369,6 +407,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                 Expanded(child: visibilityFilter),
               ],
             ),
+            const SizedBox(height: 12),
+            temporalFilter,
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
@@ -427,6 +467,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                 ),
               ],
             ),
+          const SizedBox(height: 12),
+          temporalFilter,
         ],
       ),
     );

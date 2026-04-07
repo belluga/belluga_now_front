@@ -22,9 +22,37 @@ class EventPoiDetailCard extends PoiBaseCard {
 
   @override
   List<Widget Function(BuildContext)> buildSections() => [
+        _scheduleSection,
         _updatedAtSection,
         tagsSection,
       ];
+
+  Widget _scheduleSection(BuildContext context) {
+    final scheduleLabel = PoiContentResolver.eventScheduleLabel(poi);
+    if (scheduleLabel == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          poi.isHappeningNow ? Icons.bolt_rounded : Icons.schedule_rounded,
+          size: 18,
+          color: resolveAccentColor(),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            scheduleLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _updatedAtSection(BuildContext context) {
     final updatedAtLabel = PoiContentResolver.updatedAtLabel(poi);
