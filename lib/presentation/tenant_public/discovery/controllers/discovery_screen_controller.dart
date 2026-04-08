@@ -77,9 +77,9 @@ class DiscoveryScreenController implements Disposable {
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
-  StreamValue<List<EventModel>> get liveNowEventsStreamValue =>
+  StreamValue<List<EventModel>?> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+      StreamValue<List<EventModel>?>(defaultValue: null);
   StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
@@ -434,7 +434,8 @@ class DiscoveryScreenController implements Disposable {
   }
 
   String? _originSignature() {
-    final coordinate = _locationOriginService.resolveCached().effectiveCoordinate;
+    final coordinate =
+        _locationOriginService.resolveCached().effectiveCoordinate;
     if (coordinate == null) {
       return null;
     }

@@ -152,12 +152,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     if (showSections)
                                       SliverToBoxAdapter(
                                         child: StreamValueBuilder<
-                                            List<EventModel>>(
+                                            List<EventModel>?>(
                                           streamValue: _controller
                                               .liveNowEventsStreamValue,
                                           builder: (context, liveNow) {
                                             return DiscoveryLiveNowSection(
-                                              items: liveNow,
+                                              items: liveNow ??
+                                                  const <EventModel>[],
                                               onTap: (event) =>
                                                   context.router.push(
                                                 ImmersiveEventDetailRoute(

@@ -7,9 +7,11 @@ import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamval
 import 'package:belluga_analysis_plugin/src/rules/controller_owned_streamvalue_dispose_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_async_model_fetch_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_repository_pagination_arguments_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_streamvalue_parameter_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_streamvalue_model_ownership_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/domain_dto_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/domain_json_factory_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/domain_paged_result_type_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/domain_primitive_field_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/dto_mapper_pass_through_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/global_ui_controller_naming_forbidden_rule.dart';
@@ -20,6 +22,7 @@ import 'package:belluga_analysis_plugin/src/rules/module_scoped_controller_dispo
 import 'package:belluga_analysis_plugin/src/rules/multi_public_class_file_warning_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_widget_file_warning_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/repository_contract_pagination_controls_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_json_parsing_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_model_stream_lifecycle_methods_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_model_streamvalue_nullable_required_rule.dart';
@@ -68,6 +71,7 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(UiDtoImportForbiddenRule());
     registry.registerWarningRule(DomainDtoDependencyForbiddenRule());
     registry.registerWarningRule(DomainJsonFactoryForbiddenRule());
+    registry.registerWarningRule(DomainPagedResultTypeForbiddenRule());
     registry.registerWarningRule(DomainPrimitiveFieldForbiddenRule());
     registry.registerWarningRule(DtoMapperPassThroughForbiddenRule());
     registry.registerWarningRule(UiFutureStreamBuilderForbiddenRule());
@@ -85,6 +89,9 @@ class BellugaAnalysisPlugin extends Plugin {
     );
     registry.registerWarningRule(RepositoryRegistrationScopeEnforcedRule());
     registry.registerWarningRule(RepositoryRegistrationLifecycleEnforcedRule());
+    registry.registerWarningRule(
+      RepositoryContractPaginationControlsForbiddenRule(),
+    );
     registry.registerWarningRule(
       RepositoryServiceCatchReturnFallbackForbiddenRule(),
     );
@@ -112,6 +119,7 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(
       ControllerDelegatedStreamValueWriteForbiddenRule(),
     );
+    registry.registerWarningRule(ControllerStreamValueParameterForbiddenRule());
     registry.registerWarningRule(
       ControllerOwnedStreamValueDisposeRequiredRule(),
     );

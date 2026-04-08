@@ -22,7 +22,6 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -456,9 +455,11 @@ void main() {
     expect(scheduleRepository.lastLiveNowRequest!.maxDistanceMeters,
         closeTo(preferredRadiusMeters, 0.000001));
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug, 'evento-live');
     expect(
-      controller.liveNowEventsStreamValue.value.first.artists.first.displayName,
+        controller.liveNowEventsStreamValue.value!.first.slug, 'evento-live');
+    expect(
+      controller
+          .liveNowEventsStreamValue.value!.first.artists.first.displayName,
       'Artista Live',
     );
     controller.onDispose();
@@ -530,7 +531,7 @@ void main() {
       closeTo(-40.495395, 0.000001),
     );
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug,
+    expect(controller.liveNowEventsStreamValue.value!.first.slug,
         'evento-live-race');
     controller.onDispose();
   });
@@ -589,7 +590,7 @@ void main() {
 
     expect(scheduleRepository.liveNowFetchCalls, 1);
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug,
+    expect(controller.liveNowEventsStreamValue.value!.first.slug,
         'evento-live-late');
     controller.onDispose();
   });
@@ -1603,18 +1604,21 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   final Duration liveNowFetchDelay;
   int liveNowFetchCalls = 0;
   _LiveNowRequest? lastLiveNowRequest;
-  HomeAgendaCacheSnapshot? _cacheSnapshot;
+  List<EventModel>? _cacheEvents;
   final Completer<void> _firstLiveNowFetchStarted = Completer<void>();
 
   Future<void> waitUntilFirstLiveNowFetchStarts() =>
       _firstLiveNowFetchStarted.future;
 
   @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
+  final StreamValue<List<EventModel>?> homeAgendaStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
+      StreamValue<List<EventModel>?>(defaultValue: null);
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgenda({
+  List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -1622,34 +1626,21 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final snapshot = _cacheSnapshot;
-    if (snapshot == null) {
-      return null;
-    }
-    if (snapshot.showPastOnly != showPastOnly.value) {
-      return null;
-    }
-    if (snapshot.searchQuery != searchQuery.value) {
-      return null;
-    }
-    if (snapshot.confirmedOnly != confirmedOnly.value) {
-      return null;
-    }
-    return snapshot;
+    return _cacheEvents;
   }
 
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    _cacheSnapshot = snapshot;
-    homeAgendaStreamValue.addValue(snapshot);
+  void writeHomeAgendaCache(List<EventModel> events) {
+    _cacheEvents = List<EventModel>.unmodifiable(events);
+    homeAgendaStreamValue.addValue(_cacheEvents);
   }
 
   void clearHomeAgendaCache() {
-    _cacheSnapshot = null;
+    _cacheEvents = null;
     homeAgendaStreamValue.addValue(null);
   }
 
   @override
-  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+  Future<List<EventModel>> loadHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -1661,7 +1652,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+  Future<List<EventModel>> loadMoreHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -1677,50 +1668,85 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     return null;
   }
 
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
+  Future<List<EventModel>> _fetchLiveNow({
+    required int page,
+    required int pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (liveNowOnly?.value ?? false) {
-      liveNowFetchCalls += 1;
-      if (!_firstLiveNowFetchStarted.isCompleted) {
-        _firstLiveNowFetchStarted.complete();
-      }
-      lastLiveNowRequest = _LiveNowRequest(
-        page: page.value,
-        pageSize: pageSize.value,
-        showPastOnly: showPastOnly.value,
-        originLat: originLat?.value,
-        originLng: originLng?.value,
-        maxDistanceMeters: maxDistanceMeters?.value,
-      );
-      if (liveNowFetchDelay > Duration.zero) {
-        await Future<void>.delayed(liveNowFetchDelay);
-      }
-      final hasOrigin = originLat != null && originLng != null;
-      final events = requireOriginForLiveNow && !hasOrigin
-          ? const <EventModel>[]
-          : liveNowEvents.take(pageSize.value).toList(growable: false);
-      return pagedEventsResultFromRaw(
-        events: events,
-        hasMore: false,
-      );
+    final ignoredSearchQuery = searchQuery;
+    final ignoredConfirmedOnly = confirmedOnly;
+    Object? _keepIgnoredValuesAlive = ignoredSearchQuery;
+    _keepIgnoredValuesAlive = ignoredConfirmedOnly ?? _keepIgnoredValuesAlive;
+    liveNowFetchCalls += 1;
+    if (!_firstLiveNowFetchStarted.isCompleted) {
+      _firstLiveNowFetchStarted.complete();
     }
-    return pagedEventsResultFromRaw(
-      events: const <EventModel>[],
-      hasMore: false,
+    lastLiveNowRequest = _LiveNowRequest(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly.value,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
     );
+    if (liveNowFetchDelay > Duration.zero) {
+      await Future<void>.delayed(liveNowFetchDelay);
+    }
+    final hasOrigin = originLat != null && originLng != null;
+    final events = requireOriginForLiveNow && !hasOrigin
+        ? const <EventModel>[]
+        : liveNowEvents.take(pageSize).toList(growable: false);
+    return events;
+  }
+
+  @override
+  Future<List<EventModel>> loadEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<List<EventModel>> loadMoreEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<List<EventModel>> loadConfirmedEvents({
+    required ScheduleRepoBool showPastOnly,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<void> refreshDiscoveryLiveNowEvents({
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final events = await _fetchLiveNow(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    discoveryLiveNowEventsStreamValue.addValue(events);
   }
 
   @override

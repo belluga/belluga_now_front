@@ -1,8 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -79,7 +77,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
           child: StreamValueBuilder<bool>(
             streamValue: _controller.isInitialLoadingStreamValue,
             builder: (context, isInitialLoading) {
-              return StreamValueBuilder<List<EventModel>>(
+              return StreamValueBuilder<List<VenueEventResume>>(
                 streamValue: _controller.displayedEventsStreamValue,
                 builder: (context, events) {
                   return StreamValueBuilder<bool>(
@@ -124,16 +122,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                         );
                       }
 
-                      final resumes = events
-                          .map((e) => VenueEventResume.fromScheduleEvent(
-                                e,
-                                ThumbUriValue(
-                                  defaultValue: _controller.defaultEventImageUri,
-                                  isRequired: true,
-                                )..parse(_controller.defaultEventImageUri.toString()),
-                              ))
-                          .toList();
-
                       return StreamValueBuilder<bool>(
                         streamValue: _controller.showHistoryStreamValue,
                         builder: (context, showHistory) {
@@ -141,7 +129,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                             controller: _controller.scrollController,
                             child: DateGroupedEventList(
                               primary: true,
-                              events: resumes,
+                              events: events,
                               isConfirmed: (event) =>
                                   _controller.isEventConfirmed(event.id),
                               pendingInvitesCount: (event) =>

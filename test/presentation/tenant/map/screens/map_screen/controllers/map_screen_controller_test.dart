@@ -60,7 +60,6 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/domain/static_assets/value_objects/public_static_asset_fields.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -473,46 +472,17 @@ class _FakeAccountProfilesRepository
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
+  final StreamValue<List<EventModel>?> homeAgendaStreamValue =
+      StreamValue<List<EventModel>?>();
   @override
-  final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
-  @override
-  final StreamValue<List<EventModel>> discoveryLiveNowEventsStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
-  @override
-  final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
-      StreamValue<PagedEventsResult?>(defaultValue: null);
-  @override
-  final StreamValue<ScheduleRepoBool> hasMorePagedEventsStreamValue =
-      StreamValue<ScheduleRepoBool>(
-    defaultValue: ScheduleRepoBool.fromRaw(
-      false,
-      defaultValue: false,
-    ),
-  );
-  @override
-  final StreamValue<ScheduleRepoBool> isPagedEventsPageLoadingStreamValue =
-      StreamValue<ScheduleRepoBool>(
-    defaultValue: ScheduleRepoBool.fromRaw(
-      false,
-      defaultValue: false,
-    ),
-  );
-  @override
-  final StreamValue<ScheduleRepoString?> pagedEventsErrorStreamValue =
-      StreamValue<ScheduleRepoString?>(defaultValue: null);
+  final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
+      StreamValue<List<EventModel>?>(defaultValue: null);
 
   final Map<String, EventModel?> eventsBySlug = <String, EventModel?>{};
   final List<String> requestedSlugs = <String>[];
 
   @override
-  ScheduleRepoInt get currentPagedEventsPage =>
-      ScheduleRepoInt.fromRaw(0, defaultValue: 0);
-
-  @override
-  HomeAgendaCacheSnapshot? readHomeAgenda({
+  List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -523,8 +493,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     return homeAgendaStreamValue.value;
   }
 
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaStreamValue.addValue(snapshot);
+  void writeHomeAgendaCache(List<EventModel> events) {
+    homeAgendaStreamValue.addValue(List<EventModel>.unmodifiable(events));
   }
 
   void clearHomeAgendaCache() {
@@ -532,7 +502,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+  Future<List<EventModel>> loadHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -544,7 +514,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+  Future<List<EventModel>> loadMoreHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -562,39 +532,35 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
+  Future<List<EventModel>> loadEventSearch({
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    return pagedEventsResultFromRaw(
-        events: const <EventModel>[], hasMore: false);
+    return const <EventModel>[];
   }
 
   @override
-  Future<void> refreshEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
+  Future<List<EventModel>> loadMoreEventSearch({
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
-  }) async {}
+  }) async {
+    return const <EventModel>[];
+  }
+
+  @override
+  Future<List<EventModel>> loadConfirmedEvents({
+    required ScheduleRepoBool showPastOnly,
+  }) async {
+    return const <EventModel>[];
+  }
 
   @override
   Future<void> refreshDiscoveryLiveNowEvents({
@@ -602,42 +568,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {}
-
-  @override
-  Future<void> loadEventsPage({
-    ScheduleRepoInt? pageSize,
-    required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {}
-
-  @override
-  Future<void> loadNextEventsPage({
-    ScheduleRepoInt? pageSize,
-    required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {}
-
-  @override
-  void resetPagedEventsState() {
-    pagedEventsStreamValue.addValue(null);
-    pagedEventsErrorStreamValue.addValue(null);
-  }
 
   @override
   Stream<EventDeltaModel> watchEventsStream({
@@ -4437,7 +4367,8 @@ void main() {
       expect(cardRight - closeLeft, inInclusiveRange(0, 72));
     });
 
-    test('static poi hydration merges cover, type, and description from details',
+    test(
+        'static poi hydration merges cover, type, and description from details',
         () async {
       final localStaticAssetsRepository = _FakeStaticAssetsRepository();
       final localController = _buildMapController(
@@ -4464,10 +4395,11 @@ void main() {
         displayNameValue:
             PublicStaticAssetNameValue(defaultValue: 'Praia das Virtudes'),
         slugValue: SlugValue()..parse('praia-das-virtudes'),
-        coverValue:
-            ThumbUriValue(defaultValue: Uri.parse('https://example.com/praia-cover.png')),
+        coverValue: ThumbUriValue(
+            defaultValue: Uri.parse('https://example.com/praia-cover.png')),
         contentValue: PublicStaticAssetDescriptionValue(
-          defaultValue: '<p>Área de praia com quiosques e vista para o mar.</p>',
+          defaultValue:
+              '<p>Área de praia com quiosques e vista para o mar.</p>',
           isRequired: false,
         ),
       );
