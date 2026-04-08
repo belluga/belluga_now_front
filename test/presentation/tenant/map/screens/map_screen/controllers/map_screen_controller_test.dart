@@ -4463,6 +4463,13 @@ void main() {
       expect(find.byType(PageView), findsOneWidget);
       expect(find.text('Mais perto'), findsOneWidget);
       expect(localController.poiDeckIndexStreamValue.value, 0);
+      final pageView = tester.widget<PageView>(find.byType(PageView));
+      expect(pageView.controller?.viewportFraction, 0.82);
+      final deckWidth = tester
+          .getSize(find.byKey(const ValueKey<String>('poi-deck-container')))
+          .width;
+      final scaffoldWidth = tester.getSize(find.byType(Scaffold)).width;
+      expect(deckWidth, scaffoldWidth);
 
       await tester.fling(find.byType(PageView), const Offset(-320, 0), 1200);
       await tester.pump();

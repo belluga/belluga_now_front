@@ -46,10 +46,10 @@ abstract class PoiBaseCard extends StatelessWidget {
             ? Theme.of(context).textTheme.titleLarge
             : Theme.of(context).textTheme.headlineSmall)
         ?.copyWith(
-          fontWeight: FontWeight.w900,
-          height: 1.02,
-          letterSpacing: -0.5,
-        );
+      fontWeight: FontWeight.w900,
+      height: 1.02,
+      letterSpacing: -0.5,
+    );
     final headerGap = isCompactLayout ? 8.0 : 10.0;
     final sectionGap = isCompactLayout ? 10.0 : 12.0;
     final actionsTopGap = isCompactLayout ? 14.0 : 18.0;
@@ -254,22 +254,24 @@ abstract class PoiBaseCard extends StatelessWidget {
   }) {
     final imageUri = PoiContentResolver.coverImageUri(poi);
     final assetPath = PoiContentResolver.assetPath(poi);
+    final heroPlaceholder =
+        _HeroPlaceholder(accentColor: accentColor, poi: poi);
     final hasMedia = imageUri != null && imageUri.isNotEmpty ||
         assetPath != null && assetPath.isNotEmpty;
     final heroChild = imageUri != null && imageUri.isNotEmpty
         ? BellugaNetworkImage(
             imageUri,
             fit: BoxFit.cover,
-            errorWidget: _HeroPlaceholder(accentColor: accentColor, poi: poi),
+            placeholder: heroPlaceholder,
+            errorWidget: heroPlaceholder,
           )
         : assetPath != null && assetPath.isNotEmpty
             ? Image.asset(
                 assetPath,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _HeroPlaceholder(accentColor: accentColor, poi: poi),
+                errorBuilder: (_, __, ___) => heroPlaceholder,
               )
-            : _HeroPlaceholder(accentColor: accentColor, poi: poi);
+            : heroPlaceholder;
 
     return LayoutBuilder(
       builder: (context, constraints) {

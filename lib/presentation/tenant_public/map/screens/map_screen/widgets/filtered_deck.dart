@@ -6,6 +6,8 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:flutter/material.dart';
 
 class FilteredDeck extends StatelessWidget {
+  static const double _kCarouselPageInset = 8;
+
   const FilteredDeck({
     super.key,
     required this.pois,
@@ -29,7 +31,8 @@ class FilteredDeck extends StatelessWidget {
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
-  final PoiCardSecondaryAction? Function(CityPoiModel poi) secondaryActionForPoi;
+  final PoiCardSecondaryAction? Function(CityPoiModel poi)
+      secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
   final VoidCallback onClose;
   final ValueChanged<int> onChanged;
@@ -51,6 +54,7 @@ class FilteredDeck extends StatelessWidget {
           child: PageView.builder(
             controller: pageController,
             padEnds: true,
+            clipBehavior: Clip.none,
             itemCount: pois.length,
             onPageChanged: onChanged,
             itemBuilder: (context, index) {
@@ -87,8 +91,10 @@ class FilteredDeck extends StatelessWidget {
                     );
                     return Align(
                       alignment: Alignment.bottomCenter,
-                      child: SizedBox(
-                        width: constraints.maxWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _kCarouselPageInset,
+                        ),
                         child: SizeReportingWidget(
                           onSizeChanged: (size) => onCardHeightChanged(
                             poi.id,

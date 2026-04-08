@@ -38,6 +38,27 @@ void main() {
         find.byKey(const ValueKey<String>('poi-card-avatar')), findsOneWidget);
     expect(find.text('Casa Marracini'), findsOneWidget);
   });
+
+  testWidgets(
+      'cards with remote cover use branded hero placeholder instead of generic gray image placeholder',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PoiDefaultCard(
+            poi: _buildStaticPoiWithRemoteCover(),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.image_outlined), findsNothing);
+  });
 }
 
 CityPoiModel _buildAccountProfilePoi() {
@@ -71,5 +92,37 @@ CityPoiModel _buildAccountProfilePoi() {
     visual: CityPoiVisual.image(
       imageUriValue: imageUriValue,
     ),
+  );
+}
+
+CityPoiModel _buildStaticPoiWithRemoteCover() {
+  final idValue = CityPoiIdValue()..parse('poi-static-1');
+  final nameValue = CityPoiNameValue()..parse('Praia das Castanheiras');
+  final descriptionValue = CityPoiDescriptionValue()
+    ..parse('Praia urbana com quiosques.');
+  final addressValue = CityPoiAddressValue()..parse('Centro');
+  final priorityValue = PoiPriorityValue()..parse('1');
+  final refTypeValue = PoiReferenceTypeValue()..parse('static');
+  final refIdValue = PoiReferenceIdValue()..parse('static-1');
+  final latitude = LatitudeValue()..parse('-20.0');
+  final longitude = LongitudeValue()..parse('-40.0');
+  final imageUriValue = PoiFilterImageUriValue()
+    ..parse('https://tenant.test/media/castanheiras-cover.png');
+
+  return CityPoiModel(
+    idValue: idValue,
+    nameValue: nameValue,
+    descriptionValue: descriptionValue,
+    addressValue: addressValue,
+    category: CityPoiCategory.beach,
+    coordinate: CityCoordinate(
+      latitudeValue: latitude,
+      longitudeValue: longitude,
+    ),
+    priorityValue: priorityValue,
+    refTypeValue: refTypeValue,
+    refIdValue: refIdValue,
+    stackItems: CityPoiStackItems(),
+    coverImageUriValue: imageUriValue,
   );
 }

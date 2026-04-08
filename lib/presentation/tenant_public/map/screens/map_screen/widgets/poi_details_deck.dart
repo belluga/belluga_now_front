@@ -40,12 +40,14 @@ class PoiDetailDeck extends StatefulWidget {
 
 class _PoiDetailDeckState extends State<PoiDetailDeck>
     with TickerProviderStateMixin {
+  static const double _kFilteredDeckViewportFraction = 0.82;
+
   late final MapScreenController _controller = widget.controller;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   late final PageController _pageController = PageController(
-    viewportFraction: 0.94,
+    viewportFraction: _kFilteredDeckViewportFraction,
   );
 
   static const double _defaultCardHeight = 356;
@@ -74,13 +76,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         _syncPageController(deckIndex);
         return Align(
           alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 372),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                useFilteredDeck
-                    ? FilteredDeck(
+          child: SizedBox(
+            width: double.infinity,
+            child: useFilteredDeck
+                ? Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      FilteredDeck(
                         pois: deckPois,
                         controller: _controller,
                         colorScheme: scheme,
@@ -97,22 +99,30 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                         onCardHeightChanged: (poiId, height) =>
                             _handleMeasuredHeight(context, poiId, height),
                         deckMeasurementPadding: _kDeckMeasurementPadding,
-                      )
-                    : SinglePoiCard(
-                        poi: selectedPoi,
-                        colorScheme: scheme,
-                        cardBuilder: _cardBuilder,
-                        onPrimaryAction: _handlePoiAction,
-                        secondaryAction: _secondaryActionForPoi(selectedPoi),
-                        onRoute: _handleRoute,
-                        onClose: _controller.clearSelectedPoi,
-                        onCardHeightChanged: (poiId, height) =>
-                            _handleMeasuredHeight(context, poiId, height),
-                        deckHeight: _heightForPoi(context, selectedPoi),
-                        deckMeasurementPadding: _kDeckMeasurementPadding,
                       ),
-              ],
-            ),
+                    ],
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 372),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        SinglePoiCard(
+                          poi: selectedPoi,
+                          colorScheme: scheme,
+                          cardBuilder: _cardBuilder,
+                          onPrimaryAction: _handlePoiAction,
+                          secondaryAction: _secondaryActionForPoi(selectedPoi),
+                          onRoute: _handleRoute,
+                          onClose: _controller.clearSelectedPoi,
+                          onCardHeightChanged: (poiId, height) =>
+                              _handleMeasuredHeight(context, poiId, height),
+                          deckHeight: _heightForPoi(context, selectedPoi),
+                          deckMeasurementPadding: _kDeckMeasurementPadding,
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         );
       },
@@ -233,7 +243,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   bool _isStaticPoi(CityPoiModel poi) {
     final refType = poi.refType.trim().toLowerCase();
-    return refType == 'static' || refType == 'static_asset' || refType == 'asset';
+    return refType == 'static' ||
+        refType == 'static_asset' ||
+        refType == 'asset';
   }
 
   String _resolveEventSlug(CityPoiModel poi) {

@@ -290,8 +290,8 @@ class _MapScreenState extends State<MapScreen> {
               return const SizedBox.shrink();
             }
             return Positioned(
-              left: 16,
-              right: 16,
+              left: 0,
+              right: 0,
               bottom: 24,
               child: SafeArea(
                 top: false,
