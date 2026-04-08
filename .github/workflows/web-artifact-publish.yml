@@ -433,8 +433,18 @@ jobs:
 
           title="chore(web): publish Flutter web build from ${TARGET_BRANCH}"
           printf -v body 'Automated web bundle publication from flutter-app commit %s.' "${GITHUB_SHA}"
+          web_repo_owner="${WEB_APP_REPO%%/*}"
 
-          existing_pr="$(gh pr list --repo "$WEB_APP_REPO" --base "$TARGET_BRANCH" --head "$PR_BRANCH" --json number --jq '.[0].number // empty')"
+          existing_pr="$(
+            gh api \
+              --method GET \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/${WEB_APP_REPO}/pulls" \
+              -f state='open' \
+              -f base="${TARGET_BRANCH}" \
+              -f head="${web_repo_owner}:${PR_BRANCH}" \
+              --jq '.[0].number // empty'
+          )"
 
           if [[ -n "$existing_pr" ]]; then
             gh pr edit "$existing_pr" --repo "$WEB_APP_REPO" --title "$title" --body "$body" >/dev/null
