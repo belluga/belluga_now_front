@@ -475,20 +475,40 @@ jobs:
             exit 0
           fi
 
-          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --merge; then
-            echo "Enabled auto-merge using merge strategy for web-app PR #${PR_NUMBER}."
-            exit 0
-          fi
+          enable_auto_merge() {
+            local strategy="$1"
+            local output_file
+            output_file="$(mktemp)"
 
-          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --squash; then
-            echo "Enabled auto-merge using squash strategy for web-app PR #${PR_NUMBER}."
-            exit 0
-          fi
+            if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto "--${strategy}" >"${output_file}" 2>&1; then
+              cat "${output_file}"
+              rm -f "${output_file}"
+              echo "Enabled auto-merge using ${strategy} strategy for web-app PR #${PR_NUMBER}."
+              return 0
+            fi
 
-          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --rebase; then
-            echo "Enabled auto-merge using rebase strategy for web-app PR #${PR_NUMBER}."
-            exit 0
-          fi
+            if grep -Fq 'Protected branch rules not configured for this branch' "${output_file}"; then
+              cat "${output_file}"
+              rm -f "${output_file}"
+              echo "::warning::web-app PR #${PR_NUMBER} cannot enable auto-merge because the target branch has no protected-branch auto-merge support. Leaving the PR open for manual follow-up."
+              return 2
+            fi
+
+            cat "${output_file}" >&2
+            rm -f "${output_file}"
+            return 1
+          }
+
+          for strategy in merge squash rebase; do
+            if enable_auto_merge "${strategy}"; then
+              exit 0
+            fi
+
+            status=$?
+            if [[ "${status}" -eq 2 ]]; then
+              exit 0
+            fi
+          done
 
           echo "ERROR: failed to enable auto-merge for web-app PR #${PR_NUMBER}." >&2
           exit 1
