@@ -618,6 +618,40 @@ class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
   }
 }
 
+PoiRepository _buildPoiRepository({
+  required CityMapRepositoryContract mapRepository,
+  AccountProfilesRepositoryContract? accountProfilesRepository,
+  ScheduleRepositoryContract? scheduleRepository,
+  StaticAssetsRepositoryContract? staticAssetsRepository,
+}) {
+  return PoiRepository(
+    dataSource: mapRepository,
+    accountProfilesRepository: accountProfilesRepository,
+    scheduleRepository: scheduleRepository,
+    staticAssetsRepository: staticAssetsRepository,
+  );
+}
+
+PublicStaticAssetModel _buildPublicStaticAsset({
+  required String id,
+  required String name,
+  required String slug,
+  required String coverUrl,
+  required String description,
+}) {
+  return PublicStaticAssetModel(
+    idValue: PublicStaticAssetIdValue(defaultValue: id),
+    profileTypeValue: PublicStaticAssetTypeValue(defaultValue: 'beach'),
+    displayNameValue: PublicStaticAssetNameValue(defaultValue: name),
+    slugValue: SlugValue()..parse(slug),
+    coverValue: ThumbUriValue(defaultValue: Uri.parse(coverUrl)),
+    contentValue: PublicStaticAssetDescriptionValue(
+      defaultValue: description,
+      isRequired: false,
+    ),
+  );
+}
+
 class _FakeMapHandle implements BellugaMapHandleContract {
   static const double _cameraCoordinateTolerance = 0.000001;
   static const double _cameraZoomTolerance = 0.01;
@@ -1127,16 +1161,16 @@ void main() {
       userLocationRepository = _FakeUserLocationRepository();
       accountProfilesRepository = _FakeAccountProfilesRepository();
       staticAssetsRepository = _FakeStaticAssetsRepository();
-      final poiRepository = PoiRepository(
-        dataSource: mapRepository,
+      final poiRepository = _buildPoiRepository(
+        mapRepository: mapRepository,
+        accountProfilesRepository: accountProfilesRepository,
+        staticAssetsRepository: staticAssetsRepository,
       );
       controller = _buildMapController(
         poiRepository: poiRepository,
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         appData: _buildAppData(),
-        accountProfilesRepository: accountProfilesRepository,
-        staticAssetsRepository: staticAssetsRepository,
       );
     });
 
@@ -1180,7 +1214,9 @@ void main() {
     test('clears selected poi memory after user pan interaction', () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1211,7 +1247,9 @@ void main() {
     test('empty tap on map collapses search tray back to discovery', () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1241,7 +1279,9 @@ void main() {
         () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1344,7 +1384,7 @@ void main() {
       );
       final localMapRepository = _FakeCityMapRepository();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: localMapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: localMapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1499,7 +1539,7 @@ void main() {
           initialCenter: _buildPoi(id: 'seed').coordinate,
         );
         final localController = _buildMapController(
-          poiRepository: PoiRepository(dataSource: mapRepository),
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
           userLocationRepository: userLocationRepository,
           telemetryRepository: telemetry,
           mapHandle: fakeMapHandle,
@@ -1729,7 +1769,9 @@ void main() {
     test('ignores marker taps while a filter reload is in flight', () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1768,7 +1810,9 @@ void main() {
         () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1809,7 +1853,9 @@ void main() {
         () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -1849,12 +1895,14 @@ void main() {
       final fakeMapHandle = _FakeMapHandle();
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -1937,12 +1985,14 @@ void main() {
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -1992,7 +2042,9 @@ void main() {
         () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -2049,12 +2101,14 @@ void main() {
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -2129,12 +2183,14 @@ void main() {
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -2199,12 +2255,14 @@ void main() {
       final localScheduleRepository = _FakeScheduleRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          scheduleRepository: localScheduleRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        scheduleRepository: localScheduleRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -2265,12 +2323,14 @@ void main() {
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -2323,12 +2383,14 @@ void main() {
       final localAccountProfilesRepository = _FakeAccountProfilesRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
         appData: _buildAppData(),
-        accountProfilesRepository: localAccountProfilesRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -2413,7 +2475,7 @@ void main() {
     test('empty tap on the map closes an open cluster picker', () async {
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -2927,7 +2989,7 @@ void main() {
     test('centerOnUser silently no-ops when map is not ready yet', () async {
       final notReadyMapHandle = _FakeMapHandle(isReady: false);
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: notReadyMapHandle,
@@ -2956,7 +3018,7 @@ void main() {
         treatNoOpMoveAsSuccess: true,
       );
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: sameCameraHandle,
@@ -3115,7 +3177,7 @@ void main() {
         initialCenter: _buildPoi(id: 'seed').coordinate,
       );
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -3150,7 +3212,7 @@ void main() {
       mapRepository.nextPois = <CityPoiModel>[targetPoi];
 
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -4169,7 +4231,7 @@ void main() {
         'visible catalog categories preserve backend entries and honor tenant ordering',
         () {
       final mapRepository = _FakeCityMapRepository();
-      final poiRepository = PoiRepository(dataSource: mapRepository);
+      final poiRepository = _buildPoiRepository(mapRepository: mapRepository);
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetry = _FakeTelemetryRepository();
       final baseAppData = _buildAppData();
@@ -4242,7 +4304,7 @@ void main() {
         (tester) async {
       final mapRepository = _FakeCityMapRepository()
         ..throwOnFetchFilters = true;
-      final poiRepository = PoiRepository(dataSource: mapRepository);
+      final poiRepository = _buildPoiRepository(mapRepository: mapRepository);
       final userLocationRepository = _FakeUserLocationRepository();
       final telemetry = _FakeTelemetryRepository();
       final mapHandle = _FakeMapHandle();
@@ -4429,11 +4491,13 @@ void main() {
         () async {
       final localStaticAssetsRepository = _FakeStaticAssetsRepository();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        ),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         appData: _buildAppData(),
-        staticAssetsRepository: localStaticAssetsRepository,
       );
       addTearDown(() async {
         await localController.onDispose();
@@ -4482,7 +4546,7 @@ void main() {
       final router = _RecordingStackRouter()..canPopResult = false;
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -4543,7 +4607,7 @@ void main() {
       final router = _RecordingStackRouter()..canPopResult = false;
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
-        poiRepository: PoiRepository(dataSource: mapRepository),
+        poiRepository: _buildPoiRepository(mapRepository: mapRepository),
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
         mapHandle: fakeMapHandle,
@@ -4589,6 +4653,151 @@ void main() {
       await tester.pump(const Duration(milliseconds: 180));
 
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        'filtered carousel lazily hydrates semi-visible cards and reuses cached hydration',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final fakeMapHandle = _FakeMapHandle();
+      final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+      final localController = _buildMapController(
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        ),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      final firstPoi = _buildPoi(
+        id: 'poi-static-a',
+        name: 'Praia das Virtudes',
+        refType: 'static',
+        refId: 'asset-1',
+        distanceMeters: 120,
+      );
+      final selectedPoi = _buildPoi(
+        id: 'poi-static-b',
+        name: 'Praia das Castanheiras',
+        refType: 'static',
+        refId: 'asset-2',
+        distanceMeters: 220,
+      );
+      final thirdPoi = _buildPoi(
+        id: 'poi-static-c',
+        name: 'Praia do Meio',
+        refType: 'static',
+        refId: 'asset-3',
+        distanceMeters: 320,
+      );
+
+      localStaticAssetsRepository.assetsByRef['asset-1'] =
+          _buildPublicStaticAsset(
+        id: 'asset-1',
+        name: 'Praia das Virtudes',
+        slug: 'praia-das-virtudes',
+        coverUrl: 'https://tenant.test/media/virtudes-cover.png',
+        description: 'Descricao factual da Praia das Virtudes.',
+      );
+      localStaticAssetsRepository.assetsByRef['asset-2'] =
+          _buildPublicStaticAsset(
+        id: 'asset-2',
+        name: 'Praia das Castanheiras',
+        slug: 'praia-das-castanheiras',
+        coverUrl: 'https://tenant.test/media/castanheiras-cover.png',
+        description: 'Descricao factual da Praia das Castanheiras.',
+      );
+      localStaticAssetsRepository.assetsByRef['asset-3'] =
+          _buildPublicStaticAsset(
+        id: 'asset-3',
+        name: 'Praia do Meio',
+        slug: 'praia-do-meio',
+        coverUrl: 'https://tenant.test/media/meio-cover.png',
+        description: 'Descricao factual da Praia do Meio.',
+      );
+
+      localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        firstPoi,
+        selectedPoi,
+        thirdPoi,
+      ]);
+      localController.mapTrayModeStreamValue
+          .addValue(MapTrayMode.filterResults);
+
+      await localController.handleMarkerTap(selectedPoi);
+      expect(
+        localController.hydratedStaticAssetForPoi(selectedPoi),
+        isNotNull,
+      );
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: localController,
+        router: router,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+
+      expect(localController.hydratedStaticAssetForPoi(firstPoi), isNotNull);
+      expect(localController.hydratedStaticAssetForPoi(thirdPoi), isNotNull);
+
+      final hydratedDeckPois = localController.deckPoisForSelectedPoi(
+        localController.selectedPoiStreamValue.value!,
+      );
+      expect(
+        hydratedDeckPois
+            .firstWhere((poi) => poi.id == firstPoi.id)
+            .coverImageUri,
+        'https://tenant.test/media/virtudes-cover.png',
+      );
+      expect(
+        hydratedDeckPois
+            .firstWhere((poi) => poi.id == thirdPoi.id)
+            .coverImageUri,
+        'https://tenant.test/media/meio-cover.png',
+      );
+
+      expect(
+        localStaticAssetsRepository.requestedRefs
+            .where((ref) => ref == 'asset-1')
+            .length,
+        1,
+      );
+      expect(
+        localStaticAssetsRepository.requestedRefs
+            .where((ref) => ref == 'asset-2')
+            .length,
+        1,
+      );
+      expect(
+        localStaticAssetsRepository.requestedRefs
+            .where((ref) => ref == 'asset-3')
+            .length,
+        1,
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+
+      expect(
+        localStaticAssetsRepository.requestedRefs
+            .where((ref) => ref == 'asset-1')
+            .length,
+        1,
+      );
+      expect(
+        localStaticAssetsRepository.requestedRefs
+            .where((ref) => ref == 'asset-3')
+            .length,
+        1,
+      );
     });
   });
 }
@@ -4853,9 +5062,6 @@ MapScreenController _buildMapController({
   BellugaMapHandleContract? mapHandle,
   AppData? appData,
   AppDataRepositoryContract? appDataRepository,
-  AccountProfilesRepositoryContract? accountProfilesRepository,
-  ScheduleRepositoryContract? scheduleRepository,
-  StaticAssetsRepositoryContract? staticAssetsRepository,
 }) {
   final resolvedAppData = appData ?? _buildAppData();
   final resolvedAppDataRepository =
@@ -4867,9 +5073,6 @@ MapScreenController _buildMapController({
     mapHandle: mapHandle,
     appData: resolvedAppData,
     appDataRepository: resolvedAppDataRepository,
-    accountProfilesRepository: accountProfilesRepository,
-    scheduleRepository: scheduleRepository,
-    staticAssetsRepository: staticAssetsRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: resolvedAppDataRepository,
       userLocationRepository: userLocationRepository,

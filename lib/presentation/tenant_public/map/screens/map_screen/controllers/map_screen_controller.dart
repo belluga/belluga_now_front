@@ -38,12 +38,9 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -82,9 +79,6 @@ class MapScreenController implements Disposable {
     AppData? appData,
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
-    AccountProfilesRepositoryContract? accountProfilesRepository,
-    ScheduleRepositoryContract? scheduleRepository,
-    StaticAssetsRepositoryContract? staticAssetsRepository,
     AuthRepositoryContract? authRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
@@ -96,18 +90,6 @@ class MapScreenController implements Disposable {
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>(),
-        _accountProfilesRepository = accountProfilesRepository ??
-            (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
-                ? GetIt.I.get<AccountProfilesRepositoryContract>()
-                : null),
-        _scheduleRepository = scheduleRepository ??
-            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-                ? GetIt.I.get<ScheduleRepositoryContract>()
-                : null),
-        _staticAssetsRepository = staticAssetsRepository ??
-            (GetIt.I.isRegistered<StaticAssetsRepositoryContract>()
-                ? GetIt.I.get<StaticAssetsRepositoryContract>()
-                : null),
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
@@ -120,9 +102,6 @@ class MapScreenController implements Disposable {
   final AppData _appData;
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
-  final AccountProfilesRepositoryContract? _accountProfilesRepository;
-  final ScheduleRepositoryContract? _scheduleRepository;
-  final StaticAssetsRepositoryContract? _staticAssetsRepository;
   final AuthRepositoryContract? _authRepository;
 
   final BellugaMapHandleContract mapHandle;
@@ -185,6 +164,8 @@ class MapScreenController implements Disposable {
 
   StreamValue<PoiFilterOptions?> get filterOptionsStreamValue =>
       _poiRepository.filterOptionsStreamValue;
+  StreamValue<int> get poiDeckContentRevisionStreamValue =>
+      _poiRepository.poiHydrationRevisionStreamValue;
 
   final StreamValue<Set<String>> activeCategoryKeysStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
@@ -229,14 +210,6 @@ class MapScreenController implements Disposable {
   bool _markerTapSuppressedAfterFilterReload = false;
   bool _isReconcilingLocationOrigin = false;
   int _selectedPoiHydrationSequence = 0;
-  final Map<String, CityPoiModel> _hydratedPoiCacheById =
-      <String, CityPoiModel>{};
-  final Map<String, AccountProfileModel> _hydratedAccountProfilesByPoiId =
-      <String, AccountProfileModel>{};
-  final Map<String, EventModel> _hydratedEventsByPoiId =
-      <String, EventModel>{};
-  final Map<String, PublicStaticAssetModel> _hydratedStaticAssetsByPoiId =
-      <String, PublicStaticAssetModel>{};
   CityCoordinate? _searchTrayOrigin;
 
   bool get isUserAuthenticated => _authRepository?.isUserLoggedIn ?? false;
@@ -251,15 +224,15 @@ class MapScreenController implements Disposable {
   }
 
   AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
-    return _hydratedAccountProfilesByPoiId[poi.id];
+    return _poiRepository.hydratedAccountProfileForPoi(poi);
   }
 
   EventModel? hydratedEventForPoi(CityPoiModel poi) {
-    return _hydratedEventsByPoiId[poi.id];
+    return _poiRepository.hydratedEventForPoi(poi);
   }
 
   PublicStaticAssetModel? hydratedStaticAssetForPoi(CityPoiModel poi) {
-    return _hydratedStaticAssetsByPoiId[poi.id];
+    return _poiRepository.hydratedStaticAssetForPoi(poi);
   }
 
   Uri? buildTenantPublicUriFromPath(String? rawPath) {
@@ -1182,9 +1155,6 @@ class MapScreenController implements Disposable {
         return;
       }
       final resolvedPoi = hydratedPoi ?? poi;
-      if (hydratedPoi != null) {
-        _cacheHydratedPoi(resolvedPoi);
-      }
       selectedPoiLoadingIdStreamValue.addValue(null);
       hasSelectedPoiLoadingStreamValue.addValue(false);
       selectPoi(resolvedPoi);
@@ -1202,98 +1172,28 @@ class MapScreenController implements Disposable {
   }
 
   Future<CityPoiModel?> _hydratePoiForSelection(CityPoiModel poi) async {
-    final cachedHydratedPoi = _hydratedPoiCacheById[poi.id];
-    if (cachedHydratedPoi != null) {
-      return _overlayHydratedPoi(base: poi, hydrated: cachedHydratedPoi);
+    await _poiRepository.ensurePoiHydrated(poi);
+    return _resolveHydratedPoi(poi);
+  }
+
+  void ensureDeckPoiHydrated(CityPoiModel poi) {
+    unawaited(_poiRepository.ensurePoiHydrated(poi));
+  }
+
+  CityPoiModel? _resolveHydratedPoi(CityPoiModel poi) {
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile != null) {
+      return _mergeAccountProfileIntoPoi(poi, profile);
     }
-    if (_isPartnerPoi(poi)) {
-      return _hydratePartnerPoi(poi);
+    final event = hydratedEventForPoi(poi);
+    if (event != null) {
+      return _mergeEventIntoPoi(poi, event);
     }
-    if (_isEventPoi(poi)) {
-      return _hydrateEventPoi(poi);
-    }
-    if (_isStaticPoi(poi)) {
-      return _hydrateStaticPoi(poi);
+    final asset = hydratedStaticAssetForPoi(poi);
+    if (asset != null) {
+      return _mergeStaticAssetIntoPoi(poi, asset);
     }
     return null;
-  }
-
-  void _cacheHydratedPoi(CityPoiModel poi) {
-    _hydratedPoiCacheById[poi.id] = poi;
-  }
-
-  Future<CityPoiModel?> _hydratePartnerPoi(CityPoiModel poi) async {
-    final repository = _accountProfilesRepository;
-    if (repository == null) {
-      return null;
-    }
-    final slug = _resolvePoiSlug(poi);
-    if (slug == null) {
-      return null;
-    }
-
-    await repository.loadAccountProfileBySlug(
-      AccountProfilesRepositoryContractPrimString.fromRaw(slug),
-    );
-    final profile = repository.selectedAccountProfileStreamValue.value;
-    if (profile == null) {
-      return null;
-    }
-
-    try {
-      _hydratedAccountProfilesByPoiId[poi.id] = profile;
-      return _mergeAccountProfileIntoPoi(poi, profile);
-    } finally {
-      repository.clearSelectedAccountProfile();
-    }
-  }
-
-  Future<CityPoiModel?> _hydrateEventPoi(CityPoiModel poi) async {
-    final repository = _scheduleRepository;
-    if (repository == null) {
-      return null;
-    }
-    final slug = _resolvePoiSlug(poi);
-    if (slug == null) {
-      return null;
-    }
-
-    final event = await repository.getEventBySlug(
-      ScheduleRepoString.fromRaw(
-        slug,
-        defaultValue: slug,
-        isRequired: true,
-      ),
-    );
-    if (event == null) {
-      return null;
-    }
-    _hydratedEventsByPoiId[poi.id] = event;
-    return _mergeEventIntoPoi(poi, event);
-  }
-
-  Future<CityPoiModel?> _hydrateStaticPoi(CityPoiModel poi) async {
-    final repository = _staticAssetsRepository;
-    if (repository == null) {
-      return null;
-    }
-    final assetRef = _resolveStaticAssetRef(poi);
-    if (assetRef == null) {
-      return null;
-    }
-
-    final asset = await repository.getStaticAssetByRef(
-      StaticAssetRepoText.fromRaw(
-        assetRef,
-        defaultValue: assetRef,
-        isRequired: true,
-      ),
-    );
-    if (asset == null) {
-      return null;
-    }
-    _hydratedStaticAssetsByPoiId[poi.id] = asset;
-    return _mergeStaticAssetIntoPoi(poi, asset);
   }
 
   CityPoiModel _mergeAccountProfileIntoPoi(
@@ -1421,71 +1321,6 @@ class MapScreenController implements Disposable {
               ? null
               : _parseReferencePathValue(canonicalPath),
     );
-  }
-
-  CityPoiModel _overlayHydratedPoi({
-    required CityPoiModel base,
-    required CityPoiModel hydrated,
-  }) {
-    return base.copyWith(
-      descriptionValue: hydrated.descriptionValue,
-      addressValue: hydrated.addressValue,
-      categoryLabelValue: hydrated.categoryLabelValue,
-      coverImageUriValue: hydrated.coverImageUriValue,
-      coordinate: hydrated.coordinate,
-      distanceMetersValue: hydrated.distanceMetersValue,
-      linkedProfiles: hydrated.linkedProfiles,
-      visual: hydrated.visual,
-      refSlugValue: hydrated.refSlugValue,
-      refPathValue: hydrated.refPathValue,
-    );
-  }
-
-  bool _isPartnerPoi(CityPoiModel poi) {
-    return poi.refType.trim().toLowerCase() == 'account_profile';
-  }
-
-  bool _isEventPoi(CityPoiModel poi) {
-    return poi.refType.trim().toLowerCase() == 'event';
-  }
-
-  bool _isStaticPoi(CityPoiModel poi) {
-    final refType = poi.refType.trim().toLowerCase();
-    return refType == 'static' || refType == 'static_asset' || refType == 'asset';
-  }
-
-  String? _resolvePoiSlug(CityPoiModel poi) {
-    final refSlug = poi.refSlug?.trim();
-    if (refSlug != null && refSlug.isNotEmpty) {
-      return refSlug;
-    }
-
-    final refPath = poi.refPath?.trim();
-    if (refPath == null || refPath.isEmpty) {
-      return null;
-    }
-
-    final segments = refPath
-        .split('/')
-        .map((entry) => entry.trim())
-        .where((entry) => entry.isNotEmpty)
-        .toList(growable: false);
-    if (segments.isEmpty) {
-      return null;
-    }
-    return segments.last;
-  }
-
-  String? _resolveStaticAssetRef(CityPoiModel poi) {
-    final refSlug = poi.refSlug?.trim();
-    if (refSlug != null && refSlug.isNotEmpty) {
-      return refSlug;
-    }
-    final refId = poi.refId.trim();
-    if (refId.isNotEmpty) {
-      return refId;
-    }
-    return _resolvePoiSlug(poi);
   }
 
   String? _resolveEventCoverImageUrl(EventModel event) {
@@ -2185,11 +2020,7 @@ class MapScreenController implements Disposable {
         if (poi.id == selectedPoi.id) {
           return selectedPoi;
         }
-        final cachedHydratedPoi = _hydratedPoiCacheById[poi.id];
-        if (cachedHydratedPoi == null) {
-          return poi;
-        }
-        return _overlayHydratedPoi(base: poi, hydrated: cachedHydratedPoi);
+        return _resolveHydratedPoi(poi) ?? poi;
       }),
     );
   }
