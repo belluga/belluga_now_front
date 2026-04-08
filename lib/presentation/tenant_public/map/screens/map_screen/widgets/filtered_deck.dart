@@ -59,65 +59,40 @@ class FilteredDeck extends StatelessWidget {
             onPageChanged: onChanged,
             itemBuilder: (context, index) {
               final poi = pois[index];
-              return AnimatedBuilder(
-                animation: pageController,
-                builder: (context, child) {
-                  final selectedPage =
-                      controller.poiDeckIndexStreamValue.value.toDouble();
-                  final page = pageController.hasClients
-                      ? (pageController.page ?? selectedPage)
-                      : selectedPage;
-                  final delta = (page - index).abs();
-                  final scale = (1 - (delta * 0.06)).clamp(0.92, 1.0);
-                  final opacity = (1 - (delta * 0.18)).clamp(0.72, 1.0);
-                  final verticalOffset = (delta * 12).clamp(0, 14).toDouble();
-
-                  return Opacity(
-                    opacity: opacity,
-                    child: Transform.translate(
-                      offset: Offset(0, verticalOffset),
-                      child: Transform.scale(
-                        scale: scale,
-                        child: child,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final heroMaxHeight = (constraints.maxHeight * 0.20).clamp(
+                    80.0,
+                    84.0,
+                  );
+                  return Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: _kCarouselPageInset,
+                      ),
+                      child: SizeReportingWidget(
+                        onSizeChanged: (size) => onCardHeightChanged(
+                          poi.id,
+                          size.height + deckMeasurementPadding,
+                        ),
+                        child: cardBuilder.build(
+                          context: context,
+                          poi: poi,
+                          colorScheme: colorScheme,
+                          onPrimaryAction: () {
+                            controller.selectPoi(poi);
+                            onPrimaryAction(poi);
+                          },
+                          secondaryAction: secondaryActionForPoi(poi),
+                          onRoute: () => onRoute(poi),
+                          onClose: onClose,
+                          heroMaxHeight: heroMaxHeight,
+                        ),
                       ),
                     ),
                   );
                 },
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final heroMaxHeight = (constraints.maxHeight * 0.25).clamp(
-                      72.0,
-                      96.0,
-                    );
-                    return Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: _kCarouselPageInset,
-                        ),
-                        child: SizeReportingWidget(
-                          onSizeChanged: (size) => onCardHeightChanged(
-                            poi.id,
-                            size.height + deckMeasurementPadding,
-                          ),
-                          child: cardBuilder.build(
-                            context: context,
-                            poi: poi,
-                            colorScheme: colorScheme,
-                            onPrimaryAction: () {
-                              controller.selectPoi(poi);
-                              onPrimaryAction(poi);
-                            },
-                            secondaryAction: secondaryActionForPoi(poi),
-                            onRoute: () => onRoute(poi),
-                            onClose: onClose,
-                            heroMaxHeight: heroMaxHeight,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
               );
             },
           ),

@@ -66,64 +66,82 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       streamValue: _controller.selectedPoiStreamValue,
       onNullWidget: const SizedBox.shrink(),
       builder: (_, poi) {
-        final selectedPoi = poi!;
-        final deckPois = _controller.deckPoisForSelectedPoi(selectedPoi);
-        final useFilteredDeck = deckPois.length > 1;
-        final deckIndex = _controller.deckIndexForSelectedPoi(
-          selectedPoi,
-          deckPois,
-        );
-        _syncPageController(deckIndex);
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: SizedBox(
-            width: double.infinity,
-            child: useFilteredDeck
-                ? Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      FilteredDeck(
-                        pois: deckPois,
-                        controller: _controller,
-                        colorScheme: scheme,
-                        pageController: _pageController,
-                        cardBuilder: _cardBuilder,
-                        onPrimaryAction: _handlePoiAction,
-                        secondaryActionForPoi: _secondaryActionForPoi,
-                        onRoute: _handleRoute,
-                        onClose: _controller.clearSelectedPoi,
-                        onChanged: (index) => unawaited(
-                          _controller.handleFilteredDeckPageChanged(index),
-                        ),
-                        deckHeight: _heightForPoi(context, selectedPoi),
-                        onCardHeightChanged: (poiId, height) =>
-                            _handleMeasuredHeight(context, poiId, height),
-                        deckMeasurementPadding: _kDeckMeasurementPadding,
-                      ),
-                    ],
+        return StreamValueBuilder<int>(
+          streamValue: _controller.poiDeckHeightRevisionStreamValue,
+          builder: (_, __) {
+            final selectedPoi = poi!;
+            final deckPois = _controller.deckPoisForSelectedPoi(selectedPoi);
+            final useFilteredDeck = deckPois.length > 1;
+            final deckIndex = _controller.deckIndexForSelectedPoi(
+              selectedPoi,
+              deckPois,
+            );
+            _syncPageController(deckIndex);
+            final resolvedDeckHeight = useFilteredDeck
+                ? _heightForDeck(
+                    context,
+                    deckPois,
+                    deckIndex,
                   )
-                : ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 372),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        SinglePoiCard(
-                          poi: selectedPoi,
-                          colorScheme: scheme,
-                          cardBuilder: _cardBuilder,
-                          onPrimaryAction: _handlePoiAction,
-                          secondaryAction: _secondaryActionForPoi(selectedPoi),
-                          onRoute: _handleRoute,
-                          onClose: _controller.clearSelectedPoi,
-                          onCardHeightChanged: (poiId, height) =>
-                              _handleMeasuredHeight(context, poiId, height),
-                          deckHeight: _heightForPoi(context, selectedPoi),
-                          deckMeasurementPadding: _kDeckMeasurementPadding,
+                : _heightForPoi(context, selectedPoi);
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                width: double.infinity,
+                child: useFilteredDeck
+                    ? Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          FilteredDeck(
+                            pois: deckPois,
+                            controller: _controller,
+                            colorScheme: scheme,
+                            pageController: _pageController,
+                            cardBuilder: _cardBuilder,
+                            onPrimaryAction: _handlePoiAction,
+                            secondaryActionForPoi: _secondaryActionForPoi,
+                            onRoute: _handleRoute,
+                            onClose: _controller.clearSelectedPoi,
+                            onChanged: (index) => unawaited(
+                              _controller.handleFilteredDeckPageChanged(index),
+                            ),
+                            deckHeight: resolvedDeckHeight,
+                            onCardHeightChanged: (poiId, height) =>
+                                _handleMeasuredHeight(context, poiId, height),
+                            deckMeasurementPadding: _kDeckMeasurementPadding,
+                          ),
+                        ],
+                      )
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 372),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            SinglePoiCard(
+                              poi: selectedPoi,
+                              colorScheme: scheme,
+                              cardBuilder: _cardBuilder,
+                              onPrimaryAction: _handlePoiAction,
+                              secondaryAction: _secondaryActionForPoi(
+                                selectedPoi,
+                              ),
+                              onRoute: _handleRoute,
+                              onClose: _controller.clearSelectedPoi,
+                              onCardHeightChanged: (poiId, height) =>
+                                  _handleMeasuredHeight(
+                                context,
+                                poiId,
+                                height,
+                              ),
+                              deckHeight: resolvedDeckHeight,
+                              deckMeasurementPadding: _kDeckMeasurementPadding,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-          ),
+                      ),
+              ),
+            );
+          },
         );
       },
     );
@@ -501,9 +519,28 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return _clampHeight(context, raw);
   }
 
-  double _clampHeight(BuildContext context, double raw) {
+  double _heightForDeck(
+    BuildContext context,
+    List<CityPoiModel> deckPois,
+    int deckIndex,
+  ) {
+    final safeFallbackHeight = _safeFallbackHeight(context);
+    final raw = _controller.resolvePoiDeckHeightForDeck(
+      deckPois,
+      currentIndex: deckIndex,
+      defaultHeight: _defaultCardHeight,
+      safeFallbackHeight: safeFallbackHeight,
+    );
+    return _clampHeight(context, raw);
+  }
+
+  double _safeFallbackHeight(BuildContext context) {
     final viewportHeight = MediaQuery.of(context).size.height;
-    final maxHeight = (viewportHeight * 0.56).clamp(340.0, 480.0);
+    return (viewportHeight * 0.68).clamp(380.0, 520.0).toDouble();
+  }
+
+  double _clampHeight(BuildContext context, double raw) {
+    final maxHeight = _safeFallbackHeight(context);
     return raw.clamp(_minCardHeight, maxHeight);
   }
 }

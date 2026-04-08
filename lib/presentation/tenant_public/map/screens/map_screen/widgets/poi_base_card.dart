@@ -35,12 +35,12 @@ abstract class PoiBaseCard extends StatelessWidget {
     final hasDescription = description != null;
     final badge = badgeLabel(context).trim();
     final heroPadding = isCompactLayout
-        ? const EdgeInsets.fromLTRB(10, 10, 10, 0)
+        ? const EdgeInsets.fromLTRB(6, 6, 6, 0)
         : const EdgeInsets.fromLTRB(12, 12, 12, 0);
-    final badgeInset = isCompactLayout ? 20.0 : 24.0;
-    final closeInset = isCompactLayout ? 10.0 : 12.0;
+    final badgeInset = isCompactLayout ? 16.0 : 24.0;
+    final closeInset = isCompactLayout ? 6.0 : 12.0;
     final bodyPadding = isCompactLayout
-        ? const EdgeInsets.fromLTRB(16, 14, 16, 16)
+        ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
         : const EdgeInsets.fromLTRB(20, 18, 20, 20);
     final titleStyle = (isCompactLayout
             ? Theme.of(context).textTheme.titleLarge
@@ -50,10 +50,10 @@ abstract class PoiBaseCard extends StatelessWidget {
       height: 1.02,
       letterSpacing: -0.5,
     );
-    final headerGap = isCompactLayout ? 8.0 : 10.0;
-    final sectionGap = isCompactLayout ? 10.0 : 12.0;
-    final actionsTopGap = isCompactLayout ? 14.0 : 18.0;
-    final buttonHeight = isCompactLayout ? 50.0 : 54.0;
+    final headerGap = isCompactLayout ? 4.0 : 10.0;
+    final sectionGap = isCompactLayout ? 6.0 : 12.0;
+    final actionsTopGap = isCompactLayout ? 8.0 : 18.0;
+    final buttonHeight = isCompactLayout ? 44.0 : 54.0;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -256,6 +256,7 @@ abstract class PoiBaseCard extends StatelessWidget {
     final assetPath = PoiContentResolver.assetPath(poi);
     final heroPlaceholder =
         _HeroPlaceholder(accentColor: accentColor, poi: poi);
+    final heroBackdrop = _HeroBackdrop(accentColor: accentColor);
     final hasMedia = imageUri != null && imageUri.isNotEmpty ||
         assetPath != null && assetPath.isNotEmpty;
     final heroChild = imageUri != null && imageUri.isNotEmpty
@@ -286,7 +287,7 @@ abstract class PoiBaseCard extends StatelessWidget {
         final boundedHeight = heroMaxHeight == null
             ? resolvedHeight
             : resolvedHeight.clamp(
-                hasMedia ? 84.0 : 72.0,
+                hasMedia ? 76.0 : 68.0,
                 heroMaxHeight!,
               );
 
@@ -298,6 +299,8 @@ abstract class PoiBaseCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                if (hasMedia)
+                  heroBackdrop,
                 heroChild,
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -522,6 +525,31 @@ class _HeroPlaceholder extends StatelessWidget {
           icon,
           size: 64,
           color: iconColor.withValues(alpha: 0.92),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroBackdrop extends StatelessWidget {
+  const _HeroBackdrop({
+    required this.accentColor,
+  });
+
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const ValueKey<String>('poi-card-hero-backdrop'),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: 0.92),
+            accentColor.withValues(alpha: 0.62),
+          ],
         ),
       ),
     );

@@ -66,6 +66,34 @@ void main() {
     expect(chipTop, lessThan(descriptionTop));
     expect(find.textContaining('Atualizado em'), findsNothing);
   });
+
+  testWidgets(
+      'compact event detail card does not overflow in carousel-sized viewport',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 319.4,
+              height: 380,
+              child: EventPoiDetailCard(
+                poi: _buildEventPoi(),
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+                onPrimaryAction: () {},
+                secondaryAction: null,
+                onRoute: () {},
+                heroMaxHeight: 88,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
 }
 
 CityPoiModel _buildEventPoi() {
@@ -85,6 +113,8 @@ CityPoiModel _buildEventPoi() {
     refTypeValue: PoiReferenceTypeValue()..parse('event'),
     refIdValue: PoiReferenceIdValue()..parse('event-1'),
     stackItems: CityPoiStackItems(),
+    coverImageUriValue: (PoiFilterImageUriValue()
+      ..parse('https://tenant.test/media/event-cover.png')),
     linkedProfiles: [
       CityPoiLinkedProfile(
         idValue: PoiReferenceIdValue()..parse('artist-1'),

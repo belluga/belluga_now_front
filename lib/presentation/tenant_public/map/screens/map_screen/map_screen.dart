@@ -175,9 +175,8 @@ class _MapScreenState extends State<MapScreen> {
           streamValue: _controller.poiDeckHeightRevisionStreamValue,
           builder: (_, __) {
             final selectedPoi = _controller.selectedPoiStreamValue.value;
-            final selectedDeckHeight = selectedPoi == null
-                ? 0.0
-                : (_controller.getPoiDeckHeight(selectedPoi.id) ?? 356);
+            final selectedDeckHeight =
+                selectedPoi == null ? 0.0 : _selectedDeckHeight(context, selectedPoi);
             final double bottomOffset = !hasSelectedPoi
                 ? 16.0 + 88.0
                 : 24.0 + selectedDeckHeight + 20.0;
@@ -214,6 +213,37 @@ class _MapScreenState extends State<MapScreen> {
         );
       },
     );
+  }
+
+  double _selectedDeckHeight(BuildContext context, CityPoiModel selectedPoi) {
+    final deckPois = _controller.deckPoisForSelectedPoi(selectedPoi);
+    if (deckPois.length <= 1) {
+      return _clampPoiDeckHeight(
+        context,
+        _controller.getPoiDeckHeight(selectedPoi.id) ?? 356,
+      );
+    }
+
+    final deckIndex = _controller.deckIndexForSelectedPoi(selectedPoi, deckPois);
+    final safeFallbackHeight = _safePoiDeckHeight(context);
+    return _clampPoiDeckHeight(
+      context,
+      _controller.resolvePoiDeckHeightForDeck(
+        deckPois,
+        currentIndex: deckIndex,
+        defaultHeight: 356,
+        safeFallbackHeight: safeFallbackHeight,
+      ),
+    );
+  }
+
+  double _safePoiDeckHeight(BuildContext context) {
+    final viewportHeight = MediaQuery.of(context).size.height;
+    return (viewportHeight * 0.68).clamp(380.0, 520.0).toDouble();
+  }
+
+  double _clampPoiDeckHeight(BuildContext context, double raw) {
+    return raw.clamp(280.0, _safePoiDeckHeight(context)).toDouble();
   }
 
   Widget _buildClusterPickerOverlay() {

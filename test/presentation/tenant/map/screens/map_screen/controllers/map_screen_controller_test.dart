@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
@@ -766,6 +767,7 @@ CityPoiModel _buildPoi({
   List<CityPoiModel>? stackItems,
   CityCoordinate? coordinate,
   double? distanceMeters,
+  String? coverImageUri,
 }) {
   final idValue = CityPoiIdValue()..parse(id);
   final nameValue = CityPoiNameValue()..parse(name);
@@ -796,6 +798,9 @@ CityPoiModel _buildPoi({
   final distanceMetersValue = distanceMeters == null
       ? null
       : (DistanceInMetersValue()..parse(distanceMeters.toString()));
+  final coverImageUriValue = coverImageUri == null
+      ? null
+      : (PoiFilterImageUriValue()..parse(coverImageUri));
 
   return CityPoiModel(
     idValue: idValue,
@@ -804,6 +809,7 @@ CityPoiModel _buildPoi({
     addressValue: addressValue,
     category: category,
     categoryLabelValue: categoryLabelValue,
+    coverImageUriValue: coverImageUriValue,
     coordinate: resolvedCoordinate,
     priorityValue: priorityValue,
     refTypeValue: refTypeValue,
@@ -1102,6 +1108,9 @@ PoiHexColorValue _buildHexColorValue(String raw) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    HttpOverrides.global = _TestHttpOverrides();
+  });
 
   group('MapScreenController telemetry', () {
     late _FakeTelemetryRepository telemetry;
@@ -3665,11 +3674,59 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 260));
 
+      final deckFinder =
+          find.byKey(const ValueKey<String>('poi-deck-container'));
+      expect(deckFinder, findsOneWidget);
+      final selectedMeasuredHeight = controller.getPoiDeckHeight('stack-a');
+      expect(selectedMeasuredHeight, isNotNull);
+      expect(
+        tester.getSize(deckFinder).height,
+        closeTo(selectedMeasuredHeight!, 0.1),
+      );
+      expect(
+        tester.getSize(deckFinder).height,
+        lessThan(controller.getPoiDeckHeight('stack-b')!),
+      );
+    });
+
+    testWidgets(
+        'filtered deck height follows the tallest visible card instead of only the selected poi',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final selectedPoi = _buildPoi(
+        id: 'poi-near',
+        name: 'Mais perto',
+        distanceMeters: 120,
+      );
+      final tallerAdjacentPoi = _buildPoi(
+        id: 'poi-far',
+        name: 'Mais longe',
+        distanceMeters: 900,
+      );
+
+      controller.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        selectedPoi,
+        tallerAdjacentPoi,
+      ]);
+      controller.mapTrayModeStreamValue
+          .addValue(MapTrayMode.filterResults);
+      controller.selectPoi(selectedPoi);
+      controller.updatePoiDeckHeight('poi-near', 320);
+      controller.updatePoiDeckHeight('poi-far', 440);
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+
       final viewportHeight =
           tester.view.physicalSize.height / tester.view.devicePixelRatio;
-      final expectedDeckHeight = 320.0.clamp(
+      final expectedDeckHeight = 440.0.clamp(
         280.0,
-        (viewportHeight * 0.56).clamp(340.0, 480.0).toDouble(),
+        (viewportHeight * 0.68).clamp(380.0, 520.0).toDouble(),
       );
       final deckFinder =
           find.byKey(const ValueKey<String>('poi-deck-container'));
@@ -4479,6 +4536,60 @@ void main() {
       expect(localController.selectedPoiStreamValue.value?.id, 'poi-far');
       expect(find.text('Mais longe'), findsOneWidget);
     });
+
+    testWidgets(
+        'dragging filtered carousel with remote-cover cards does not throw while the current card leaves the viewport',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      final firstPoi = _buildPoi(
+        id: 'poi-image-a',
+        name: 'Praia das Virtudes',
+        coverImageUri: 'https://tenant.test/media/praia-das-virtudes-cover.png',
+      );
+      final secondPoi = _buildPoi(
+        id: 'poi-image-b',
+        name: 'Praia das Castanheiras',
+        coverImageUri:
+            'https://tenant.test/media/praia-das-castanheiras-cover.png',
+      );
+
+      localController.filteredPoisStreamValue.addValue(<CityPoiModel>[
+        firstPoi,
+        secondPoi,
+      ]);
+      localController.mapTrayModeStreamValue
+          .addValue(MapTrayMode.filterResults);
+      localController.selectPoi(firstPoi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: localController,
+        router: router,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final pageView = find.byType(PageView);
+      expect(pageView, findsOneWidget);
+
+      await tester.drag(pageView, const Offset(-140, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -4576,6 +4687,163 @@ class _RecordingStackRouter extends Fake implements StackRouter {
     replacedRoutes.add(route);
     return null;
   }
+}
+
+class _TestHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return _TestHttpClient();
+  }
+}
+
+class _TestHttpClient implements HttpClient {
+  bool _autoUncompress = true;
+
+  static final List<int> _transparentImage = <int>[
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
+  ];
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async {
+    return _TestHttpClientRequest(_transparentImage);
+  }
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async {
+    return _TestHttpClientRequest(_transparentImage);
+  }
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  bool get autoUncompress => _autoUncompress;
+
+  @override
+  set autoUncompress(bool value) {
+    _autoUncompress = value;
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _TestHttpClientRequest implements HttpClientRequest {
+  _TestHttpClientRequest(this._imageBytes);
+
+  final List<int> _imageBytes;
+
+  @override
+  Future<HttpClientResponse> close() async {
+    return _TestHttpClientResponse(_imageBytes);
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _TestHttpClientResponse extends Stream<List<int>>
+    implements HttpClientResponse {
+  _TestHttpClientResponse(this._imageBytes);
+
+  final List<int> _imageBytes;
+
+  @override
+  int get statusCode => HttpStatus.ok;
+
+  @override
+  int get contentLength => _imageBytes.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int>)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final controller = StreamController<List<int>>();
+    controller.add(_imageBytes);
+    controller.close();
+    return controller.stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 MapScreenController _buildMapController({

@@ -58,6 +58,10 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.image_outlined), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('poi-card-hero-backdrop')),
+      findsOneWidget,
+    );
   });
 }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
@@ -2659,6 +2660,66 @@ class MapScreenController implements Disposable {
 
   double? getPoiDeckHeight(String poiId) {
     return poiDeckHeights[poiId];
+  }
+
+  double resolvePoiDeckHeightForDeck(
+    List<CityPoiModel> deckPois, {
+    required int currentIndex,
+    required double defaultHeight,
+    required double safeFallbackHeight,
+  }) {
+    if (deckPois.isEmpty) {
+      return defaultHeight;
+    }
+
+    final visiblePois = _visibleDeckPois(
+      deckPois,
+      currentIndex: currentIndex,
+    );
+    if (visiblePois.isEmpty) {
+      return defaultHeight;
+    }
+
+    final measuredHeights = <double>[];
+    var hasMissingVisibleMeasurement = false;
+    for (final poi in visiblePois) {
+      final measuredHeight = poiDeckHeights[poi.id];
+      if (measuredHeight == null) {
+        hasMissingVisibleMeasurement = true;
+        continue;
+      }
+      measuredHeights.add(measuredHeight);
+    }
+
+    if (measuredHeights.isEmpty) {
+      return safeFallbackHeight;
+    }
+
+    final maxMeasuredHeight =
+        measuredHeights.reduce((left, right) => math.max(left, right));
+    if (hasMissingVisibleMeasurement) {
+      return math.max(maxMeasuredHeight, safeFallbackHeight);
+    }
+
+    return maxMeasuredHeight;
+  }
+
+  List<CityPoiModel> _visibleDeckPois(
+    List<CityPoiModel> deckPois, {
+    required int currentIndex,
+  }) {
+    if (deckPois.isEmpty) {
+      return const <CityPoiModel>[];
+    }
+
+    final lastIndex = deckPois.length - 1;
+    final normalizedIndex = currentIndex.clamp(0, lastIndex);
+    final startIndex = normalizedIndex > 0 ? normalizedIndex - 1 : 0;
+    final endIndex =
+        normalizedIndex < lastIndex ? normalizedIndex + 1 : lastIndex;
+    return List<CityPoiModel>.unmodifiable(
+      deckPois.sublist(startIndex, endIndex + 1),
+    );
   }
 
   @override
