@@ -225,5 +225,31 @@ void main() {
       expect(model.visual?.iconColorHex, '#FFFFFF');
       expect(model.visual?.source, 'type_definition');
     });
+
+    test('parses event timing snapshot into domain model', () {
+      final dto = CityPoiDTO.fromJson({
+        'id': 'poi-event-1',
+        'name': 'Evento Longo',
+        'description': 'Descricao',
+        'address': 'Carvoeiro',
+        'category': 'event',
+        'ref_type': 'event',
+        'location': {
+          'lat': -20.0,
+          'lng': -40.0,
+        },
+        'is_happening_now': true,
+        'time_start': '2026-04-07T10:00:00Z',
+        'time_end': '2026-04-07T22:00:00Z',
+      });
+
+      final model = dto.toDomain();
+
+      expect(model.isHappeningNow, isTrue);
+      expect(model.timeStart?.toUtc().toIso8601String(),
+          '2026-04-07T10:00:00.000Z');
+      expect(
+          model.timeEnd?.toUtc().toIso8601String(), '2026-04-07T22:00:00.000Z');
+    });
   });
 }

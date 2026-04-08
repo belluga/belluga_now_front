@@ -2,6 +2,7 @@ import 'package:belluga_now/application/contracts/promotion/promotion_lead_captu
 import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_request.dart';
 import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
@@ -229,13 +230,14 @@ void main() {
     );
   });
 
-  testWidgets('close button uses pop only', (tester) async {
+  testWidgets('close button uses pop when router can pop', (tester) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
       preferredStorePlatformResolver: () => null,
       appDataRepository: appDataRepository,
       leadCaptureService: leadCaptureService,
     );
+    router.canPopValue = true;
 
     await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
@@ -245,6 +247,34 @@ void main() {
 
     expect(router.popCalls, 1);
     expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets(
+      'close button falls back to home when auth-owned redirect has no stack',
+      (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+    router.canPopValue = false;
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        redirectPath: '/profile',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('app_promotion_close_button')));
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes, isNotNull);
+    expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
   });
 
   testWidgets('success CTA uses pop only', (tester) async {
@@ -351,13 +381,14 @@ void _registerControllers({
 
 Widget _buildWidget({
   required _RecordingStackRouter router,
+  String redirectPath = '/invite?code=CODE123',
 }) {
   return StackRouterScope(
     controller: router,
     stateHash: 0,
-    child: const MaterialApp(
+    child: MaterialApp(
       home: AppPromotionScreen(
-        redirectPath: '/invite?code=CODE123',
+        redirectPath: redirectPath,
       ),
     ),
   );
@@ -366,6 +397,17 @@ Widget _buildWidget({
 class _RecordingStackRouter extends Mock implements StackRouter {
   int popCalls = 0;
   int replaceAllCalls = 0;
+  bool canPopValue = false;
+  List<PageRouteInfo>? lastReplaceAllRoutes;
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return canPopValue;
+  }
 
   @override
   void pop<T extends Object?>([T? result]) {
@@ -379,6 +421,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     bool updateExistingRoutes = true,
   }) async {
     replaceAllCalls += 1;
+    lastReplaceAllRoutes = routes;
   }
 }
 

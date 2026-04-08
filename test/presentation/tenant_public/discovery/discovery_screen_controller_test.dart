@@ -22,7 +22,6 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -456,9 +455,11 @@ void main() {
     expect(scheduleRepository.lastLiveNowRequest!.maxDistanceMeters,
         closeTo(preferredRadiusMeters, 0.000001));
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug, 'evento-live');
     expect(
-      controller.liveNowEventsStreamValue.value.first.artists.first.displayName,
+        controller.liveNowEventsStreamValue.value!.first.slug, 'evento-live');
+    expect(
+      controller
+          .liveNowEventsStreamValue.value!.first.artists.first.displayName,
       'Artista Live',
     );
     controller.onDispose();
@@ -530,7 +531,7 @@ void main() {
       closeTo(-40.495395, 0.000001),
     );
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug,
+    expect(controller.liveNowEventsStreamValue.value!.first.slug,
         'evento-live-race');
     controller.onDispose();
   });
@@ -589,7 +590,7 @@ void main() {
 
     expect(scheduleRepository.liveNowFetchCalls, 1);
     expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value.first.slug,
+    expect(controller.liveNowEventsStreamValue.value!.first.slug,
         'evento-live-late');
     controller.onDispose();
   });
@@ -670,8 +671,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
-  testWidgets(
-      'DiscoveryFilterChips uses the shared bordered chip styling',
+  testWidgets('DiscoveryFilterChips uses the shared bordered chip styling',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -780,7 +780,7 @@ void main() {
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
     final router = _RecordingStackRouter();
-    router.removeLastResult = true;
+    router.canPopResult = true;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/descobrir'),
       router: router,
@@ -821,13 +821,15 @@ void main() {
     expect(find.byType(DiscoveryScreen), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(find.text('Descubra'), findsOneWidget);
-    expect(router.removeLastCallCount, 0);
+    expect(router.canPopCallCount, 0);
+    expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, isEmpty);
 
     popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
   });
 
@@ -855,7 +857,7 @@ void main() {
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
     final router = _RecordingStackRouter();
-    router.removeLastResult = false;
+    router.canPopResult = false;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/descobrir'),
       router: router,
@@ -884,11 +886,146 @@ void main() {
     popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, hasLength(1));
     expect(router.replaceAllRoutes.single, hasLength(1));
     expect(
         router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets(
+      'DiscoveryScreen visible back button clears active search before removing the route',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('ui-back-button-1'),
+              type: 'artist',
+              name: 'Artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter()..canPopResult = true;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'artist');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Descubra'), findsOneWidget);
+    expect(router.canPopCallCount, 0);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, isEmpty);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets(
+      'DiscoveryScreen visible back button falls back to TenantHomeRoute when root-opened',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('ui-back-button-fallback-1'),
+              type: 'artist',
+              name: 'Artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter()..canPopResult = false;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(router.replaceAllRoutes.single, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      TenantHomeRoute.name,
+    );
   });
 
   test(
@@ -1071,14 +1208,25 @@ DiscoveryScreenController _buildDiscoveryController({
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
-  bool removeLastResult = true;
-  int removeLastCallCount = 0;
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
-  bool removeLast() {
-    removeLastCallCount += 1;
-    return removeLastResult;
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async {
+    popCallCount += 1;
+    return canPopResult;
   }
 
   @override
@@ -1456,22 +1604,21 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   final Duration liveNowFetchDelay;
   int liveNowFetchCalls = 0;
   _LiveNowRequest? lastLiveNowRequest;
-  HomeAgendaCacheSnapshot? _cacheSnapshot;
+  List<EventModel>? _cacheEvents;
   final Completer<void> _firstLiveNowFetchStarted = Completer<void>();
 
   Future<void> waitUntilFirstLiveNowFetchStarts() =>
       _firstLiveNowFetchStarted.future;
 
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+  final StreamValue<List<EventModel>?> homeAgendaStreamValue =
       StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
+      StreamValue<List<EventModel>?>(defaultValue: null);
 
   @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
-
-  @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -1479,34 +1626,41 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final snapshot = _cacheSnapshot;
-    if (snapshot == null) {
-      return null;
-    }
-    if (snapshot.showPastOnly != showPastOnly.value) {
-      return null;
-    }
-    if (snapshot.searchQuery != searchQuery.value) {
-      return null;
-    }
-    if (snapshot.confirmedOnly != confirmedOnly.value) {
-      return null;
-    }
-    return snapshot;
+    return _cacheEvents;
   }
 
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    _cacheSnapshot = snapshot;
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  void writeHomeAgendaCache(List<EventModel> events) {
+    _cacheEvents = List<EventModel>.unmodifiable(events);
+    homeAgendaStreamValue.addValue(_cacheEvents);
   }
 
-  @override
   void clearHomeAgendaCache() {
-    _cacheSnapshot = null;
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
+    _cacheEvents = null;
+    homeAgendaStreamValue.addValue(null);
+  }
+
+  @override
+  Future<List<EventModel>> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<EventModel>> loadMoreHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
   }
 
   @override
@@ -1514,50 +1668,85 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     return null;
   }
 
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
+  Future<List<EventModel>> _fetchLiveNow({
+    required int page,
+    required int pageSize,
     required ScheduleRepoBool showPastOnly,
-    ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    if (liveNowOnly?.value ?? false) {
-      liveNowFetchCalls += 1;
-      if (!_firstLiveNowFetchStarted.isCompleted) {
-        _firstLiveNowFetchStarted.complete();
-      }
-      lastLiveNowRequest = _LiveNowRequest(
-        page: page.value,
-        pageSize: pageSize.value,
-        showPastOnly: showPastOnly.value,
-        originLat: originLat?.value,
-        originLng: originLng?.value,
-        maxDistanceMeters: maxDistanceMeters?.value,
-      );
-      if (liveNowFetchDelay > Duration.zero) {
-        await Future<void>.delayed(liveNowFetchDelay);
-      }
-      final hasOrigin = originLat != null && originLng != null;
-      final events = requireOriginForLiveNow && !hasOrigin
-          ? const <EventModel>[]
-          : liveNowEvents.take(pageSize.value).toList(growable: false);
-      return pagedEventsResultFromRaw(
-        events: events,
-        hasMore: false,
-      );
+    final ignoredSearchQuery = searchQuery;
+    final ignoredConfirmedOnly = confirmedOnly;
+    Object? _keepIgnoredValuesAlive = ignoredSearchQuery;
+    _keepIgnoredValuesAlive = ignoredConfirmedOnly ?? _keepIgnoredValuesAlive;
+    liveNowFetchCalls += 1;
+    if (!_firstLiveNowFetchStarted.isCompleted) {
+      _firstLiveNowFetchStarted.complete();
     }
-    return pagedEventsResultFromRaw(
-      events: const <EventModel>[],
-      hasMore: false,
+    lastLiveNowRequest = _LiveNowRequest(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly.value,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
     );
+    if (liveNowFetchDelay > Duration.zero) {
+      await Future<void>.delayed(liveNowFetchDelay);
+    }
+    final hasOrigin = originLat != null && originLng != null;
+    final events = requireOriginForLiveNow && !hasOrigin
+        ? const <EventModel>[]
+        : liveNowEvents.take(pageSize).toList(growable: false);
+    return events;
+  }
+
+  @override
+  Future<List<EventModel>> loadEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<List<EventModel>> loadMoreEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<List<EventModel>> loadConfirmedEvents({
+    required ScheduleRepoBool showPastOnly,
+  }) async =>
+      const <EventModel>[];
+
+  @override
+  Future<void> refreshDiscoveryLiveNowEvents({
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final events = await _fetchLiveNow(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    discoveryLiveNowEventsStreamValue.addValue(events);
   }
 
   @override

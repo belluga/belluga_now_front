@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -128,6 +129,52 @@ void main() {
     expect(find.text('Corrigidos: 4'), findsOneWidget);
     expect(find.text('Inválidos: 0'), findsOneWidget);
   });
+
+  testWidgets('temporal chips default to now and future and allow adding past',
+      (tester) async {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _EventsRepositoryWithSeedData(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    final pastChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    final nowChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-now'),
+      ).first,
+    );
+    final futureChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-future'),
+      ).first,
+    );
+
+    expect(pastChip.selected, isFalse);
+    expect(nowChip.selected, isTrue);
+    expect(futureChip.selected, isTrue);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    await tester.pumpAndSettle();
+
+    final updatedPastChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    expect(updatedPastChip.selected, isTrue);
+  });
 }
 
 Future<void> _pumpEventsRouter(WidgetTester tester) async {
@@ -208,6 +255,7 @@ class _EventsRepositoryWithSeedData
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return <TenantAdminEvent>[_seedEvent];
   }
@@ -219,6 +267,7 @@ class _EventsRepositoryWithSeedData
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (page.value > 1) {
       return tenantAdminPagedResultFromRaw(

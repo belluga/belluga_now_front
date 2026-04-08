@@ -35,9 +35,8 @@ class UpcomingEventCard extends StatelessWidget {
         ? event.venueTitle!.trim()
         : event.location.trim();
     final locationText = event.location.trim();
-    final venueAddress = venueName == locationText || locationText.isEmpty
-        ? null
-        : locationText;
+    final venueAddress =
+        venueName == locationText || locationText.isEmpty ? null : locationText;
 
     return UpcomingEventCard(
       key: key,
@@ -81,10 +80,8 @@ class UpcomingEventCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final cardRadius = BorderRadius.circular(26);
     final surface = colorScheme.surfaceContainerLow;
-    final confirmedTint =
-        colorScheme.primary.withValues(alpha: 0.08);
-    final pendingTint =
-        colorScheme.secondary.withValues(alpha: 0.08);
+    final confirmedTint = colorScheme.primary.withValues(alpha: 0.08);
+    final pendingTint = colorScheme.secondary.withValues(alpha: 0.08);
     final cardColor = isConfirmed
         ? Color.alphaBlend(confirmedTint, surface)
         : (pendingInvitesCount > 0
@@ -162,7 +159,8 @@ class UpcomingEventCard extends StatelessWidget {
                                     .toList(growable: false),
                               ),
                             ],
-                            if (_buildVenueLine(context) case final venueLine?) ...[
+                            if (_buildVenueLine(context)
+                                case final venueLine?) ...[
                               const SizedBox(height: 8),
                               venueLine,
                             ],
@@ -251,7 +249,23 @@ class UpcomingEventCard extends StatelessWidget {
   static String _dateLabelFor(VenueEventResume event) {
     final weekday = DateFormat.E().format(event.startDateTime);
     final day = event.startDateTime.day.toString().padLeft(2, '0');
-    return '$weekday, $day • ${event.startDateTime.timeLabel}'.toUpperCase();
+    final explicitEnd = event.endDateTime;
+    if (explicitEnd == null) {
+      return '$weekday, $day • ${event.startDateTime.timeLabel}'.toUpperCase();
+    }
+
+    final sameDay = event.startDateTime.year == explicitEnd.year &&
+        event.startDateTime.month == explicitEnd.month &&
+        event.startDateTime.day == explicitEnd.day;
+    if (sameDay) {
+      return '$weekday, $day • ${event.startDateTime.timeLabel} - ${explicitEnd.timeLabel}'
+          .toUpperCase();
+    }
+
+    final endWeekday = DateFormat.E().format(explicitEnd);
+    final endDay = explicitEnd.day.toString().padLeft(2, '0');
+    return '$weekday, $day • ${event.startDateTime.timeLabel} - $endWeekday, $endDay • ${explicitEnd.timeLabel}'
+        .toUpperCase();
   }
 }
 

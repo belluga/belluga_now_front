@@ -211,7 +211,7 @@ class TenantAdminEventsResponseDecoder {
               _asString(placeRefRow['type']) ?? '',
             ),
             idValue: tenantAdminRequiredText(
-              _asString(placeRefRow['id']) ?? '',
+              _extractPlaceRefId(placeRefRow) ?? '',
             ),
           );
 
@@ -437,11 +437,33 @@ class TenantAdminEventsResponseDecoder {
     if (value == null) {
       return null;
     }
+
+    if (value is! String && value is! num && value is! bool) {
+      throw FormatException('Invalid scalar text value: $value');
+    }
+
     final normalized = value.toString();
     if (normalized.trim().isEmpty) {
       return null;
     }
     return normalized;
+  }
+
+  String? _extractPlaceRefId(Map<String, dynamic> placeRefRow) {
+    final direct = _asString(placeRefRow['id']);
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final legacy = placeRefRow['_id'];
+    if (legacy is Map) {
+      final oid = _asString(legacy[r'$oid'] ?? legacy['oid']);
+      if (oid != null && oid.isNotEmpty) {
+        return oid;
+      }
+    }
+
+    return _asString(legacy);
   }
 
   double? _toDouble(Object? value) {
@@ -460,6 +482,12 @@ class TenantAdminEventsResponseDecoder {
   DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
       return TimezoneConverter.utcToLocal(value);
+    }
+    if (value is Map) {
+      final wrapped = value[r'$date'] ?? value['date'];
+      if (wrapped != null && wrapped != value) {
+        return _parseDate(wrapped);
+      }
     }
     if (value is String && value.trim().isNotEmpty) {
       final parsed = DateTime.tryParse(value);

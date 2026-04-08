@@ -6,7 +6,6 @@ import 'package:belluga_now/domain/repositories/schedule_repository_contract.dar
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -15,23 +14,31 @@ import 'package:stream_value/core/stream_value.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract {
   static const double _homeAgendaCacheReuseMaxOriginJumpMeters = 1000.0;
+  static const int _homeAgendaPageSize = 25;
+  static const int _eventSearchPageSize = 25;
+  static const int _discoveryLiveNowPageSize = 10;
+  static const int _confirmedEventsPageSize = 10;
+  static const int _maxConfirmedEventsPages = 30;
 
   ScheduleRepository({
     ScheduleBackendContract? backend,
     BackendContract? backendContract,
-  })  : _backend = backend ??
+  }) : _backend = backend ??
             (backendContract ?? GetIt.I.get<BackendContract>()).schedule;
 
   final ScheduleBackendContract _backend;
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+  final StreamValue<List<EventModel>?> homeAgendaStreamValue =
       StreamValue<List<EventModel>?>();
   @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
+  final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
+      StreamValue<List<EventModel>?>(defaultValue: null);
+  _HomeAgendaState? _homeAgendaState;
+  final Map<String, _RepositoryQueryState> _eventSearchStateByQueryKey =
+      <String, _RepositoryQueryState>{};
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -39,42 +46,42 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) {
+    final state = _homeAgendaState;
+    if (state == null) {
       return null;
     }
-    if (snapshot.showPastOnly != showPastOnly.value) {
+    if (state.showPastOnly != showPastOnly.value) {
       return null;
     }
-    if (snapshot.searchQuery != searchQuery.value) {
+    if (state.searchQuery != searchQuery.value) {
       return null;
     }
-    if (snapshot.confirmedOnly != confirmedOnly.value) {
+    if (state.confirmedOnly != confirmedOnly.value) {
       return null;
     }
     if (!_matchesHomeAgendaOrigin(
-      snapshot: snapshot,
+      state: state,
       requestedOriginLat: originLat?.value,
       requestedOriginLng: originLng?.value,
     )) {
       return null;
     }
     if (!_matchesHomeAgendaMaxDistance(
-      snapshot: snapshot,
+      state: state,
       requestedMaxDistanceMeters: maxDistanceMeters?.value,
     )) {
       return null;
     }
-    return snapshot;
+    return state.events;
   }
 
   bool _matchesHomeAgendaOrigin({
-    required HomeAgendaCacheSnapshot snapshot,
+    required _HomeAgendaState state,
     required double? requestedOriginLat,
     required double? requestedOriginLng,
   }) {
-    final snapshotOriginLat = snapshot.originLat;
-    final snapshotOriginLng = snapshot.originLng;
+    final snapshotOriginLat = state.originLat;
+    final snapshotOriginLng = state.originLng;
 
     if (requestedOriginLat == null || requestedOriginLng == null) {
       return snapshotOriginLat == null && snapshotOriginLng == null;
@@ -99,10 +106,10 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   bool _matchesHomeAgendaMaxDistance({
-    required HomeAgendaCacheSnapshot snapshot,
+    required _HomeAgendaState state,
     required double? requestedMaxDistanceMeters,
   }) {
-    final snapshotMaxDistanceMeters = snapshot.maxDistanceMeters;
+    final snapshotMaxDistanceMeters = state.maxDistanceMeters;
 
     if (requestedMaxDistanceMeters == null) {
       return snapshotMaxDistanceMeters == null;
@@ -116,46 +123,69 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         0.001;
   }
 
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  _HomeAgendaState? _resolveHomeAgendaState({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) {
+    final state = _homeAgendaState;
+    if (state == null) {
+      return null;
+    }
+    if (state.showPastOnly != showPastOnly.value) {
+      return null;
+    }
+    if (state.searchQuery != searchQuery.value) {
+      return null;
+    }
+    if (state.confirmedOnly != confirmedOnly.value) {
+      return null;
+    }
+    if (!_matchesHomeAgendaOrigin(
+      state: state,
+      requestedOriginLat: originLat?.value,
+      requestedOriginLng: originLng?.value,
+    )) {
+      return null;
+    }
+    if (!_matchesHomeAgendaMaxDistance(
+      state: state,
+      requestedMaxDistanceMeters: maxDistanceMeters?.value,
+    )) {
+      return null;
+    }
+    return state;
   }
 
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
+  void _publishHomeAgendaState(_HomeAgendaState state) {
+    _homeAgendaState = state;
+    homeAgendaStreamValue.addValue(state.events);
   }
 
-  Future<void> initializeHomeAgendaStreams() async {
-    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
-    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
+  String _buildEventSearchQueryKey({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) {
+    return <String>[
+      showPastOnly.value.toString(),
+      searchQuery?.value ?? '',
+      (confirmedOnly?.value ?? false).toString(),
+      originLat?.value.toString() ?? '',
+      originLng?.value.toString() ?? '',
+      maxDistanceMeters?.value.toString() ?? '',
+    ].join('::');
   }
 
-  Future<void> refreshHomeAgendaStreams() async {
-    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
-    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
-  }
-
-  @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
-    final slugValue = slug.value;
-    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slugValue);
-    return dto?.toDomain();
-  }
-
-  Map<String, String> _encodeTaxonomyEntry(ScheduleRepoTaxonomyEntry entry) {
-    return <String, String>{
-      'type': entry.type.value,
-      'term': entry.term.value,
-    };
-  }
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
+  Future<_SchedulePageSlice> _fetchEventsPageSlice({
+    required int page,
+    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
@@ -168,8 +198,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final EventPageDTO pageDto = await _backend.fetchEventsPage(
-      page: page.value,
-      pageSize: pageSize.value,
+      page: page,
+      pageSize: pageSize,
       showPastOnly: showPastOnly.value,
       liveNowOnly: liveNowOnly?.value ?? false,
       searchQuery: searchQuery?.value,
@@ -188,13 +218,233 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters?.value,
     );
 
-    final events =
-        pageDto.events.map((event) => event.toDomain()).toList(growable: false);
-
-    return pagedEventsResultFromRaw(
-      events: events,
+    return _SchedulePageSlice(
+      events: List<EventModel>.unmodifiable(
+        pageDto.events.map((event) => event.toDomain()),
+      ),
       hasMore: pageDto.hasMore,
     );
+  }
+
+  @override
+  Future<List<EventModel>> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final firstSlice = await _fetchEventsPageSlice(
+      page: 1,
+      pageSize: _homeAgendaPageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    final state = _HomeAgendaState(
+      events: firstSlice.events,
+      nextPage: 2,
+      hasMore: firstSlice.hasMore,
+      showPastOnly: showPastOnly.value,
+      searchQuery: searchQuery.value,
+      confirmedOnly: confirmedOnly.value,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
+    );
+    _publishHomeAgendaState(state);
+    return state.events;
+  }
+
+  @override
+  Future<List<EventModel>> loadMoreHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final current = _resolveHomeAgendaState(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    if (current == null || !current.hasMore) {
+      return current?.events ?? const <EventModel>[];
+    }
+
+    final nextSlice = await _fetchEventsPageSlice(
+      page: current.nextPage,
+      pageSize: _homeAgendaPageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    final state = _HomeAgendaState(
+      events: <EventModel>[
+        ...current.events,
+        ...nextSlice.events,
+      ],
+      nextPage: current.nextPage + 1,
+      hasMore: nextSlice.hasMore,
+      showPastOnly: showPastOnly.value,
+      searchQuery: searchQuery.value,
+      confirmedOnly: confirmedOnly.value,
+      originLat: originLat?.value,
+      originLng: originLng?.value,
+      maxDistanceMeters: maxDistanceMeters?.value,
+    );
+    _publishHomeAgendaState(state);
+    return state.events;
+  }
+
+  Future<void> initializeHomeAgendaStreams() async {
+    homeAgendaStreamValue.addValue(homeAgendaStreamValue.value);
+  }
+
+  Future<void> refreshHomeAgendaStreams() async {
+    homeAgendaStreamValue.addValue(homeAgendaStreamValue.value);
+  }
+
+  @override
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+    final slugValue = slug.value;
+    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slugValue);
+    return dto?.toDomain();
+  }
+
+  Map<String, String> _encodeTaxonomyEntry(ScheduleRepoTaxonomyEntry entry) {
+    return <String, String>{
+      'type': entry.type.value,
+      'term': entry.term.value,
+    };
+  }
+
+  @override
+  Future<List<EventModel>> loadEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final queryKey = _buildEventSearchQueryKey(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    final firstSlice = await _fetchEventsPageSlice(
+      page: 1,
+      pageSize: _eventSearchPageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _eventSearchStateByQueryKey[queryKey] = _RepositoryQueryState(
+      nextPage: 2,
+      hasMore: firstSlice.hasMore,
+    );
+    return firstSlice.events;
+  }
+
+  @override
+  Future<List<EventModel>> loadMoreEventSearch({
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final queryKey = _buildEventSearchQueryKey(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    final state = _eventSearchStateByQueryKey[queryKey];
+    if (state == null || !state.hasMore) {
+      return const <EventModel>[];
+    }
+
+    final nextSlice = await _fetchEventsPageSlice(
+      page: state.nextPage,
+      pageSize: _eventSearchPageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _eventSearchStateByQueryKey[queryKey] = _RepositoryQueryState(
+      nextPage: state.nextPage + 1,
+      hasMore: nextSlice.hasMore,
+    );
+    return nextSlice.events;
+  }
+
+  @override
+  Future<List<EventModel>> loadConfirmedEvents({
+    required ScheduleRepoBool showPastOnly,
+  }) async {
+    final events = <EventModel>[];
+    var currentPage = 1;
+    var hasMore = true;
+
+    while (hasMore && currentPage <= _maxConfirmedEventsPages) {
+      final pageSlice = await _fetchEventsPageSlice(
+        page: currentPage,
+        pageSize: _confirmedEventsPageSize,
+        showPastOnly: showPastOnly,
+        confirmedOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
+      );
+      events.addAll(pageSlice.events);
+      hasMore = pageSlice.hasMore;
+      currentPage += 1;
+    }
+
+    return List<EventModel>.unmodifiable(events);
+  }
+
+  @override
+  Future<void> refreshDiscoveryLiveNowEvents({
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final liveNowSlice = await _fetchEventsPageSlice(
+      page: 1,
+      pageSize: _discoveryLiveNowPageSize,
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    discoveryLiveNowEventsStreamValue.addValue(liveNowSlice.events);
   }
 
   @override
@@ -261,5 +511,48 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       onDelta(delta);
     });
   }
+}
 
+class _SchedulePageSlice {
+  const _SchedulePageSlice({
+    required this.events,
+    required this.hasMore,
+  });
+
+  final List<EventModel> events;
+  final bool hasMore;
+}
+
+class _HomeAgendaState {
+  const _HomeAgendaState({
+    required this.events,
+    required this.nextPage,
+    required this.hasMore,
+    required this.showPastOnly,
+    required this.searchQuery,
+    required this.confirmedOnly,
+    required this.originLat,
+    required this.originLng,
+    required this.maxDistanceMeters,
+  });
+
+  final List<EventModel> events;
+  final int nextPage;
+  final bool hasMore;
+  final bool showPastOnly;
+  final String searchQuery;
+  final bool confirmedOnly;
+  final double? originLat;
+  final double? originLng;
+  final double? maxDistanceMeters;
+}
+
+class _RepositoryQueryState {
+  const _RepositoryQueryState({
+    required this.nextPage,
+    required this.hasMore,
+  });
+
+  final int nextPage;
+  final bool hasMore;
 }

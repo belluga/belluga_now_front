@@ -1058,6 +1058,116 @@ void main() {
     );
   });
 
+  testWidgets('saves and deletes telemetry integrations via remote repository',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.telemetry,
+        ),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Telemetry'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('firebase'), findsNothing);
+    expect(find.text('mixpanel'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Token'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'URL webhook'), findsNothing);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Token'),
+      'mixpanel-token-123',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Eventos (separados por vírgula)'),
+      'app_opened',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar integração'));
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.lastTelemetryIntegration, isNotNull);
+    expect(settingsRepository.lastTelemetryIntegration!.type, 'mixpanel');
+    expect(
+      settingsRepository.lastTelemetryIntegration!.token,
+      'mixpanel-token-123',
+    );
+    expect(
+      settingsRepository.lastTelemetryIntegration!.events,
+      equals(['app_opened']),
+    );
+    expect(find.text('track_all=true'), findsNothing);
+    expect(find.text('mixpanel'), findsNWidgets(2));
+    expect(find.text('app_opened'), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.delete_outline).first);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.deletedTelemetryTypes, equals(['mixpanel']));
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+  });
+
+  testWidgets('telemetry webhook mode shows URL field instead of token',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.telemetry,
+        ),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Telemetry'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('webhook').last);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Token'), findsNothing);
+    expect(find.widgetWithText(TextField, 'URL webhook'), findsOneWidget);
+  });
+
   testWidgets('saves app links settings via remote repository', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -1706,6 +1816,8 @@ class _FakeTenantAdminSettingsRepository
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
+  TenantAdminTelemetryIntegration? lastTelemetryIntegration;
+  final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
   TenantAdminAppLinksSettings? updatedAppLinksSettings;
@@ -1760,6 +1872,11 @@ class _FakeTenantAdminSettingsRepository
     bccRecipients: TenantAdminResendEmailRecipients(),
     replyToRecipients: _resendRecipients(['reply@belluga.space']),
   );
+  TenantAdminTelemetrySettingsSnapshot _telemetrySnapshot =
+      TenantAdminTelemetrySettingsSnapshot(
+    integrations: const [],
+    availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
+  );
 
   @override
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
@@ -1784,10 +1901,16 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required Object type,
   }) async {
-    return TenantAdminTelemetrySettingsSnapshot(
-      integrations: [],
-      availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
+    final resolvedType =
+        type is String ? type : (type as dynamic).value as String;
+    deletedTelemetryTypes.add(resolvedType);
+    _telemetrySnapshot = TenantAdminTelemetrySettingsSnapshot(
+      integrations: _telemetrySnapshot.integrations
+          .where((integration) => integration.type != resolvedType)
+          .toList(growable: false),
+      availableEventValues: _telemetrySnapshot.availableEvents,
     );
+    return _telemetrySnapshot;
   }
 
   @override
@@ -1808,10 +1931,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
-    return TenantAdminTelemetrySettingsSnapshot(
-      integrations: [],
-      availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
-    );
+    return _telemetrySnapshot;
   }
 
   @override
@@ -1856,10 +1976,12 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> upsertTelemetryIntegration({
     required TenantAdminTelemetryIntegration integration,
   }) async {
-    return TenantAdminTelemetrySettingsSnapshot(
+    lastTelemetryIntegration = integration;
+    _telemetrySnapshot = TenantAdminTelemetrySettingsSnapshot(
       integrations: [integration],
       availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
     );
+    return _telemetrySnapshot;
   }
 
   @override

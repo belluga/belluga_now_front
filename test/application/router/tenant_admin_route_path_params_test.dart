@@ -108,14 +108,18 @@ void main() {
   });
 
   group('Public route path params', () {
-    test('immersive event and partner routes encode slug path params', () {
+    test('immersive event, partner, and static asset routes encode path params',
+        () {
       final immersive = ImmersiveEventDetailRoute(eventSlug: 'show-immersive');
       final partner = PartnerDetailRoute(slug: 'yuri-dias');
+      final asset = StaticAssetDetailRoute(assetRef: 'praia-das-virtudes');
 
       expect(immersive.rawPathParams, {'slug': 'show-immersive'});
       expect(partner.rawPathParams, {'slug': 'yuri-dias'});
+      expect(asset.rawPathParams, {'assetRef': 'praia-das-virtudes'});
       _expectResolvedRawParams(immersive.rawPathParams);
       _expectResolvedRawParams(partner.rawPathParams);
+      _expectResolvedRawParams(asset.rawPathParams);
     });
   });
 

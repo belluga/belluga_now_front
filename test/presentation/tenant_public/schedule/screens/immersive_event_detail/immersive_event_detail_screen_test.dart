@@ -187,6 +187,96 @@ void main() {
     expect(find.text('Bóora!'), findsOneWidget);
   });
 
+  testWidgets('event detail back falls back to agenda when no history exists',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter()..canPopResult = false;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, EventSearchRoute.name);
+  });
+
+  testWidgets('event detail back returns to previous route when history exists',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter()..canPopResult = true;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
   testWidgets('horizontal swipe moves immersive event detail to the next tab',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -465,6 +555,9 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastPushedPath;
   String? lastReplacedPath;
   PageRouteInfo? lastPushedRoute;
+  bool canPopResult = true;
+  int popCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
   Future<T?> pushPath<T extends Object?>(
@@ -493,6 +586,29 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     lastPushedRoute = route;
     return null;
+  }
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return canPopResult;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCallCount += 1;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
   }
 }
 

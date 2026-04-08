@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
@@ -37,15 +37,15 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
         final hasActiveFilters =
             controller.inviteFilterStreamValue.value != InviteFilter.none ||
                 controller.showHistoryStreamValue.value;
-        return StreamValueBuilder<List<EventModel>?>(
-          streamValue: controller.displayedEventsStreamValue,
+        return StreamValueBuilder<TenantHomeAgendaDisplayState?>(
+          streamValue: controller.displayStateStreamValue,
           onNullWidget: _buildFirstFetchLoading(
             theme: theme,
             colorScheme: colorScheme,
             controller: controller,
           ),
-          builder: (context, events) {
-            final resumes = events!
+          builder: (context, displayState) {
+            final resumes = displayState!.events
                 .map(
                   (event) => VenueEventResume.fromScheduleEvent(
                     event,

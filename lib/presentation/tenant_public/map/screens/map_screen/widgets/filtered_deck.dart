@@ -1,13 +1,13 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
-import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:flutter/material.dart';
 
 class FilteredDeck extends StatelessWidget {
+  static const double _kCarouselPageInset = 8;
+
   const FilteredDeck({
     super.key,
     required this.pois,
@@ -16,8 +16,9 @@ class FilteredDeck extends StatelessWidget {
     required this.pageController,
     required this.cardBuilder,
     required this.onPrimaryAction,
-    required this.onShare,
+    required this.secondaryActionForPoi,
     required this.onRoute,
+    required this.onClose,
     required this.onChanged,
     required this.deckHeight,
     required this.onCardHeightChanged,
@@ -30,8 +31,10 @@ class FilteredDeck extends StatelessWidget {
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
-  final ValueChanged<CityPoiModel> onShare;
+  final PoiCardSecondaryAction? Function(CityPoiModel poi)
+      secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
+  final VoidCallback onClose;
   final ValueChanged<int> onChanged;
   final double deckHeight;
   final void Function(String poiId, double height) onCardHeightChanged;
@@ -39,137 +42,149 @@ class FilteredDeck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visual = _resolveDeckVisual();
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(
-              _iconForDeckVisual(visual),
-              color: _accentColorForDeckVisual(
-                visual: visual,
-                scheme: colorScheme,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _titleForFilterMode(controller.filterModeStreamValue.value),
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         AnimatedContainer(
+          key: const ValueKey<String>('poi-deck-container'),
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
           height: deckHeight,
           child: PageView.builder(
             controller: pageController,
-            padEnds: false,
+            padEnds: true,
+            clipBehavior: Clip.none,
             itemCount: pois.length,
             onPageChanged: onChanged,
             itemBuilder: (context, index) {
-              final poi = pois[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index == pois.length - 1 ? 0 : 12,
-                ),
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minHeight: 0,
-                  maxHeight: double.infinity,
-                  child: SizeReportingWidget(
-                    onSizeChanged: (size) => onCardHeightChanged(
-                      poi.id,
-                      size.height + deckMeasurementPadding,
-                    ),
-                    child: cardBuilder.build(
-                      context: context,
-                      poi: poi,
-                      colorScheme: colorScheme,
-                      onPrimaryAction: () {
-                        controller.selectPoi(poi);
-                        onPrimaryAction(poi);
-                      },
-                      onShare: () => onShare(poi),
-                      onRoute: () => onRoute(poi),
-                    ),
-                  ),
-                ),
+              return _FilteredDeckPage(
+                poi: pois[index],
+                controller: controller,
+                colorScheme: colorScheme,
+                cardBuilder: cardBuilder,
+                onPrimaryAction: onPrimaryAction,
+                secondaryActionForPoi: secondaryActionForPoi,
+                onRoute: onRoute,
+                onClose: onClose,
+                onCardHeightChanged: onCardHeightChanged,
+                deckMeasurementPadding: deckMeasurementPadding,
               );
             },
           ),
         ),
-        const SizedBox(height: 8),
+        if (pois.length > 1) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List<Widget>.generate(pois.length, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: controller.poiDeckIndexStreamValue.value == index
+                      ? 18
+                      : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: controller.poiDeckIndexStreamValue.value == index
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ],
     );
   }
+}
 
-  String _titleForFilterMode(PoiFilterMode mode) {
-    switch (mode) {
-      case PoiFilterMode.events:
-        return 'Eventos em destaque';
-      case PoiFilterMode.restaurants:
-        return 'Sugestões gastronômicas';
-      case PoiFilterMode.beaches:
-        return 'Praias recomendadas';
-      case PoiFilterMode.lodging:
-        return 'Hospedagens parceiras';
-      case PoiFilterMode.server:
-        return controller.activeFilterLabelStreamValue.value ??
-            'Filtro do mapa';
-      case PoiFilterMode.none:
-        return 'Pontos selecionados';
+class _FilteredDeckPage extends StatefulWidget {
+  const _FilteredDeckPage({
+    required this.poi,
+    required this.controller,
+    required this.colorScheme,
+    required this.cardBuilder,
+    required this.onPrimaryAction,
+    required this.secondaryActionForPoi,
+    required this.onRoute,
+    required this.onClose,
+    required this.onCardHeightChanged,
+    required this.deckMeasurementPadding,
+  });
+
+  final CityPoiModel poi;
+  final MapScreenController controller;
+  final ColorScheme colorScheme;
+  final PoiDetailCardBuilder cardBuilder;
+  final ValueChanged<CityPoiModel> onPrimaryAction;
+  final PoiCardSecondaryAction? Function(CityPoiModel poi)
+      secondaryActionForPoi;
+  final ValueChanged<CityPoiModel> onRoute;
+  final VoidCallback onClose;
+  final void Function(String poiId, double height) onCardHeightChanged;
+  final double deckMeasurementPadding;
+
+  @override
+  State<_FilteredDeckPage> createState() => _FilteredDeckPageState();
+}
+
+class _FilteredDeckPageState extends State<_FilteredDeckPage> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.ensureDeckPoiHydrated(widget.poi);
+  }
+
+  @override
+  void didUpdateWidget(covariant _FilteredDeckPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.poi.id != widget.poi.id) {
+      widget.controller.ensureDeckPoiHydrated(widget.poi);
     }
   }
 
-  IconData _iconForFilterMode(PoiFilterMode mode) {
-    return switch (mode) {
-      PoiFilterMode.server => Icons.tune,
-      PoiFilterMode.none => Icons.map,
-      _ => MapMarkerIconResolver.fallbackIcon,
-    };
-  }
-
-  CityPoiVisual? _resolveDeckVisual() {
-    final selected = controller.selectedPoiStreamValue.value?.visual;
-    if (selected != null && selected.isValid) {
-      return selected;
-    }
-    for (final poi in pois) {
-      final candidate = poi.visual;
-      if (candidate != null && candidate.isValid) {
-        return candidate;
-      }
-    }
-    return null;
-  }
-
-  IconData _iconForDeckVisual(CityPoiVisual? visual) {
-    if (visual?.isIcon == true) {
-      return MapMarkerIconResolver.resolve(visual?.icon);
-    }
-    if (visual?.isImage == true) {
-      return Icons.image_outlined;
-    }
-
-    return _iconForFilterMode(controller.filterModeStreamValue.value);
-  }
-
-  Color _accentColorForDeckVisual({
-    required CityPoiVisual? visual,
-    required ColorScheme scheme,
-  }) {
-    if (visual?.isIcon == true) {
-      return MapMarkerIconResolver.tryParseHexColor(visual?.colorHex) ??
-          scheme.primary;
-    }
-
-    return scheme.primary;
+  @override
+  Widget build(BuildContext context) {
+    final poi = widget.poi;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final heroMaxHeight = (constraints.maxHeight * 0.20).clamp(
+          80.0,
+          84.0,
+        );
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: FilteredDeck._kCarouselPageInset,
+            ),
+            child: SizeReportingWidget(
+              onSizeChanged: (size) => widget.onCardHeightChanged(
+                poi.id,
+                size.height + widget.deckMeasurementPadding,
+              ),
+              child: widget.cardBuilder.build(
+                context: context,
+                poi: poi,
+                colorScheme: widget.colorScheme,
+                onPrimaryAction: () {
+                  widget.controller.selectPoi(poi);
+                  widget.onPrimaryAction(poi);
+                },
+                secondaryAction: widget.secondaryActionForPoi(poi),
+                onRoute: () => widget.onRoute(poi),
+                onClose: widget.onClose,
+                heroMaxHeight: heroMaxHeight,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

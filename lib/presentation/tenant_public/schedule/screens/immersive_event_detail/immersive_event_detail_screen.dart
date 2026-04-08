@@ -1,29 +1,19 @@
 import 'dart:async';
 
-import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
-import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
@@ -209,6 +199,7 @@ class _ImmersiveEventDetailScreenState
                             // Don't auto-navigate, let user scroll naturally
                             // initialTabIndex defaults to 0
                             footer: footer,
+                            onBackPressed: _handleBack,
                           ),
                         );
                       },
@@ -220,6 +211,13 @@ class _ImmersiveEventDetailScreenState
           },
         );
       },
+    );
+  }
+
+  void _handleBack() {
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: EventSearchRoute(),
     );
   }
 
@@ -473,57 +471,10 @@ class _ImmersiveEventDetailScreenState
   }
 
   InviteModel _buildInviteFromEvent(EventModel event) {
-    final eventName = event.title.value;
-    final rawEventDate = event.dateTimeStart.value;
-    final eventDate = rawEventDate == null
-        ? DateTime.now()
-        : TimezoneConverter.utcToLocal(rawEventDate);
-    final fallbackImageValue = ThumbUriValue(
-      defaultValue: _controller.defaultEventImageUri,
-      isRequired: true,
-    )..parse(_controller.defaultEventImageUri.toString());
-    final imageUrl = VenueEventResume.resolvePreferredImageUri(
-      event,
-      settingsDefaultImageValue: fallbackImageValue,
-    ).toString();
-    final locationLabel = event.location.value;
-    final hostName = event.primaryLinkedArtist?.displayName ??
-        event.venue?.displayName ??
-        'Belluga Now';
-    final description = _stripHtml(event.content.value ?? '').trim();
-    final tags = event.taxonomyTags;
-    final eventId = event.id.value;
-    final inviteId = eventId.isNotEmpty ? eventId : eventName;
-    final parsedTags = tags.isEmpty
-        ? <InviteTagValue>[InviteTagValue()..parse('belluga')]
-        : tags
-            .map((tag) => InviteTagValue()..parse(tag.value))
-            .toList(growable: false);
-
-    return InviteModel(
-      idValue: InviteIdValue()..parse(inviteId),
-      eventIdValue: InviteEventIdValue()..parse(eventId),
-      eventNameValue: TitleValue()..parse(eventName),
-      eventDateValue: InviteEventDateValue(isRequired: true)
-        ..parse(eventDate.toIso8601String()),
-      eventImageValue: ThumbUriValue(
-        defaultValue: Uri.parse(imageUrl),
-        isRequired: true,
-      )..parse(imageUrl),
-      locationValue: InviteLocationValue()..parse(locationLabel),
-      hostNameValue: InviteHostNameValue()..parse(hostName),
-      messageValue: InviteMessageValue()
-        ..parse(description.isEmpty ? 'Partiu $eventName?' : description),
-      tagValues: parsedTags,
-      occurrenceIdValue: InviteOccurrenceIdValue(),
-      attendancePolicyValue: InviteAttendancePolicyValue(
-        defaultValue: 'free_confirmation_only',
-      )..parse('free_confirmation_only'),
+    return InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
     );
-  }
-
-  String _stripHtml(String value) {
-    return value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
   }
 
   void _handleLinkedProfileFavoriteTap(String accountProfileId) {

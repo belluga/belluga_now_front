@@ -1150,6 +1150,8 @@ class _TenantAdminAccountProfileEditScreenState
               urlPromptTitle: 'URL do avatar',
               busy: state.avatarBusy,
               canRemove: state.avatarFile != null || hasAvatarUrl,
+              removeButtonKey:
+                  const ValueKey('accountProfileEditAvatarRemoveButton'),
               onRemove: () => _clearImage(isAvatar: true),
               initialWebUrl: avatarUrl,
               slot: TenantAdminImageSlot.avatar,
@@ -1255,6 +1257,8 @@ class _TenantAdminAccountProfileEditScreenState
               urlPromptTitle: 'URL da capa',
               busy: state.coverBusy,
               canRemove: state.coverFile != null || hasCoverUrl,
+              removeButtonKey:
+                  const ValueKey('accountProfileEditCoverRemoveButton'),
               onRemove: () => _clearImage(isAvatar: false),
               initialWebUrl: coverUrl,
               slot: TenantAdminImageSlot.cover,

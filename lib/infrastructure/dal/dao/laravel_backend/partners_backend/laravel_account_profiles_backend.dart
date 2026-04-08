@@ -249,6 +249,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (bio != null && bio.isNotEmpty) {
         bioValue = DescriptionValue()..parse(bio);
       }
+      DescriptionValue? contentValue;
+      final content = json['content']?.toString();
+      if (content != null && content.isNotEmpty) {
+        contentValue = DescriptionValue()..parse(content);
+      }
       AccountProfileLocationAddressValue? locationAddressValue;
       if (locationAddress != null) {
         locationAddressValue = AccountProfileLocationAddressValue()
@@ -271,6 +276,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           avatarValue: avatarValue,
           coverValue: coverValue,
           bioValue: bioValue,
+          contentValue: contentValue,
           tagValues:
               tags.map(AccountProfileTagValue.new).toList(growable: false),
           agendaEventViews: agendaEvents,

@@ -14,8 +14,6 @@ import 'package:stream_value/core/stream_value.dart';
 class UserEventsRepository implements UserEventsRepositoryContract {
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
-  static const int _myEventsPageSize = 10;
-  static const int _maxMyEventsPages = 30;
 
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
@@ -93,45 +91,21 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
-    final events = <VenueEventResume>[];
-    var currentPage = 1;
-    var hasMore = true;
     final fallbackImage = _resolveDefaultEventImage();
-
-    while (hasMore && currentPage <= _maxMyEventsPages) {
-      final page = await _scheduleRepository.getEventsPage(
-        page: ScheduleRepoInt.fromRaw(
-          currentPage,
-          defaultValue: 1,
+    final events = await _scheduleRepository.loadConfirmedEvents(
+      showPastOnly: ScheduleRepoBool.fromRaw(
+        false,
+        defaultValue: false,
+      ),
+    );
+    return List<VenueEventResume>.unmodifiable(
+      events.map(
+        (event) => VenueEventResume.fromScheduleEvent(
+          event,
+          fallbackImage,
         ),
-        pageSize: ScheduleRepoInt.fromRaw(
-          _myEventsPageSize,
-          defaultValue: _myEventsPageSize,
-        ),
-        showPastOnly: ScheduleRepoBool.fromRaw(
-          false,
-          defaultValue: false,
-        ),
-        confirmedOnly: ScheduleRepoBool.fromRaw(
-          true,
-          defaultValue: true,
-        ),
-      );
-
-      events.addAll(
-        page.events.map(
-          (event) => VenueEventResume.fromScheduleEvent(
-            event,
-            fallbackImage,
-          ),
-        ),
-      );
-
-      hasMore = page.hasMore;
-      currentPage += 1;
-    }
-
-    return List<VenueEventResume>.unmodifiable(events);
+      ),
+    );
   }
 
   @override

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_tester_waitlist_controller.dart';
@@ -85,6 +89,17 @@ class _AppPromotionScreenState extends State<AppPromotionScreen> {
   }
 
   void _dismiss() {
+    final redirectPath = _controller.normalizeRedirectPath(widget.redirectPath);
+    if (context.router.canPop()) {
+      context.router.pop();
+      return;
+    }
+
+    if (isAuthOwnedPromotionRedirectPath(redirectPath)) {
+      unawaited(context.router.replaceAll([const TenantHomeRoute()]));
+      return;
+    }
+
     context.router.pop();
   }
 }

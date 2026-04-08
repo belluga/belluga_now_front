@@ -86,6 +86,30 @@ String buildWebPromotionBoundaryPath({
   ).toString();
 }
 
+bool isAuthOwnedPromotionRedirectPath(String? rawRedirectPath) {
+  final normalized = _normalizePath(
+    Uri.tryParse(rawRedirectPath?.trim() ?? '')?.path ?? rawRedirectPath ?? '',
+  );
+
+  if (normalized == '/profile') {
+    return true;
+  }
+
+  if (normalized == '/convites/compartilhar') {
+    return true;
+  }
+
+  if (normalized == '/workspace' || normalized.startsWith('/workspace/')) {
+    return true;
+  }
+
+  if (normalized == '/auth' || normalized.startsWith('/auth/')) {
+    return true;
+  }
+
+  return false;
+}
+
 Uri? buildTenantPromotionUriFromAppContext({
   String? redirectPath,
   String? shareCode,

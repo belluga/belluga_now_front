@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -9,7 +7,7 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('getEventsPage maps events when event type description is null',
+  test('loadHomeAgenda maps events when event type description is null',
       () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -27,14 +25,92 @@ void main() {
     );
     final repository = ScheduleRepository(backend: backend);
 
-    final result = await repository.getEventsPage(
-      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+    final result = await repository.loadHomeAgenda(
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+      confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
-    expect(result.events, hasLength(1));
-    expect(result.events.first.type.description.value, isEmpty);
+    expect(result, hasLength(1));
+    expect(result.first.type.description.value, isEmpty);
+    expect(repository.homeAgendaStreamValue.value, result);
+    expect(
+      await repository.loadMoreHomeAgenda(
+        showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+        confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      ),
+      result,
+    );
+  });
+
+  test('loadMoreHomeAgenda appends items while keeping page state private',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439091',
+              occurrenceId: '507f1f77bcf86cd799439092',
+            ),
+          ],
+          hasMore: true,
+        ),
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439093',
+              occurrenceId: '507f1f77bcf86cd799439094',
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(backend: backend);
+    final showPastOnly = ScheduleRepoBool.fromRaw(false, defaultValue: false);
+    final searchQuery = ScheduleRepoString.fromRaw('', defaultValue: '');
+    final confirmedOnly = ScheduleRepoBool.fromRaw(false, defaultValue: false);
+
+    final firstPage = await repository.loadHomeAgenda(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+    );
+    final secondPage = await repository.loadMoreHomeAgenda(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+    );
+
+    expect(firstPage.map((event) => event.id.value), [
+      '507f1f77bcf86cd799439091',
+    ]);
+    expect(secondPage.map((event) => event.id.value), [
+      '507f1f77bcf86cd799439091',
+      '507f1f77bcf86cd799439093',
+    ]);
+    expect(
+        repository
+            .readHomeAgenda(
+              showPastOnly: showPastOnly,
+              searchQuery: searchQuery,
+              confirmedOnly: confirmedOnly,
+            )
+            ?.map((event) => event.id.value),
+        [
+          '507f1f77bcf86cd799439091',
+          '507f1f77bcf86cd799439093',
+        ]);
+    expect(
+      await repository.loadMoreHomeAgenda(
+        showPastOnly: showPastOnly,
+        searchQuery: searchQuery,
+        confirmedOnly: confirmedOnly,
+      ),
+      hasLength(2),
+    );
   });
 
   test('getEventBySlug returns backend detail without catalog fallback',
@@ -72,22 +148,18 @@ void main() {
     expect(backend.fetchEventsPageCalls, 0);
   });
 
-  test('getEventsPage forwards liveNowOnly to backend', () async {
+  test('refreshDiscoveryLiveNowEvents forwards liveNowOnly to backend',
+      () async {
     final backend = _CapturingScheduleBackend();
     final repository = ScheduleRepository(backend: backend);
 
-    await repository.getEventsPage(
-      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
-      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
-      liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
-    );
+    await repository.refreshDiscoveryLiveNowEvents();
 
     expect(backend.requests, hasLength(1));
     expect(backend.requests.first.liveNowOnly, isTrue);
   });
 
-  test('getEventsPage keeps standard upcoming request as single backend call',
+  test('loadEventSearch keeps standard upcoming request as single backend call',
       () async {
     const upcomingId = '507f1f77bcf86cd799439061';
     const upcomingOccurrenceId = '507f1f77bcf86cd799439062';
@@ -108,19 +180,17 @@ void main() {
     );
     final repository = ScheduleRepository(backend: backend);
 
-    final result = await repository.getEventsPage(
-      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+    final result = await repository.loadEventSearch(
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
-    final ids = result.events.map((event) => event.id.value).toList();
+    final ids = result.map((event) => event.id.value).toList();
     expect(ids, [upcomingId]);
     expect(backend.requests, hasLength(1));
     expect(backend.requests.single.liveNowOnly, isFalse);
   });
 
-  test('getEventsPage maps events when event content is null', () async {
+  test('loadEventSearch maps events when event content is null', () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
         EventPageDTO(
@@ -137,17 +207,15 @@ void main() {
     );
     final repository = ScheduleRepository(backend: backend);
 
-    final result = await repository.getEventsPage(
-      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+    final result = await repository.loadEventSearch(
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
-    expect(result.events, hasLength(1));
-    expect(result.events.first.content.valueText, isEmpty);
+    expect(result, hasLength(1));
+    expect(result.first.content.valueText, isEmpty);
   });
 
-  test('getEventsPage maps events when type description and content are null',
+  test('loadEventSearch maps events when type description and content are null',
       () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -166,43 +234,13 @@ void main() {
     );
     final repository = ScheduleRepository(backend: backend);
 
-    final result = await repository.getEventsPage(
-      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+    final result = await repository.loadEventSearch(
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
     );
 
-    expect(result.events, hasLength(1));
-    expect(result.events.first.type.description.value, isEmpty);
-    expect(result.events.first.content.valueText, isEmpty);
-  });
-
-  test(
-      'loadEventsPage ignores second first-page request while one is in-flight',
-      () async {
-    final backend = _BlockingFirstPageScheduleBackend();
-    final repository = ScheduleRepository(backend: backend);
-
-    final firstLoadFuture = repository.loadEventsPage(
-      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
-    );
-
-    await backend.waitUntilFirstRequestStarts();
-
-    await repository.loadEventsPage(
-      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
-    );
-
-    expect(
-      backend.fetchEventsPageCalls,
-      1,
-      reason: 'A second first-page request must be ignored while in-flight.',
-    );
-
-    backend.releaseFirstRequest();
-    await firstLoadFuture;
-
-    expect(repository.currentPagedEventsPage.value, 1);
+    expect(result, hasLength(1));
+    expect(result.first.type.description.value, isEmpty);
+    expect(result.first.content.valueText, isEmpty);
   });
 }
 
@@ -262,66 +300,6 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
       events: [_buildEventDto()],
       hasMore: false,
     );
-  }
-
-  @override
-  Stream<EventDeltaDTO> watchEventsStream({
-    String? searchQuery,
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
-  }) {
-    return const Stream<EventDeltaDTO>.empty();
-  }
-}
-
-class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
-  final Completer<void> _firstRequestStarted = Completer<void>();
-  final Completer<void> _releaseFirstRequest = Completer<void>();
-  int fetchEventsPageCalls = 0;
-
-  Future<void> waitUntilFirstRequestStarts() => _firstRequestStarted.future;
-
-  void releaseFirstRequest() {
-    if (!_releaseFirstRequest.isCompleted) {
-      _releaseFirstRequest.complete();
-    }
-  }
-
-  @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
-      null;
-
-  @override
-  Future<EventPageDTO> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    bool liveNowOnly = false,
-    String? searchQuery,
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async {
-    fetchEventsPageCalls += 1;
-    if (fetchEventsPageCalls == 1) {
-      if (!_firstRequestStarted.isCompleted) {
-        _firstRequestStarted.complete();
-      }
-      await _releaseFirstRequest.future;
-    }
-
-    return EventPageDTO(events: const [], hasMore: false);
   }
 
   @override

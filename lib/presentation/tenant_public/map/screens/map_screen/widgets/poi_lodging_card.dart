@@ -7,24 +7,10 @@ class PoiLodgingCard extends PoiBaseCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
-    required super.onShare,
+    required super.secondaryAction,
     required super.onRoute,
-  }) : super(primaryLabel: 'Reservar agora');
+  });
 
   @override
-  List<Widget Function(BuildContext)> buildSections() => [
-        addressSection,
-        (context) => Row(
-              children: const [
-                Icon(Icons.king_bed_outlined, size: 18),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Conferimos disponibilidade especial para você.',
-                  ),
-                ),
-              ],
-            ),
-        tagsSection,
-      ];
+  List<Widget Function(BuildContext)> buildSections() => [tagsSection];
 }

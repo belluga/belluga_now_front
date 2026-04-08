@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -302,6 +303,7 @@ class _FakeTenantAdminEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return _filterEvents(
       status: status?.value,
@@ -316,6 +318,7 @@ class _FakeTenantAdminEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     final filtered = _filterEvents(
       status: status?.value,
@@ -397,7 +400,8 @@ class _FakeTenantAdminEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),

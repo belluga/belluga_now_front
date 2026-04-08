@@ -27,6 +27,7 @@ import 'package:belluga_now/domain/repositories/landlord_tenants_repository_cont
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -57,6 +58,7 @@ import 'package:belluga_now/infrastructure/repositories/landlord_tenants_reposit
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
@@ -343,6 +345,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<AccountProfilesRepositoryContract>(
       () => AccountProfilesRepository(),
+    );
+    _registerIfAbsent<StaticAssetsRepositoryContract>(
+      () => StaticAssetsRepository(),
     );
     _registerIfAbsent<UserEventsRepositoryContract>(
       () => UserEventsRepository(),

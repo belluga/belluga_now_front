@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -49,6 +50,50 @@ void main() {
     await controller.loadEvents();
 
     expect(eventsRepository.lastLoadArchived, isTrue);
+  });
+
+  test('loadEvents forwards default temporal filters to repository', () async {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    await controller.loadEvents();
+
+    expect(
+      eventsRepository.lastTemporalBuckets,
+      equals(TenantAdminEventTemporalBucket.defaultSelection),
+    );
+  });
+
+  test('toggleTemporalFilter keeps at least one bucket selected', () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.toggleTemporalFilter(TenantAdminEventTemporalBucket.future);
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(<TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+      }),
+    );
+
+    controller.toggleTemporalFilter(TenantAdminEventTemporalBucket.now);
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(<TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+      }),
+    );
   });
 
   test(
@@ -299,6 +344,7 @@ class _FailingDeleteEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return <TenantAdminEvent>[];
   }
@@ -310,6 +356,7 @@ class _FailingDeleteEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
@@ -450,6 +497,7 @@ class _TrackingEventsRepository
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
   bool? lastLoadArchived;
+  Set<TenantAdminEventTemporalBucket>? lastTemporalBuckets;
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -480,9 +528,11 @@ class _TrackingEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsCalls += 1;
     lastLoadArchived = archived?.value;
+    lastTemporalBuckets = temporalBuckets;
     return <TenantAdminEvent>[];
   }
 
@@ -493,9 +543,11 @@ class _TrackingEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsPageCalls += 1;
     lastLoadArchived = archived?.value;
+    lastTemporalBuckets = temporalBuckets;
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
       hasMore: false,
@@ -677,6 +729,7 @@ class _AccountScopedEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsCalls += 1;
     return <TenantAdminEvent>[];
@@ -689,6 +742,7 @@ class _AccountScopedEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsPageCalls += 1;
     return tenantAdminPagedResultFromRaw(

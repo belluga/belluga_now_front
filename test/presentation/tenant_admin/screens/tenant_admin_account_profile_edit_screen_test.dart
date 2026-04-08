@@ -177,11 +177,12 @@ void main() {
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Remover').first,
+      find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')),
       200,
       scrollable: scrollable,
     );
-    await tester.tap(find.text('Remover').first);
+    await tester.tap(
+        find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Salvar alteracoes'),
@@ -382,19 +383,19 @@ class _FakeAccountProfilesRepository
     lastRemoveAvatar = removeAvatar?.value;
     lastRemoveCover = removeCover?.value;
     profileToReturn = tenantAdminAccountProfileFromRaw(
-      id: accountProfileId,
+      id: accountProfileId.value,
       accountId: profileToReturn.accountId,
-      profileType: profileType ?? profileToReturn.profileType,
-      displayName: displayName ?? profileToReturn.displayName,
-      slug: slug ?? profileToReturn.slug,
+      profileType: profileType?.value ?? profileToReturn.profileType,
+      displayName: displayName?.value ?? profileToReturn.displayName,
+      slug: slug?.value ?? profileToReturn.slug,
       avatarUrl: removeAvatar?.value == true
           ? null
-          : (avatarUrl ?? profileToReturn.avatarUrl),
+          : (avatarUrl?.value ?? profileToReturn.avatarUrl),
       coverUrl: removeCover?.value == true
           ? null
-          : (coverUrl ?? profileToReturn.coverUrl),
-      bio: bio ?? profileToReturn.bio,
-      content: content ?? profileToReturn.content,
+          : (coverUrl?.value ?? profileToReturn.coverUrl),
+      bio: bio?.value ?? profileToReturn.bio,
+      content: content?.value ?? profileToReturn.content,
       location: location ?? profileToReturn.location,
       taxonomyTerms: taxonomyTerms ?? profileToReturn.taxonomyTerms,
       ownershipState: profileToReturn.ownershipState,

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -165,8 +166,29 @@ void main() {
 
     expect(find.byKey(const Key('accountProfileHeroIdentityAvatar')),
         findsOneWidget);
-    expect(find.byKey(const Key('accountProfileHeroTypeAvatar')),
-        findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileHeroTypeAvatar')), findsOneWidget);
+  });
+
+  testWidgets('account profile detail exposes the canonical share action',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
   });
 
   testWidgets(
@@ -197,8 +219,8 @@ void main() {
 
     expect(find.byKey(const Key('accountProfileHeroIdentityAvatar')),
         findsNothing);
-    expect(find.byKey(const Key('accountProfileHeroTypeAvatar')),
-        findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileHeroTypeAvatar')), findsOneWidget);
   });
 
   testWidgets(
@@ -226,7 +248,8 @@ void main() {
     expect(find.text('Ver detalhes do evento'), findsNothing);
   });
 
-  testWidgets('artist profile hides agenda CTA after profile is already favorited',
+  testWidgets(
+      'artist profile hides agenda CTA after profile is already favorited',
       (tester) async {
     final repository = _FakeAccountProfilesRepository(
       initialFavoriteIds: const {'507f1f77bcf86cd799439011'},
@@ -453,7 +476,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('accountProfileFavoriteAction')), findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileFavoriteAction')), findsOneWidget);
 
     await tester.drag(find.byType(NestedScrollView), const Offset(0, -700));
     await tester.pumpAndSettle();
@@ -465,19 +489,21 @@ void main() {
     final collapsedTitleCenter = tester.getCenter(
       find.byKey(const Key('immersiveCollapsedTitle')),
     );
-    final navigationToolbarRect = tester.getRect(find.byType(NavigationToolbar));
+    final navigationToolbarRect =
+        tester.getRect(find.byType(NavigationToolbar));
     final toolbarCenterY = navigationToolbarRect.center.dy;
 
-    expect(find.byKey(const Key('accountProfileFavoriteAction')), findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileFavoriteAction')), findsOneWidget);
     expect(find.byKey(const Key('accountProfileCollapsedIdentitySurface')),
         findsNothing);
-    expect(find.byKey(const Key('immersiveCollapsedTitle')),
-        findsOneWidget);
+    expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
     expect(find.text('Cafe de la Musique'), findsWidgets);
     expect(collapsedTitle.maxLines, 2);
     expect(collapsedTitle.overflow, TextOverflow.ellipsis);
     expect(sliverAppBar.toolbarHeight, 72);
-    expect((collapsedTitleCenter.dy - toolbarCenterY).abs(), lessThanOrEqualTo(8));
+    expect(
+        (collapsedTitleCenter.dy - toolbarCenterY).abs(), lessThanOrEqualTo(8));
   });
 
   testWidgets('live agenda highlight navigates to the highlighted event',
@@ -547,26 +573,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(
-        find.byKey(
-          const Key(
-            'accountProfileAgendaLiveEyebrow_507f1f77bcf86cd799439121',
-          ),
-        ),
-      ).data,
+      tester
+          .widget<Text>(
+            find.byKey(
+              const Key(
+                'accountProfileAgendaLiveEyebrow_507f1f77bcf86cd799439121',
+              ),
+            ),
+          )
+          .data,
       'Show',
     );
     expect(
-      tester.widget<Text>(
-        find.descendant(
-          of: find.byKey(
-            const Key(
-              'accountProfileAgendaLiveSchedule_507f1f77bcf86cd799439121',
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(
+                const Key(
+                  'accountProfileAgendaLiveSchedule_507f1f77bcf86cd799439121',
+                ),
+              ),
+              matching: find.byType(Text),
             ),
-          ),
-          matching: find.byType(Text),
-        ),
-      ).data,
+          )
+          .data,
       expectedSchedule,
     );
     expect(
@@ -793,7 +823,8 @@ void main() {
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
   });
 
-  testWidgets('tapping location tile opens in-app map focused on account profile poi',
+  testWidgets(
+      'tapping location tile opens in-app map focused on account profile poi',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -898,6 +929,63 @@ void main() {
     expect(find.textContaining('<p>'), findsNothing);
     expect(find.textContaining('<strong>'), findsNothing);
   });
+
+  testWidgets(
+      'partner detail back falls back to discovery when no history exists',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter()..canPopResult = false;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, DiscoveryRoute.name);
+  });
+
+  testWidgets('partner detail back pops when previous history exists',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter()..canPopResult = true;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
 }
 
 Widget _buildRoutedTestApp({
@@ -934,6 +1022,10 @@ Widget _buildRoutedTestApp({
 class _RecordingStackRouter extends Fake implements StackRouter {
   String? lastPushedPath;
   String? lastReplacedPath;
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
   Future<T?> pushPath<T extends Object?>(
@@ -953,6 +1045,31 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   }) async {
     lastReplacedPath = path;
     return null;
+  }
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async {
+    popCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
   }
 }
 
@@ -1271,8 +1388,7 @@ AccountProfileModel _buildArtistHostAwareProfile() {
         location: 'Deck Principal',
         venueId: '507f1f77bcf86cd799439015',
         venueTitle: 'Casa Marracini',
-        startDateTime:
-            DateTime.now().toUtc().add(const Duration(hours: 4)),
+        startDateTime: DateTime.now().toUtc().add(const Duration(hours: 4)),
         artistNames: const ['Marco Aurélio', 'DJ Lua'],
         artistIds: const [
           '507f1f77bcf86cd799439099',

@@ -24,12 +24,16 @@ class MyEventsCarouselCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final start = event.startDateTime;
-    final end = start.add(const Duration(hours: 3));
+    final explicitEnd = event.endDateTime;
+    final inferredEnd = explicitEnd ?? start.add(const Duration(hours: 3));
     final now = DateTime.now();
-    final isLiveNow = now.isAfter(start) && now.isBefore(end);
+    final isLiveNow = now.isAfter(start) && now.isBefore(inferredEnd);
+    final timeLabel = explicitEnd == null
+        ? start.timeLabel
+        : '${start.timeLabel} - ${explicitEnd.timeLabel}';
     final scheduleLabel = isLiveNow
-        ? '${start.timeLabel} - ${end.timeLabel}'
-        : '${start.dayLabel} ${start.monthLabel} • ${start.timeLabel}';
+        ? timeLabel
+        : '${start.dayLabel} ${start.monthLabel} • $timeLabel';
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

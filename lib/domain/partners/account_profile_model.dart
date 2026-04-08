@@ -17,6 +17,7 @@ class AccountProfileModel {
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
+  final DescriptionValue? contentValue;
   final List<AccountProfileTagValue> tagValues;
   final List<PartnerEventView> agendaEventViews;
   final AccountProfileIsVerifiedValue isVerifiedValue;
@@ -35,6 +36,7 @@ class AccountProfileModel {
     this.avatarValue,
     this.coverValue,
     this.bioValue,
+    this.contentValue,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
@@ -66,6 +68,7 @@ class AccountProfileModel {
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
+  String? get content => contentValue?.value;
   List<AccountProfileTagValue> get tags =>
       List<AccountProfileTagValue>.unmodifiable(tagValues);
   List<PartnerEventView> get agendaEvents =>
@@ -92,6 +95,7 @@ class AccountProfileModel {
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
+    DescriptionValue? contentValue,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
@@ -110,6 +114,7 @@ class AccountProfileModel {
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
+      contentValue: contentValue ?? this.contentValue,
       tagValues: tagValues ?? this.tagValues,
       agendaEventViews: agendaEventViews ?? this.agendaEventViews,
       isVerifiedValue: isVerifiedValue ?? this.isVerifiedValue,

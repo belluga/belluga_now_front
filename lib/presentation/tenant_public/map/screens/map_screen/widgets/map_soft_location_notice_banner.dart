@@ -23,54 +23,51 @@ class MapSoftLocationNoticeBanner extends StatelessWidget {
         }
 
         return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-              decoration: BoxDecoration(
-                color: colorScheme.surface.withValues(alpha: 0.96),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: colorScheme.outlineVariant,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 14,
-                    offset: Offset(0, 6),
-                  ),
-                ],
+          child: Container(
+            key: const ValueKey<String>('map-soft-location-notice-banner'),
+            padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: colorScheme.outlineVariant,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: colorScheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      message,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        height: 1.3,
-                      ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    iconSize: 18,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: controller.dismissSoftLocationNotice,
-                    icon: const Icon(Icons.close),
-                    color: colorScheme.onSurfaceVariant,
-                    tooltip: 'Fechar aviso',
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  iconSize: 18,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: controller.dismissSoftLocationNotice,
+                  icon: const Icon(Icons.close),
+                  color: colorScheme.onSurfaceVariant,
+                  tooltip: 'Fechar aviso',
+                ),
+              ],
             ),
           ),
         );

@@ -29,6 +29,9 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.centerCollapsedTitle = true,
     this.appBarActionsBuilder,
     this.canUseTabFooter,
+    this.onBackPressed,
+    this.onSharePressed,
+    this.shareIcon = Icons.share,
     super.key,
   });
 
@@ -68,6 +71,15 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// the same overlay plane as the built-in share action.
   final List<Widget> Function(BuildContext context, bool innerBoxIsScrolled)?
       appBarActionsBuilder;
+
+  /// Optional back handler for host screens that need route-specific fallback.
+  final VoidCallback? onBackPressed;
+
+  /// Optional share handler for surfaces that expose a canonical public share.
+  final VoidCallback? onSharePressed;
+
+  /// Optional icon used by the share action when [onSharePressed] is provided.
+  final IconData shareIcon;
 
   @override
   State<ImmersiveDetailScreen> createState() => _ImmersiveDetailScreenState();
@@ -168,21 +180,21 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         left: 8,
                         right: 4,
                       ),
-                      onPressed: () => context.router.pop(),
+                      onPressed: widget.onBackPressed ?? () => context.router.pop(),
                     ),
                     actions: [
                       ...?widget.appBarActionsBuilder?.call(
                         context,
                         innerBoxIsScrolled,
                       ),
-                      _buildAppBarActionButton(
-                        context: context,
-                        icon: Icons.share,
-                        innerBoxIsScrolled: innerBoxIsScrolled,
-                        onPressed: () {
-                          // TODO: Share functionality
-                        },
-                      ),
+                      if (widget.onSharePressed != null)
+                        _buildAppBarActionButton(
+                          context: context,
+                          icon: widget.shareIcon,
+                          innerBoxIsScrolled: innerBoxIsScrolled,
+                          onPressed: widget.onSharePressed!,
+                          key: const Key('immersiveShareAction'),
+                        ),
                       const SizedBox(width: 8),
                     ],
                     flexibleSpace: FlexibleSpaceBar(

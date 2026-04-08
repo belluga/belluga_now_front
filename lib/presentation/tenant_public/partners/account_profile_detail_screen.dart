@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -24,6 +29,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AccountProfileDetailScreen extends StatefulWidget {
@@ -123,11 +129,18 @@ class _AccountProfileDetailScreenState
                                         (context, innerBoxIsScrolled) =>
                                             _buildAppBarActions(
                                       context,
-                                      innerBoxIsScrolled,
+                                            innerBoxIsScrolled,
                                       resolvedAccountProfile,
                                       isFav: isFav,
                                       isFavoritable: isFavoritable,
                                     ),
+                                    onBackPressed: _handleBack,
+                                    onSharePressed: () => unawaited(
+                                      _shareAccountProfile(
+                                        resolvedAccountProfile,
+                                      ),
+                                    ),
+                                    shareIcon: BooraIcons.share,
                                     tabs: effectiveTabs,
                                     betweenHeroAndTabs: null,
                                   );
@@ -210,6 +223,13 @@ class _AccountProfileDetailScreenState
           ),
         ),
       ],
+    );
+  }
+
+  void _handleBack() {
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: const DiscoveryRoute(),
     );
   }
 
@@ -489,6 +509,46 @@ class _AccountProfileDetailScreenState
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     _safeRouterReplacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
+    final slug = accountProfile.slug.trim();
+    if (slug.isEmpty) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+      return;
+    }
+
+    final publicUri = _controller.buildTenantPublicUriFromPath(
+      '/parceiro/$slug',
+    );
+    if (publicUri == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+      return;
+    }
+
+    final payload = AccountProfilePublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: accountProfile.name,
+      profile: accountProfile,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+    );
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: payload.message,
+          subject: payload.subject,
+        ),
+      );
+    } catch (_) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+    }
   }
 
   Widget _buildLoadingState() {
