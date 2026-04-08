@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -308,6 +309,33 @@ void main() {
     expect(request.queryParameters['archived'], 1);
   });
 
+  test('fetchEventsPage serializes temporal filter as csv query parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      temporalBuckets: const <TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+        TenantAdminEventTemporalBucket.future,
+      },
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['temporal'], 'now,future');
+  });
+
   test(
       'fetchEventsPage decodes summarized event artists without requiring full account profile payload',
       () async {
@@ -332,6 +360,43 @@ void main() {
     expect(result.items.first.artistProfiles.first.profileType, 'artist');
     expect(
         result.items.first.artistProfiles.first.accountId, 'artist-summary-1');
+  });
+
+  test('fetchEventsPage wraps decoder failures with readable repository error',
+      () async {
+    final adapter = _MalformedEventsPayloadAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        archived: _repoBool(true),
+      ),
+      throwsA(
+        isA<FormatException>()
+            .having(
+              (error) => error.message,
+              'message',
+              contains('Failed to load events page [decode]'),
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('Invalid scalar text value'),
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('/admin/api/v1/events'),
+            ),
+      ),
+    );
   });
 
   test('fetchEventTypes prefers landlord token and maps payload', () async {
@@ -997,6 +1062,62 @@ class _NotFoundEventsAdapter implements HttpClientAdapter {
 
     return ResponseBody.fromString(
       jsonEncode({'data': []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _MalformedEventsPayloadAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': [
+            {
+              'event_id': 'evt-bad',
+              'slug': 'bad-event',
+              'title': {'raw': 'Bad Event'},
+              'content': 'Content',
+              'type': {
+                'name': 'Show',
+                'slug': 'show',
+              },
+              'publication': {
+                'status': 'draft',
+              },
+              'occurrences': [
+                {
+                  'date_time_start': '2026-03-05T20:00:00Z',
+                }
+              ],
+            },
+          ],
+          'current_page': 1,
+          'last_page': 1,
+          'per_page': 20,
+          'total': 1,
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

@@ -14,9 +14,14 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_linked_profile.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 
@@ -29,6 +34,8 @@ class CityPoiModel implements MapPoi {
     required this.category,
     required this.coordinate,
     required this.priorityValue,
+    this.categoryLabelValue,
+    this.coverImageUriValue,
     this.assetPathValue,
     PoiBooleanValue? isDynamicValue,
     this.movementRadiusValue,
@@ -40,7 +47,10 @@ class CityPoiModel implements MapPoi {
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
+    List<CityPoiLinkedProfile>? linkedProfiles,
     PoiBooleanValue? isHappeningNowValue,
+    this.timeStartValue,
+    this.timeEndValue,
     this.updatedAtValue,
     this.distanceMetersValue,
     this.visual,
@@ -48,6 +58,8 @@ class CityPoiModel implements MapPoi {
         stackItems = List.unmodifiable(
           (stackItems ?? CityPoiStackItems()).value,
         ),
+        linkedProfiles =
+            List.unmodifiable(linkedProfiles ?? const <CityPoiLinkedProfile>[]),
         isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
         refTypeValue = refTypeValue ?? _defaultRefTypeValue(),
         refIdValue = refIdValue ?? _defaultRefIdValue(),
@@ -62,6 +74,8 @@ class CityPoiModel implements MapPoi {
   final CityPoiAddressValue addressValue;
   @override
   final CityPoiCategory category;
+  final PoiTypeLabelValue? categoryLabelValue;
+  final PoiFilterImageUriValue? coverImageUriValue;
 
   @override
   final CityCoordinate coordinate;
@@ -77,7 +91,10 @@ class CityPoiModel implements MapPoi {
   final PoiStackKeyValue stackKeyValue;
   final PoiStackCountValue stackCountValue;
   final List<CityPoiModel> stackItems;
+  final List<CityPoiLinkedProfile> linkedProfiles;
   final PoiBooleanValue isHappeningNowValue;
+  final PoiTimeStartValue? timeStartValue;
+  final PoiTimeEndValue? timeEndValue;
   final PoiUpdatedAtValue? updatedAtValue;
   final DistanceInMetersValue? distanceMetersValue;
   final CityPoiVisual? visual;
@@ -93,6 +110,22 @@ class CityPoiModel implements MapPoi {
 
   @override
   String get address => addressValue.value;
+
+  String? get resolvedCategoryLabel {
+    final raw = categoryLabelValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  String? get coverImageUri {
+    final raw = coverImageUriValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
 
   @override
   int get priority => priorityValue.value;
@@ -131,6 +164,8 @@ class CityPoiModel implements MapPoi {
   String get stackKey => stackKeyValue.value;
   int get stackCount => stackCountValue.value;
   bool get isHappeningNow => isHappeningNowValue.value;
+  DateTime? get timeStart => timeStartValue?.value;
+  DateTime? get timeEnd => timeEndValue?.value;
   DateTime? get updatedAt => updatedAtValue?.value;
   double? get distanceMeters => distanceMetersValue?.value;
 
@@ -142,6 +177,8 @@ class CityPoiModel implements MapPoi {
     CityPoiDescriptionValue? descriptionValue,
     CityPoiAddressValue? addressValue,
     CityPoiCategory? category,
+    PoiTypeLabelValue? categoryLabelValue,
+    PoiFilterImageUriValue? coverImageUriValue,
     CityCoordinate? coordinate,
     PoiPriorityValue? priorityValue,
     AssetPathValue? assetPathValue,
@@ -155,24 +192,30 @@ class CityPoiModel implements MapPoi {
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
+    List<CityPoiLinkedProfile>? linkedProfiles,
     PoiBooleanValue? isHappeningNowValue,
+    PoiTimeStartValue? timeStartValue,
+    PoiTimeEndValue? timeEndValue,
     PoiUpdatedAtValue? updatedAtValue,
     DistanceInMetersValue? distanceMetersValue,
     CityPoiVisual? visual,
   }) {
-    final resolvedStackItems = stackItems ?? (() {
-      final collection = CityPoiStackItems();
-      for (final item in this.stackItems) {
-        collection.add(item);
-      }
-      return collection;
-    })();
+    final resolvedStackItems = stackItems ??
+        (() {
+          final collection = CityPoiStackItems();
+          for (final item in this.stackItems) {
+            collection.add(item);
+          }
+          return collection;
+        })();
     return CityPoiModel(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
       descriptionValue: descriptionValue ?? this.descriptionValue,
       addressValue: addressValue ?? this.addressValue,
       category: category ?? this.category,
+      categoryLabelValue: categoryLabelValue ?? this.categoryLabelValue,
+      coverImageUriValue: coverImageUriValue ?? this.coverImageUriValue,
       coordinate: coordinate ?? this.coordinate,
       priorityValue: priorityValue ?? this.priorityValue,
       assetPathValue: assetPathValue ?? this.assetPathValue,
@@ -186,7 +229,10 @@ class CityPoiModel implements MapPoi {
       stackKeyValue: stackKeyValue ?? this.stackKeyValue,
       stackCountValue: stackCountValue ?? this.stackCountValue,
       stackItems: resolvedStackItems,
+      linkedProfiles: linkedProfiles ?? this.linkedProfiles,
       isHappeningNowValue: isHappeningNowValue ?? this.isHappeningNowValue,
+      timeStartValue: timeStartValue ?? this.timeStartValue,
+      timeEndValue: timeEndValue ?? this.timeEndValue,
       updatedAtValue: updatedAtValue ?? this.updatedAtValue,
       distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,
       visual: visual ?? this.visual,

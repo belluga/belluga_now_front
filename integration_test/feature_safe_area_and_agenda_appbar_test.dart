@@ -22,10 +22,12 @@ import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/a
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
@@ -221,6 +223,10 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
           invitesRepository: invitesRepository,
           userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
+          locationOriginService: LocationOriginService(
+            appDataRepository: appDataRepository,
+            userLocationRepository: userLocationRepository,
+          ),
         );
 
   @override
@@ -269,6 +275,10 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
           invitesRepository: invitesRepository,
           userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
+          locationOriginService: LocationOriginService(
+            appDataRepository: appDataRepository,
+            userLocationRepository: userLocationRepository,
+          ),
         );
 
   bool _disposed = false;
@@ -278,7 +288,9 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
     showHistoryStreamValue.addValue(startWithHistory);
     isInitialLoadingStreamValue.addValue(false);
     hasMoreStreamValue.addValue(false);
-    displayedEventsStreamValue.addValue(const []);
+    displayStateStreamValue.addValue(
+      TenantHomeAgendaDisplayState(events: []),
+    );
   }
 
   @override

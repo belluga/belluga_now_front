@@ -1,4 +1,4 @@
-typedef TenantAdminCreateTypeWithoutPoiVisual<TDefinition, TCapabilities>
+typedef TenantAdminCreateTypeWithoutVisual<TDefinition, TCapabilities>
     = Future<TDefinition> Function({
   required String type,
   required String label,
@@ -6,17 +6,17 @@ typedef TenantAdminCreateTypeWithoutPoiVisual<TDefinition, TCapabilities>
   required TCapabilities capabilities,
 });
 
-typedef TenantAdminCreateTypeWithPoiVisual<TDefinition, TCapabilities,
-        TPoiVisual>
+typedef TenantAdminCreateTypeWithVisual<TDefinition, TCapabilities, TVisual>
     = Future<TDefinition> Function({
   required String type,
   required String label,
   required List<String> allowedTaxonomies,
   required TCapabilities capabilities,
-  TPoiVisual? poiVisual,
+  TVisual? visual,
+  Object? typeAssetUpload,
 });
 
-typedef TenantAdminUpdateTypeWithoutPoiVisual<TDefinition, TCapabilities>
+typedef TenantAdminUpdateTypeWithoutVisual<TDefinition, TCapabilities>
     = Future<TDefinition> Function({
   required String type,
   String? newType,
@@ -25,42 +25,44 @@ typedef TenantAdminUpdateTypeWithoutPoiVisual<TDefinition, TCapabilities>
   TCapabilities? capabilities,
 });
 
-typedef TenantAdminUpdateTypeWithPoiVisual<TDefinition, TCapabilities,
-        TPoiVisual>
+typedef TenantAdminUpdateTypeWithVisual<TDefinition, TCapabilities, TVisual>
     = Future<TDefinition> Function({
   required String type,
   String? newType,
   String? label,
   List<String>? allowedTaxonomies,
   TCapabilities? capabilities,
-  TPoiVisual? poiVisual,
+  TVisual? visual,
+  Object? typeAssetUpload,
+  bool? removeTypeAsset,
 });
 
-Future<TDefinition> tenantAdminCreateTypeWithOptionalPoiVisual<TDefinition,
-    TCapabilities, TPoiVisual>({
-  required bool includePoiVisual,
+Future<TDefinition> tenantAdminCreateTypeWithOptionalVisual<TDefinition,
+    TCapabilities, TVisual>({
+  required bool includeVisual,
   required String type,
   required String label,
   required List<String> allowedTaxonomies,
   required TCapabilities capabilities,
-  required TPoiVisual? poiVisual,
-  required TenantAdminCreateTypeWithoutPoiVisual<TDefinition, TCapabilities>
-      createWithoutPoiVisual,
-  required TenantAdminCreateTypeWithPoiVisual<TDefinition, TCapabilities,
-          TPoiVisual>
-      createWithPoiVisual,
+  required TVisual? visual,
+  required Object? typeAssetUpload,
+  required TenantAdminCreateTypeWithoutVisual<TDefinition, TCapabilities>
+      createWithoutVisual,
+  required TenantAdminCreateTypeWithVisual<TDefinition, TCapabilities, TVisual>
+      createWithVisual,
 }) {
-  if (includePoiVisual) {
-    return createWithPoiVisual(
+  if (includeVisual) {
+    return createWithVisual(
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
-      poiVisual: poiVisual,
+      visual: visual,
+      typeAssetUpload: typeAssetUpload,
     );
   }
 
-  return createWithoutPoiVisual(
+  return createWithoutVisual(
     type: type,
     label: label,
     allowedTaxonomies: allowedTaxonomies,
@@ -68,33 +70,36 @@ Future<TDefinition> tenantAdminCreateTypeWithOptionalPoiVisual<TDefinition,
   );
 }
 
-Future<TDefinition> tenantAdminUpdateTypeWithOptionalPoiVisual<TDefinition,
-    TCapabilities, TPoiVisual>({
-  required bool includePoiVisual,
+Future<TDefinition> tenantAdminUpdateTypeWithOptionalVisual<TDefinition,
+    TCapabilities, TVisual>({
+  required bool includeVisual,
   required String type,
   required String? newType,
   required String? label,
   required List<String>? allowedTaxonomies,
   required TCapabilities? capabilities,
-  required TPoiVisual? poiVisual,
-  required TenantAdminUpdateTypeWithoutPoiVisual<TDefinition, TCapabilities>
-      updateWithoutPoiVisual,
-  required TenantAdminUpdateTypeWithPoiVisual<TDefinition, TCapabilities,
-          TPoiVisual>
-      updateWithPoiVisual,
+  required TVisual? visual,
+  required Object? typeAssetUpload,
+  required bool? removeTypeAsset,
+  required TenantAdminUpdateTypeWithoutVisual<TDefinition, TCapabilities>
+      updateWithoutVisual,
+  required TenantAdminUpdateTypeWithVisual<TDefinition, TCapabilities, TVisual>
+      updateWithVisual,
 }) {
-  if (includePoiVisual) {
-    return updateWithPoiVisual(
+  if (includeVisual) {
+    return updateWithVisual(
       type: type,
       newType: newType,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
-      poiVisual: poiVisual,
+      visual: visual,
+      typeAssetUpload: typeAssetUpload,
+      removeTypeAsset: removeTypeAsset,
     );
   }
 
-  return updateWithoutPoiVisual(
+  return updateWithoutVisual(
     type: type,
     newType: newType,
     label: label,

@@ -16,7 +16,6 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl_standalone.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:push_handler/push_handler.dart';
@@ -32,10 +31,12 @@ import 'package:belluga_now/presentation/shared/push/push_option_selector_sheet.
 import 'package:belluga_now/presentation/shared/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:intl/intl.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   required PushTransportConfig transportConfig,
@@ -58,6 +59,7 @@ abstract class ApplicationContract extends ModularAppContract {
 
   final AppRouter _appRouter;
   final _moduleSettings = ModuleSettings();
+  static const Locale appLocale = Locale('pt', 'BR');
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
   StreamSubscription<dynamic>? _telemetryIdentitySubscription;
   PushHandlerRepositoryContract? _pushRepository;
@@ -72,8 +74,8 @@ abstract class ApplicationContract extends ModularAppContract {
 
   Future<void> initialSettings() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await initializeDateFormatting();
-    await findSystemLocale();
+    await initializeDateFormatting('pt_BR');
+    Intl.defaultLocale = 'pt_BR';
   }
 
   @override
@@ -691,6 +693,13 @@ class _ApplicationContractState extends State<ApplicationContract>
       builder: (context, themeMode) {
         final resolvedThemeMode = themeMode ?? ThemeMode.system;
         return MaterialApp.router(
+          locale: ApplicationContract.appLocale,
+          supportedLocales: const <Locale>[ApplicationContract.appLocale],
+          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           themeMode: resolvedThemeMode,
           theme: widget.getLightThemeData(),
           darkTheme: widget.getDarkThemeData(),

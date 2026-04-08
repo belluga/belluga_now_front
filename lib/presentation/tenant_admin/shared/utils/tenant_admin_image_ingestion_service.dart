@@ -320,7 +320,8 @@ class TenantAdminImageIngestionService {
       TenantAdminImageSlot.lightIcon ||
       TenantAdminImageSlot.darkIcon ||
       TenantAdminImageSlot.pwaIcon ||
-      TenantAdminImageSlot.mapFilter =>
+      TenantAdminImageSlot.mapFilter ||
+      TenantAdminImageSlot.typeVisual =>
         const _TenantAdminImageSlotSpec(
           aspectRatio: 1.0,
           maxWidth: 1024,

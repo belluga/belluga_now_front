@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_date_time_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_date_time_value.dart';
@@ -14,7 +15,7 @@ TenantAdminRequiredTextValue tenantAdminRequiredText(Object? raw) {
   }
 
   final value = TenantAdminRequiredTextValue();
-  value.parse(raw?.toString());
+  value.parse(_tenantAdminCoerceTextScalar(raw));
   return value;
 }
 
@@ -24,7 +25,7 @@ TenantAdminOptionalTextValue tenantAdminOptionalText(Object? raw) {
   }
 
   final value = TenantAdminOptionalTextValue();
-  value.parse(raw?.toString());
+  value.parse(_tenantAdminCoerceTextScalar(raw));
   return value;
 }
 
@@ -74,6 +75,23 @@ TenantAdminFlagValue tenantAdminFlag(Object? raw, {bool fallback = false}) {
   }
 
   throw FormatException('Invalid boolean value: $raw');
+}
+
+TenantAdminCountValue tenantAdminCount(Object? raw) {
+  if (raw is TenantAdminCountValue) {
+    return raw;
+  }
+
+  if (raw is int) {
+    return TenantAdminCountValue(raw);
+  }
+
+  if (raw is num) {
+    return TenantAdminCountValue(raw.toInt());
+  }
+
+  final parsed = int.tryParse(raw?.toString().trim() ?? '') ?? 0;
+  return TenantAdminCountValue(parsed);
 }
 
 TenantAdminDateTimeValue tenantAdminDateTime(Object raw) {
@@ -130,6 +148,22 @@ TenantAdminOptionalDoubleValue tenantAdminOptionalDouble(Object? raw) {
     return TenantAdminOptionalDoubleValue(null);
   }
   return TenantAdminOptionalDoubleValue(parsed);
+}
+
+String? _tenantAdminCoerceTextScalar(Object? raw) {
+  if (raw == null) {
+    return null;
+  }
+
+  if (raw is String) {
+    return raw;
+  }
+
+  if (raw is num || raw is bool) {
+    return raw.toString();
+  }
+
+  throw FormatException('Invalid text value: $raw');
 }
 
 TenantAdminDynamicMapValue tenantAdminDynamicMap(Object? raw) {

@@ -42,9 +42,8 @@ import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_local_preferences_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_menu.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
 import 'package:dio/dio.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -154,7 +153,6 @@ void main() {
       String? createdStaticAssetId;
       var createdStaticProfileType = false;
       MapScreenController? mapController;
-      FabMenuController? fabMenuController;
       PoiRepository? poiRepository;
 
       try {
@@ -378,9 +376,6 @@ void main() {
           ),
           telemetryRepository: _NoopTelemetryRepository(),
         );
-        fabMenuController = FabMenuController(poiRepository: poiRepository)
-          ..setExpanded(true)
-          ..setCondensed(false);
 
         final boundsQuery = _buildBoundsQuery(
           northEastLat: -20.601121,
@@ -404,13 +399,12 @@ void main() {
             await fetchImageBytes(publicAssetFilter.imageUri!);
         expect(publicImageBytes, equals(secondImageBytes));
 
+        mapController.showFiltersTray();
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: FabMenu(
-                onNavigateToUser: () {},
-                mapController: mapController,
-                controller: fabMenuController,
+              body: Center(
+                child: MapAdaptiveTray(controller: mapController),
               ),
             ),
           ),
@@ -422,37 +416,18 @@ void main() {
         expect(find.text(eventFilterLabel), findsOneWidget);
         expect(find.text(assetFilterKey), findsNothing);
 
-        Finder findAssetFab() {
-          return find.byWidgetPredicate(
-            (widget) {
-              if (widget is! FloatingActionButton) {
-                return false;
-              }
-              final heroTag = widget.heroTag;
-              return heroTag is String &&
-                  heroTag.endsWith('category-filter-$assetFilterKey');
-            },
-            description:
-                'FloatingActionButton for category-filter-$assetFilterKey',
-          );
-        }
-
-        final assetFabFinder = findAssetFab();
-        expect(assetFabFinder, findsOneWidget);
-
-        final initialAssetFab =
-            tester.widget<FloatingActionButton>(assetFabFinder.first);
-        final initialBackground = initialAssetFab.backgroundColor;
-
-        final assetImageFinder = find.descendant(
-          of: assetFabFinder.first,
-          matching: find.byType(Image),
+        final assetChipFinder = find.ancestor(
+          of: find.text(assetFilterLabel),
+          matching: find.byType(InkWell),
         );
-        expect(assetImageFinder, findsOneWidget);
-        final fabImageWidget = tester.widget<Image>(assetImageFinder.first);
-        expect((fabImageWidget.image as NetworkImage).url, secondImageUri);
+        expect(assetChipFinder, findsOneWidget);
 
-        await tester.tap(assetFabFinder.first);
+        final assetImageFinder = find.byKey(ValueKey<String>(secondImageUri));
+        expect(assetImageFinder, findsOneWidget);
+        final chipImageWidget = tester.widget<Image>(assetImageFinder.first);
+        expect((chipImageWidget.image as NetworkImage).url, secondImageUri);
+
+        await tester.tap(assetChipFinder.first);
         await tester.pump();
         await waitForFilterApplication(
           tester,
@@ -461,15 +436,9 @@ void main() {
           assetDisplayName: assetDisplayName,
         );
 
-        final selectedAssetFabFinder = findAssetFab();
-        expect(selectedAssetFabFinder, findsOneWidget);
-        final selectedAssetFab =
-            tester.widget<FloatingActionButton>(selectedAssetFabFinder.first);
-        expect(
-          selectedAssetFab.backgroundColor,
-          isNot(equals(initialBackground)),
-        );
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
+        expect(mapController.activeFilterLabelStreamValue.value,
+            assetFilterLabel);
         expect(
           (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[])
               .map((poi) => poi.name)
@@ -477,7 +446,6 @@ void main() {
           equals(<String>[assetDisplayName]),
         );
       } finally {
-        fabMenuController?.dispose();
         if (mapController != null) {
           await mapController.onDispose();
         }

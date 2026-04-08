@@ -67,8 +67,38 @@ class TenantAdminEventsRequestEncoder {
     }
 
     if (draft.artistIds.isNotEmpty) {
-      payload['artist_ids'] = draft.artistIds
-          .map((artistId) => artistId.value)
+      final profilesById = {
+        for (final profile in draft.artistProfiles) profile.id: profile,
+      };
+      payload['event_parties'] = draft.artistIds
+          .map((artistId) {
+            final profile = profilesById[artistId.value];
+            if (profile == null) {
+              throw FormatException(
+                'Missing account profile metadata for event party ${artistId.value}.',
+              );
+            }
+            return <String, dynamic>{
+              'party_type': profile.profileType,
+              'party_ref_id': artistId.value,
+              'permissions': <String, dynamic>{
+                'can_edit': true,
+              },
+              'metadata': <String, dynamic>{
+                'display_name': profile.displayName,
+                'slug': profile.slug,
+                'profile_type': profile.profileType,
+                'avatar_url': profile.avatarUrl,
+                'cover_url': profile.coverUrl,
+                'taxonomy_terms': profile.taxonomyTerms
+                    .map((term) => <String, dynamic>{
+                          'type': term.type,
+                          'value': term.value,
+                        })
+                    .toList(growable: false),
+              },
+            };
+          })
           .toList(growable: false);
     }
 

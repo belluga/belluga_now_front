@@ -1,5 +1,5 @@
-import 'package:belluga_now/domain/promotion/promotion_lead_capture_request.dart';
-import 'package:belluga_now/domain/services/promotion_lead_capture_service_contract.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_request.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:dio/dio.dart';
 
 class TenantPublicApiPromotionLeadCaptureService
@@ -26,10 +26,15 @@ class TenantPublicApiPromotionLeadCaptureService
           },
         ),
         data: <String, Object>{
-          'email': request.email,
-          'whatsapp': request.whatsapp,
-          'os': request.mobilePlatform.label,
           'app_name': request.appName,
+          'submitted_fields': request.submittedFields
+              .map(
+                (field) => <String, String>{
+                  'label': field.label,
+                  'value': field.value,
+                },
+              )
+              .toList(growable: false),
         },
       );
 

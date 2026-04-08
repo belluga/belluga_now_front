@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -64,8 +65,7 @@ class EventSearchScreenController
   late FocusNode focusNode;
   late ScrollController scrollController;
 
-  StreamValue<List<EventModel>> get displayedEventsStreamValue =>
-      _scheduleRepository.eventSearchDisplayedEventsStreamValue;
+  late StreamValue<List<VenueEventResume>> displayedEventsStreamValue;
   late StreamValue<bool> isInitialLoadingStreamValue;
   late StreamValue<bool> isPageLoadingStreamValue;
   late StreamValue<bool> hasMoreStreamValue;
@@ -87,7 +87,6 @@ class EventSearchScreenController
   bool _isStreamRefreshing = false;
   String? _lastEventStreamId;
   final List<EventModel> _fetchedEvents = [];
-  int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
   bool _isScrollListenerAttached = false;
@@ -104,9 +103,9 @@ class EventSearchScreenController
     return _localEventPlaceholderUri;
   }
 
-  void _setValue<T>(StreamValue<T> stream, T value) {
+  void _ifAlive(VoidCallback writer) {
     if (_isDisposed) return;
-    stream.addValue(value);
+    writer();
   }
 
   ScheduleRepoBool _toScheduleBool(bool value) {
@@ -141,6 +140,9 @@ class EventSearchScreenController
     searchController = TextEditingController();
     focusNode = FocusNode();
     scrollController = ScrollController();
+    displayedEventsStreamValue = StreamValue<List<VenueEventResume>>(
+      defaultValue: const <VenueEventResume>[],
+    );
     isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
     isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
     hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
@@ -157,7 +159,6 @@ class EventSearchScreenController
 
   void _resetInternalState() {
     _fetchedEvents.clear();
-    _currentPage = 1;
     _isFetching = false;
     _hasMore = true;
   }
@@ -170,8 +171,9 @@ class EventSearchScreenController
     await _invitesRepository.init();
     await _userEventsRepository.refreshConfirmedEventIds();
     _resetInternalState();
-    _setValue(showHistoryStreamValue, startWithHistory);
-    _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
+    _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
+    _ifAlive(
+        () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()));
     _attachScrollListener();
     _listenForStatusChanges();
     _listenForLocationChanges();
@@ -202,28 +204,31 @@ class EventSearchScreenController
 
   Future<void> _refresh({bool warmUpIfPossible = true}) async {
     await _waitForOngoingFetch();
-    _currentPage = 1;
     _hasMore = true;
-    _setValue(hasMoreStreamValue, true);
+    _ifAlive(() => hasMoreStreamValue.addValue(true));
     _fetchedEvents.clear();
-    _setValue(displayedEventsStreamValue, const <EventModel>[]);
-    _setValue(isInitialLoadingStreamValue, true);
+    _ifAlive(
+      () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+    );
+    _ifAlive(() => isInitialLoadingStreamValue.addValue(true));
     try {
       await _resolveEffectiveOrigin(warmUpIfPossible: warmUpIfPossible);
       if (!_hasEffectiveOrigin) {
         _hasMore = false;
-        _setValue(hasMoreStreamValue, false);
-        _setValue(displayedEventsStreamValue, const <EventModel>[]);
+        _ifAlive(() => hasMoreStreamValue.addValue(false));
+        _ifAlive(
+          () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+        );
         return;
       }
 
       _hasMore = true;
-      _setValue(hasMoreStreamValue, true);
-      await _fetchPage(page: 1);
+      _ifAlive(() => hasMoreStreamValue.addValue(true));
+      await _fetchFirstPage();
     } catch (error) {
       debugPrint('EventSearchScreenController._refresh failed: $error');
     } finally {
-      _setValue(isInitialLoadingStreamValue, false);
+      _ifAlive(() => isInitialLoadingStreamValue.addValue(false));
     }
   }
 
@@ -235,69 +240,83 @@ class EventSearchScreenController
 
   Future<void> loadNextPage() async {
     if (!_hasEffectiveOrigin || !_hasMore || _isFetching) return;
-    await _fetchPage(page: _currentPage + 1);
+    await _fetchNextPage();
   }
 
-  Future<void> _fetchPage({required int page}) async {
+  Future<void> _fetchFirstPage() async {
     if (_isFetching || !_hasEffectiveOrigin) return;
     _isFetching = true;
-    if (page > 1 && !_isDisposed) {
-      _setValue(isPageLoadingStreamValue, true);
-    }
 
     try {
-      if (page <= 1) {
-        await _scheduleRepository.loadEventsPage(
-          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
-          searchQuery: _toScheduleText(searchController.text),
-          confirmedOnly: _toScheduleBool(
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          ),
-          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
-          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
-          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
-        );
-      } else {
-        await _scheduleRepository.loadNextEventsPage(
-          showPastOnly: _toScheduleBool(showHistoryStreamValue.value),
-          searchQuery: _toScheduleText(searchController.text),
-          confirmedOnly: _toScheduleBool(
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          ),
-          originLat: _toNullableScheduleDouble(_effectiveOriginLat),
-          originLng: _toNullableScheduleDouble(_effectiveOriginLng),
-          maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
-        );
-      }
-      final result = _scheduleRepository.pagedEventsStreamValue.value;
-      if (result == null) {
-        _hasMore = false;
-        _setValue(hasMoreStreamValue, false);
-        return;
-      }
-
-      final loadedPage = _scheduleRepository.currentPagedEventsPage.value;
-      if (loadedPage <= 0) {
-        return;
-      }
+      final queryShowPastOnly = _toScheduleBool(showHistoryStreamValue.value);
+      final querySearch = _toScheduleText(searchController.text);
+      final queryConfirmedOnly = _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      );
+      final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
+      final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
+      final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
+      final events = await _scheduleRepository.loadEventSearch(
+        showPastOnly: queryShowPastOnly,
+        searchQuery: querySearch,
+        confirmedOnly: queryConfirmedOnly,
+        originLat: queryOriginLat,
+        originLng: queryOriginLng,
+        maxDistanceMeters: queryMaxDistance,
+      );
 
       if (_isDisposed) return;
-      if (loadedPage == 1) {
-        _fetchedEvents
-          ..clear()
-          ..addAll(result.events);
-      } else {
-        _fetchedEvents.addAll(result.events);
-      }
+      _fetchedEvents
+        ..clear()
+        ..addAll(events);
 
-      _hasMore = result.hasMore;
-      _setValue(hasMoreStreamValue, _hasMore);
-      _currentPage = loadedPage;
+      _hasMore = events.isNotEmpty;
+      _ifAlive(() => hasMoreStreamValue.addValue(_hasMore));
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
       if (!_isDisposed) {
-        _setValue(isPageLoadingStreamValue, false);
+        isPageLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> _fetchNextPage() async {
+    if (_isFetching || !_hasEffectiveOrigin) return;
+    _isFetching = true;
+    if (!_isDisposed) {
+      isPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final queryShowPastOnly = _toScheduleBool(showHistoryStreamValue.value);
+      final querySearch = _toScheduleText(searchController.text);
+      final queryConfirmedOnly = _toScheduleBool(
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      );
+      final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
+      final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
+      final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
+      final events = await _scheduleRepository.loadMoreEventSearch(
+        showPastOnly: queryShowPastOnly,
+        searchQuery: querySearch,
+        confirmedOnly: queryConfirmedOnly,
+        originLat: queryOriginLat,
+        originLng: queryOriginLng,
+        maxDistanceMeters: queryMaxDistance,
+      );
+
+      if (_isDisposed) return;
+      if (events.isNotEmpty) {
+        _fetchedEvents.addAll(events);
+      }
+      _hasMore = events.isNotEmpty;
+      _ifAlive(() => hasMoreStreamValue.addValue(_hasMore));
+      _applyFiltersAndPublish();
+    } finally {
+      _isFetching = false;
+      if (!_isDisposed) {
+        isPageLoadingStreamValue.addValue(false);
       }
     }
   }
@@ -305,13 +324,13 @@ class EventSearchScreenController
   @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
-    _setValue(showHistoryStreamValue, !currentValue);
+    _ifAlive(() => showHistoryStreamValue.addValue(!currentValue));
     _refresh();
     _restartEventStream();
   }
 
   void setInviteFilter(InviteFilter filter) {
-    _setValue(inviteFilterStreamValue, filter);
+    _ifAlive(() => inviteFilterStreamValue.addValue(filter));
     _applyFiltersAndPublish();
     _restartEventStream();
   }
@@ -333,7 +352,7 @@ class EventSearchScreenController
   }
 
   void setSearchActive(bool active) {
-    _setValue(searchActiveStreamValue, active);
+    _ifAlive(() => searchActiveStreamValue.addValue(active));
     if (active) {
       focusNode.requestFocus();
     } else {
@@ -349,7 +368,8 @@ class EventSearchScreenController
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
+    _ifAlive(
+        () => radiusMetersStreamValue.addValue(_clampRadiusMeters(meters)));
     unawaited(_refresh());
     _restartEventStream();
   }
@@ -399,7 +419,9 @@ class EventSearchScreenController
   void _applyFiltersAndPublish() {
     if (_isDisposed) return;
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
-    _setValue(displayedEventsStreamValue, inviteFiltered);
+    displayedEventsStreamValue.addValue(
+      inviteFiltered.map(_toVenueEventResume).toList(growable: false),
+    );
     _maybeAutoPage(inviteFiltered);
   }
 
@@ -418,7 +440,7 @@ class EventSearchScreenController
         if (!_hasMore) {
           break;
         }
-        await _fetchPage(page: _currentPage + 1);
+        await _fetchNextPage();
         if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
           break;
         }
@@ -444,6 +466,16 @@ class EventSearchScreenController
           .length;
 
   bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
+
+  VenueEventResume _toVenueEventResume(EventModel event) {
+    return VenueEventResume.fromScheduleEvent(
+      event,
+      ThumbUriValue(
+        defaultValue: defaultEventImageUri,
+        isRequired: true,
+      )..parse(defaultEventImageUri.toString()),
+    );
+  }
 
   String? distanceLabelFor(VenueEventResume event) {
     final userCoordinate = _currentEffectiveOriginCoordinate();
@@ -490,13 +522,15 @@ class EventSearchScreenController
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
-    _setValue(_maxRadiusMetersStreamValue, _currentMaxRadiusMeters());
+    _ifAlive(
+      () => _maxRadiusMetersStreamValue.addValue(_currentMaxRadiusMeters()),
+    );
     _radiusSubscription =
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
-      _setValue(_maxRadiusMetersStreamValue, value.value);
+      _ifAlive(() => _maxRadiusMetersStreamValue.addValue(value.value));
       final current = radiusMetersStreamValue.value;
       final clamped = _clampRadiusMeters(current);
-      _setValue(radiusMetersStreamValue, clamped);
+      _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
       unawaited(_refresh());
       _restartEventStream();
     });
@@ -570,8 +604,8 @@ class EventSearchScreenController
     if (_effectiveOriginLat != null && _effectiveOriginLng != null) {
       return CityCoordinate(
         latitudeValue: LatitudeValue()..parse(_effectiveOriginLat!.toString()),
-        longitudeValue:
-            LongitudeValue()..parse(_effectiveOriginLng!.toString()),
+        longitudeValue: LongitudeValue()
+          ..parse(_effectiveOriginLng!.toString()),
       );
     }
     return _locationOriginService.resolveCached().effectiveCoordinate;
@@ -675,6 +709,7 @@ class EventSearchScreenController
     _userLocationSubscription?.cancel();
     _radiusSubscription?.cancel();
     _eventsStreamSubscription?.cancel();
+    displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
     hasMoreStreamValue.dispose();

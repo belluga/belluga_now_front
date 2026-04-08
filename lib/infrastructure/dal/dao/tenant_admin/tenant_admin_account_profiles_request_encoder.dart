@@ -80,14 +80,17 @@ class TenantAdminAccountProfilesRequestEncoder {
     required String label,
     required List<String> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    bool includeVisual = false,
+    bool? removeTypeAsset,
   }) {
     return {
       'type': type,
       'label': label,
       'allowed_taxonomies': allowedTaxonomies,
-      if (includePoiVisual) 'poi_visual': poiVisual?.toJson(),
+      if (includeVisual) 'visual': visual?.toJson(),
+      if (includeVisual) 'poi_visual': visual?.toJson(),
+      if (removeTypeAsset == true) 'remove_type_asset': true,
       'capabilities': _encodeCapabilities(capabilities),
     };
   }
@@ -97,8 +100,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    bool includeVisual = false,
+    bool? removeTypeAsset,
   }) {
     final payload = <String, dynamic>{};
     if (newType != null && newType.trim().isNotEmpty) {
@@ -113,8 +117,12 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (capabilities != null) {
       payload['capabilities'] = _encodeCapabilities(capabilities);
     }
-    if (includePoiVisual) {
-      payload['poi_visual'] = poiVisual?.toJson();
+    if (includeVisual) {
+      payload['visual'] = visual?.toJson();
+      payload['poi_visual'] = visual?.toJson();
+    }
+    if (removeTypeAsset == true) {
+      payload['remove_type_asset'] = true;
     }
     return payload;
   }

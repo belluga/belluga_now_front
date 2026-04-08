@@ -241,7 +241,7 @@ class DateGroupedEventList extends StatelessWidget {
             // Events for this date
             ...dateEvents.map((event) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: UpcomingEventCard(
+                  child: UpcomingEventCard.fromVenueEventResume(
                     event: event,
                     onTap: () => onEventSelected(event.slug),
                     isConfirmed: isConfirmed?.call(event) ?? false,

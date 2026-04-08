@@ -13,11 +13,15 @@ class TenantAdminEventDraft {
     this.coverUpload,
     TenantAdminFlagValue? removeCoverValue,
     List<TenantAdminArtistIdValue>? artistIdValues,
+    List<TenantAdminAccountProfile>? artistProfiles,
     TenantAdminTaxonomyTerms? taxonomyTerms,
   })  : coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
         removeCoverValue = removeCoverValue ?? TenantAdminFlagValue(false),
         artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
           artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        ),
+        artistProfiles = List<TenantAdminAccountProfile>.unmodifiable(
+          artistProfiles ?? const <TenantAdminAccountProfile>[],
         ),
         taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
@@ -32,6 +36,7 @@ class TenantAdminEventDraft {
   final TenantAdminMediaUpload? coverUpload;
   final TenantAdminFlagValue removeCoverValue;
   final List<TenantAdminArtistIdValue> artistIdValues;
+  final List<TenantAdminAccountProfile> artistProfiles;
   final TenantAdminTaxonomyTerms taxonomyTerms;
 
   String get title => titleValue.value;

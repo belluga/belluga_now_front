@@ -26,9 +26,13 @@ import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
 import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/profile_type_visual.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_label_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_hex_color_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_icon_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_image_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
@@ -212,19 +216,21 @@ class AppDataDTO {
         _firstNonEmpty(mainLogoLightUrl, '$origin/logo-light.png');
     final mainLogoDarkResolved =
         _firstNonEmpty(mainLogoDarkUrl, '$origin/logo-dark.png');
-    final mainColorResolved =
-        _firstNonEmpty(mainColor, themeDataSettings['primary_seed_color'] as String?);
+    final mainColorResolved = _firstNonEmpty(
+        mainColor, themeDataSettings['primary_seed_color'] as String?);
 
-    final mainDomainValue = DomainValue()..parse(DomainValue.coerceRaw(mainDomain));
+    final mainDomainValue = DomainValue()
+      ..parse(DomainValue.coerceRaw(mainDomain));
     final tenantIdValue = TenantIdValue()..parse(tenantId?.toString());
 
-    final resolvedPlatform =
-        localInfo.platformTypeValue.value ??
+    final resolvedPlatform = localInfo.platformTypeValue.value ??
         localInfo.platformTypeValue.defaultValue ??
         AppType.mobile;
     final isWeb = resolvedPlatform == AppType.web;
-    final resolvedHostname = isWeb ? localInfo.hostname : mainDomainValue.value.host;
-    final resolvedHref = isWeb ? localInfo.href : mainDomainValue.value.toString();
+    final resolvedHostname =
+        isWeb ? localInfo.hostname : mainDomainValue.value.host;
+    final resolvedHref =
+        isWeb ? localInfo.href : mainDomainValue.value.toString();
 
     return AppData(
       platformType: localInfo.platformTypeValue,
@@ -258,7 +264,8 @@ class AppDataDTO {
       pushSettings: _buildPushSettings(push),
       tenantDefaultOrigin: tenantDefaultOrigin,
       mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
-      mapRadiusDefaultMetersValue: _buildDistanceValue(radiusBounds.defaultMeters),
+      mapRadiusDefaultMetersValue:
+          _buildDistanceValue(radiusBounds.defaultMeters),
       mapRadiusMaxMetersValue: _buildDistanceValue(radiusBounds.maxMeters),
       mapFilterCatalogKeysValue:
           AppDataMapFilterCatalogKeysValue(mapFilterCatalogKeys),
@@ -353,6 +360,18 @@ class AppDataDTO {
         continue;
       }
       final label = rawType['label']?.toString().trim();
+      final labelsRaw = rawType['labels'];
+      final labelsMap = labelsRaw is Map
+          ? Map<String, dynamic>.from(labelsRaw)
+          : const <String, dynamic>{};
+      final singularLabel =
+          labelsMap['singular']?.toString().trim().isNotEmpty == true
+              ? labelsMap['singular']?.toString().trim()
+              : label;
+      final pluralLabel = labelsMap['plural']?.toString().trim().isNotEmpty ==
+              true
+          ? labelsMap['plural']?.toString().trim()
+          : singularLabel;
       final capabilitiesRaw = rawType['capabilities'];
       final capabilitiesMap = capabilitiesRaw is Map
           ? Map<String, dynamic>.from(capabilitiesRaw)
@@ -362,7 +381,18 @@ class AppDataDTO {
         ProfileTypeDefinition(
           typeValue: ProfileTypeKeyValue(type),
           labelValue: ProfileTypeLabelValue(
-            label == null || label.isEmpty ? type : label,
+            singularLabel == null || singularLabel.isEmpty ? type : singularLabel,
+          ),
+          pluralLabelValue: ProfileTypeLabelValue(
+            pluralLabel == null || pluralLabel.isEmpty
+                ? (singularLabel == null || singularLabel.isEmpty
+                    ? type
+                    : singularLabel)
+                : pluralLabel,
+          ),
+          visual: _buildProfileTypeVisual(
+            rawType['visual'] ?? rawType['poi_visual'],
+            typeAssetUrl: rawType['type_asset_url'],
           ),
           capabilities: ProfileTypeCapabilities(
             isFavoritableValue: ProfileTypeFlagValue(
@@ -396,6 +426,110 @@ class AppDataDTO {
     return ProfileTypeRegistry(types: types);
   }
 
+  static ProfileTypeVisual? _buildProfileTypeVisual(
+    Object? rawVisual, {
+    Object? typeAssetUrl,
+  }) {
+    if (rawVisual is! Map) {
+      return null;
+    }
+
+    final visualMap = Map<String, dynamic>.from(rawVisual);
+    final mode = _resolveProfileTypeVisualMode(visualMap);
+    if (mode == null) {
+      return null;
+    }
+
+    if (mode == ProfileTypeVisualMode.icon) {
+      final icon = _readTrimmedString(visualMap['icon']);
+      final color = _normalizeHexColor(visualMap['color']);
+      final iconColor =
+          _normalizeHexColor(visualMap['icon_color']) ?? '#FFFFFF';
+      if (icon == null || color == null) {
+        return null;
+      }
+      final iconValue = ProfileTypeVisualIconValue(icon);
+      final colorValue = ProfileTypeVisualHexColorValue()..parse(color);
+      final iconColorValue = ProfileTypeVisualHexColorValue()..parse(iconColor);
+      return ProfileTypeVisual.icon(
+        iconValue: iconValue,
+        colorValue: colorValue,
+        iconColorValue: iconColorValue,
+      );
+    }
+
+    final imageSource = _resolveProfileTypeVisualImageSource(visualMap);
+    if (imageSource == null) {
+      return null;
+    }
+    return ProfileTypeVisual.image(
+      imageSource: imageSource,
+      imageUrlValue: _optionalProfileTypeImageUrlValue(
+        _readTrimmedString(visualMap['image_url']) ??
+            _readTrimmedString(typeAssetUrl),
+      ),
+    );
+  }
+
+  static ProfileTypeVisualMode? _resolveProfileTypeVisualMode(
+    Map<String, dynamic> visualMap,
+  ) {
+    final rawMode = _readTrimmedString(visualMap['mode'])?.toLowerCase();
+    switch (rawMode) {
+      case 'icon':
+        return ProfileTypeVisualMode.icon;
+      case 'image':
+        return ProfileTypeVisualMode.image;
+    }
+
+    final icon = _readTrimmedString(visualMap['icon']);
+    final color = _normalizeHexColor(visualMap['color']);
+    if (icon != null && color != null) {
+      return ProfileTypeVisualMode.icon;
+    }
+
+    final imageSource = _readTrimmedString(visualMap['image_source']);
+    if (imageSource != null) {
+      return ProfileTypeVisualMode.image;
+    }
+
+    return null;
+  }
+
+  static ProfileTypeVisualImageSource? _resolveProfileTypeVisualImageSource(
+    Map<String, dynamic> visualMap,
+  ) {
+    return switch (
+        _readTrimmedString(visualMap['image_source'])?.toLowerCase()) {
+      'avatar' => ProfileTypeVisualImageSource.avatar,
+      'cover' => ProfileTypeVisualImageSource.cover,
+      'type_asset' => ProfileTypeVisualImageSource.typeAsset,
+      _ => null,
+    };
+  }
+
+  static String? _readTrimmedString(Object? raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  static String? _normalizeHexColor(Object? raw) {
+    final value = _readTrimmedString(raw)?.toUpperCase();
+    if (value == null) {
+      return null;
+    }
+    if (RegExp(r'^#[0-9A-F]{6}$').hasMatch(value)) {
+      return value;
+    }
+    if (RegExp(r'^[0-9A-F]{6}$').hasMatch(value)) {
+      return '#$value';
+    }
+    return null;
+  }
+
   static ThemeDataSettings _buildThemeDataSettings(
     Map<String, dynamic> themeSettings,
   ) {
@@ -417,8 +551,9 @@ class AppDataDTO {
         primarySeedColor: primarySeedColor,
         secondarySeedColor: secondarySeedColor,
       ),
-      brightnessDefault:
-          brightnessValue.value == Brightness.dark ? Brightness.dark : Brightness.light,
+      brightnessDefault: brightnessValue.value == Brightness.dark
+          ? Brightness.dark
+          : Brightness.light,
     );
   }
 
@@ -447,7 +582,8 @@ class AppDataDTO {
       if (item is Map<String, dynamic>) {
         trackers.add(EventTrackerSettingsModel.fromMap(item));
       } else if (item is Map) {
-        trackers.add(EventTrackerSettingsModel.fromMap(Map<String, dynamic>.from(item)));
+        trackers.add(
+            EventTrackerSettingsModel.fromMap(Map<String, dynamic>.from(item)));
       }
     }
 
@@ -501,14 +637,16 @@ class AppDataDTO {
       return null;
     }
 
-    final parsedEnabled = raw['enabled'] is bool ? raw['enabled'] as bool : false;
+    final parsedEnabled =
+        raw['enabled'] is bool ? raw['enabled'] as bool : false;
     final parsedTypes = (raw['types'] is List)
         ? (raw['types'] as List)
             .map((entry) => entry.toString())
             .toList(growable: false)
         : const <String>[];
     final parsedThrottles = raw['throttles'] is Map<String, dynamic>
-        ? Map<String, dynamic>.unmodifiable(raw['throttles'] as Map<String, dynamic>)
+        ? Map<String, dynamic>.unmodifiable(
+            raw['throttles'] as Map<String, dynamic>)
         : const <String, dynamic>{};
 
     return PushSettings(
@@ -666,7 +804,8 @@ class AppDataDTO {
     return value;
   }
 
-  static TelemetryLocationFreshnessValue _buildLocationFreshnessValueFromMinutes(
+  static TelemetryLocationFreshnessValue
+      _buildLocationFreshnessValueFromMinutes(
     int minutes,
   ) {
     final value = TelemetryLocationFreshnessValue(
@@ -698,11 +837,21 @@ class AppDataDTO {
   }
 
   static double _parsePositiveDouble(Object? raw, double fallback) {
-    final value = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+    final value =
+        raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
     if (value == null || value <= 0) {
       return fallback;
     }
     return value;
+  }
+
+  static ProfileTypeVisualImageUrlValue? _optionalProfileTypeImageUrlValue(
+    String? raw,
+  ) {
+    if (raw == null) {
+      return null;
+    }
+    return ProfileTypeVisualImageUrlValue(raw);
   }
 
   static double? _parseDouble(Object? raw) {

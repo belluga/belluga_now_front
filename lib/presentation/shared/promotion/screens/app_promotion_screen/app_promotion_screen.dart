@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_tester_waitlist_controller.dart';
@@ -45,26 +48,21 @@ class _AppPromotionScreenState extends State<AppPromotionScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
+            constraints: const BoxConstraints(maxWidth: 780),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      const Spacer(),
-                      IconButton(
-                        key: const Key('app_promotion_close_button'),
-                        onPressed: _dismiss,
-                        style: IconButton.styleFrom(
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          foregroundColor: colorScheme.onSurfaceVariant,
-                        ),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      key: const Key('app_promotion_close_button'),
+                      onPressed: _dismiss,
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Fechar',
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Expanded(
                     child: switch (_controller.currentExperience) {
                       AppPromotionExperience.appDownload =>
@@ -91,11 +89,17 @@ class _AppPromotionScreenState extends State<AppPromotionScreen> {
   }
 
   void _dismiss() {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop();
+    final redirectPath = _controller.normalizeRedirectPath(widget.redirectPath);
+    if (context.router.canPop()) {
+      context.router.pop();
       return;
     }
-    router.replaceAll([const TenantHomeRoute()]);
+
+    if (isAuthOwnedPromotionRedirectPath(redirectPath)) {
+      unawaited(context.router.replaceAll([const TenantHomeRoute()]));
+      return;
+    }
+
+    context.router.pop();
   }
 }

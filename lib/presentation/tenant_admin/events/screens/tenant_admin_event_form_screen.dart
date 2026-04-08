@@ -20,6 +20,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -267,6 +268,7 @@ class _TenantAdminEventFormScreenState
                                                                     onPressed: isSubmitting
                                                                         ? null
                                                                         : () => _handleSubmit(
+                                                                              artists: artists,
                                                                               venues: venues,
                                                                               eventTypes: eventTypes,
                                                                               formState: formState,
@@ -329,13 +331,11 @@ class _TenantAdminEventFormScreenState
             },
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          TenantAdminRichTextEditor(
             controller: _controller.eventContentController,
-            decoration: const InputDecoration(
-              labelText: 'Descrição (opcional)',
-            ),
-            minLines: 3,
-            maxLines: 6,
+            label: 'Descrição (opcional)',
+            placeholder: 'Escreva a descrição do evento',
+            minHeight: 180,
           ),
         ],
       ),
@@ -1286,6 +1286,7 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<void> _handleSubmit({
+    required List<TenantAdminAccountProfile> artists,
     required List<TenantAdminAccountProfile> venues,
     required List<TenantAdminEventType> eventTypes,
     required TenantAdminEventFormState formState,
@@ -1354,6 +1355,15 @@ class _TenantAdminEventFormScreenState
     final selectedVenue = venues.firstWhereOrNull(
       (venue) => venue.id == formState.selectedVenueId,
     );
+    final knownArtistProfilesById = <String, TenantAdminAccountProfile>{
+      for (final artist in widget.existingEvent?.artistProfiles ?? const [])
+        artist.id: artist,
+      for (final artist in artists) artist.id: artist,
+    };
+    final selectedArtistProfiles = formState.selectedArtistIds
+        .map((artistId) => knownArtistProfilesById[artistId])
+        .whereType<TenantAdminAccountProfile>()
+        .toList(growable: false);
 
     final taxonomyTerms = <TenantAdminTaxonomyTerm>[];
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
@@ -1425,6 +1435,7 @@ class _TenantAdminEventFormScreenState
         artistIdValues: formState.selectedArtistIds
             .map(TenantAdminArtistIdValue.new)
             .toList(growable: false),
+        artistProfiles: selectedArtistProfiles,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
           for (final taxonomyTerm in taxonomyTerms) {

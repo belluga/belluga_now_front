@@ -254,12 +254,13 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   });
   Future<TenantAdminStaticProfileTypeDefinition>
-      createStaticProfileTypeWithPoiVisual({
+      createStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
     List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) async {
     return createStaticProfileType(
       type: type,
@@ -277,13 +278,15 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   });
   Future<TenantAdminStaticProfileTypeDefinition>
-      updateStaticProfileTypeWithPoiVisual({
+      updateStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     TenantAdminStaticAssetsRepoString? newType,
     TenantAdminStaticAssetsRepoString? label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminStaticAssetsRepoBool? removeTypeAsset,
   }) async {
     return updateStaticProfileType(
       type: type,
@@ -659,12 +662,13 @@ mixin TenantAdminStaticAssetsPaginationMixin
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      createStaticProfileTypeWithPoiVisual({
+      createStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) {
     return createStaticProfileType(
       type: type,
@@ -676,13 +680,15 @@ mixin TenantAdminStaticAssetsPaginationMixin
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      updateStaticProfileTypeWithPoiVisual({
+      updateStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     TenantAdminStaticAssetsRepoString? newType,
     TenantAdminStaticAssetsRepoString? label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminStaticAssetsRepoBool? removeTypeAsset,
   }) {
     return updateStaticProfileType(
       type: type,

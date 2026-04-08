@@ -9,7 +9,10 @@ class TenantAdminMediaFormDataBuilder {
     required Object payload,
   }) {
     if (payload case final Map<String, dynamic> mapPayload) {
-      return FormData.fromMap(mapPayload, ListFormat.multiCompatible);
+      return FormData.fromMap(
+        _normalizeMultipartMap(mapPayload),
+        ListFormat.multiCompatible,
+      );
     }
     if (payload case final Map mapPayload) {
       final normalizedPayload = <String, dynamic>{};
@@ -20,7 +23,7 @@ class TenantAdminMediaFormDataBuilder {
             'Failed to build multipart payload: payload keys must be strings.',
           );
         }
-        normalizedPayload[key] = entry.value;
+        normalizedPayload[key] = _normalizeMultipartValue(entry.value);
       }
       return FormData.fromMap(normalizedPayload, ListFormat.multiCompatible);
     }
@@ -38,7 +41,10 @@ class TenantAdminMediaFormDataBuilder {
       return null;
     }
 
-    final formData = FormData.fromMap(payload, ListFormat.multiCompatible);
+    final formData = FormData.fromMap(
+      _normalizeMultipartMap(payload),
+      ListFormat.multiCompatible,
+    );
     if (avatarUpload != null) {
       formData.files.add(
         MapEntry(
@@ -66,6 +72,31 @@ class TenantAdminMediaFormDataBuilder {
     return formData;
   }
 
+  FormData? buildTypeAssetPayload({
+    required Map<String, dynamic> payload,
+    TenantAdminMediaUpload? typeAssetUpload,
+  }) {
+    if (typeAssetUpload == null) {
+      return null;
+    }
+
+    final formData = FormData.fromMap(
+      _normalizeMultipartMap(payload),
+      ListFormat.multiCompatible,
+    );
+    formData.files.add(
+      MapEntry(
+        'type_asset',
+        MultipartFile.fromBytes(
+          typeAssetUpload.bytes,
+          filename: typeAssetUpload.fileName,
+          contentType: _resolveMediaType(typeAssetUpload),
+        ),
+      ),
+    );
+    return formData;
+  }
+
   MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
     final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
     if (mimeType == null) {
@@ -84,5 +115,37 @@ class TenantAdminMediaFormDataBuilder {
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
     if (lower.endsWith('.webp')) return 'image/webp';
     return null;
+  }
+
+  Map<String, dynamic> _normalizeMultipartMap(Map<String, dynamic> payload) {
+    return payload.map(
+      (key, value) => MapEntry(key, _normalizeMultipartValue(value)),
+    );
+  }
+
+  dynamic _normalizeMultipartValue(Object? value) {
+    if (value is bool) {
+      return value ? 1 : 0;
+    }
+    if (value is Map<String, dynamic>) {
+      return _normalizeMultipartMap(value);
+    }
+    if (value is Map) {
+      final normalized = <String, dynamic>{};
+      for (final entry in value.entries) {
+        final key = entry.key;
+        if (key is! String) {
+          throw const FormatException(
+            'Failed to build multipart payload: payload keys must be strings.',
+          );
+        }
+        normalized[key] = _normalizeMultipartValue(entry.value);
+      }
+      return normalized;
+    }
+    if (value is List) {
+      return value.map(_normalizeMultipartValue).toList(growable: false);
+    }
+    return value;
   }
 }

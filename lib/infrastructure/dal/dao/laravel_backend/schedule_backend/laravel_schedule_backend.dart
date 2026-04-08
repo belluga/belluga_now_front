@@ -5,8 +5,6 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
 import 'package:dio/dio.dart';
@@ -20,8 +18,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   final Dio _dio;
   final SseClient _sseClient;
 
-  static const int _maxPagedFetches = 8;
-  static const int _defaultPageSize = 25;
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
   Future<Map<String, String>> _buildHeaders({
@@ -37,40 +33,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     return TenantPublicAuthHeaders.buildSync(
       includeJsonAccept: includeJsonAccept,
     );
-  }
-
-  @override
-  Future<EventSummaryDTO> fetchSummary() async {
-    final events = await fetchEvents();
-    final items = events
-        .map(
-          (event) => EventSummaryItemDTO(
-            dateTimeStart: event.dateTimeStart,
-            color: event.type.color ?? '#000000',
-          ),
-        )
-        .toList();
-    return EventSummaryDTO(items: items);
-  }
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async {
-    final events = <EventDTO>[];
-    var page = 1;
-    var hasMore = true;
-
-    while (hasMore && page <= _maxPagedFetches) {
-      final pageDto = await fetchEventsPage(
-        page: page,
-        pageSize: _defaultPageSize,
-        showPastOnly: false,
-      );
-      events.addAll(pageDto.events);
-      hasMore = pageDto.hasMore;
-      page += 1;
-    }
-
-    return events;
   }
 
   @override

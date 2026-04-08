@@ -9,9 +9,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/screens/tenant_admin_profile_type_form_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,7 +43,7 @@ void main() {
             type: 'venue',
             label: 'Venue',
             allowedTaxonomies: const [],
-            poiVisual: TenantAdminPoiVisual.icon(
+            visual: TenantAdminPoiVisual.icon(
               iconValue: TenantAdminRequiredTextValue()..parse('place'),
               colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
             ),
@@ -94,7 +96,8 @@ void main() {
 
     expect(controller.submitUpdateCalls, 1);
     expect(controller.lastCapabilities?.isPoiEnabled, isFalse);
-    expect(controller.lastPoiVisual, isNull);
+    expect(controller.lastVisual, isNotNull);
+    expect(controller.lastVisual?.mode, TenantAdminPoiVisualMode.icon);
   });
 
   testWidgets('renders shared marker icon picker in POI visual editor',
@@ -109,7 +112,7 @@ void main() {
             type: 'venue',
             label: 'Venue',
             allowedTaxonomies: const [],
-            poiVisual: TenantAdminPoiVisual.icon(
+            visual: TenantAdminPoiVisual.icon(
               iconValue: TenantAdminRequiredTextValue()..parse('place'),
               colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
             ),
@@ -129,8 +132,94 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Visual do POI'), findsOneWidget);
+    expect(find.text('Visual do tipo'), findsOneWidget);
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
+  });
+
+  testWidgets('shows canonical type image upload controls for type_asset visuals',
+      (tester) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantAdminProfileTypeFormScreen(
+          definition: tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'restaurant',
+            label: 'Restaurant',
+            allowedTaxonomies: const [],
+            visual: TenantAdminPoiVisual.image(
+              imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+              imageUrlValue: TenantAdminOptionalUrlValue()
+                ..parse(
+                  'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
+                ),
+            ),
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(true),
+              hasContent: TenantAdminFlagValue(true),
+              hasTaxonomies: TenantAdminFlagValue(true),
+              hasAvatar: TenantAdminFlagValue(true),
+              hasCover: TenantAdminFlagValue(true),
+              hasEvents: TenantAdminFlagValue(true),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+    expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
+    expect(find.text('Enviar imagem canônica'), findsOneWidget);
+  });
+
+  testWidgets('type_asset upload uses canonical image source sheet',
+      (tester) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantAdminProfileTypeFormScreen(
+          definition: tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'restaurant',
+            label: 'Restaurant',
+            allowedTaxonomies: const [],
+            visual: TenantAdminPoiVisual.image(
+              imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+            ),
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(true),
+              hasContent: TenantAdminFlagValue(true),
+              hasTaxonomies: TenantAdminFlagValue(true),
+              hasAvatar: TenantAdminFlagValue(true),
+              hasCover: TenantAdminFlagValue(true),
+              hasEvents: TenantAdminFlagValue(true),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enviar imagem canônica'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Enviar imagem canônica'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enviar imagem canônica'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Adicionar imagem canônica do tipo'), findsOneWidget);
+    expect(find.text('Do dispositivo'), findsOneWidget);
+    expect(find.text('Da web'), findsOneWidget);
   });
 }
 
@@ -146,7 +235,7 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
   final int _impactCount;
   int submitUpdateCalls = 0;
   TenantAdminProfileTypeCapabilities? lastCapabilities;
-  TenantAdminPoiVisual? lastPoiVisual;
+  TenantAdminPoiVisual? lastVisual;
 
   @override
   Future<int> previewDisableProjectionCount(String type) async {
@@ -160,12 +249,14 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool? removeTypeAsset,
+    bool includeVisual = false,
   }) async {
     submitUpdateCalls += 1;
     lastCapabilities = capabilities;
-    lastPoiVisual = poiVisual;
+    lastVisual = visual;
   }
 }
 

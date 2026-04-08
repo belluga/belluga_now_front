@@ -112,6 +112,31 @@ bool isDomainFilePath(String path) {
   return _containsSegment(path, '/lib/domain/');
 }
 
+bool isDomainRepositoryContractFilePath(String path) {
+  final normalized = normalizePath(path);
+  if (!_containsSegment(normalized, '/lib/domain/repositories/')) {
+    return false;
+  }
+
+  return normalized.endsWith('_repository_contract.dart') ||
+      normalized.contains('repository_contract_') ||
+      normalized.endsWith('repository_contract_case.dart');
+}
+
+bool isScheduleRepositoryContractFilePath(String path) {
+  final normalized = normalizePath(path);
+  return normalized.endsWith(
+        '/lib/domain/repositories/schedule_repository_contract.dart',
+      ) ||
+      normalized.endsWith('repository_contract_pagination_case.dart');
+}
+
+bool isDomainScheduleFilePath(String path) {
+  final normalized = normalizePath(path);
+  return _containsSegment(normalized, '/lib/domain/schedule/') ||
+      normalized.endsWith('paged_result_type_case.dart');
+}
+
 bool isDomainValueObjectFilePath(String path) {
   final normalized = normalizePath(path);
   return isDomainFilePath(normalized) &&
@@ -146,9 +171,11 @@ bool isAllowedGlobalRegistrationFilePath(String path) {
 
   return normalized.endsWith('/lib/main.dart') ||
       normalized.endsWith(
-          '/lib/application/router/modular_app/module_settings.dart') ||
+        '/lib/application/router/modular_app/module_settings.dart',
+      ) ||
       normalized.endsWith(
-          '/lib/infrastructure/repositories/app_data_repository.dart');
+        '/lib/infrastructure/repositories/app_data_repository.dart',
+      );
 }
 
 bool isModuleSettingsFilePath(String path) {
@@ -161,14 +188,15 @@ bool isModuleSettingsFilePath(String path) {
 bool isTenantCanonicalDomainEnforcementFilePath(String path) {
   final normalized = normalizePath(path);
 
-  if (normalized
-      .endsWith('/lib/application/configurations/belluga_constants.dart')) {
+  if (normalized.endsWith(
+    '/lib/application/configurations/belluga_constants.dart',
+  )) {
     return true;
   }
 
   final isInfrastructureNetworkingFile =
       _containsSegment(normalized, '/lib/infrastructure/repositories/') ||
-          _containsSegment(normalized, '/lib/infrastructure/dal/dao/');
+      _containsSegment(normalized, '/lib/infrastructure/dal/dao/');
   if (!isInfrastructureNetworkingFile) {
     return false;
   }
@@ -178,7 +206,8 @@ bool isTenantCanonicalDomainEnforcementFilePath(String path) {
   }
 
   if (normalized.endsWith(
-      '/lib/infrastructure/repositories/landlord_auth_repository.dart')) {
+    '/lib/infrastructure/repositories/landlord_auth_repository.dart',
+  )) {
     return false;
   }
 
@@ -211,8 +240,9 @@ String? presentationRootKey(String path) {
     const genericPresentationMarker = 'presentation/';
     final genericIndex = normalized.indexOf(genericPresentationMarker);
     if (genericIndex != -1) {
-      relative =
-          normalized.substring(genericIndex + genericPresentationMarker.length);
+      relative = normalized.substring(
+        genericIndex + genericPresentationMarker.length,
+      );
     }
   }
 

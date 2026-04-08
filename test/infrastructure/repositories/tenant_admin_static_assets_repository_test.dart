@@ -108,13 +108,14 @@ void main() {
     expect((data as Map<String, dynamic>)['type'], 'landmark');
   });
 
-  test('createStaticProfileTypeWithPoiVisual sends poi_visual image payload',
+  test(
+      'createStaticProfileTypeWithVisual sends canonical and legacy visual payloads',
       () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
-    await repository.createStaticProfileTypeWithPoiVisual(
+    await repository.createStaticProfileTypeWithVisual(
       type: _staticText('beach'),
       label: _staticText('Beach'),
       allowedTaxonomies: _staticTextList(const ['region']),
@@ -126,25 +127,29 @@ void main() {
         hasCover: TenantAdminFlagValue(true),
         hasContent: TenantAdminFlagValue(true),
       ),
-      poiVisual: TenantAdminPoiVisual.image(
+      visual: TenantAdminPoiVisual.image(
         imageSource: TenantAdminPoiVisualImageSource.cover,
       ),
     );
 
     final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['visual'], <String, dynamic>{
+      'mode': 'image',
+      'image_source': 'cover',
+    });
     expect(payload['poi_visual'], <String, dynamic>{
       'mode': 'image',
       'image_source': 'cover',
     });
   });
 
-  test('updateStaticProfileTypeWithPoiVisual sends nullable poi_visual payload',
+  test('updateStaticProfileTypeWithVisual sends nullable visual payloads',
       () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminStaticAssetsRepository(dio: dio);
 
-    await repository.updateStaticProfileTypeWithPoiVisual(
+    await repository.updateStaticProfileTypeWithVisual(
       type: _staticText('beach'),
       capabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: TenantAdminFlagValue(false),
@@ -154,12 +159,104 @@ void main() {
         hasCover: TenantAdminFlagValue(true),
         hasContent: TenantAdminFlagValue(true),
       ),
-      poiVisual: null,
+      visual: null,
     );
 
     final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('visual'), isTrue);
+    expect(payload['visual'], isNull);
     expect(payload.containsKey('poi_visual'), isTrue);
     expect(payload['poi_visual'], isNull);
+  });
+
+  test(
+      'createStaticProfileTypeWithVisual uses multipart when type_asset upload exists',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.createStaticProfileTypeWithVisual(
+      type: _staticText('landmark'),
+      label: _staticText('Landmark'),
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: TenantAdminFlagValue(true),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(true),
+      ),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([3, 4, 5]),
+        fileName: 'landmark.png',
+      ),
+    );
+
+    expect(adapter.lastRequest?.method, 'POST');
+    expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
+    final payload = adapter.lastRequest?.data;
+    expect(payload, isA<FormData>());
+    final formData = payload as FormData;
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    expect(
+      formData.fields.any((entry) => entry.key == 'visual[image_source]'),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'capabilities[is_poi_enabled]' && entry.value == '1',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'capabilities[has_avatar]' && entry.value == '1',
+      ),
+      isTrue,
+    );
+  });
+
+  test(
+      'updateStaticProfileTypeWithVisual uses multipart patch tunnel for type_asset upload and removal',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticProfileTypeWithVisual(
+      type: _staticText('landmark'),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([3, 4, 5]),
+        fileName: 'landmark.png',
+      ),
+      removeTypeAsset: TenantAdminStaticAssetsRepoBool.fromRaw(
+        true,
+        defaultValue: false,
+      ),
+    );
+
+    expect(adapter.lastRequest?.method, 'POST');
+    expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
+    final payload = adapter.lastRequest?.data;
+    expect(payload, isA<FormData>());
+    final formData = payload as FormData;
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'remove_type_asset' && entry.value == '1',
+      ),
+      isTrue,
+    );
   });
 
   test('fetchStaticProfileTypeMapPoiProjectionImpact returns projection count',
@@ -404,9 +501,9 @@ void main() {
     );
 
     expect(page.items, hasLength(1));
-    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.image);
+    expect(page.items.first.visual?.mode, TenantAdminPoiVisualMode.image);
     expect(
-      page.items.first.poiVisual?.imageSource,
+      page.items.first.visual?.imageSource,
       TenantAdminPoiVisualImageSource.avatar,
     );
   });

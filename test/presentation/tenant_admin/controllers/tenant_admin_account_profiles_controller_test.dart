@@ -239,9 +239,9 @@ class _FakeAccountProfilesRepository
     createProfileCalls += 1;
     final created = tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
-      accountId: accountId,
-      profileType: profileType,
-      displayName: displayName,
+      accountId: accountId.value,
+      profileType: profileType.value,
+      displayName: displayName.value,
       location: location,
       taxonomyTerms: taxonomyTerms,
     );

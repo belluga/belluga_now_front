@@ -31,8 +31,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
-  static const int _defaultPageSize = 30;
-  static const int _maxPagedFetches = 10;
   final AccountProfilesBackendContract _backend;
   final FavoriteBackendContract _favoriteBackend;
   final Set<String> _favoriteAccountProfileIds;
@@ -40,9 +38,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> init() async {
-    final profiles = await fetchAllAccountProfiles();
-    allAccountProfilesStreamValue.addValue(profiles);
-
     final remoteFavoriteIds = await _loadRemoteFavoriteIds();
     if (remoteFavoriteIds.isNotEmpty) {
       _favoriteAccountProfileIds
@@ -53,31 +48,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     favoriteAccountProfileIdsStreamValue.addValue(
       _toFavoriteIdValues(_favoriteAccountProfileIds),
     );
-  }
-
-  @override
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
-    final profiles = <AccountProfileModel>[];
-    var page = 1;
-    var hasMore = true;
-
-    while (hasMore && page <= _maxPagedFetches) {
-      final result = await fetchAccountProfilesPage(
-        page: _toIntValue(
-          page,
-          defaultValue: 1,
-        ),
-        pageSize: _toIntValue(
-          _defaultPageSize,
-          defaultValue: _defaultPageSize,
-        ),
-      );
-      profiles.addAll(result.profiles);
-      hasMore = result.hasMore;
-      page += 1;
-    }
-
-    return profiles;
   }
 
   @override
@@ -116,36 +86,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       profiles: filtered,
       hasMore: result.hasMore,
     );
-  }
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    AccountProfilesRepositoryContractPrimString? query,
-    AccountProfilesRepositoryContractPrimString? typeFilter,
-  }) async {
-    final results = <AccountProfileModel>[];
-    var page = 1;
-    var hasMore = true;
-
-    while (hasMore && page <= _maxPagedFetches) {
-      final pageResult = await fetchAccountProfilesPage(
-        page: _toIntValue(
-          page,
-          defaultValue: 1,
-        ),
-        pageSize: _toIntValue(
-          _defaultPageSize,
-          defaultValue: _defaultPageSize,
-        ),
-        query: query,
-        typeFilter: typeFilter,
-      );
-      results.addAll(pageResult.profiles);
-      hasMore = pageResult.hasMore;
-      page += 1;
-    }
-
-    return results;
   }
 
   @override

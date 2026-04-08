@@ -64,6 +64,8 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
     as _i43;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart'
     as _i31;
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart'
+    as _i44;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart'
     as _i35;
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
@@ -678,18 +680,20 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i3.FocusNode);
 
   @override
-  _i2.StreamValue<List<_i32.EventModel>?> get displayedEventsStreamValue =>
+  _i2.StreamValue<_i44.TenantHomeAgendaDisplayState?>
+      get displayStateStreamValue =>
       (super.noSuchMethod(
-        Invocation.getter(#displayedEventsStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i32.EventModel>?>(
+        Invocation.getter(#displayStateStreamValue),
+        returnValue: _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
           this,
-          Invocation.getter(#displayedEventsStreamValue),
+          Invocation.getter(#displayStateStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i32.EventModel>?>(
+        returnValueForMissingStub:
+            _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
           this,
-          Invocation.getter(#displayedEventsStreamValue),
+          Invocation.getter(#displayStateStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i32.EventModel>?>);
+      ) as _i2.StreamValue<_i44.TenantHomeAgendaDisplayState?>);
 
   @override
   _i2.StreamValue<bool> get isInitialLoadingStreamValue => (super.noSuchMethod(

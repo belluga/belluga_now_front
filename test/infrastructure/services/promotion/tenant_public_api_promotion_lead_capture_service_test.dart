@@ -1,8 +1,6 @@
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_field_payload.dart';
+import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_request.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_email_value.dart';
-import 'package:belluga_now/domain/contacts/value_objects/contact_phone_value.dart';
-import 'package:belluga_now/domain/promotion/promotion_lead_capture_request.dart';
-import 'package:belluga_now/domain/promotion/promotion_lead_mobile_platform.dart';
 import 'package:belluga_now/infrastructure/services/promotion/tenant_public_api_promotion_lead_capture_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,9 +17,28 @@ void main() {
     );
     request = PromotionLeadCaptureRequest(
       appNameValue: EnvironmentNameValue()..parse('Bóora!'),
-      emailValue: ContactEmailValue(raw: 'tester@example.com'),
-      whatsappValue: ContactPhoneValue(raw: '27999999999'),
-      mobilePlatform: PromotionLeadMobilePlatform.android,
+      submittedFields: <PromotionLeadCaptureFieldPayload>[
+        PromotionLeadCaptureFieldPayload(
+          label: 'Seu Nome',
+          value: 'Maria Tester',
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'E-mail',
+          value: 'tester@example.com',
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'WhatsApp',
+          value: '27999999999',
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'Qual o seu sistema operacional?',
+          value: 'Android',
+        ),
+        PromotionLeadCaptureFieldPayload(
+          label: 'O que não pode faltar para atender às suas expectativas?',
+          value: 'Mapa confiável e agenda atualizada.',
+        ),
+      ],
     );
   });
 
@@ -31,10 +48,32 @@ void main() {
     await service.submitTesterWaitlistLead(request);
 
     expect(dio.lastUri?.path, '/api/v1/email/send');
-    expect(dio.lastData?['email'], 'tester@example.com');
-    expect(dio.lastData?['whatsapp'], '27999999999');
-    expect(dio.lastData?['os'], 'Android');
     expect(dio.lastData?['app_name'], 'Bóora!');
+    expect(
+      dio.lastData?['submitted_fields'],
+      <Map<String, String>>[
+        <String, String>{
+          'label': 'Seu Nome',
+          'value': 'Maria Tester',
+        },
+        <String, String>{
+          'label': 'E-mail',
+          'value': 'tester@example.com',
+        },
+        <String, String>{
+          'label': 'WhatsApp',
+          'value': '27999999999',
+        },
+        <String, String>{
+          'label': 'Qual o seu sistema operacional?',
+          'value': 'Android',
+        },
+        <String, String>{
+          'label': 'O que não pode faltar para atender às suas expectativas?',
+          'value': 'Mapa confiável e agenda atualizada.',
+        },
+      ],
+    );
     expect(
       dio.lastOptions?.headers?['Content-Type'],
       Headers.jsonContentType,
@@ -94,7 +133,7 @@ void main() {
 
 class _RecordingDio extends Fake implements Dio {
   Uri? lastUri;
-  Map<String, Object>? lastData;
+  Map<String, Object?>? lastData;
   Options? lastOptions;
   int nextStatusCode = 200;
   DioException? errorToThrow;
@@ -114,7 +153,7 @@ class _RecordingDio extends Fake implements Dio {
     }
 
     lastUri = uri;
-    lastData = (data as Map<String, Object?>?)?.cast<String, Object>();
+    lastData = (data as Map<String, Object?>?)?.cast<String, Object?>();
     lastOptions = options;
 
     return Response<T>(

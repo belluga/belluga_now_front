@@ -168,21 +168,9 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
-      throw UnimplementedError();
-
-  @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required int page,
     required int pageSize,
-    String? query,
-    String? typeFilter,
-    List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
     List<String>? allowedTypes,

@@ -312,27 +312,38 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) async {
     try {
+      final payload = _requestEncoder.encodeCreateProfileType(
+        type: type.value,
+        label: label.value,
+        allowedTaxonomies: allowedTaxonomies
+            .map((entry) => entry.value)
+            .toList(growable: false),
+        capabilities: capabilities,
+        visual: visual,
+        includeVisual: true,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
+      );
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profile_types',
-        data: _requestEncoder.encodeCreateProfileType(
-          type: type.value,
-          label: label.value,
-          allowedTaxonomies: allowedTaxonomies
-              .map((entry) => entry.value)
-              .toList(growable: false),
-          capabilities: capabilities,
-          poiVisual: poiVisual,
-          includePoiVisual: true,
-        ),
-        options: Options(headers: _buildHeaders()),
+        data: uploadPayload ?? payload,
+        options: uploadPayload == null
+            ? Options(headers: _buildHeaders())
+            : Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       final dto = _responseDecoder.decodeProfileTypeItem(response.data);
       return dto.toDomain();
@@ -372,13 +383,15 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminAccountProfilesRepoBool? removeTypeAsset,
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
@@ -389,14 +402,29 @@ class TenantAdminAccountProfilesRepository
             ?.map((entry) => entry.value)
             .toList(growable: false),
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: true,
+        visual: visual,
+        includeVisual: true,
+        removeTypeAsset: removeTypeAsset?.value,
       );
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/account_profile_types/$encodedType',
-        data: payload,
-        options: Options(headers: _buildHeaders()),
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
       );
+      final response = uploadPayload == null
+          ? await _dio.patch(
+              '$_apiBaseUrl/v1/account_profile_types/$encodedType',
+              data: payload,
+              options: Options(headers: _buildHeaders()),
+            )
+          : await _dio.post(
+              '$_apiBaseUrl/v1/account_profile_types/$encodedType',
+              data: uploadPayload
+                ..fields.add(const MapEntry('_method', 'PATCH')),
+              options: Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
+            );
       final dto = _responseDecoder.decodeProfileTypeItem(response.data);
       return dto.toDomain();
     } on DioException catch (error) {

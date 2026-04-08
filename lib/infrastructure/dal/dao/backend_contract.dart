@@ -3,7 +3,9 @@ import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dar
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/unsupported_static_assets_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
@@ -15,6 +17,8 @@ abstract class BackendContract {
   AuthBackendContract get auth;
   TenantBackendContract get tenant;
   AccountProfilesBackendContract get accountProfiles;
+  StaticAssetsBackendContract get staticAssets =>
+      const UnsupportedStaticAssetsBackend();
   FavoriteBackendContract get favorites;
   VenueEventBackendContract get venueEvents;
   ScheduleBackendContract get schedule;

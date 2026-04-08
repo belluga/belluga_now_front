@@ -10,12 +10,6 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   final MockAccountProfilesDatabase _database;
 
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    return _database.allAccountProfiles;
-  }
-
-  @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required int page,
     required int pageSize,
@@ -40,17 +34,6 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
       profiles: pageItems,
       hasMore: endIndex < filtered.length,
     );
-  }
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
-    List<String>? allowedTypes,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    return _database.searchAccountProfiles(
-        query: query, typeFilter: typeFilter);
   }
 
   @override

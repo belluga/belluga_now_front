@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
@@ -18,7 +19,10 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_visual_dto.dart';
@@ -32,6 +36,7 @@ class CityPoiDTO {
     required this.category,
     required this.latitude,
     required this.longitude,
+    this.categoryLabel,
     this.assetPath,
     this.isDynamic = false,
     this.movementRadiusMeters,
@@ -45,6 +50,8 @@ class CityPoiDTO {
     this.stackCount = 1,
     this.items = const <CityPoiDTO>[],
     this.isHappeningNow = false,
+    this.timeStart,
+    this.timeEnd,
     this.updatedAt,
     this.distanceMeters,
     this.visual,
@@ -55,6 +62,7 @@ class CityPoiDTO {
   final String description;
   final String address;
   final CityPoiCategory category;
+  final String? categoryLabel;
   final double latitude;
   final double longitude;
   final String? assetPath;
@@ -70,6 +78,8 @@ class CityPoiDTO {
   final int stackCount;
   final List<CityPoiDTO> items;
   final bool isHappeningNow;
+  final DateTime? timeStart;
+  final DateTime? timeEnd;
   final DateTime? updatedAt;
   final double? distanceMeters;
   final CityPoiVisualDTO? visual;
@@ -115,10 +125,16 @@ class CityPoiDTO {
     final fallbackDescription = 'Ponto de interesse no mapa';
     final fallbackAddress = 'Mapa';
     final updatedAtRaw = json['updated_at']?.toString();
-    final updatedAt =
-        updatedAtRaw == null ? null : DateTime.tryParse(updatedAtRaw);
+    final updatedAt = _parseDateTime(json['updated_at'] ?? updatedAtRaw);
+    final timeStart = _parseDateTime(json['time_start']);
+    final timeEnd = _parseDateTime(json['time_end']);
     final visual =
         CityPoiVisualDTO.tryFromJson(json['visual'] ?? json['poi_visual']);
+    final rawCategoryLabel = (json['category_label'] ??
+            json['type_label'] ??
+            json['profile_type_label'])
+        ?.toString()
+        .trim();
 
     return CityPoiDTO(
       id: poiId,
@@ -130,6 +146,9 @@ class CityPoiDTO {
           ? json['address'].toString().trim()
           : (subtitle.isNotEmpty ? subtitle : fallbackAddress).trim(),
       category: parseCategory(json['category'] ?? json['category_slug']),
+      categoryLabel: rawCategoryLabel == null || rawCategoryLabel.isEmpty
+          ? null
+          : rawCategoryLabel,
       latitude: parseDouble(latitudeRaw),
       longitude: parseDouble(longitudeRaw),
       assetPath: json['asset_path'] as String?,
@@ -151,6 +170,8 @@ class CityPoiDTO {
           .map(CityPoiDTO.fromJson)
           .toList(growable: false),
       isHappeningNow: json['is_happening_now'] as bool? ?? false,
+      timeStart: timeStart,
+      timeEnd: timeEnd,
       updatedAt: updatedAt,
       distanceMeters: (json['distance_meters'] as num?)?.toDouble(),
       visual: visual,
@@ -193,7 +214,7 @@ class CityPoiDTO {
       'name': name,
       'description': description,
       'address': address,
-      'category': category.name,
+      'category': categoryLabel ?? category.name,
       'latitude': latitude,
       'longitude': longitude,
       'asset_path': assetPath,
@@ -209,6 +230,12 @@ class CityPoiDTO {
       'stack_count': stackCount,
       'items': items.map((item) => item.toJson()).toList(growable: false),
       'is_happening_now': isHappeningNow,
+      'time_start': timeStart == null
+          ? null
+          : TimezoneConverter.localToUtc(timeStart!).toIso8601String(),
+      'time_end': timeEnd == null
+          ? null
+          : TimezoneConverter.localToUtc(timeEnd!).toIso8601String(),
       'updated_at': updatedAt == null
           ? null
           : TimezoneConverter.localToUtc(updatedAt!).toIso8601String(),
@@ -269,6 +296,14 @@ class CityPoiDTO {
     final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
     final isHappeningNowValue = PoiBooleanValue()
       ..parse(isHappeningNow.toString());
+    PoiTimeStartValue? timeStartValue;
+    if (timeStart != null) {
+      timeStartValue = PoiTimeStartValue()..parse(timeStart!.toIso8601String());
+    }
+    PoiTimeEndValue? timeEndValue;
+    if (timeEnd != null) {
+      timeEndValue = PoiTimeEndValue()..parse(timeEnd!.toIso8601String());
+    }
     PoiUpdatedAtValue? updatedAtValue;
     if (updatedAt != null) {
       updatedAtValue = PoiUpdatedAtValue()..parse(updatedAt!.toIso8601String());
@@ -278,6 +313,16 @@ class CityPoiDTO {
       distanceMetersValue = DistanceInMetersValue()
         ..parse(distanceMeters!.toString());
     }
+    PoiFilterImageUriValue? coverImageUriValue;
+    final normalizedImageUri = visual?.imageUri?.trim();
+    if (normalizedImageUri != null && normalizedImageUri.isNotEmpty) {
+      coverImageUriValue = PoiFilterImageUriValue()..parse(normalizedImageUri);
+    }
+    PoiTypeLabelValue? categoryLabelValue;
+    final normalizedCategoryLabel = categoryLabel?.trim();
+    if (normalizedCategoryLabel != null && normalizedCategoryLabel.isNotEmpty) {
+      categoryLabelValue = PoiTypeLabelValue()..parse(normalizedCategoryLabel);
+    }
 
     return CityPoiModel(
       idValue: idValue,
@@ -285,6 +330,8 @@ class CityPoiDTO {
       descriptionValue: descriptionValue,
       addressValue: addressValue,
       category: category,
+      categoryLabelValue: categoryLabelValue,
+      coverImageUriValue: coverImageUriValue,
       coordinate: coordinate,
       priorityValue: priorityValue,
       assetPathValue: assetPathValue,
@@ -299,6 +346,8 @@ class CityPoiDTO {
       stackCountValue: stackCountValue,
       stackItems: stackItemCollection,
       isHappeningNowValue: isHappeningNowValue,
+      timeStartValue: timeStartValue,
+      timeEndValue: timeEndValue,
       updatedAtValue: updatedAtValue,
       distanceMetersValue: distanceMetersValue,
       visual: visual?.toDomain(),
@@ -323,5 +372,28 @@ class CityPoiDTO {
         .map(_normalizeMap)
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
+  }
+
+  static DateTime? _parseDateTime(Object? raw) {
+    if (raw == null) {
+      return null;
+    }
+    if (raw is DateTime) {
+      return raw;
+    }
+    if (raw is Map) {
+      final normalized = _normalizeMap(raw);
+      if (normalized == null) {
+        return null;
+      }
+      return _parseDateTime(
+        normalized[r'$date'] ?? normalized['date'] ?? normalized['value'],
+      );
+    }
+    final value = raw.toString().trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value);
   }
 }

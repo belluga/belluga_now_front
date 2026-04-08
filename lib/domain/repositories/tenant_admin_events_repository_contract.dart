@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_event
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -49,6 +51,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     await _waitForEventsFetch();
     _resetEventsPagination();
@@ -59,6 +62,7 @@ abstract class TenantAdminEventsRepositoryContract {
       search: search,
       status: status,
       archived: archived ?? _defaultArchived,
+      temporalBuckets: temporalBuckets,
     );
   }
 
@@ -67,6 +71,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (_eventsPaginationState.isFetchingEventsPage.value ||
         !_eventsPaginationState.hasMoreEvents.value) {
@@ -81,6 +86,7 @@ abstract class TenantAdminEventsRepositoryContract {
       search: search,
       status: status,
       archived: archived ?? _defaultArchived,
+      temporalBuckets: temporalBuckets,
     );
   }
 
@@ -98,6 +104,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   });
 
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
@@ -106,11 +113,13 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     final events = await fetchEvents(
       search: search,
       status: status,
       archived: archived,
+      temporalBuckets: temporalBuckets,
     );
 
     if (page.value <= 0 || pageSize.value <= 0) {
@@ -154,6 +163,16 @@ abstract class TenantAdminEventsRepositoryContract {
   });
 
   Future<void> deleteEvent(TenantAdminEventsRepoString eventId);
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() {
+    throw UnimplementedError();
+  }
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() {
+    throw UnimplementedError();
+  }
 
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
     return const <TenantAdminEventType>[];
@@ -279,6 +298,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     required TenantAdminEventsRepoBool archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (_eventsPaginationState.isFetchingEventsPage.value) {
       return;
@@ -301,6 +321,7 @@ abstract class TenantAdminEventsRepositoryContract {
         search: search,
         status: status,
         archived: archived,
+        temporalBuckets: temporalBuckets,
       );
 
       if (page.value == 1) {
@@ -482,6 +503,7 @@ mixin TenantAdminEventsPaginationMixin
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     await _waitForEventsFetchMixin();
     _resetEventsPaginationMixin();
@@ -492,6 +514,7 @@ mixin TenantAdminEventsPaginationMixin
       search: search,
       status: status,
       archived: archived ?? _defaultArchived,
+      temporalBuckets: temporalBuckets,
     );
   }
 
@@ -501,6 +524,7 @@ mixin TenantAdminEventsPaginationMixin
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (_mixinEventsPaginationState.isFetchingEventsPage.value ||
         !_mixinEventsPaginationState.hasMoreEvents.value) {
@@ -515,6 +539,7 @@ mixin TenantAdminEventsPaginationMixin
       search: search,
       status: status,
       archived: archived ?? _defaultArchived,
+      temporalBuckets: temporalBuckets,
     );
   }
 
@@ -652,6 +677,7 @@ mixin TenantAdminEventsPaginationMixin
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     required TenantAdminEventsRepoBool archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (_mixinEventsPaginationState.isFetchingEventsPage.value) {
       return;
@@ -674,6 +700,7 @@ mixin TenantAdminEventsPaginationMixin
         search: search,
         status: status,
         archived: archived,
+        temporalBuckets: temporalBuckets,
       );
       if (page.value == 1) {
         _mixinEventsPaginationState.cachedEvents

@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -30,6 +31,7 @@ EventModel eventModelFromRaw({
   required DateTimeValue dateTimeStart,
   required DateTimeValue? dateTimeEnd,
   required List<ArtistResume> artists,
+  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
   required CityCoordinate? coordinate,
   required Object tags,
   required EventIsConfirmedValue isConfirmedValue,
@@ -51,6 +53,7 @@ EventModel eventModelFromRaw({
     dateTimeStart: dateTimeStart,
     dateTimeEnd: dateTimeEnd,
     artists: artists,
+    linkedAccountProfiles: linkedAccountProfiles,
     coordinate: coordinate,
     tags: _parseTags(tags),
     isConfirmedValue: isConfirmedValue,

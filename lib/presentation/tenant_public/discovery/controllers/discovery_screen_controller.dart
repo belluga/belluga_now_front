@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -75,9 +77,9 @@ class DiscoveryScreenController implements Disposable {
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
-  StreamValue<List<EventModel>> get liveNowEventsStreamValue =>
+  StreamValue<List<EventModel>?> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
-      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+      StreamValue<List<EventModel>?>(defaultValue: null);
   StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
@@ -432,7 +434,8 @@ class DiscoveryScreenController implements Disposable {
   }
 
   String? _originSignature() {
-    final coordinate = _locationOriginService.resolveCached().effectiveCoordinate;
+    final coordinate =
+        _locationOriginService.resolveCached().effectiveCoordinate;
     if (coordinate == null) {
       return null;
     }
@@ -545,6 +548,15 @@ class DiscoveryScreenController implements Disposable {
       return _fallbackLabelForType(type);
     }
     return registry.labelForType(ProfileTypeKeyValue(type));
+  }
+
+  ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    return AccountProfileVisualResolver.resolve(
+      accountProfile: accountProfile,
+      registry: _resolveRegistry(),
+    );
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
