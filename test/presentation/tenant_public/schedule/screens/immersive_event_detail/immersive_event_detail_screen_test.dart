@@ -199,7 +199,7 @@ void main() {
       ),
     );
 
-    final router = _RecordingStackRouter()..removeLastResult = false;
+    final router = _RecordingStackRouter()..canPopResult = false;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
       router: router,
@@ -227,9 +227,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back).first);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, hasLength(1));
-    expect(router.replaceAllRoutes.single.single.routeName, EventSearchRoute.name);
+    expect(
+        router.replaceAllRoutes.single.single.routeName, EventSearchRoute.name);
   });
 
   testWidgets('event detail back returns to previous route when history exists',
@@ -244,7 +245,7 @@ void main() {
       ),
     );
 
-    final router = _RecordingStackRouter()..removeLastResult = true;
+    final router = _RecordingStackRouter()..canPopResult = true;
     final routeData = RouteData(
       route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
       router: router,
@@ -272,7 +273,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back).first);
     await tester.pumpAndSettle();
 
-    expect(router.removeLastCallCount, 1);
+    expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
   });
 
@@ -554,8 +555,8 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastPushedPath;
   String? lastReplacedPath;
   PageRouteInfo? lastPushedRoute;
-  bool removeLastResult = true;
-  int removeLastCallCount = 0;
+  bool canPopResult = true;
+  int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
@@ -588,9 +589,17 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }
 
   @override
-  bool removeLast() {
-    removeLastCallCount += 1;
-    return removeLastResult;
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return canPopResult;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCallCount += 1;
   }
 
   @override
