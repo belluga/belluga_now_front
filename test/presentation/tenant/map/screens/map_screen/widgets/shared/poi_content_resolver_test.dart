@@ -94,6 +94,12 @@ void main() {
       );
     });
 
+    test('sanitized description hides generic static poi placeholder', () {
+      final poi = _buildPoi(description: 'Ponto de interesse no mapa');
+
+      expect(PoiContentResolver.sanitizedDescription(poi), isNull);
+    });
+
     test(
         'search meta falls back to payload-derived category when address is weak',
         () {

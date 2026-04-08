@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -7,6 +8,10 @@ import 'package:belluga_now/domain/repositories/value_objects/schedule_repositor
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_captured_at_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_page_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/home_agenda_search_query_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -24,14 +29,11 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   final ScheduleBackendContract _backend;
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
       StreamValue<HomeAgendaCacheSnapshot?>();
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  HomeAgendaCacheSnapshot? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -39,7 +41,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
+    final snapshot = homeAgendaStreamValue.value;
     if (snapshot == null) {
       return null;
     }
@@ -116,26 +118,141 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         0.001;
   }
 
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  HomeAgendaCacheSnapshot _buildHomeAgendaSnapshot({
+    required List<EventModel> events,
+    required int page,
+    required bool hasMore,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) {
+    return HomeAgendaCacheSnapshot(
+      events: List<EventModel>.unmodifiable(events),
+      hasMoreValue: HomeAgendaBooleanValue(defaultValue: hasMore)
+        ..parse(hasMore.toString()),
+      pageValue: HomeAgendaPageValue(defaultValue: page)..parse(page.toString()),
+      showPastOnlyValue: HomeAgendaBooleanValue(defaultValue: showPastOnly.value)
+        ..parse(showPastOnly.value.toString()),
+      searchQueryValue: HomeAgendaSearchQueryValue(
+        defaultValue: searchQuery.value,
+      )..parse(searchQuery.value),
+      confirmedOnlyValue:
+          HomeAgendaBooleanValue(defaultValue: confirmedOnly.value)
+            ..parse(confirmedOnly.value.toString()),
+      capturedAtValue: HomeAgendaCapturedAtValue(defaultValue: DateTime.now())
+        ..parse(DateTime.now().toIso8601String()),
+      originLatValue: originLat == null
+          ? null
+          : (LatitudeValue()..parse(originLat.value.toString())),
+      originLngValue: originLng == null
+          ? null
+          : (LongitudeValue()..parse(originLng.value.toString())),
+      maxDistanceMetersValue: maxDistanceMeters == null
+          ? null
+          : (DistanceInMetersValue(defaultValue: maxDistanceMeters.value)
+            ..parse(maxDistanceMeters.value.toString())),
+    );
+  }
+
+  void _publishHomeAgendaSnapshot(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaStreamValue.addValue(snapshot);
   }
 
   @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
+  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final pageResult = await getEventsPage(
+      page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    final snapshot = _buildHomeAgendaSnapshot(
+      events: pageResult.events,
+      page: 1,
+      hasMore: pageResult.hasMore,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _publishHomeAgendaSnapshot(snapshot);
+    return snapshot;
+  }
+
+  @override
+  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    final current = readHomeAgenda(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    if (current == null || !current.hasMore) {
+      return current;
+    }
+
+    final nextPage = current.page + 1;
+    final pageResult = await getEventsPage(
+      page: ScheduleRepoInt.fromRaw(nextPage, defaultValue: nextPage),
+      pageSize: ScheduleRepoInt.fromRaw(25, defaultValue: 25),
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    final snapshot = _buildHomeAgendaSnapshot(
+      events: <EventModel>[
+        ...current.events,
+        ...pageResult.events,
+      ],
+      page: nextPage,
+      hasMore: pageResult.hasMore,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _publishHomeAgendaSnapshot(snapshot);
+    return snapshot;
   }
 
   Future<void> initializeHomeAgendaStreams() async {
-    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
-    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
+    homeAgendaStreamValue.addValue(homeAgendaStreamValue.value);
   }
 
   Future<void> refreshHomeAgendaStreams() async {
-    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
-    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
+    homeAgendaStreamValue.addValue(homeAgendaStreamValue.value);
   }
 
   @override

@@ -74,6 +74,9 @@ class PoiContentResolver {
     if (cleaned == null || cleaned.length < 3) {
       return null;
     }
+    if (_isWeakPlaceholderDescription(cleaned)) {
+      return null;
+    }
     final usefulAddress = compactAddress(poi);
     if (usefulAddress != null &&
         cleaned.toLowerCase() == usefulAddress.toLowerCase()) {
@@ -250,5 +253,11 @@ class PoiContentResolver {
       return null;
     }
     return stripped;
+  }
+
+  static bool _isWeakPlaceholderDescription(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'ponto de interesse no mapa' ||
+        normalized == 'point of interest on the map';
   }
 }

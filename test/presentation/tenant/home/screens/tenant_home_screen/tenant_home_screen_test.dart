@@ -6,6 +6,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/tenant_home_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
@@ -15,7 +16,6 @@ import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
@@ -203,8 +203,12 @@ void main() {
         .when(mockAgendaController.hasMoreStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
     mockito
-        .when(mockAgendaController.displayedEventsStreamValue)
-        .thenReturn(StreamValue<List<EventModel>>(defaultValue: const []));
+        .when(mockAgendaController.displayStateStreamValue)
+        .thenReturn(
+          StreamValue<TenantHomeAgendaDisplayState?>(
+            defaultValue: TenantHomeAgendaDisplayState(events: []),
+          ),
+        );
     mockito
         .when(mockAgendaController.searchController)
         .thenReturn(TextEditingController());

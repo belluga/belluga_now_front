@@ -8,7 +8,9 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/favorite_backend/laravel_favorite_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_backend/laravel_schedule_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/static_assets_backend/laravel_static_assets_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/live_only_unsupported_backends.dart';
@@ -20,6 +22,7 @@ class ProductionBackend extends BackendContract {
     AuthBackendContract? auth,
     TenantBackendContract? tenant,
     AccountProfilesBackendContract? accountProfiles,
+    StaticAssetsBackendContract? staticAssets,
     FavoriteBackendContract? favorites,
     VenueEventBackendContract? venueEvents,
     ScheduleBackendContract? schedule,
@@ -27,6 +30,7 @@ class ProductionBackend extends BackendContract {
         _auth = auth ?? LaravelAuthBackend(),
         _tenant = tenant ?? const LiveOnlyUnsupportedTenantBackend(),
         _accountProfiles = accountProfiles ?? LaravelAccountProfilesBackend(),
+        _staticAssets = staticAssets ?? LaravelStaticAssetsBackend(),
         _favorites = favorites ?? LaravelFavoriteBackend(),
         _venueEvents =
             venueEvents ?? const LiveOnlyUnsupportedVenueEventBackend(),
@@ -37,6 +41,7 @@ class ProductionBackend extends BackendContract {
   final AuthBackendContract _auth;
   final TenantBackendContract _tenant;
   final AccountProfilesBackendContract _accountProfiles;
+  final StaticAssetsBackendContract _staticAssets;
   final FavoriteBackendContract _favorites;
   final VenueEventBackendContract _venueEvents;
   final ScheduleBackendContract _schedule;
@@ -60,6 +65,9 @@ class ProductionBackend extends BackendContract {
 
   @override
   AccountProfilesBackendContract get accountProfiles => _accountProfiles;
+
+  @override
+  StaticAssetsBackendContract get staticAssets => _staticAssets;
 
   @override
   FavoriteBackendContract get favorites => _favorites;

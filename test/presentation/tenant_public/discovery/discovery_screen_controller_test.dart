@@ -1610,15 +1610,11 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
       _firstLiveNowFetchStarted.future;
 
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
       StreamValue<HomeAgendaCacheSnapshot?>();
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  HomeAgendaCacheSnapshot? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -1642,18 +1638,38 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     return snapshot;
   }
 
-  @override
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
     _cacheSnapshot = snapshot;
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
+    homeAgendaStreamValue.addValue(snapshot);
+  }
+
+  void clearHomeAgendaCache() {
+    _cacheSnapshot = null;
+    homeAgendaStreamValue.addValue(null);
   }
 
   @override
-  void clearHomeAgendaCache() {
-    _cacheSnapshot = null;
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
+  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
   }
 
   @override

@@ -27,8 +27,7 @@ abstract class ScheduleRepositoryContract {
   _SchedulePagedEventsState get _pagedEventsState =>
       _pagedEventsStateByRepository[this] ??= _SchedulePagedEventsState();
 
-  StreamValue<List<EventModel>?> get homeAgendaEventsStreamValue;
-  StreamValue<HomeAgendaCacheSnapshot?> get homeAgendaCacheStreamValue;
+  StreamValue<HomeAgendaCacheSnapshot?> get homeAgendaStreamValue;
   final eventSearchDisplayedEventsStreamValue =
       StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
   final discoveryLiveNowEventsStreamValue =
@@ -47,7 +46,7 @@ abstract class ScheduleRepositoryContract {
 
   ScheduleRepoInt get currentPagedEventsPage => _pagedEventsState.currentPage;
 
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  HomeAgendaCacheSnapshot? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -56,8 +55,23 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoDouble? maxDistanceMeters,
   });
 
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot);
-  void clearHomeAgendaCache();
+  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  });
+
+  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  });
 
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug);
   Future<PagedEventsResult> getEventsPage({

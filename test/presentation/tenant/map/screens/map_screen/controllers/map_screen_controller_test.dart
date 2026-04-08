@@ -53,14 +53,18 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract_delta_handler.dart';
+import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
+import 'package:belluga_now/domain/static_assets/value_objects/public_static_asset_fields.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -469,10 +473,7 @@ class _FakeAccountProfilesRepository
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
       StreamValue<HomeAgendaCacheSnapshot?>();
   @override
   final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
@@ -511,7 +512,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       ScheduleRepoInt.fromRaw(0, defaultValue: 0);
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  HomeAgendaCacheSnapshot? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -519,17 +520,39 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    return homeAgendaCacheStreamValue.value;
+    return homeAgendaStreamValue.value;
   }
 
-  @override
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaStreamValue.addValue(snapshot);
+  }
+
+  void clearHomeAgendaCache() {
+    homeAgendaStreamValue.addValue(null);
   }
 
   @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
+  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
   }
 
   @override
@@ -647,6 +670,20 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoBool? showPastOnly,
   }) {
     return const Stream<void>.empty();
+  }
+}
+
+class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
+  final Map<String, PublicStaticAssetModel?> assetsByRef =
+      <String, PublicStaticAssetModel?>{};
+  final List<String> requestedRefs = <String>[];
+
+  @override
+  Future<PublicStaticAssetModel?> getStaticAssetByRef(
+    StaticAssetRepoText assetRef,
+  ) async {
+    requestedRefs.add(assetRef.value);
+    return assetsByRef[assetRef.value];
   }
 }
 
@@ -787,6 +824,7 @@ class _FakeMapHandle implements BellugaMapHandleContract {
 CityPoiModel _buildPoi({
   String id = 'poi-1',
   String name = 'Beach Bar',
+  String description = 'Nice place',
   String refType = 'static',
   String refId = 'poi-1',
   String? refSlug,
@@ -801,7 +839,7 @@ CityPoiModel _buildPoi({
 }) {
   final idValue = CityPoiIdValue()..parse(id);
   final nameValue = CityPoiNameValue()..parse(name);
-  final descriptionValue = CityPoiDescriptionValue()..parse('Nice place');
+  final descriptionValue = CityPoiDescriptionValue()..parse(description);
   final addressValue = CityPoiAddressValue()..parse('Av. Brasil');
   final priorityValue = PoiPriorityValue()..parse('1');
   final refTypeValue = PoiReferenceTypeValue()..parse(refType);
@@ -1140,6 +1178,7 @@ void main() {
     late _FakeCityMapRepository mapRepository;
     late _FakeUserLocationRepository userLocationRepository;
     late _FakeAccountProfilesRepository accountProfilesRepository;
+    late _FakeStaticAssetsRepository staticAssetsRepository;
     late MapScreenController controller;
 
     setUp(() {
@@ -1148,6 +1187,7 @@ void main() {
       mapRepository = _FakeCityMapRepository();
       userLocationRepository = _FakeUserLocationRepository();
       accountProfilesRepository = _FakeAccountProfilesRepository();
+      staticAssetsRepository = _FakeStaticAssetsRepository();
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
       );
@@ -1157,6 +1197,7 @@ void main() {
         telemetryRepository: telemetry,
         appData: _buildAppData(),
         accountProfilesRepository: accountProfilesRepository,
+        staticAssetsRepository: staticAssetsRepository,
       );
     });
 
@@ -4285,6 +4326,34 @@ void main() {
       expect((route as PartnerDetailRoute).args?.slug, 'casa-marracini');
     });
 
+    testWidgets('ver detalhes pushes static asset detail route for static poi',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final poi = _buildPoi(
+        id: 'poi-static',
+        name: 'Praia das Virtudes',
+        refType: 'static',
+        refId: 'asset-77',
+        refPath: '/static/praia-das-virtudes',
+      );
+
+      controller.selectPoi(poi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      await tester.tap(find.text('Ver detalhes'));
+      await tester.pump();
+
+      expect(router.pushedRoutes, hasLength(1));
+      final route = router.pushedRoutes.single;
+      expect(route, isA<StaticAssetDetailRoute>());
+      expect((route as StaticAssetDetailRoute).args?.assetRef, 'asset-77');
+    });
+
     testWidgets('event cards keep the same CTA labels as other pois',
         (tester) async {
       final router = _RecordingStackRouter()..canPopResult = false;
@@ -4366,6 +4435,56 @@ void main() {
       expect(closeTop - cardTop, inInclusiveRange(0, 40));
       expect((closeCenterY - (cardTop + 24)).abs(), lessThanOrEqualTo(16));
       expect(cardRight - closeLeft, inInclusiveRange(0, 72));
+    });
+
+    test('static poi hydration merges cover, type, and description from details',
+        () async {
+      final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+      final localController = _buildMapController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        appData: _buildAppData(),
+        staticAssetsRepository: localStaticAssetsRepository,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+      });
+      final poi = _buildPoi(
+        id: 'poi-static',
+        name: 'Praia das Virtudes',
+        description: 'Ponto de interesse no mapa',
+        refType: 'static',
+        refId: 'asset-77',
+      );
+      final asset = PublicStaticAssetModel(
+        idValue: PublicStaticAssetIdValue(defaultValue: 'asset-77'),
+        profileTypeValue:
+            PublicStaticAssetTypeValue(defaultValue: 'beach_club'),
+        displayNameValue:
+            PublicStaticAssetNameValue(defaultValue: 'Praia das Virtudes'),
+        slugValue: SlugValue()..parse('praia-das-virtudes'),
+        coverValue:
+            ThumbUriValue(defaultValue: Uri.parse('https://example.com/praia-cover.png')),
+        contentValue: PublicStaticAssetDescriptionValue(
+          defaultValue: '<p>Área de praia com quiosques e vista para o mar.</p>',
+          isRequired: false,
+        ),
+      );
+      localStaticAssetsRepository.assetsByRef['asset-77'] = asset;
+
+      await localController.handleMarkerTap(poi);
+
+      final selectedPoi = localController.selectedPoiStreamValue.value;
+      expect(selectedPoi, isNotNull);
+      expect(selectedPoi!.coverImageUri, 'https://example.com/praia-cover.png');
+      expect(selectedPoi.resolvedCategoryLabel, 'beach_club');
+      expect(
+        selectedPoi.description,
+        'Área de praia com quiosques e vista para o mar.',
+      );
+      expect(selectedPoi.refSlug, 'praia-das-virtudes');
+      expect(selectedPoi.refPath, '/static/praia-das-virtudes');
     });
 
     testWidgets(
@@ -4529,6 +4648,7 @@ MapScreenController _buildMapController({
   AppDataRepositoryContract? appDataRepository,
   AccountProfilesRepositoryContract? accountProfilesRepository,
   ScheduleRepositoryContract? scheduleRepository,
+  StaticAssetsRepositoryContract? staticAssetsRepository,
 }) {
   final resolvedAppData = appData ?? _buildAppData();
   final resolvedAppDataRepository =
@@ -4542,6 +4662,7 @@ MapScreenController _buildMapController({
     appDataRepository: resolvedAppDataRepository,
     accountProfilesRepository: accountProfilesRepository,
     scheduleRepository: scheduleRepository,
+    staticAssetsRepository: staticAssetsRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: resolvedAppDataRepository,
       userLocationRepository: userLocationRepository,

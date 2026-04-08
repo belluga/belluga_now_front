@@ -528,35 +528,6 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   final EventModel _event;
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required ScheduleRepoBool showPastOnly,
-    required ScheduleRepoString searchQuery,
-    required ScheduleRepoBool confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly.value) return null;
-    if (snapshot.searchQuery != searchQuery.value) return null;
-    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
-    return snapshot;
-  }
-
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
-  }
-
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
-  }
-
-  @override
   Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
     if (slug.value == _event.slugValue.value) {
       return _event;

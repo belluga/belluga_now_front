@@ -454,10 +454,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   _FakeScheduleRepository();
 
   @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaStreamValue =
       StreamValue<HomeAgendaCacheSnapshot?>();
   @override
   final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
@@ -514,7 +511,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+  HomeAgendaCacheSnapshot? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
     required ScheduleRepoBool confirmedOnly,
@@ -522,7 +519,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
+    final snapshot = homeAgendaStreamValue.value;
     if (snapshot == null) return null;
     if (snapshot.showPastOnly != showPastOnly.value) return null;
     if (snapshot.searchQuery != searchQuery.value) return null;
@@ -530,16 +527,36 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     return snapshot;
   }
 
-  @override
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
+    homeAgendaStreamValue.addValue(snapshot);
+  }
+
+  void clearHomeAgendaCache() {
+    homeAgendaStreamValue.addValue(null);
   }
 
   @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
+  Future<HomeAgendaCacheSnapshot> loadHomeAgenda({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<HomeAgendaCacheSnapshot?> loadNextHomeAgendaPage({
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    throw UnimplementedError();
   }
 
   @override

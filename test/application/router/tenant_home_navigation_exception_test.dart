@@ -35,7 +35,6 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
@@ -50,6 +49,7 @@ import 'package:belluga_now/presentation/shared/init/screens/init_screen/control
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -381,8 +381,10 @@ void _registerTenantBootstrapDependencies({
   when(mockAgendaController.hasMoreStreamValue).thenReturn(
     StreamValue<bool>(defaultValue: false),
   );
-  when(mockAgendaController.displayedEventsStreamValue).thenReturn(
-    StreamValue<List<EventModel>>(defaultValue: const []),
+  when(mockAgendaController.displayStateStreamValue).thenReturn(
+    StreamValue<TenantHomeAgendaDisplayState?>(
+      defaultValue: TenantHomeAgendaDisplayState(events: []),
+    ),
   );
   when(mockAgendaController.searchController).thenReturn(
     TextEditingController(),
