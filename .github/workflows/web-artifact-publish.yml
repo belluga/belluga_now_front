@@ -447,20 +447,30 @@ jobs:
           )"
 
           if [[ -n "$existing_pr" ]]; then
-            gh pr edit "$existing_pr" --repo "$WEB_APP_REPO" --title "$title" --body "$body" >/dev/null
-            echo "PR already exists: #$existing_pr"
-            echo "pr_number=$existing_pr" >> "$GITHUB_OUTPUT"
-          else
-            pr_url="$(
-              gh pr create \
-              --repo "$WEB_APP_REPO" \
-              --base "$TARGET_BRANCH" \
-              --head "$PR_BRANCH" \
-              --title "$title" \
-              --body "$body"
+            pr_number="$(
+              gh api \
+                --method PATCH \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/${WEB_APP_REPO}/pulls/${existing_pr}" \
+                -f title="${title}" \
+                -f body="${body}" \
+                --jq '.number'
             )"
 
-            pr_number="$(gh pr view "$pr_url" --repo "$WEB_APP_REPO" --json number --jq '.number')"
+            echo "PR already exists: #$pr_number"
+            echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+          else
+            pr_number="$(
+              gh api \
+                --method POST \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/${WEB_APP_REPO}/pulls" \
+                -f title="${title}" \
+                -f body="${body}" \
+                -f base="${TARGET_BRANCH}" \
+                -f head="${web_repo_owner}:${PR_BRANCH}" \
+                --jq '.number'
+            )"
             echo "Created PR #$pr_number"
             echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
           fi
