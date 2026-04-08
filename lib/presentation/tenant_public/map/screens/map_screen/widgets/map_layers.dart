@@ -119,6 +119,48 @@ class MapLayers extends StatelessWidget {
     final t = ((zoom - _minZoom) / (_maxZoom - _minZoom)).clamp(0.0, 1.0);
     return minSize + (maxSize - minSize) * t;
   }
+
+  @visibleForTesting
+  static List<CityPoiModel> orderPoisForRendering({
+    required List<CityPoiModel> pois,
+    CityPoiModel? selectedPoi,
+    String? selectedPoiLoadingId,
+    String? rememberedPoiId,
+  }) {
+    final priorityPoiId = (() {
+      final loadingId = selectedPoiLoadingId?.trim();
+      if (loadingId != null && loadingId.isNotEmpty) {
+        return loadingId;
+      }
+      final selectedId = selectedPoi?.id.trim();
+      if (selectedId != null && selectedId.isNotEmpty) {
+        return selectedId;
+      }
+      final rememberedId = rememberedPoiId?.trim();
+      if (rememberedId != null && rememberedId.isNotEmpty) {
+        return rememberedId;
+      }
+      return null;
+    })();
+
+    if (priorityPoiId == null) {
+      return List<CityPoiModel>.unmodifiable(pois);
+    }
+
+    final trailing = <CityPoiModel>[];
+    final leading = <CityPoiModel>[];
+    for (final poi in pois) {
+      if (poi.id == priorityPoiId) {
+        trailing.add(poi);
+      } else {
+        leading.add(poi);
+      }
+    }
+    return List<CityPoiModel>.unmodifiable(<CityPoiModel>[
+      ...leading,
+      ...trailing,
+    ]);
+  }
 }
 
 class _MapViewport extends StatelessWidget {
@@ -159,7 +201,16 @@ class _MapViewport extends StatelessWidget {
       maxSize: 52,
     );
 
-    final poiMarkers = pois.map(
+    final rememberedPoiId =
+        controller.lastSelectedPoiMemoryStreamValue.value?.poiId;
+    final orderedPois = MapLayers.orderPoisForRendering(
+      pois: pois,
+      selectedPoi: selectedPoi,
+      selectedPoiLoadingId: selectedPoiLoadingId,
+      rememberedPoiId: rememberedPoiId,
+    );
+
+    final poiMarkers = orderedPois.map(
       (poi) {
         final isSelected = _isPoiSelected(
           selectedPoi: selectedPoi,

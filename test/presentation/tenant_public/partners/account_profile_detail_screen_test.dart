@@ -170,6 +170,27 @@ void main() {
         find.byKey(const Key('accountProfileHeroTypeAvatar')), findsOneWidget);
   });
 
+  testWidgets('account profile detail exposes the canonical share action',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+  });
+
   testWidgets(
       'hero uses type visuals as avatar fallback when only cover exists and no avatar is present',
       (tester) async {

@@ -186,6 +186,26 @@ class AccountProfileDetailController implements Disposable {
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
+  String? get authenticatedUserDisplayName {
+    final raw =
+        _authRepository?.userStreamValue.value?.profile.nameValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  Uri? buildTenantPublicUriFromPath(String? rawPath) {
+    final normalizedPath = rawPath?.trim();
+    if (normalizedPath == null || normalizedPath.isEmpty) {
+      return null;
+    }
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+    return GetIt.I.get<AppData>().mainDomainValue.value.resolve(normalizedPath);
+  }
+
   void _bumpAgendaStatusRevision() {
     agendaStatusRevisionStreamValue.addValue(
       agendaStatusRevisionStreamValue.value + 1,

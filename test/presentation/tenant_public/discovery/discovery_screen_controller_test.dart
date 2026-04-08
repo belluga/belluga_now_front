@@ -893,6 +893,140 @@ void main() {
         router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
   });
 
+  testWidgets(
+      'DiscoveryScreen visible back button clears active search before removing the route',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('ui-back-button-1'),
+              type: 'artist',
+              name: 'Artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter()..canPopResult = true;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'artist');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Descubra'), findsOneWidget);
+    expect(router.canPopCallCount, 0);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, isEmpty);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets(
+      'DiscoveryScreen visible back button falls back to TenantHomeRoute when root-opened',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('ui-back-button-fallback-1'),
+              type: 'artist',
+              name: 'Artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter()..canPopResult = false;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(router.replaceAllRoutes.single, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      TenantHomeRoute.name,
+    );
+  });
+
   test(
       'discovery search keeps backend matches even when local name/tags do not match',
       () async {

@@ -18,6 +18,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   String? avatarUrl,
   String? coverUrl,
   String? bio,
+  String? content,
   List<String>? tags,
   List<PartnerEventView>? agendaEvents,
   bool isVerified = false,
@@ -44,6 +45,10 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   if (bio != null && bio.isNotEmpty) {
     bioValue = DescriptionValue()..parse(bio);
   }
+  DescriptionValue? contentValue;
+  if (content != null && content.isNotEmpty) {
+    contentValue = DescriptionValue()..parse(content);
+  }
 
   AccountProfileLocationAddressValue? locationAddressValue;
   if (locationAddress != null && locationAddress.isNotEmpty) {
@@ -69,6 +74,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     avatarValue: avatarValue,
     coverValue: coverValue,
     bioValue: bioValue,
+    contentValue: contentValue,
     tagValues: _buildTagValues(tags),
     agendaEventViews: List<PartnerEventView>.unmodifiable(
       agendaEvents ?? const <PartnerEventView>[],

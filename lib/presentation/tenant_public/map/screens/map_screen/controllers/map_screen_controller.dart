@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_linked_profile.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_search_term_value.dart';
@@ -37,6 +39,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -78,6 +81,7 @@ class MapScreenController implements Disposable {
     LocationOriginServiceContract? locationOriginService,
     AccountProfilesRepositoryContract? accountProfilesRepository,
     ScheduleRepositoryContract? scheduleRepository,
+    AuthRepositoryContract? authRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
@@ -96,6 +100,10 @@ class MapScreenController implements Disposable {
             (GetIt.I.isRegistered<ScheduleRepositoryContract>()
                 ? GetIt.I.get<ScheduleRepositoryContract>()
                 : null),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
         mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
@@ -106,6 +114,7 @@ class MapScreenController implements Disposable {
   final LocationOriginServiceContract _locationOriginService;
   final AccountProfilesRepositoryContract? _accountProfilesRepository;
   final ScheduleRepositoryContract? _scheduleRepository;
+  final AuthRepositoryContract? _authRepository;
 
   final BellugaMapHandleContract mapHandle;
 
@@ -213,7 +222,46 @@ class MapScreenController implements Disposable {
   int _selectedPoiHydrationSequence = 0;
   final Map<String, CityPoiModel> _hydratedPoiCacheById =
       <String, CityPoiModel>{};
+  final Map<String, AccountProfileModel> _hydratedAccountProfilesByPoiId =
+      <String, AccountProfileModel>{};
+  final Map<String, EventModel> _hydratedEventsByPoiId =
+      <String, EventModel>{};
   CityCoordinate? _searchTrayOrigin;
+
+  bool get isUserAuthenticated => _authRepository?.isUserLoggedIn ?? false;
+
+  String? get authenticatedUserDisplayName {
+    final raw =
+        _authRepository?.userStreamValue.value?.profile.nameValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
+    return _hydratedAccountProfilesByPoiId[poi.id];
+  }
+
+  EventModel? hydratedEventForPoi(CityPoiModel poi) {
+    return _hydratedEventsByPoiId[poi.id];
+  }
+
+  Uri? buildTenantPublicUriFromPath(String? rawPath) {
+    final normalizedPath = rawPath?.trim();
+    if (normalizedPath == null || normalizedPath.isEmpty) {
+      return null;
+    }
+    return _appData.mainDomainValue.value.resolve(normalizedPath);
+  }
+
+  Uri get defaultEventImageUri {
+    final configured = _appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return Uri.parse('asset://event-placeholder');
+  }
 
   Future<void> init({
     String? initialPoiQuery,
@@ -852,7 +900,8 @@ class MapScreenController implements Disposable {
     );
     _currentQueryOriginSettings = resolution.settings;
     _refreshLocationFeedback(emitNotice: false);
-    final origin = _searchTrayOrigin ?? resolution.effectiveCoordinate ?? query.origin;
+    final origin =
+        _searchTrayOrigin ?? resolution.effectiveCoordinate ?? query.origin;
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,
@@ -1174,6 +1223,7 @@ class MapScreenController implements Disposable {
     }
 
     try {
+      _hydratedAccountProfilesByPoiId[poi.id] = profile;
       return _mergeAccountProfileIntoPoi(poi, profile);
     } finally {
       repository.clearSelectedAccountProfile();
@@ -1200,6 +1250,7 @@ class MapScreenController implements Disposable {
     if (event == null) {
       return null;
     }
+    _hydratedEventsByPoiId[poi.id] = event;
     return _mergeEventIntoPoi(poi, event);
   }
 
@@ -1248,6 +1299,7 @@ class MapScreenController implements Disposable {
     final categoryLabelValue = normalizedProfileType.isEmpty
         ? null
         : _parseTypeLabelValue(normalizedProfileType);
+    final canonicalProfilePath = '/parceiro/${profile.slug}';
 
     return poi.copyWith(
       descriptionValue: mergedDescription,
@@ -1260,31 +1312,40 @@ class MapScreenController implements Disposable {
       visual: mergedVisual,
       refSlugValue:
           poi.refSlug == null ? _parseReferenceSlugValue(profile.slug) : null,
-      refPathValue: poi.refPath == null
-          ? _parseReferencePathValue('/parceiro/${profile.slug}')
-          : null,
+      refPathValue: poi.refPath?.trim() == canonicalProfilePath
+          ? null
+          : _parseReferencePathValue(canonicalProfilePath),
     );
   }
 
   CityPoiModel _mergeEventIntoPoi(CityPoiModel poi, EventModel event) {
     final coverImageUrl = _resolveEventCoverImageUrl(event);
     final markerImageUrl = _resolveEventMarkerImageUrl(event, coverImageUrl);
+    final descriptionExcerpt = _resolveEventDescriptionExcerpt(event);
+    final linkedProfiles = _resolveEventLinkedProfiles(event);
     final mergedVisual = markerImageUrl == null
         ? poi.visual
         : CityPoiVisual.image(
             imageUriValue: _parseImageUriValue(markerImageUrl),
           );
+    final canonicalEventPath =
+        event.slug.trim().isEmpty ? null : '/agenda/evento/${event.slug}';
 
     return poi.copyWith(
+      descriptionValue: descriptionExcerpt == null
+          ? null
+          : _parsePoiDescriptionValue(descriptionExcerpt),
       coverImageUriValue:
           coverImageUrl == null ? null : _parseImageUriValue(coverImageUrl),
+      linkedProfiles: linkedProfiles,
       visual: mergedVisual,
       refSlugValue: poi.refSlug == null && event.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(event.slug)
           : null,
-      refPathValue: poi.refPath == null && event.slug.trim().isNotEmpty
-          ? _parseReferencePathValue('/event/${event.slug}')
-          : null,
+      refPathValue: canonicalEventPath == null ||
+              poi.refPath?.trim() == canonicalEventPath
+          ? null
+          : _parseReferencePathValue(canonicalEventPath),
     );
   }
 
@@ -1299,6 +1360,7 @@ class MapScreenController implements Disposable {
       coverImageUriValue: hydrated.coverImageUriValue,
       coordinate: hydrated.coordinate,
       distanceMetersValue: hydrated.distanceMetersValue,
+      linkedProfiles: hydrated.linkedProfiles,
       visual: hydrated.visual,
       refSlugValue: hydrated.refSlugValue,
       refPathValue: hydrated.refPathValue,
@@ -1336,30 +1398,22 @@ class MapScreenController implements Disposable {
   }
 
   String? _resolveEventCoverImageUrl(EventModel event) {
-    final eventThumbUrl = _normalizeExternalImageUrl(
-      event.thumb?.thumbUri.value.toString(),
+    final eventImageUri = VenueEventResume.resolvePreferredImageUri(event);
+    final canonicalEventImageUrl = _normalizeExternalImageUrl(
+      eventImageUri.toString(),
     );
-    if (eventThumbUrl != null) {
-      return eventThumbUrl;
-    }
-
-    final linkedArtist = event.primaryLinkedArtist;
-    final linkedArtistCover = _normalizeExternalImageUrl(
-      linkedArtist?.coverUrl,
-    );
-    if (linkedArtistCover != null) {
-      return linkedArtistCover;
+    if (canonicalEventImageUrl != null) {
+      return canonicalEventImageUrl;
     }
 
     final linkedArtistAvatar = _normalizeExternalImageUrl(
-      linkedArtist?.avatarUrl,
+      event.primaryLinkedArtist?.avatarUrl,
     );
     if (linkedArtistAvatar != null) {
       return linkedArtistAvatar;
     }
 
-    final eventImageUri = VenueEventResume.resolvePreferredImageUri(event);
-    return _normalizeExternalImageUrl(eventImageUri.toString());
+    return _normalizeExternalImageUrl(event.primaryLinkedArtist?.coverUrl);
   }
 
   String? _resolveEventMarkerImageUrl(
@@ -1374,9 +1428,63 @@ class MapScreenController implements Disposable {
     }
 
     final leadingArtistAvatar = event.artists
-        .map((artist) => _normalizeExternalImageUrl(artist.avatarUri?.toString()))
+        .map((artist) =>
+            _normalizeExternalImageUrl(artist.avatarUri?.toString()))
         .firstWhere((candidate) => candidate != null, orElse: () => null);
     return leadingArtistAvatar ?? coverImageUrl;
+  }
+
+  String? _resolveEventDescriptionExcerpt(EventModel event) {
+    final rawContent = event.content.value?.trim() ?? '';
+    if (rawContent.isEmpty) {
+      return null;
+    }
+    final excerpt = rawContent
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (excerpt.length < 3) {
+      return null;
+    }
+    return excerpt;
+  }
+
+  List<CityPoiLinkedProfile> _resolveEventLinkedProfiles(EventModel event) {
+    final venueId = event.venue?.id.trim();
+    final seen = <String>{};
+    final linkedProfiles = <CityPoiLinkedProfile>[];
+    for (final profile in event.linkedAccountProfiles) {
+      final id = profile.id.trim();
+      if (id.isEmpty) {
+        continue;
+      }
+      if (venueId != null && venueId.isNotEmpty && id == venueId) {
+        continue;
+      }
+      if (!seen.add(id)) {
+        continue;
+      }
+      final displayName = profile.displayName.trim();
+      if (displayName.isEmpty) {
+        continue;
+      }
+      linkedProfiles.add(
+        CityPoiLinkedProfile(
+          idValue: _parseReferenceIdValue(id),
+          displayNameValue: _parsePoiNameValue(displayName),
+          avatarImageUriValue: (() {
+            final avatarImageUrl =
+                _normalizeExternalImageUrl(profile.avatarUrl);
+            if (avatarImageUrl == null) {
+              return null;
+            }
+            return _parseImageUriValue(avatarImageUrl);
+          })(),
+        ),
+      );
+    }
+    return List<CityPoiLinkedProfile>.unmodifiable(linkedProfiles);
   }
 
   String? _normalizeExternalImageUrl(String? raw) {
@@ -1402,6 +1510,18 @@ class MapScreenController implements Disposable {
 
   PoiFilterImageUriValue _parseImageUriValue(String raw) {
     final value = PoiFilterImageUriValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiReferenceIdValue _parseReferenceIdValue(String raw) {
+    final value = PoiReferenceIdValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  CityPoiNameValue _parsePoiNameValue(String raw) {
+    final value = CityPoiNameValue();
     value.parse(raw.trim());
     return value;
   }
@@ -1971,7 +2091,8 @@ class MapScreenController implements Disposable {
     CityPoiModel selectedPoi,
     List<CityPoiModel> deckPois,
   ) {
-    final resolvedIndex = deckPois.indexWhere((poi) => poi.id == selectedPoi.id);
+    final resolvedIndex =
+        deckPois.indexWhere((poi) => poi.id == selectedPoi.id);
     return resolvedIndex == -1 ? 0 : resolvedIndex;
   }
 

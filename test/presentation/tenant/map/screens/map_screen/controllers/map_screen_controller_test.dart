@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
@@ -552,7 +553,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    return pagedEventsResultFromRaw(events: const <EventModel>[], hasMore: false);
+    return pagedEventsResultFromRaw(
+        events: const <EventModel>[], hasMore: false);
   }
 
   @override
@@ -2211,7 +2213,8 @@ void main() {
       );
     });
 
-    test('deck poi selection hydrates event cover and marker from details',
+    test(
+        'deck poi selection hydrates canonical event cover while preserving artist avatar marker',
         () async {
       final localScheduleRepository = _FakeScheduleRepository();
       final fakeMapHandle = _FakeMapHandle();
@@ -2238,8 +2241,10 @@ void main() {
           refPath: '/event/evento-longo',
         ),
       ];
-      localScheduleRepository.eventsBySlug['evento-longo'] = _buildEventDetailModel(
+      localScheduleRepository.eventsBySlug['evento-longo'] =
+          _buildEventDetailModel(
         slug: 'evento-longo',
+        thumbUrl: 'https://tenant.test/media/event-cover.png',
         linkedArtistAvatarUrl: 'https://tenant.test/media/ananda-avatar.png',
         linkedArtistCoverUrl: 'https://tenant.test/media/ananda-cover.png',
       );
@@ -2258,7 +2263,16 @@ void main() {
       );
       expect(
         localController.selectedPoiStreamValue.value?.coverImageUri,
-        'https://tenant.test/media/ananda-cover.png',
+        'https://tenant.test/media/event-cover.png',
+      );
+      expect(
+        localController.selectedPoiStreamValue.value?.description,
+        'Evento detalhado',
+      );
+      expect(
+        localController.selectedPoiStreamValue.value?.linkedProfiles
+            .map((profile) => profile.displayName),
+        ['Ananda Torres'],
       );
       expect(
         localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
@@ -4292,6 +4306,66 @@ void main() {
 
       expect(find.text('Traçar rota'), findsOneWidget);
       expect(find.text('Ver detalhes'), findsOneWidget);
+    });
+
+    testWidgets('event cards use the canonical invite icon in the map deck',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final poi = _buildPoi(
+        id: 'poi-event',
+        name: 'Show na Praia',
+        refType: 'event',
+        refId: 'event-1',
+        refSlug: 'show-na-praia',
+      );
+
+      controller.selectPoi(poi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      expect(find.byTooltip('Convidar'), findsOneWidget);
+      expect(find.byIcon(BooraIcons.invite_solid), findsOneWidget);
+    });
+
+    testWidgets('close button aligns with the top of the selected card',
+        (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final poi = _buildPoi(
+        id: 'poi-event',
+        name: 'Show na Praia',
+        refType: 'event',
+        refId: 'event-1',
+        refSlug: 'show-na-praia',
+      );
+
+      controller.selectPoi(poi);
+
+      await _pumpPoiDetailDeck(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      final cardTop = tester
+          .getTopLeft(
+              find.byKey(const ValueKey<String>('poi-detail-card-visual')))
+          .dy;
+      final cardRight = tester
+          .getTopRight(
+              find.byKey(const ValueKey<String>('poi-detail-card-visual')))
+          .dx;
+      final closeRect = tester.getRect(find.byTooltip('Fechar'));
+      final closeTop = closeRect.top;
+      final closeLeft = tester.getTopLeft(find.byTooltip('Fechar')).dx;
+      final closeCenterY = closeRect.center.dy;
+
+      expect(closeTop - cardTop, inInclusiveRange(0, 40));
+      expect((closeCenterY - (cardTop + 24)).abs(), lessThanOrEqualTo(16));
+      expect(cardRight - closeLeft, inInclusiveRange(0, 72));
     });
 
     testWidgets(

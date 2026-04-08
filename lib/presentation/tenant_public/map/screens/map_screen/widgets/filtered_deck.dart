@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +14,9 @@ class FilteredDeck extends StatelessWidget {
     required this.pageController,
     required this.cardBuilder,
     required this.onPrimaryAction,
-    required this.onShare,
+    required this.secondaryActionForPoi,
     required this.onRoute,
+    required this.onClose,
     required this.onChanged,
     required this.deckHeight,
     required this.onCardHeightChanged,
@@ -27,8 +29,9 @@ class FilteredDeck extends StatelessWidget {
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
-  final ValueChanged<CityPoiModel> onShare;
+  final PoiCardSecondaryAction? Function(CityPoiModel poi) secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
+  final VoidCallback onClose;
   final ValueChanged<int> onChanged;
   final double deckHeight;
   final void Function(String poiId, double height) onCardHeightChanged;
@@ -47,7 +50,7 @@ class FilteredDeck extends StatelessWidget {
           height: deckHeight,
           child: PageView.builder(
             controller: pageController,
-            padEnds: false,
+            padEnds: true,
             itemCount: pois.length,
             onPageChanged: onChanged,
             itemBuilder: (context, index) {
@@ -76,33 +79,38 @@ class FilteredDeck extends StatelessWidget {
                     ),
                   );
                 },
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: index == 0 ? 0 : 4,
-                    right: index == pois.length - 1 ? 0 : 4,
-                  ),
-                  child: OverflowBox(
-                    alignment: Alignment.bottomCenter,
-                    minHeight: 0,
-                    maxHeight: double.infinity,
-                    child: SizeReportingWidget(
-                      onSizeChanged: (size) => onCardHeightChanged(
-                        poi.id,
-                        size.height + deckMeasurementPadding,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final heroMaxHeight = (constraints.maxHeight * 0.25).clamp(
+                      72.0,
+                      96.0,
+                    );
+                    return Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        child: SizeReportingWidget(
+                          onSizeChanged: (size) => onCardHeightChanged(
+                            poi.id,
+                            size.height + deckMeasurementPadding,
+                          ),
+                          child: cardBuilder.build(
+                            context: context,
+                            poi: poi,
+                            colorScheme: colorScheme,
+                            onPrimaryAction: () {
+                              controller.selectPoi(poi);
+                              onPrimaryAction(poi);
+                            },
+                            secondaryAction: secondaryActionForPoi(poi),
+                            onRoute: () => onRoute(poi),
+                            onClose: onClose,
+                            heroMaxHeight: heroMaxHeight,
+                          ),
+                        ),
                       ),
-                      child: cardBuilder.build(
-                        context: context,
-                        poi: poi,
-                        colorScheme: colorScheme,
-                        onPrimaryAction: () {
-                          controller.selectPoi(poi);
-                          onPrimaryAction(poi);
-                        },
-                        onShare: () => onShare(poi),
-                        onRoute: () => onRoute(poi),
-                      ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               );
             },

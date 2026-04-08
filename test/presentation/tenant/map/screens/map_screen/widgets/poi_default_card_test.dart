@@ -27,7 +27,7 @@ void main() {
             poi: _buildAccountProfilePoi(),
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
             onPrimaryAction: () {},
-            onShare: () {},
+            secondaryAction: null,
             onRoute: () {},
           ),
         ),

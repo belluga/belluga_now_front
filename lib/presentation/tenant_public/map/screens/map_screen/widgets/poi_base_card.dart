@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:flutter/material.dart';
 
@@ -9,189 +10,240 @@ abstract class PoiBaseCard extends StatelessWidget {
     required this.poi,
     required this.colorScheme,
     required this.onPrimaryAction,
-    required this.onShare,
+    required this.secondaryAction,
     required this.onRoute,
+    this.onClose,
+    this.heroMaxHeight,
   });
 
   final CityPoiModel poi;
   final ColorScheme colorScheme;
   final VoidCallback onPrimaryAction;
-  final VoidCallback onShare;
+  final PoiCardSecondaryAction? secondaryAction;
   final VoidCallback onRoute;
+  final VoidCallback? onClose;
+  final double? heroMaxHeight;
 
   @override
   Widget build(BuildContext context) {
+    final isCompactLayout = heroMaxHeight != null;
     final accentColor = resolveAccentColor();
     final accentForeground = _foregroundFor(accentColor);
-    final sections = buildSections();
+    final sectionsBeforeDescription = buildSectionsBeforeDescription();
+    final sectionsAfterDescription = buildSectionsAfterDescription();
     final description = PoiContentResolver.sanitizedDescription(poi);
     final hasDescription = description != null;
     final badge = badgeLabel(context).trim();
+    final heroPadding = isCompactLayout
+        ? const EdgeInsets.fromLTRB(10, 10, 10, 0)
+        : const EdgeInsets.fromLTRB(12, 12, 12, 0);
+    final badgeInset = isCompactLayout ? 20.0 : 24.0;
+    final closeInset = isCompactLayout ? 10.0 : 12.0;
+    final bodyPadding = isCompactLayout
+        ? const EdgeInsets.fromLTRB(16, 14, 16, 16)
+        : const EdgeInsets.fromLTRB(20, 18, 20, 20);
+    final titleStyle = (isCompactLayout
+            ? Theme.of(context).textTheme.titleLarge
+            : Theme.of(context).textTheme.headlineSmall)
+        ?.copyWith(
+          fontWeight: FontWeight.w900,
+          height: 1.02,
+          letterSpacing: -0.5,
+        );
+    final headerGap = isCompactLayout ? 8.0 : 10.0;
+    final sectionGap = isCompactLayout ? 10.0 : 12.0;
+    final actionsTopGap = isCompactLayout ? 14.0 : 18.0;
+    final buttonHeight = isCompactLayout ? 50.0 : 54.0;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      constraints: const BoxConstraints(maxWidth: 372),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.98),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.38),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 28,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: _buildHero(
-                  context,
-                  accentColor: accentColor,
-                  accentForeground: accentForeground,
-                ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          key: const ValueKey<String>('poi-detail-card-visual'),
+          duration: const Duration(milliseconds: 250),
+          constraints: const BoxConstraints(maxWidth: 372),
+          decoration: BoxDecoration(
+            color: colorScheme.surface.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.38),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 28,
+                offset: Offset(0, 14),
               ),
-              if (badge.isNotEmpty)
-                Positioned(
-                  top: 24,
-                  left: 24,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accentColor.withValues(alpha: 0.28),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Padding(
+                    padding: heroPadding,
+                    child: _buildHero(
+                      context,
+                      accentColor: accentColor,
+                      accentForeground: accentForeground,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      child: Text(
-                        badge.toUpperCase(),
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                  ),
+                  if (badge.isNotEmpty)
+                    Positioned(
+                      top: badgeInset,
+                      left: badgeInset,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withValues(alpha: 0.28),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          child: Text(
+                            badge.toUpperCase(),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
                                   color: accentForeground,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.0,
                                 ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+                  if (onClose != null)
+                    Positioned(
+                      top: closeInset,
+                      right: closeInset,
+                      child: Material(
+                        color: colorScheme.surface.withValues(alpha: 0.98),
+                        shape: const CircleBorder(),
+                        elevation: 8,
+                        child: IconButton(
+                          tooltip: 'Fechar',
+                          onPressed: onClose,
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: bodyPadding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_shouldShowHeaderAvatar()) ...[
-                      _CardAvatar(
-                        poi: poi,
-                        accentColor: accentColor,
-                      ),
-                      const SizedBox(width: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_shouldShowHeaderAvatar()) ...[
+                          _CardAvatar(
+                            poi: poi,
+                            accentColor: accentColor,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: Text(
+                            poi.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: titleStyle,
+                          ),
+                        ),
+                        if (secondaryAction != null) ...[
+                          const SizedBox(width: 12),
+                          _CardActionIconButton(
+                            tooltip: secondaryAction!.tooltip,
+                            icon: secondaryAction!.icon,
+                            onTap: secondaryAction!.onTap,
+                          ),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: headerGap),
+                    buildPrimaryMeta(context, accentColor),
+                    for (final section in sectionsBeforeDescription) ...[
+                      SizedBox(height: sectionGap),
+                      section(context),
                     ],
-                    Expanded(
-                      child: Text(
-                        poi.name,
+                    if (hasDescription) ...[
+                      SizedBox(height: sectionGap),
+                      Text(
+                        description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.02,
-                                  letterSpacing: -0.5,
-                                ),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              height: 1.35,
+                            ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    _CardActionIconButton(
-                      tooltip: 'Compartilhar',
-                      icon: Icons.share_outlined,
-                      onTap: onShare,
+                    ],
+                    for (final section in sectionsAfterDescription) ...[
+                      SizedBox(height: sectionGap),
+                      section(context),
+                    ],
+                    SizedBox(height: actionsTopGap),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: onRoute,
+                            icon: Icon(routeButtonIcon(context)),
+                            style: FilledButton.styleFrom(
+                              minimumSize: Size.fromHeight(buttonHeight),
+                              backgroundColor: accentColor,
+                              foregroundColor: accentForeground,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              elevation: 0,
+                            ),
+                            label: Text(routeActionLabel(context)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.tonal(
+                            onPressed: onPrimaryAction,
+                            style: FilledButton.styleFrom(
+                              minimumSize: Size.fromHeight(buttonHeight),
+                              backgroundColor:
+                                  colorScheme.surfaceContainerHighest,
+                              foregroundColor: colorScheme.onSurface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(primaryActionLabel(context)),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                buildPrimaryMeta(context, accentColor),
-                if (hasDescription) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                  ),
-                ],
-                for (final section in sections) ...[
-                  const SizedBox(height: 12),
-                  section(context),
-                ],
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: onRoute,
-                        icon: Icon(routeButtonIcon(context)),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(54),
-                          backgroundColor: accentColor,
-                          foregroundColor: accentForeground,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          elevation: 0,
-                        ),
-                        label: Text(routeActionLabel(context)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.tonal(
-                        onPressed: onPrimaryAction,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(54),
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          foregroundColor: colorScheme.onSurface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(primaryActionLabel(context)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -219,31 +271,51 @@ abstract class PoiBaseCard extends StatelessWidget {
               )
             : _HeroPlaceholder(accentColor: accentColor, poi: poi);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: AspectRatio(
-        aspectRatio: hasMedia ? 1.56 : 2.18,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            heroChild,
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.14),
-                    Colors.black.withValues(alpha: 0.32),
-                  ],
-                  stops: const [0.1, 0.7, 1.0],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 348.0;
+        final targetAspectRatio = hasMedia ? 1.56 : 2.18;
+        final rawHeight = maxWidth / targetAspectRatio;
+        final resolvedHeight = rawHeight.clamp(
+          hasMedia ? 156.0 : 128.0,
+          hasMedia ? 208.0 : 170.0,
+        );
+        final boundedHeight = heroMaxHeight == null
+            ? resolvedHeight
+            : resolvedHeight.clamp(
+                hasMedia ? 84.0 : 72.0,
+                heroMaxHeight!,
+              );
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            width: double.infinity,
+            height: boundedHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                heroChild,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.14),
+                        Colors.black.withValues(alpha: 0.32),
+                      ],
+                      stops: const [0.1, 0.7, 1.0],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -340,7 +412,14 @@ abstract class PoiBaseCard extends StatelessWidget {
     );
   }
 
-  List<Widget Function(BuildContext)> buildSections();
+  List<Widget Function(BuildContext)> buildSectionsBeforeDescription() =>
+      const <Widget Function(BuildContext)>[];
+
+  List<Widget Function(BuildContext)> buildSectionsAfterDescription() =>
+      buildSections();
+
+  List<Widget Function(BuildContext)> buildSections() =>
+      const <Widget Function(BuildContext)>[];
 }
 
 class _CardAvatar extends StatelessWidget {

@@ -66,4 +66,12 @@ void main() {
       '/baixe-o-app?redirect=%2Fprofile%3Ftab%3Dsettings',
     );
   });
+
+  test('isAuthOwnedPromotionRedirectPath matches auth-owned redirect family', () {
+    expect(isAuthOwnedPromotionRedirectPath('/profile'), isTrue);
+    expect(isAuthOwnedPromotionRedirectPath('/workspace/tenant-a'), isTrue);
+    expect(isAuthOwnedPromotionRedirectPath('/auth/login'), isTrue);
+    expect(isAuthOwnedPromotionRedirectPath('/convites/compartilhar'), isTrue);
+    expect(isAuthOwnedPromotionRedirectPath('/agenda/evento/show-1'), isFalse);
+  });
 }

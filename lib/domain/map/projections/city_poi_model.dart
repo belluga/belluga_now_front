@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_linked_profile.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_stack_items.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
@@ -46,6 +47,7 @@ class CityPoiModel implements MapPoi {
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
+    List<CityPoiLinkedProfile>? linkedProfiles,
     PoiBooleanValue? isHappeningNowValue,
     this.timeStartValue,
     this.timeEndValue,
@@ -56,6 +58,8 @@ class CityPoiModel implements MapPoi {
         stackItems = List.unmodifiable(
           (stackItems ?? CityPoiStackItems()).value,
         ),
+        linkedProfiles =
+            List.unmodifiable(linkedProfiles ?? const <CityPoiLinkedProfile>[]),
         isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
         refTypeValue = refTypeValue ?? _defaultRefTypeValue(),
         refIdValue = refIdValue ?? _defaultRefIdValue(),
@@ -87,6 +91,7 @@ class CityPoiModel implements MapPoi {
   final PoiStackKeyValue stackKeyValue;
   final PoiStackCountValue stackCountValue;
   final List<CityPoiModel> stackItems;
+  final List<CityPoiLinkedProfile> linkedProfiles;
   final PoiBooleanValue isHappeningNowValue;
   final PoiTimeStartValue? timeStartValue;
   final PoiTimeEndValue? timeEndValue;
@@ -187,6 +192,7 @@ class CityPoiModel implements MapPoi {
     PoiStackKeyValue? stackKeyValue,
     PoiStackCountValue? stackCountValue,
     CityPoiStackItems? stackItems,
+    List<CityPoiLinkedProfile>? linkedProfiles,
     PoiBooleanValue? isHappeningNowValue,
     PoiTimeStartValue? timeStartValue,
     PoiTimeEndValue? timeEndValue,
@@ -223,6 +229,7 @@ class CityPoiModel implements MapPoi {
       stackKeyValue: stackKeyValue ?? this.stackKeyValue,
       stackCountValue: stackCountValue ?? this.stackCountValue,
       stackItems: resolvedStackItems,
+      linkedProfiles: linkedProfiles ?? this.linkedProfiles,
       isHappeningNowValue: isHappeningNowValue ?? this.isHappeningNowValue,
       timeStartValue: timeStartValue ?? this.timeStartValue,
       timeEndValue: timeEndValue ?? this.timeEndValue,

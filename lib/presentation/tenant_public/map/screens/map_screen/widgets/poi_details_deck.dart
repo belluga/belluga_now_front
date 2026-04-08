@@ -1,17 +1,23 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
+import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/single_poi_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -65,57 +71,48 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           deckPois,
         );
         _syncPageController(deckIndex);
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 16, right: 2),
-              child: useFilteredDeck
-                  ? FilteredDeck(
-                      pois: deckPois,
-                      controller: _controller,
-                      colorScheme: scheme,
-                      pageController: _pageController,
-                      cardBuilder: _cardBuilder,
-                      onPrimaryAction: _handlePoiAction,
-                      onShare: _handleShare,
-                      onRoute: _handleRoute,
-                      onChanged: (index) => unawaited(
-                        _controller.handleFilteredDeckPageChanged(index),
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 372),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                useFilteredDeck
+                    ? FilteredDeck(
+                        pois: deckPois,
+                        controller: _controller,
+                        colorScheme: scheme,
+                        pageController: _pageController,
+                        cardBuilder: _cardBuilder,
+                        onPrimaryAction: _handlePoiAction,
+                        secondaryActionForPoi: _secondaryActionForPoi,
+                        onRoute: _handleRoute,
+                        onClose: _controller.clearSelectedPoi,
+                        onChanged: (index) => unawaited(
+                          _controller.handleFilteredDeckPageChanged(index),
+                        ),
+                        deckHeight: _heightForPoi(context, selectedPoi),
+                        onCardHeightChanged: (poiId, height) =>
+                            _handleMeasuredHeight(context, poiId, height),
+                        deckMeasurementPadding: _kDeckMeasurementPadding,
+                      )
+                    : SinglePoiCard(
+                        poi: selectedPoi,
+                        colorScheme: scheme,
+                        cardBuilder: _cardBuilder,
+                        onPrimaryAction: _handlePoiAction,
+                        secondaryAction: _secondaryActionForPoi(selectedPoi),
+                        onRoute: _handleRoute,
+                        onClose: _controller.clearSelectedPoi,
+                        onCardHeightChanged: (poiId, height) =>
+                            _handleMeasuredHeight(context, poiId, height),
+                        deckHeight: _heightForPoi(context, selectedPoi),
+                        deckMeasurementPadding: _kDeckMeasurementPadding,
                       ),
-                      deckHeight: _heightForPoi(context, selectedPoi),
-                      onCardHeightChanged: (poiId, height) =>
-                          _handleMeasuredHeight(context, poiId, height),
-                      deckMeasurementPadding: _kDeckMeasurementPadding,
-                    )
-                  : SinglePoiCard(
-                      poi: selectedPoi,
-                      colorScheme: scheme,
-                      cardBuilder: _cardBuilder,
-                      onPrimaryAction: _handlePoiAction,
-                      onShare: _handleShare,
-                      onRoute: _handleRoute,
-                      onCardHeightChanged: (poiId, height) =>
-                          _handleMeasuredHeight(context, poiId, height),
-                      deckHeight: _heightForPoi(context, selectedPoi),
-                      deckMeasurementPadding: _kDeckMeasurementPadding,
-                    ),
+              ],
             ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Material(
-                color: scheme.surface.withValues(alpha: 0.98),
-                shape: const CircleBorder(),
-                elevation: 10,
-                child: IconButton(
-                  tooltip: 'Fechar',
-                  onPressed: _controller.clearSelectedPoi,
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -181,18 +178,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         stack: stackQueryKey.isEmpty ? null : stackQueryKey,
       ),
     );
-  }
-
-  Future<void> _handleShare(CityPoiModel poi) async {
-    final payload = _buildSharePayload(poi);
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: payload.message, subject: payload.subject),
-      );
-    } catch (_) {
-      _controller.statusMessageStreamValue
-          .addValue('Não foi possível compartilhar ${poi.name}.');
-    }
   }
 
   Future<void> _handleRoute(CityPoiModel poi) async {
@@ -277,37 +262,121 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
   }
 
-  _SharePayload _buildSharePayload(CityPoiModel poi) {
-    if (_isEventPoi(poi)) {
-      final lines = <String>[
-        poi.name,
-        if (poi.address.isNotEmpty) poi.address,
-        if (poi.description.isNotEmpty) poi.description,
-      ];
-      if (poi.updatedAt != null) {
-        lines.add(
-          'Atualizado em ${DateFormat('dd/MM/yyyy HH:mm').format(poi.updatedAt!)}',
-        );
-      }
-      final eventPath = poi.refPath?.trim() ?? '';
-      if (eventPath.isNotEmpty) {
-        lines.add('Detalhes: $eventPath');
-      }
-      lines.add(
-        'Mapa: https://maps.google.com/?q='
-        '${poi.coordinate.latitude},${poi.coordinate.longitude}',
+  PoiCardSecondaryAction? _secondaryActionForPoi(CityPoiModel poi) {
+    if (_isPartnerPoi(poi)) {
+      return PoiCardSecondaryAction(
+        icon: Icons.share_outlined,
+        tooltip: 'Compartilhar',
+        onTap: () => unawaited(_shareAccountProfile(poi)),
       );
-      final message = lines.where((line) => line.trim().isNotEmpty).join('\n');
-      return _SharePayload(subject: poi.name, message: message);
     }
 
-    final details = <String>[
-      poi.name,
-      if (poi.description.isNotEmpty) poi.description,
-      poi.address,
-    ];
-    final message = details.where((line) => line.trim().isNotEmpty).join('\n');
-    return _SharePayload(subject: poi.name, message: message);
+    if (_isEventPoi(poi)) {
+      return PoiCardSecondaryAction(
+        icon: BooraIcons.invite_solid,
+        tooltip: 'Convidar',
+        onTap: () => unawaited(_openEventInvite(poi)),
+      );
+    }
+
+    return null;
+  }
+
+  Future<void> _shareAccountProfile(CityPoiModel poi) async {
+    final sharePath = _resolvePartnerSharePath(poi);
+    final publicUri = _controller.buildTenantPublicUriFromPath(sharePath);
+    if (publicUri == null) {
+      _controller.statusMessageStreamValue
+          .addValue('Não foi possível compartilhar ${poi.name}.');
+      return;
+    }
+
+    final profile = _controller.hydratedAccountProfileForPoi(poi);
+    final payload = AccountProfilePublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: poi.name,
+      profile: profile,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+      fallbackDescription: poi.description,
+    );
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: payload.message,
+          subject: payload.subject,
+        ),
+      );
+    } catch (_) {
+      _controller.statusMessageStreamValue
+          .addValue('Não foi possível compartilhar ${poi.name}.');
+    }
+  }
+
+  Future<void> _openEventInvite(CityPoiModel poi) async {
+    final event = _controller.hydratedEventForPoi(poi);
+    final eventPath = _resolveEventSharePath(poi, eventSlug: event?.slug);
+    if (eventPath == null || eventPath.isEmpty) {
+      _controller.statusMessageStreamValue
+          .addValue('Evento sem referência para convidar.');
+      return;
+    }
+
+    if (kIsWeb) {
+      AuthWallTelemetry.trackTriggered(
+        actionType: AuthWallActionType.sendInvite,
+        redirectPath: eventPath,
+      );
+      context.router.pushPath(
+        buildWebPromotionBoundaryPath(
+          redirectPath: eventPath,
+        ),
+      );
+      return;
+    }
+
+    if (event == null) {
+      _controller.statusMessageStreamValue
+          .addValue('Detalhes do evento ainda não estão prontos para convite.');
+      return;
+    }
+
+    final invite = InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
+    );
+    context.router.push(InviteShareRoute(invite: invite));
+  }
+
+  String? _resolvePartnerSharePath(CityPoiModel poi) {
+    final slug = _resolvePartnerSlug(poi);
+    if (slug.isNotEmpty) {
+      return '/parceiro/$slug';
+    }
+    final refPath = poi.refPath?.trim();
+    if (refPath != null && refPath.isNotEmpty) {
+      return refPath;
+    }
+    return null;
+  }
+
+  String? _resolveEventSharePath(
+    CityPoiModel poi, {
+    String? eventSlug,
+  }) {
+    final normalizedEventSlug = eventSlug?.trim();
+    if (normalizedEventSlug != null && normalizedEventSlug.isNotEmpty) {
+      return '/agenda/evento/$normalizedEventSlug';
+    }
+    final slug = _resolveEventSlug(poi);
+    if (slug.isNotEmpty) {
+      return '/agenda/evento/$slug';
+    }
+    final refPath = poi.refPath?.trim();
+    if (refPath != null && refPath.isNotEmpty) {
+      return refPath;
+    }
+    return null;
   }
 
   void _handleMeasuredHeight(
@@ -336,11 +405,4 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     final maxHeight = (viewportHeight * 0.56).clamp(340.0, 480.0);
     return raw.clamp(_minCardHeight, maxHeight);
   }
-}
-
-class _SharePayload {
-  const _SharePayload({required this.subject, required this.message});
-
-  final String subject;
-  final String message;
 }
