@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/marker_fallback_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:flutter/material.dart';
 
 class PoiMarker extends StatelessWidget {
@@ -9,12 +10,14 @@ class PoiMarker extends StatelessWidget {
     super.key,
     required this.poi,
     required this.isSelected,
+    this.isLoading = false,
     this.isHovered = false,
     this.overrideVisual,
   });
 
   final CityPoiModel poi;
   final bool isSelected;
+  final bool isLoading;
   final bool isHovered;
   final CityPoiVisual? overrideVisual;
 
@@ -22,8 +25,11 @@ class PoiMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final hasStack = poi.stackCount > 1;
-    final stackLabel = '+${poi.stackCount - 1}';
+    final stackLabel = poi.stackCount.toString();
     final visual = _resolvedVisual();
+    final isEmphasized = isSelected || isLoading;
+    final eventTimingBadgeLabel =
+        hasStack ? null : PoiContentResolver.eventTimingBadgeLabel(poi);
 
     if (visual?.isImage == true) {
       return _buildImageMarker(
@@ -31,6 +37,8 @@ class PoiMarker extends StatelessWidget {
         imageProvider: NetworkImage(visual!.imageUri!),
         hasStack: hasStack,
         stackLabel: stackLabel,
+        isEmphasized: isEmphasized,
+        eventTimingBadgeLabel: eventTimingBadgeLabel,
       );
     }
 
@@ -41,11 +49,13 @@ class PoiMarker extends StatelessWidget {
         imageProvider: AssetImage(legacyAssetPath),
         hasStack: hasStack,
         stackLabel: stackLabel,
+        isEmphasized: isEmphasized,
+        eventTimingBadgeLabel: eventTimingBadgeLabel,
       );
     }
 
-    final scale = isSelected ? 1.12 : (isHovered ? 1.06 : 1.0);
-    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final scale = isEmphasized ? 1.12 : (isHovered ? 1.06 : 1.0);
+    final shadowOpacity = isEmphasized ? 0.35 : (isHovered ? 0.3 : 0.25);
     final icon = visual?.isIcon == true
         ? MapMarkerIconResolver.resolve(visual?.icon)
         : MapMarkerIconResolver.fallbackIcon;
@@ -100,6 +110,24 @@ class PoiMarker extends StatelessWidget {
                     label: stackLabel,
                   ),
                 ),
+              if (eventTimingBadgeLabel != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: -8,
+                  child: Center(
+                    child: _buildEventTimingBadge(
+                      context,
+                      label: eventTimingBadgeLabel,
+                    ),
+                  ),
+                ),
+              if (isLoading)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: _buildLoadingBadge(context),
+                ),
             ],
           );
         },
@@ -126,10 +154,12 @@ class PoiMarker extends StatelessWidget {
     required ImageProvider<Object> imageProvider,
     required bool hasStack,
     required String stackLabel,
+    required bool isEmphasized,
+    required String? eventTimingBadgeLabel,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
-    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final scale = isEmphasized ? 1.18 : (isHovered ? 1.08 : 1.0);
+    final shadowOpacity = isEmphasized ? 0.35 : (isHovered ? 0.3 : 0.25);
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 200),
@@ -180,26 +210,45 @@ class PoiMarker extends StatelessWidget {
                 Positioned(
                   right: 2,
                   bottom: 2,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.85),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: scheme.surface,
-                        width: 2,
-                      ),
-                    ),
-                    child: SizedBox(
-                      width: badgeDiameter,
-                      height: badgeDiameter,
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: badgeDiameter * 0.55,
-                        color: Colors.white,
+                  child: isLoading
+                      ? _buildLoadingBadge(
+                          context,
+                          diameter: badgeDiameter,
+                        )
+                      : eventTimingBadgeLabel == null
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: 0.85),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: scheme.surface,
+                                  width: 2,
+                                ),
+                              ),
+                              child: SizedBox(
+                                width: badgeDiameter,
+                                height: badgeDiameter,
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  size: badgeDiameter * 0.55,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                ),
+                if (eventTimingBadgeLabel != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: -8,
+                    child: Center(
+                      child: _buildEventTimingBadge(
+                        context,
+                        label: eventTimingBadgeLabel,
                       ),
                     ),
                   ),
-                ),
                 if (hasStack)
                   Positioned(
                     top: -2,
@@ -238,6 +287,65 @@ class PoiMarker extends StatelessWidget {
             color: Colors.white,
             fontSize: 10,
             fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventTimingBadge(
+    BuildContext context, {
+    required String label,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final isLiveNow = label.toUpperCase() == 'AGORA';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isLiveNow ? scheme.errorContainer : scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: scheme.surface,
+          width: 1.4,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color:
+                isLiveNow ? scheme.onErrorContainer : scheme.onPrimaryContainer,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingBadge(
+    BuildContext context, {
+    double diameter = 18,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: scheme.surface,
+          width: 2,
+        ),
+      ),
+      child: SizedBox(
+        width: diameter,
+        height: diameter,
+        child: Padding(
+          padding: EdgeInsets.all((diameter * 0.18).clamp(2, 4).toDouble()),
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         ),
       ),

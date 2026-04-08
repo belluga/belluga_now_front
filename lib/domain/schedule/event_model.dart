@@ -1,6 +1,7 @@
 export 'value_objects/event_model_values.dart';
 
 import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -38,6 +39,7 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
   final List<ArtistResume> artists; // Keep for backward compatibility
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final CityCoordinate? coordinate;
   final List<VenueEventTagValue> tagValues;
 
@@ -61,6 +63,20 @@ class EventModel {
   DateTime? get confirmedAt => confirmedAtValue.value;
   List<VenueEventTagValue> get tags =>
       List<VenueEventTagValue>.unmodifiable(tagValues);
+  List<EventLinkedAccountProfile> get linkedArtistProfiles {
+    return List<EventLinkedAccountProfile>.unmodifiable(
+      linkedAccountProfiles.where((profile) {
+        final normalizedPartyType = profile.partyType?.trim().toLowerCase();
+        final normalizedProfileType = profile.profileType.trim().toLowerCase();
+        return normalizedPartyType == 'artist' ||
+            normalizedProfileType == 'artist';
+      }),
+    );
+  }
+
+  EventLinkedAccountProfile? get primaryLinkedArtist =>
+      linkedArtistProfiles.isEmpty ? null : linkedArtistProfiles.first;
+
   List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
         tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
@@ -70,14 +86,24 @@ class EventModel {
       );
     }
 
-    final artistGenres = artists
+    final linkedTerms = linkedArtistProfiles
+        .expand((profile) => profile.taxonomyTerms)
+        .map((term) => term.labelValue.value.trim())
+        .where((g) => g.isNotEmpty)
+        .toSet()
+        .map(VenueEventTagValue.new)
+        .toList(growable: false);
+    if (linkedTerms.isNotEmpty) {
+      return linkedTerms;
+    }
+
+    return artists
         .expand((artist) => artist.genres)
         .map((genre) => genre.value.trim())
         .where((g) => g.isNotEmpty)
         .toSet()
         .map(VenueEventTagValue.new)
         .toList(growable: false);
-    return artistGenres;
   }
 
   EventModel({
@@ -92,6 +118,7 @@ class EventModel {
     required this.dateTimeStart,
     required this.dateTimeEnd,
     required this.artists,
+    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
     required this.coordinate,
     required List<VenueEventTagValue> tags,
     required this.isConfirmedValue,
@@ -100,6 +127,8 @@ class EventModel {
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  })  : tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+  })  : linkedAccountProfiles =
+            List<EventLinkedAccountProfile>.unmodifiable(linkedAccountProfiles),
+        tagValues = List<VenueEventTagValue>.unmodifiable(tags),
         confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

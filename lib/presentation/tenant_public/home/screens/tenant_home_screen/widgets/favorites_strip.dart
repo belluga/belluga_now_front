@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
 
@@ -12,6 +13,8 @@ class FavoritesStrip extends StatelessWidget {
     this.onPinnedTap,
     this.onFavoriteTap,
     this.onSearchTap,
+    this.resolvedVisualForItem,
+    this.haloStateForItem,
   });
 
   final List<FavoriteResume> items;
@@ -21,6 +24,9 @@ class FavoritesStrip extends StatelessWidget {
   final VoidCallback? onPinnedTap;
   final ValueChanged<FavoriteResume>? onFavoriteTap;
   final VoidCallback? onSearchTap;
+  final ResolvedAccountProfileVisual? Function(FavoriteResume item)?
+      resolvedVisualForItem;
+  final FavoriteChipHaloState Function(FavoriteResume item)? haloStateForItem;
 
   @override
   Widget build(BuildContext context) {
@@ -66,11 +72,15 @@ class FavoritesStrip extends StatelessWidget {
                 return FavoriteChip(
                   title: item.title,
                   imageUri: item.imageUri,
+                  assetPath: item.assetPath,
                   badge: item.badge,
                   onTap: () => onFavoriteTap?.call(item),
                   isPrimary: item.isPrimary,
                   iconImageUrl: item.iconImageUrl,
                   primaryColor: item.primaryColor,
+                  resolvedVisual: resolvedVisualForItem?.call(item),
+                  haloState:
+                      haloStateForItem?.call(item) ?? FavoriteChipHaloState.none,
                 );
               },
             ),

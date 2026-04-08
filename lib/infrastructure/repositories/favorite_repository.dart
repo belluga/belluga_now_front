@@ -15,9 +15,9 @@ class FavoriteRepository extends FavoriteRepositoryContract {
 
   @override
   Future<List<FavoriteResume>> fetchFavoriteResumes() async {
-    final favorites = await fetchFavorites();
-    return favorites
-        .map(FavoriteResume.fromFavorite)
+    final dtos = await backend.favorites.fetchFavorites();
+    return dtos
+        .map((dto) => dto.toResume())
         .toList(growable: false);
   }
 

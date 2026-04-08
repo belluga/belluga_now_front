@@ -24,6 +24,14 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.betweenHeroAndTabs,
     this.initialTabIndex = 0,
     this.footer,
+    this.collapsedTitle,
+    this.collapsedToolbarHeight = kToolbarHeight,
+    this.centerCollapsedTitle = true,
+    this.appBarActionsBuilder,
+    this.canUseTabFooter,
+    this.onBackPressed,
+    this.onSharePressed,
+    this.shareIcon = Icons.share,
     super.key,
   });
 
@@ -46,6 +54,33 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// Individual tabs can override this with their own footer
   final Widget? footer;
 
+  /// Optional gate that decides whether the active tab footer may replace the
+  /// screen-level default footer.
+  final bool Function(int currentTabIndex)? canUseTabFooter;
+
+  /// Optional widget displayed in the app bar when the hero is collapsed.
+  final Widget? collapsedTitle;
+
+  /// Height used by the collapsed/pinned app bar.
+  final double collapsedToolbarHeight;
+
+  /// Whether the collapsed title should be centered.
+  final bool centerCollapsedTitle;
+
+  /// Optional builder for screen-specific app bar actions that should live in
+  /// the same overlay plane as the built-in share action.
+  final List<Widget> Function(BuildContext context, bool innerBoxIsScrolled)?
+      appBarActionsBuilder;
+
+  /// Optional back handler for host screens that need route-specific fallback.
+  final VoidCallback? onBackPressed;
+
+  /// Optional share handler for surfaces that expose a canonical public share.
+  final VoidCallback? onSharePressed;
+
+  /// Optional icon used by the share action when [onSharePressed] is provided.
+  final IconData shareIcon;
+
   @override
   State<ImmersiveDetailScreen> createState() => _ImmersiveDetailScreenState();
 }
@@ -65,12 +100,14 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   @override
   void didUpdateWidget(covariant ImmersiveDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final titlesChanged = !listEquals(
-      oldWidget.tabs.map((t) => t.title).toList(),
-      widget.tabs.map((t) => t.title).toList(),
-    );
+    final tabsChanged = !identical(oldWidget.tabs, widget.tabs) ||
+        oldWidget.tabs.length != widget.tabs.length ||
+        !listEquals(
+          oldWidget.tabs.map((t) => t.title).toList(),
+          widget.tabs.map((t) => t.title).toList(),
+        );
 
-    if (oldWidget.tabs.length != widget.tabs.length || titlesChanged) {
+    if (tabsChanged) {
       _controller.updateTabs(widget.tabs);
     }
   }
@@ -78,8 +115,6 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final topPadding = MediaQuery.of(context).padding.top;
-    _controller.setTopPadding(topPadding);
     const appBarExpandedHeight = 400.0;
 
     return Scaffold(
@@ -91,118 +126,149 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
           final availableHeight = constraints.maxHeight;
 
           // The height of the pinned header (StatusBar + AppBar + Tabs)
-          final pinnedHeaderHeight = topPadding + kToolbarHeight + 48.0;
+          final pinnedHeaderHeight = MediaQuery.of(context).padding.top +
+              widget.collapsedToolbarHeight +
+              48.0;
+          _controller.updatePinnedHeaderHeight(pinnedHeaderHeight);
 
           // The minimum height for each tab content to fill the viewport
           // We subtract the pinned header height from the available height
           final minTabHeight = availableHeight - pinnedHeaderHeight;
 
-          return NestedScrollView(
-            key: _controller.nestedScrollViewKey,
-            controller: _controller.scrollController,
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverAppBar(
-                  expandedHeight: appBarExpandedHeight,
-                  pinned: true,
-                  stretch: true,
-                  backgroundColor: colorScheme.surface,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    color: innerBoxIsScrolled
-                        ? colorScheme.onSurface
-                        : Colors.white,
-                    onPressed: () => context.router.pop(),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.share),
-                      color: innerBoxIsScrolled
-                          ? colorScheme.onSurface
-                          : Colors.white,
-                      onPressed: () {
-                        // TODO: Share functionality
-                      },
+          return GestureDetector(
+            key: const Key('immersiveSwipeSurface'),
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: (details) {
+              _controller.onHorizontalSwipeEnd(details.primaryVelocity);
+            },
+            child: NestedScrollView(
+              key: _controller.nestedScrollViewKey,
+              controller: _controller.scrollController,
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverAppBar(
+                    expandedHeight: appBarExpandedHeight,
+                    toolbarHeight: widget.collapsedToolbarHeight,
+                    pinned: true,
+                    stretch: true,
+                    backgroundColor: colorScheme.surface,
+                    title: innerBoxIsScrolled
+                        ? widget.collapsedTitle ??
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                key: const Key('immersiveCollapsedTitle'),
+                                widget.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            )
+                        : null,
+                    centerTitle: widget.centerCollapsedTitle,
+                    leading: _buildAppBarActionButton(
+                      context: context,
+                      icon: Icons.arrow_back,
+                      innerBoxIsScrolled: innerBoxIsScrolled,
+                      padding: const EdgeInsets.only(
+                        left: 8,
+                        right: 4,
+                      ),
+                      onPressed: widget.onBackPressed ?? () => context.router.pop(),
                     ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        widget.heroContent,
-                        // Scrim gradient for icon visibility
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: 120,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.3),
-                                  Colors.transparent,
-                                ],
+                    actions: [
+                      ...?widget.appBarActionsBuilder?.call(
+                        context,
+                        innerBoxIsScrolled,
+                      ),
+                      if (widget.onSharePressed != null)
+                        _buildAppBarActionButton(
+                          context: context,
+                          icon: widget.shareIcon,
+                          innerBoxIsScrolled: innerBoxIsScrolled,
+                          onPressed: widget.onSharePressed!,
+                          key: const Key('immersiveShareAction'),
+                        ),
+                      const SizedBox(width: 8),
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          widget.heroContent,
+                          // Scrim gradient for icon visibility
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 120,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.3),
+                                    Colors.transparent,
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    title: innerBoxIsScrolled
-                        ? Text(
-                            widget.title,
-                            style: TextStyle(color: colorScheme.onSurface),
-                          )
-                        : null,
-                    centerTitle: true,
-                  ),
-                ),
-                // Optional content between hero and tabs
-                if (widget.betweenHeroAndTabs != null)
-                  SliverToBoxAdapter(
-                    child: widget.betweenHeroAndTabs,
-                  ),
-                StreamValueBuilder<int>(
-                    streamValue: _controller.currentTabIndexStreamValue,
-                    builder: (context, currentTabIndex) {
-                      return SliverPersistentHeader(
-                        pinned: true,
-                        delegate: ImmersiveHeaderDelegate(
-                          tabs: widget.tabs.map((t) => t.title).toList(),
-                          currentTabIndex: currentTabIndex,
-                          onTabTapped: _controller.onTabTapped,
-                          colorScheme: colorScheme,
-                          topPadding: 0,
-                        ),
-                      );
-                    }),
-              ];
-            },
-            body: SingleChildScrollView(
-              child: Column(
-                children: widget.tabs.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final tab = entry.value;
-                  return VisibilityDetector(
-                    key: Key('tab_visibility_$index'),
-                    onVisibilityChanged: (info) {
-                      _controller.onTabVisibilityChanged(
-                          index, info.visibleFraction);
-                    },
-                    child: Container(
-                      key: _controller.tabItems[index].key,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: minTabHeight,
-                        ),
-                        child: tab.content,
+                        ],
                       ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                  // Optional content between hero and tabs
+                  if (widget.betweenHeroAndTabs != null)
+                    SliverToBoxAdapter(
+                      child: widget.betweenHeroAndTabs,
+                    ),
+                  StreamValueBuilder<int>(
+                      streamValue: _controller.currentTabIndexStreamValue,
+                      builder: (context, currentTabIndex) {
+                        return SliverPersistentHeader(
+                          pinned: true,
+                          delegate: ImmersiveHeaderDelegate(
+                            tabs: widget.tabs.map((t) => t.title).toList(),
+                            currentTabIndex: currentTabIndex,
+                            onTabTapped: _controller.onTabTapped,
+                            colorScheme: colorScheme,
+                            topPadding: 0,
+                          ),
+                        );
+                      }),
+                ];
+              },
+              body: SingleChildScrollView(
+                child: Column(
+                  children: widget.tabs.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final tab = entry.value;
+                    return VisibilityDetector(
+                      key: Key('tab_visibility_$index'),
+                      onVisibilityChanged: (info) {
+                        _controller.onTabVisibilityChanged(
+                            index, info.visibleFraction);
+                      },
+                      child: Container(
+                        key: _controller.tabItems[index].key,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: minTabHeight,
+                          ),
+                          child: tab.content,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           );
@@ -219,12 +285,53 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
               0,
               _controller.tabItems.length - 1,
             );
+            final tabFooter = _controller.tabItems[safeIndex].footer;
+            final canUseTabFooter =
+                widget.canUseTabFooter?.call(safeIndex) ?? true;
 
-            return _controller.tabItems[safeIndex].footer ??
+            return (canUseTabFooter ? tabFooter : null) ??
                 widget.footer ??
                 const SizedBox.shrink();
           }),
     );
   }
 
+  Widget _buildAppBarActionButton({
+    required BuildContext context,
+    required IconData icon,
+    required bool innerBoxIsScrolled,
+    required VoidCallback onPressed,
+    EdgeInsetsGeometry padding = const EdgeInsets.only(right: 8),
+    Key? key,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = innerBoxIsScrolled
+        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.96)
+        : Colors.black.withValues(alpha: 0.28);
+    final foregroundColor = _contentColorForBackground(backgroundColor);
+    final outlineColor = innerBoxIsScrolled
+        ? colorScheme.outlineVariant.withValues(alpha: 0.42)
+        : Colors.white.withValues(alpha: 0.12);
+
+    return Padding(
+      padding: padding,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+          border: Border.all(color: outlineColor),
+        ),
+        child: IconButton(
+          key: key,
+          icon: Icon(icon, color: foregroundColor),
+          onPressed: onPressed,
+        ),
+      ),
+    );
+  }
+
+  Color _contentColorForBackground(Color backgroundColor) {
+    final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
+    return brightness == Brightness.dark ? Colors.white : Colors.black87;
+  }
 }

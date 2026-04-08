@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:developer' as developer;
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -28,12 +27,8 @@ import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart'
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -484,7 +479,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+      StreamValue<DistanceInMetersValue>(
+          defaultValue:
+              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
 
   @override
   AppData get appData => _appData;
@@ -513,7 +510,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
       _maxRadiusMetersStreamValue;
 
   @override
-  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters =>
+      _maxRadiusMetersStreamValue.value;
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -525,131 +523,21 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
-  _FakeScheduleRepository({required EventModel event}) : _event = event;
-
-  final EventModel _event;
-
-  @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required ScheduleRepoBool showPastOnly,
-    required ScheduleRepoString searchQuery,
-    required ScheduleRepoBool confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly.value) return null;
-    if (snapshot.searchQuery != searchQuery.value) return null;
-    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
-    return snapshot;
-  }
-
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
-  }
-
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
-  }
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => [_event];
-
-  @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
-    if (slug.value == _event.slugValue.value) {
-      return _event;
-    }
-    return null;
-  }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      [_event];
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
-    required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoBool? liveNowOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    return pagedEventsResultFromRaw(events: [_event], hasMore: false);
-  }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    return ScheduleSummaryModel(
-      items: [
-        ScheduleSummaryItemModel(
-          dateTimeStartValue: DateTimeValue(isRequired: true)
-            ..parse(
-              (_event.dateTimeStart.value ?? DateTime.now()).toIso8601String(),
-            ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-      ScheduleRepoDateTime date) async {
-    return [
-      VenueEventResume.fromScheduleEvent(
-        _event,
-        ThumbUriValue(
-          defaultValue: Uri.parse('https://example.com/event.png'),
-        ),
-      ),
-    ];
-  }
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
-    return [
-      VenueEventResume.fromScheduleEvent(
-        _event,
-        ThumbUriValue(
-          defaultValue: Uri.parse('https://example.com/event.png'),
-        ),
-      ),
-    ];
-  }
-
-  @override
-  Stream<EventDeltaModel> watchEventsStream({
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-    ScheduleRepoString? lastEventId,
-    ScheduleRepoBool? showPastOnly,
-  }) {
-    return const Stream<EventDeltaModel>.empty();
-  }
+  _FakeScheduleRepository({required EventModel event})
+      : super(
+          seededEvents: <EventModel>[event],
+          slugResolver: ({
+            required List<EventModel> seededEvents,
+            required String slug,
+          }) {
+            for (final candidate in seededEvents) {
+              if (candidate.slugValue.value == slug) {
+                return candidate;
+              }
+            }
+            return null;
+          },
+        );
 }
 
 class _FakeTenantRepository extends TenantRepositoryContract {
@@ -876,8 +764,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
-      InviteRecipients recipients,
+  Future<void> sendInvites(
+      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
 }
@@ -950,8 +838,7 @@ class _MutableFakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 
   @override
   String get userToken => _token;

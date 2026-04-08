@@ -998,6 +998,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetAccountDetail() {
+    if (_isDisposed) {
+      return;
+    }
     _clearAccountWatch();
     _watchedAccountId = null;
     _watchedAccountSlug = null;
@@ -1010,6 +1013,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void clearAccountDeletedFlag() {
+    if (_isDisposed) {
+      return;
+    }
     accountDeletedStreamValue.addValue(false);
   }
 

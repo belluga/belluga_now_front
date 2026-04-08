@@ -7,9 +7,12 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:dio/dio.dart';
@@ -95,6 +98,83 @@ void main() {
     expect(find.text('Unable to load events.'), findsNothing);
     expect(controller.eventsErrorStreamValue.value, isNull);
   });
+
+  testWidgets('legacy check dialog shows counts and repair result', (
+    tester,
+  ) async {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _LegacySummaryEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('tenant-admin-events-legacy-check-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Eventos legados'), findsOneWidget);
+    expect(find.text('Escaneados: 12'), findsOneWidget);
+    expect(find.text('Inválidos: 4'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('tenant-admin-events-repair-legacy-button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Corrigidos: 4'), findsOneWidget);
+    expect(find.text('Inválidos: 0'), findsOneWidget);
+  });
+
+  testWidgets('temporal chips default to now and future and allow adding past',
+      (tester) async {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _EventsRepositoryWithSeedData(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    final pastChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    final nowChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-now'),
+      ).first,
+    );
+    final futureChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-future'),
+      ).first,
+    );
+
+    expect(pastChip.selected, isFalse);
+    expect(nowChip.selected, isTrue);
+    expect(futureChip.selected, isTrue);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    await tester.pumpAndSettle();
+
+    final updatedPastChip = tester.widget<FilterChip>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-temporal-past'),
+      ).first,
+    );
+    expect(updatedPastChip.selected, isTrue);
+  });
 }
 
 Future<void> _pumpEventsRouter(WidgetTester tester) async {
@@ -175,6 +255,7 @@ class _EventsRepositoryWithSeedData
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return <TenantAdminEvent>[_seedEvent];
   }
@@ -186,6 +267,7 @@ class _EventsRepositoryWithSeedData
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     if (page.value > 1) {
       return tenantAdminPagedResultFromRaw(
@@ -223,6 +305,29 @@ class _EventsRepositoryWithSeedData
     throw UnimplementedError();
   }
 
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
   static final TenantAdminEvent _seedEvent = TenantAdminEvent(
     eventIdValue: tenantAdminRequiredText('evt-1'),
     slugValue: tenantAdminRequiredText('seed-event'),
@@ -241,6 +346,31 @@ class _EventsRepositoryWithSeedData
       statusValue: tenantAdminRequiredText('draft'),
     ),
   );
+}
+
+class _LegacySummaryEventsRepository extends _EventsRepositoryWithSeedData {
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(12),
+      invalidValue: TenantAdminCountValue(4),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(8),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(12),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(4),
+      unchangedValue: TenantAdminCountValue(8),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
 }
 
 class _ScreenLandlordAuthRepository implements LandlordAuthRepositoryContract {

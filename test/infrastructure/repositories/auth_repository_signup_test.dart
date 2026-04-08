@@ -18,7 +18,6 @@ import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -284,21 +283,9 @@ class _UnsupportedAccountProfilesBackend
       throw UnimplementedError();
 
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
-      throw UnimplementedError();
-
-  @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required int page,
     required int pageSize,
-    String? query,
-    String? typeFilter,
-    List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
     List<String>? allowedTypes,
@@ -331,12 +318,6 @@ class _UnsupportedVenueEventBackend extends VenueEventBackendContract {
 }
 
 class _UnsupportedScheduleBackend extends ScheduleBackendContract {
-  @override
-  Future<EventSummaryDTO> fetchSummary() => throw UnimplementedError();
-
-  @override
-  Future<List<EventDTO>> fetchEvents() => throw UnimplementedError();
-
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
       throw UnimplementedError();

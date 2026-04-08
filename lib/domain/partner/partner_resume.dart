@@ -29,6 +29,7 @@ class PartnerResume {
   final InvitePartnerHeroImageValue heroImageValue;
   final InvitePartnerLogoImageValue logoImageValue;
 
+  String get id => idValue.value;
   String get displayName => nameValue.value;
   String? get slug => slugValue?.value;
 

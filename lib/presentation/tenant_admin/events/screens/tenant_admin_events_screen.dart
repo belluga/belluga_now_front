@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
@@ -117,6 +119,96 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       }
       _controller.loadFormDependencies();
     });
+  }
+
+  Future<void> _openLegacyEventsDialog() async {
+    TenantAdminLegacyEventPartiesSummary? summary;
+    String? errorMessage;
+
+    try {
+      summary = await _controller.inspectLegacyEventParties();
+    } catch (_) {
+      errorMessage = 'Falha ao verificar eventos legados.';
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) {
+        var currentSummary = summary;
+        var currentError = errorMessage;
+        var isBusy = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> repairWithState() async {
+              setState(() {
+                isBusy = true;
+                currentError = null;
+              });
+              try {
+                currentSummary = await _controller.repairLegacyEventParties();
+              } catch (_) {
+                currentError = 'Falha ao corrigir eventos legados.';
+              } finally {
+                if (context.mounted) {
+                  setState(() {
+                    isBusy = false;
+                  });
+                }
+              }
+            }
+
+            final content = currentError != null
+                ? Text(currentError!)
+                : currentSummary == null
+                    ? const SizedBox(
+                        height: 64,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Escaneados: ${currentSummary!.scanned}'),
+                          Text('Inválidos: ${currentSummary!.invalid}'),
+                          Text('Corrigidos: ${currentSummary!.repaired}'),
+                          Text('Sem mudança: ${currentSummary!.unchanged}'),
+                          Text('Falhas: ${currentSummary!.failed}'),
+                        ],
+                      );
+
+            return AlertDialog(
+              title: const Text('Eventos legados'),
+              content: content,
+              actions: [
+                TextButton(
+                  onPressed: isBusy ? null : () => context.router.maybePop(),
+                  child: const Text('Fechar'),
+                ),
+                if (currentError == null &&
+                    currentSummary != null &&
+                    currentSummary!.invalid > 0)
+                  FilledButton(
+                    key: const ValueKey<String>(
+                      'tenant-admin-events-repair-legacy-button',
+                    ),
+                    onPressed: isBusy ? null : repairWithState,
+                    child: Text(
+                      isBusy
+                          ? 'Corrigindo...'
+                          : 'Corrigir ${currentSummary!.invalid}',
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -255,9 +347,46 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       },
     );
 
+    final temporalFilter =
+        StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
+      streamValue: _controller.temporalFilterStreamValue,
+      builder: (context, selectedBuckets) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Temporalidade',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: TenantAdminEventTemporalBucket.values
+                  .map(
+                    (bucket) => FilterChip(
+                      key: ValueKey<String>(
+                        'tenant-admin-events-temporal-${bucket.apiValue}',
+                      ),
+                      label: Text(bucket.label),
+                      selected: selectedBuckets.contains(bucket),
+                      onSelected: (_) {
+                        _controller.toggleTemporalFilter(bucket);
+                        _controller.applyFilters();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+        );
+      },
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (error != null && error.isNotEmpty)
             Padding(
@@ -279,12 +408,28 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            temporalFilter,
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: _openEventTypes,
-                icon: const Icon(Icons.category_outlined),
-                label: const Text('Tipos de evento'),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _openEventTypes,
+                    icon: const Icon(Icons.category_outlined),
+                    label: const Text('Tipos de evento'),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey<String>(
+                      'tenant-admin-events-legacy-check-button',
+                    ),
+                    onPressed: _openLegacyEventsDialog,
+                    icon: const Icon(Icons.health_and_safety_outlined),
+                    label: const Text('Verificar Eventos Legados'),
+                  ),
+                ],
               ),
             ),
           ] else
@@ -306,6 +451,15 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                   label: const Text('Tipos'),
                 ),
                 const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  key: const ValueKey<String>(
+                    'tenant-admin-events-legacy-check-button',
+                  ),
+                  onPressed: _openLegacyEventsDialog,
+                  icon: const Icon(Icons.health_and_safety_outlined),
+                  label: const Text('Verificar Eventos Legados'),
+                ),
+                const SizedBox(width: 12),
                 FilledButton.icon(
                   onPressed: _openCreateForm,
                   icon: const Icon(Icons.add),
@@ -313,6 +467,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                 ),
               ],
             ),
+          const SizedBox(height: 12),
+          temporalFilter,
         ],
       ),
     );

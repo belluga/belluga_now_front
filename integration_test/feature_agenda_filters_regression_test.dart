@@ -20,10 +20,8 @@ import 'package:belluga_now/domain/repositories/schedule_repository_contract.dar
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -34,8 +32,10 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dar
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -64,7 +64,7 @@ void main() {
       (tester) async {
     debugPrint('Home agenda test: start');
     final harness = _AgendaFiltersHarness();
-    harness.register();
+    await harness.register();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -86,13 +86,13 @@ void main() {
 
     await _pumpFor(tester);
     debugPrint('Home agenda test: widget pumped');
-    await _waitForDisplayedEvents(
+    await _waitForDisplayedHomeEvents(
       tester,
-      harness.homeController.displayedEventsStreamValue,
+      harness.homeController.displayStateStreamValue,
     );
 
     final controller = harness.homeController;
-    expect(controller.displayedEventsStreamValue.value, isNotEmpty);
+    expect(controller.displayedEvents, isNotEmpty);
     debugPrint('Home agenda test: initial events ready');
 
     debugPrint('Home agenda test: set invite filter');
@@ -101,7 +101,7 @@ void main() {
     await _pumpFor(tester);
     debugPrint('Home agenda test: pump done');
     _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value!,
+      controller.displayedEvents!,
       harness.pendingInviteEventId,
       const {},
     );
@@ -123,7 +123,7 @@ void main() {
     controller.setInviteFilter(InviteFilter.confirmedOnly);
     await _pumpFor(tester);
     _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value!,
+      controller.displayedEvents!,
       '',
       {harness.pendingInviteEventId},
     );
@@ -149,7 +149,7 @@ void main() {
       (tester) async {
     debugPrint('Agenda screen test: start');
     final harness = _AgendaFiltersHarness();
-    harness.register(forAgendaScreen: true);
+    await harness.register(forAgendaScreen: true);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -172,7 +172,7 @@ void main() {
     await _pumpFor(tester);
     for (final event in controller.displayedEventsStreamValue.value) {
       expect(
-        event.dateTimeStart.value!.isBefore(DateTime.now()),
+        event.startDateTime.isBefore(DateTime.now()),
         isTrue,
       );
     }
@@ -229,17 +229,25 @@ void main() {
 }
 
 void _expectOnlyInviteFiltered(
-  List<EventModel> events,
+  Iterable<Object> events,
   String pendingEventId,
   Set<String> confirmedEventIds,
 ) {
   expect(events, isNotEmpty);
   for (final event in events) {
-    final id = event.id.value;
+    final id = _eventId(event);
     final isPending = id == pendingEventId;
     final isConfirmed = confirmedEventIds.contains(id);
     expect(isPending || isConfirmed, isTrue);
   }
+}
+
+String _eventId(Object event) {
+  return switch (event) {
+    EventModel() => event.id.value,
+    VenueEventResume() => event.id,
+    _ => throw StateError('Unsupported event type: ${event.runtimeType}'),
+  };
 }
 
 class _AgendaFiltersHarness {
@@ -265,7 +273,7 @@ class _AgendaFiltersHarness {
   late final TenantHomeAgendaController homeController;
   late final EventSearchScreenController agendaController;
 
-  void register({bool forAgendaScreen = false}) {
+  Future<void> register({bool forAgendaScreen = false}) async {
     final getIt = GetIt.I;
     _unregisterIfRegistered<ScheduleRepositoryContract>();
     _unregisterIfRegistered<UserEventsRepositoryContract>();
@@ -282,6 +290,12 @@ class _AgendaFiltersHarness {
       userLocationRepository,
     );
     getIt.registerSingleton<AppDataRepository>(appDataRepository);
+    await appDataRepository.init();
+
+    final locationOriginService = LocationOriginService(
+      appDataRepository: appDataRepository,
+      userLocationRepository: userLocationRepository,
+    );
 
     homeController = _TestTenantHomeAgendaController(
       scheduleRepository: scheduleRepository,
@@ -289,6 +303,7 @@ class _AgendaFiltersHarness {
       invitesRepository: invitesRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
+      locationOriginService: locationOriginService,
     );
     getIt.registerSingleton<TenantHomeAgendaController>(homeController);
 
@@ -298,6 +313,7 @@ class _AgendaFiltersHarness {
       invitesRepository: invitesRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
+      locationOriginService: locationOriginService,
     );
     if (forAgendaScreen) {
       getIt.registerSingleton<EventSearchScreenController>(agendaController);
@@ -323,113 +339,28 @@ class _AgendaFiltersHarness {
 }
 
 class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
-  _TestScheduleRepository(this._events);
-
-  final List<EventModel> _events;
-
-  @override
-  HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required ScheduleRepoBool showPastOnly,
-    required ScheduleRepoString searchQuery,
-    required ScheduleRepoBool confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) {
-    final snapshot = homeAgendaCacheStreamValue.value;
-    if (snapshot == null) return null;
-    if (snapshot.showPastOnly != showPastOnly.value) return null;
-    if (snapshot.searchQuery != searchQuery.value) return null;
-    if (snapshot.confirmedOnly != confirmedOnly.value) return null;
-    return snapshot;
-  }
-
-  @override
-  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
-    homeAgendaCacheStreamValue.addValue(snapshot);
-    homeAgendaEventsStreamValue.addValue(snapshot.events);
-  }
-
-  @override
-  void clearHomeAgendaCache() {
-    homeAgendaCacheStreamValue.addValue(null);
-    homeAgendaEventsStreamValue.addValue(null);
-  }
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => _events;
-
-  @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
-    for (final event in _events) {
-      if (event.slug == slug.value) return event;
-    }
-    return null;
-  }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    ScheduleRepoDateTime date, {
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      [];
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required ScheduleRepoInt page,
-    required ScheduleRepoInt pageSize,
-    required ScheduleRepoBool showPastOnly,
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoBool? liveNowOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-  }) async {
-    final now = DateTime.now();
-
-    final filtered = _events.where((event) {
-      final start = event.dateTimeStart.value!;
-      final isPast = start.isBefore(now);
-      return showPastOnly.value == isPast;
-    }).toList();
-
-    return pagedEventsResultFromRaw(events: filtered, hasMore: false);
-  }
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(
-          ScheduleRepoDateTime date) async =>
-      const <VenueEventResume>[];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
-      const <VenueEventResume>[];
-
-  @override
-  Stream<EventDeltaModel> watchEventsStream({
-    ScheduleRepoString? searchQuery,
-    List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
-    ScheduleRepoTaxonomyEntries? taxonomy,
-    ScheduleRepoBool? confirmedOnly,
-    ScheduleRepoDouble? originLat,
-    ScheduleRepoDouble? originLng,
-    ScheduleRepoDouble? maxDistanceMeters,
-    ScheduleRepoString? lastEventId,
-    ScheduleRepoBool? showPastOnly,
-  }) {
-    return const Stream<EventDeltaModel>.empty();
-  }
+  _TestScheduleRepository(List<EventModel> events)
+      : super(
+          seededEvents: events,
+          queryResolver: ({
+            required List<EventModel> seededEvents,
+            required bool showPastOnly,
+            required bool liveNowOnly,
+            String? searchQuery,
+            required bool confirmedOnly,
+            double? originLat,
+            double? originLng,
+            double? maxDistanceMeters,
+          }) {
+            final now = DateTime.now();
+            final filtered = seededEvents.where((event) {
+              final start = event.dateTimeStart.value!;
+              final isPast = start.isBefore(now);
+              return showPastOnly == isPast;
+            }).toList(growable: false);
+            return List<EventModel>.unmodifiable(filtered);
+          },
+        );
 }
 
 class _TestUserEventsRepository implements UserEventsRepositoryContract {
@@ -649,10 +580,28 @@ class _TestAppDataBackend implements AppDataBackendContract {
   @override
   Future<AppDataDTO> fetch() async {
     return AppDataDTO(
-      name: 'Test',
+      tenantId: 'tenant-guarappari',
+      name: 'Guarappari',
       type: 'tenant',
-      mainDomain: 'example.com',
-      themeDataSettings: const {},
+      mainDomain: 'https://guarappari.belluga.space',
+      domains: const ['guarappari.belluga.space'],
+      appDomains: const ['com.guarappari.app'],
+      themeDataSettings: const {
+        'brightness_default': 'light',
+        'primary_seed_color': '#009688',
+        'secondary_seed_color': '#3F51B5',
+      },
+      telemetry: const {
+        'trackers': [],
+      },
+      telemetryContext: const {
+        'location_freshness_minutes': 5,
+      },
+      push: const {
+        'enabled': true,
+        'types': ['event'],
+        'throttles': {'max_per_hour': 20},
+      },
     );
   }
 }
@@ -664,7 +613,7 @@ class _TestAppDataLocalInfoSource extends AppDataLocalInfoSource {
         port: null,
         hostname: '',
         href: '',
-        device: '',
+        device: 'guarappari-device-test',
       );
 }
 
@@ -776,12 +725,14 @@ class _TestTenantHomeAgendaController extends TenantHomeAgendaController {
     required InvitesRepositoryContract invitesRepository,
     required UserLocationRepositoryContract userLocationRepository,
     required AppDataRepository appDataRepository,
+    required LocationOriginServiceContract locationOriginService,
   }) : super(
           scheduleRepository: scheduleRepository,
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
+          locationOriginService: locationOriginService,
         );
 
   bool _disposed = false;
@@ -801,12 +752,14 @@ class _TestEventSearchScreenController extends EventSearchScreenController {
     required InvitesRepositoryContract invitesRepository,
     required UserLocationRepositoryContract userLocationRepository,
     required AppDataRepository appDataRepository,
+    required LocationOriginServiceContract locationOriginService,
   }) : super(
           scheduleRepository: scheduleRepository,
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
+          locationOriginService: locationOriginService,
         );
 
   bool _disposed = false;
@@ -1020,20 +973,32 @@ Future<void> _pumpFor(
   final end = DateTime.now().add(duration);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    });
   }
 }
 
 Future<void> _waitForDisplayedEvents(
   WidgetTester tester,
-  StreamValue<List<EventModel>?> eventsStreamValue, {
+  StreamValue<List<VenueEventResume>> eventsStreamValue, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    if ((eventsStreamValue.value ?? const <EventModel>[]).isNotEmpty) {
+    if (eventsStreamValue.value.isNotEmpty) {
+      return;
+    }
+    await _pumpFor(tester);
+  }
+}
+
+Future<void> _waitForDisplayedHomeEvents(
+  WidgetTester tester,
+  StreamValue<TenantHomeAgendaDisplayState?> displayStateStreamValue, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    if ((displayStateStreamValue.value?.events ?? const <EventModel>[])
+        .isNotEmpty) {
       return;
     }
     await _pumpFor(tester);

@@ -3,6 +3,7 @@ export 'value_objects/tenant_admin_poi_visual_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
 enum TenantAdminPoiVisualMode {
@@ -41,17 +42,20 @@ TenantAdminPoiVisualMode? tenantAdminPoiVisualModeFromValue(
 enum TenantAdminPoiVisualImageSource {
   avatar,
   cover,
+  typeAsset,
 }
 
 extension TenantAdminPoiVisualImageSourceX on TenantAdminPoiVisualImageSource {
   String get apiValue => switch (this) {
         TenantAdminPoiVisualImageSource.avatar => 'avatar',
         TenantAdminPoiVisualImageSource.cover => 'cover',
+        TenantAdminPoiVisualImageSource.typeAsset => 'type_asset',
       };
 
   String get label => switch (this) {
-        TenantAdminPoiVisualImageSource.avatar => 'Avatar',
-        TenantAdminPoiVisualImageSource.cover => 'Capa',
+        TenantAdminPoiVisualImageSource.avatar => 'Avatar do perfil',
+        TenantAdminPoiVisualImageSource.cover => 'Capa do perfil',
+        TenantAdminPoiVisualImageSource.typeAsset => 'Imagem canônica do tipo',
       };
 }
 
@@ -78,10 +82,12 @@ class TenantAdminPoiVisual {
     TenantAdminHexColorValue? iconColorValue,
   })  : mode = TenantAdminPoiVisualMode.icon,
         iconColorValue = iconColorValue ?? _defaultIconColorValue(),
-        imageSource = null;
+        imageSource = null,
+        imageUrlValue = null;
 
   TenantAdminPoiVisual.image({
     required this.imageSource,
+    this.imageUrlValue,
   })  : mode = TenantAdminPoiVisualMode.image,
         iconValue = null,
         colorValue = null,
@@ -92,10 +98,12 @@ class TenantAdminPoiVisual {
   final TenantAdminHexColorValue? colorValue;
   final TenantAdminHexColorValue? iconColorValue;
   final TenantAdminPoiVisualImageSource? imageSource;
+  final TenantAdminOptionalUrlValue? imageUrlValue;
 
   String? get icon => iconValue?.value;
   String? get color => colorValue?.value;
   String? get iconColor => iconColorValue?.value;
+  String? get imageUrl => imageUrlValue?.nullableValue;
 
   bool get isValid {
     switch (mode) {

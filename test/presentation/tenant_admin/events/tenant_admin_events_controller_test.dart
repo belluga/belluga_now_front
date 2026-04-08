@@ -5,9 +5,12 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +50,50 @@ void main() {
     await controller.loadEvents();
 
     expect(eventsRepository.lastLoadArchived, isTrue);
+  });
+
+  test('loadEvents forwards default temporal filters to repository', () async {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    await controller.loadEvents();
+
+    expect(
+      eventsRepository.lastTemporalBuckets,
+      equals(TenantAdminEventTemporalBucket.defaultSelection),
+    );
+  });
+
+  test('toggleTemporalFilter keeps at least one bucket selected', () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.toggleTemporalFilter(TenantAdminEventTemporalBucket.future);
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(<TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+      }),
+    );
+
+    controller.toggleTemporalFilter(TenantAdminEventTemporalBucket.now);
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(<TenantAdminEventTemporalBucket>{
+        TenantAdminEventTemporalBucket.now,
+      }),
+    );
   });
 
   test(
@@ -203,6 +250,33 @@ void main() {
     );
     expect(eventsRepository.artistSearchRequests.last, ('echo', 1));
   });
+
+  test('inspectLegacyEventParties delegates to repository', () async {
+    final eventsRepository = _LegacySummaryTrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    final summary = await controller.inspectLegacyEventParties();
+
+    expect(eventsRepository.inspectCalls, 1);
+    expect(summary.invalid, 3);
+  });
+
+  test('repairLegacyEventParties delegates and reloads events', () async {
+    final eventsRepository = _LegacySummaryTrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    final summary = await controller.repairLegacyEventParties();
+
+    expect(eventsRepository.repairCalls, 1);
+    expect(eventsRepository.fetchEventsPageCalls, 1);
+    expect(summary.repaired, 3);
+  });
 }
 
 TenantAdminEventDraft _buildDraft() {
@@ -248,6 +322,18 @@ class _FailingDeleteEventsRepository
   }
 
   @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
   Future<TenantAdminEvent> fetchEvent(
       TenantAdminEventsRepoString eventIdOrSlug) async {
     throw UnimplementedError();
@@ -258,6 +344,7 @@ class _FailingDeleteEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return <TenantAdminEvent>[];
   }
@@ -269,6 +356,7 @@ class _FailingDeleteEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
@@ -297,6 +385,17 @@ class _FailingDeleteEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
   }
 }
 
@@ -398,6 +497,7 @@ class _TrackingEventsRepository
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
   bool? lastLoadArchived;
+  Set<TenantAdminEventTemporalBucket>? lastTemporalBuckets;
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -428,9 +528,11 @@ class _TrackingEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsCalls += 1;
     lastLoadArchived = archived?.value;
+    lastTemporalBuckets = temporalBuckets;
     return <TenantAdminEvent>[];
   }
 
@@ -441,9 +543,11 @@ class _TrackingEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsPageCalls += 1;
     lastLoadArchived = archived?.value;
+    lastTemporalBuckets = temporalBuckets;
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
       hasMore: false,
@@ -471,6 +575,29 @@ class _TrackingEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
   }
 }
 
@@ -602,6 +729,7 @@ class _AccountScopedEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsCalls += 1;
     return <TenantAdminEvent>[];
@@ -614,6 +742,7 @@ class _AccountScopedEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsPageCalls += 1;
     return tenantAdminPagedResultFromRaw(
@@ -647,6 +776,29 @@ class _AccountScopedEventsRepository
   }) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
 }
 
 class _EventTypeUpdateTrackingRepository
@@ -666,6 +818,36 @@ class _EventTypeUpdateTrackingRepository
       nameValue: tenantAdminRequiredText(name?.value ?? 'Show'),
       slugValue: tenantAdminRequiredText(slug?.value ?? 'show'),
       descriptionValue: tenantAdminOptionalText(description?.value),
+    );
+  }
+}
+
+class _LegacySummaryTrackingEventsRepository extends _TrackingEventsRepository {
+  int inspectCalls = 0;
+  int repairCalls = 0;
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    inspectCalls += 1;
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(7),
+      invalidValue: TenantAdminCountValue(3),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(4),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+    repairCalls += 1;
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(7),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(3),
+      unchangedValue: TenantAdminCountValue(4),
+      failedValue: TenantAdminCountValue(0),
     );
   }
 }

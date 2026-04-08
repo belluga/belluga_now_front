@@ -183,12 +183,13 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
   });
-  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) async {
     return createProfileType(
       type: type,
@@ -205,13 +206,15 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   });
-  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminAccountProfilesRepoBool? removeTypeAsset,
   }) async {
     return updateProfileType(
       type: type,
@@ -464,12 +467,13 @@ mixin TenantAdminProfileTypesPaginationMixin
   }
 
   @override
-  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
   }) {
     return createProfileType(
       type: type,
@@ -480,13 +484,15 @@ mixin TenantAdminProfileTypesPaginationMixin
   }
 
   @override
-  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminAccountProfilesRepoBool? removeTypeAsset,
   }) {
     return updateProfileType(
       type: type,

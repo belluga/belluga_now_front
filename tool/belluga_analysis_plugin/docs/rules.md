@@ -119,6 +119,59 @@ Controllers must not mutate delegated `StreamValue` sources owned by repositorie
 2. If the controller needs to mutate canonical shared state, add/use an explicit repository getter/setter or repository mutation API and perform the stream write inside the repository.
 3. If the controller needs only local screen-stage state, introduce a controller-owned `StreamValue`.
 
+## `controller_streamvalue_parameter_forbidden`
+
+### Rule intent
+Controllers must not accept `StreamValue` as a method/helper parameter. Passing `StreamValue` around as a parameter hides ownership, makes delegated mutation easier to smuggle through generic helpers, and weakens the single-writer contract.
+
+### Remediation playbook
+1. Remove helper methods that accept `StreamValue` parameters in controllers.
+2. Keep mutation explicit at the owned field call site (for example `loadingStreamValue.addValue(true)`).
+3. If a small helper is still needed, pass a closure (`VoidCallback`) or create a semantic setter bound to the owned field rather than accepting `StreamValue`.
+4. Delegated repository/service `StreamValue` remains read-only in controllers; changing canonical shared state must still go through repository APIs.
+
+## `controller_repository_pagination_arguments_forbidden`
+
+### Rule intent
+Controllers must not pass raw pagination control arguments (`page`, `pageSize`, `cursor`, `limit`, etc.) into repository calls.
+
+### Remediation playbook
+1. Remove raw pagination arguments from controller-to-repository calls.
+2. Expose semantic repository intents instead, for example:
+   - `refreshFeed()`
+   - `loadNextFeedSlice()`
+   - `loadHomeAgenda()`
+   - `loadMoreHomeAgenda()`
+3. Keep page bookkeeping, cursors, and backend pagination semantics private inside repository implementations.
+
+## `repository_contract_pagination_controls_forbidden`
+
+### Rule intent
+For the Schedule/Home/Agenda lane, repository contracts must not expose raw pagination control arguments or delegated pagination state. Public repository APIs may express semantic load/load-more behavior, but page numbers, sizes, cursors, offsets, limits, `hasMore...` delegates, and `loadNext...Page()` APIs are repository-internal concerns.
+
+### Remediation playbook
+1. Remove `page`, `pageSize`, `cursor`, `limit`, `offset`, and similar parameters from repository contracts.
+2. Remove `hasMore...` delegates and page-addressed method names such as `loadNext...Page()` from repository contracts.
+3. Replace them with semantic repository methods, for example:
+   - `loadEventSearch(...)`
+   - `loadMoreEventSearch(...)`
+   - `loadConfirmedEvents(...)`
+   - aggregate-specific `refresh...` / `loadMore...` APIs
+4. Keep page-envelope helpers and next-page / has-more state private inside the repository implementation.
+
+## `domain_paged_result_type_forbidden`
+
+### Rule intent
+For the Schedule/Home/Agenda lane, public domain paged-result/envelope/cache-snapshot types (for example `PagedEventsResult` or `HomeAgendaCacheSnapshot`) are forbidden. Pagination wrappers and cache/query snapshots are transport/repository concerns, not domain surface contracts.
+
+### Remediation playbook
+1. Delete public domain paged-result wrappers from `lib/domain/**`.
+2. Delete public cache/query snapshot wrappers from `lib/domain/**` when they carry repository-private page/query state.
+3. If pagination bookkeeping is still needed, keep it as a private helper inside the repository implementation.
+4. Expose only:
+   - materialized domain items, or
+   - aggregate-specific semantic methods/streams owned by the repository.
+
 ## `controller_owned_streamvalue_dispose_required`
 
 ### Rule intent

@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -47,6 +46,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            key: const ValueKey<String>('discovery-safe-back-button'),
+            tooltip: 'Voltar',
+            onPressed: () => _handleBackNavigation(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          ),
           title: StreamValueBuilder<bool>(
             streamValue: _controller.isSearchingStreamValue,
             builder: (context, isSearching) {
@@ -98,16 +103,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _handleBackNavigation(BuildContext context) {
-    if (_controller.consumeBackNavigationIfNeeded()) {
-      return;
-    }
-
-    final router = context.router;
-    if (router.removeLast()) {
-      return;
-    }
-
-    unawaited(router.replaceAll([const TenantHomeRoute()]));
+    performTenantPublicSafeBack(
+      context.router,
+      fallbackRoute: const TenantHomeRoute(),
+      consumeBackNavigationIfNeeded: _controller.consumeBackNavigationIfNeeded,
+    );
   }
 
   Widget _buildFeed(BuildContext context) {
@@ -152,12 +152,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     if (showSections)
                                       SliverToBoxAdapter(
                                         child: StreamValueBuilder<
-                                            List<EventModel>>(
+                                            List<EventModel>?>(
                                           streamValue: _controller
                                               .liveNowEventsStreamValue,
                                           builder: (context, liveNow) {
                                             return DiscoveryLiveNowSection(
-                                              items: liveNow,
+                                              items: liveNow ??
+                                                  const <EventModel>[],
                                               onTap: (event) =>
                                                   context.router.push(
                                                 ImmersiveEventDetailRoute(
@@ -182,6 +183,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
                                               ),
+                                              resolvedVisualForItem: _controller
+                                                  .resolvedVisualForAccountProfile,
                                             );
                                           },
                                         ),
@@ -288,11 +291,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             PartnerDetailRoute(
                                                 slug: partner.slug),
                                           ),
-                                          typeLabelForPartner: (partner) =>
-                                              _controller
-                                                  .labelForAccountProfileType(
-                                            partner.type,
-                                          ),
+                                          resolvedVisualForPartner: _controller
+                                              .resolvedVisualForAccountProfile,
                                         ),
                                       ),
                                     SliverToBoxAdapter(

@@ -12,7 +12,6 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -43,8 +42,6 @@ void main() {
 
     final scheduleRepository = ScheduleRepository(
       backend: backend,
-      userLocationRepository: userLocationRepository,
-      appDataRepository: appDataRepository,
     );
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
@@ -84,8 +81,6 @@ void main() {
 
     final scheduleRepository = ScheduleRepository(
       backend: backend,
-      userLocationRepository: userLocationRepository,
-      appDataRepository: appDataRepository,
     );
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
@@ -119,16 +114,12 @@ void main() {
       longitude: -40.495395,
     );
     final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
-    final appDataRepository = _FakeAppDataRepository(appData);
-    final userLocationRepository = _FakeUserLocationRepository();
     final backend = _CapturingScheduleBackend(hasMoreFirstPage: true);
 
     GetIt.I.registerSingleton<AppData>(appData);
 
     final scheduleRepository = ScheduleRepository(
       backend: backend,
-      userLocationRepository: userLocationRepository,
-      appDataRepository: appDataRepository,
     );
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
@@ -168,13 +159,6 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   final bool hasMoreFirstPage;
 
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
-
-  @override
-  Future<EventSummaryDTO> fetchSummary() async =>
-      EventSummaryDTO(items: const []);
-
-  @override
-  Future<List<EventDTO>> fetchEvents() async => const [];
 
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>

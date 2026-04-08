@@ -48,8 +48,9 @@ class TenantAdminStaticAssetsRequestEncoder {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    bool includeVisual = false,
+    bool? removeTypeAsset,
   }) {
     final payload = <String, dynamic>{};
     if (type != null) payload['type'] = type;
@@ -67,8 +68,12 @@ class TenantAdminStaticAssetsRequestEncoder {
         'has_content': capabilities.hasContent,
       };
     }
-    if (includePoiVisual) {
-      payload['poi_visual'] = poiVisual?.toJson();
+    if (includeVisual) {
+      payload['visual'] = visual?.toJson();
+      payload['poi_visual'] = visual?.toJson();
+    }
+    if (removeTypeAsset == true) {
+      payload['remove_type_asset'] = true;
     }
     return payload;
   }

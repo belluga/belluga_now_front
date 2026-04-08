@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_optional_text_value.dart';
 import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
@@ -27,11 +28,15 @@ class VenueEventResume {
     required this.startDateTimeValue,
     this.endDateTimeValue,
     required this.locationValue,
+    VenueEventOptionalTextValue? eventTypeLabelValue,
+    VenueEventOptionalTextValue? venueTitleValue,
     required this.artists,
     required this.tagValues,
     this.coordinate,
     this.mission,
-  });
+  })  : eventTypeLabelValue =
+            eventTypeLabelValue ?? VenueEventOptionalTextValue(),
+        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue();
 
   final MongoIDValue idValue;
   final SlugValue slugValue;
@@ -40,6 +45,8 @@ class VenueEventResume {
   final DateTimeValue startDateTimeValue;
   final DateTimeValue? endDateTimeValue;
   final DescriptionValue locationValue;
+  final VenueEventOptionalTextValue eventTypeLabelValue;
+  final VenueEventOptionalTextValue venueTitleValue;
   final List<ArtistResume> artists;
   final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
@@ -68,6 +75,16 @@ class VenueEventResume {
   }
 
   VenueEventResumePrimString get location => locationValue.value;
+  VenueEventResumePrimString? get eventTypeLabel {
+    final value = eventTypeLabelValue.value.trim();
+    return value.isEmpty ? null : value;
+  }
+
+  VenueEventResumePrimString? get venueTitle {
+    final value = venueTitleValue.value.trim();
+    return value.isEmpty ? null : value;
+  }
+
   CityCoordinate? get coordinateValue => coordinate;
   VenueEventResumePrimBool get hasArtists => artists.isNotEmpty;
   ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
@@ -153,6 +170,10 @@ class VenueEventResume {
       startDateTimeValue: startValue,
       endDateTimeValue: endValue,
       locationValue: event.location,
+      eventTypeLabelValue: VenueEventOptionalTextValue()
+        ..parse(event.type.name.value),
+      venueTitleValue: VenueEventOptionalTextValue()
+        ..parse(event.venue?.displayName ?? ''),
       artists: event.artists,
       tagValues: event.taxonomyTags,
       coordinate: event.coordinate,

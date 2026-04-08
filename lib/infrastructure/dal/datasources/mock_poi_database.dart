@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
-import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -8,11 +7,10 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
-import 'package:belluga_now/domain/map/value_objects/main_filter_option_metadata_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
-import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/pois_google_data.dart';
@@ -2027,84 +2025,43 @@ class MockPoiDatabase {
   }
 
   PoiFilterOptions availableFilters() {
-    final Map<CityPoiCategory, Set<String>> mapping = {};
-    for (final poi in _catalog) {
-      final set = mapping.putIfAbsent(
-        poi.category,
-        () => <String>{},
-      );
-      set.addAll(poi.tags);
-    }
-
-    final categories = mapping.entries
-        .map(
-          (entry) => PoiFilterCategory(
-            category: entry.key,
-            keyValue: _buildFilterKeyValue(entry.key),
-            labelValue: _buildFilterLabelValue(entry.key),
-            countValue: _buildFilterCountValue(entry.value.length),
-            tagValues: _buildTagValues(entry.value),
+    return PoiFilterOptions(
+      categories: <PoiFilterCategory>[
+        _buildStaticFilterCategory(
+          category: CityPoiCategory.restaurant,
+          label: 'Restaurantes',
+          count: 24,
+          tags: const {'moqueca', 'frutos-do-mar'},
+        ),
+        _buildStaticFilterCategory(
+          category: CityPoiCategory.beach,
+          label: 'Praias',
+          count: 18,
+          tags: const {'beira-mar', 'sol'},
+        ),
+        _buildStaticFilterCategory(
+          key: 'event',
+          label: 'Eventos',
+          count: 12,
+          tags: const {'ao-vivo', 'hoje'},
+          serverQuery: PoiFilterServerQuery(
+            sourceValue: _buildFilterSourceValue('event'),
           ),
-        )
-        .toList(growable: false);
-
-    return PoiFilterOptions(categories: categories);
-  }
-
-  List<MainFilterOption> availableMainFilters() {
-    return <MainFilterOption>[
-      MainFilterOption(
-        idValue: _buildMainFilterIdValue('main_filter_promotions'),
-        labelValue: _buildMainFilterLabelValue('Promocoes'),
-        iconNameValue: _buildMainFilterIconValue('local_offer'),
-        type: MainFilterType.promotions,
-        behavior: MainFilterBehavior.quickApply,
-      ),
-      MainFilterOption(
-        idValue: _buildMainFilterIdValue('main_filter_events'),
-        labelValue: _buildMainFilterLabelValue('Eventos'),
-        iconNameValue: _buildMainFilterIconValue('event'),
-        type: MainFilterType.events,
-        behavior: MainFilterBehavior.opensPanel,
-      ),
-      MainFilterOption(
-        idValue: _buildMainFilterIdValue('main_filter_music'),
-        labelValue: _buildMainFilterLabelValue('Musica'),
-        iconNameValue: _buildMainFilterIconValue('music_note'),
-        type: MainFilterType.music,
-        behavior: MainFilterBehavior.opensPanel,
-        metadataValue: MainFilterOptionMetadata(
-          entries: _buildMetadataEntries([
-            MainFilterOptionMetadataEntry(
-              keyValue: _buildMetadataKeyValue('eventSlug'),
-              valueValue: _buildMetadataValue('show'),
-            ),
-          ]),
         ),
-      ),
-      MainFilterOption(
-        idValue: _buildMainFilterIdValue('main_filter_regions'),
-        labelValue: _buildMainFilterLabelValue('Regioes'),
-        iconNameValue: _buildMainFilterIconValue('map'),
-        type: MainFilterType.regions,
-        behavior: MainFilterBehavior.opensPanel,
-      ),
-      MainFilterOption(
-        idValue: _buildMainFilterIdValue('main_filter_cuisines'),
-        labelValue: _buildMainFilterLabelValue('Gastronomia'),
-        iconNameValue: _buildMainFilterIconValue('restaurant'),
-        type: MainFilterType.cuisines,
-        behavior: MainFilterBehavior.opensPanel,
-        metadataValue: MainFilterOptionMetadata(
-          entries: _buildMetadataEntries([
-            MainFilterOptionMetadataEntry(
-              keyValue: _buildMetadataKeyValue('highlightCategory'),
-              valueValue: _buildMetadataValue(CityPoiCategory.restaurant.name),
-            ),
-          ]),
+        _buildStaticFilterCategory(
+          category: CityPoiCategory.nature,
+          label: 'Natureza',
+          count: 9,
+          tags: const {'trilha', 'mirante'},
         ),
-      ),
-    ];
+        _buildStaticFilterCategory(
+          category: CityPoiCategory.lodging,
+          label: 'Hospedagem',
+          count: 6,
+          tags: const {'hotel', 'pousada'},
+        ),
+      ],
+    );
   }
 
   static PoiFilterKeyValue _buildFilterKeyValue(CityPoiCategory category) {
@@ -2113,25 +2070,43 @@ class MockPoiDatabase {
     return value;
   }
 
-  static MainFilterOptionMetadataValue _buildMetadataValue(String raw) {
-    final value = MainFilterOptionMetadataValue();
-    value.parse(raw.trim());
-    return value;
+  static PoiFilterCategory _buildStaticFilterCategory({
+    CityPoiCategory? category,
+    String? key,
+    required String label,
+    required int count,
+    Set<String> tags = const <String>{},
+    PoiFilterServerQuery? serverQuery,
+  }) {
+    final resolvedKey = key?.trim().toLowerCase();
+    final keyValue = category == null
+        ? (() {
+            final value = PoiFilterKeyValue();
+            value.parse(resolvedKey ?? '');
+            return value;
+          })()
+        : _buildFilterKeyValue(category);
+
+    final labelValue = PoiFilterLabelValue();
+    labelValue.parse(label.trim());
+
+    return PoiFilterCategory(
+      category: category,
+      keyValue: keyValue,
+      labelValue: labelValue,
+      countValue: _buildFilterCountValue(count),
+      tagValues: _buildTagValues(tags),
+      serverQuery: serverQuery,
+    );
   }
 
-  static MainFilterOptionMetadataEntries _buildMetadataEntries(
-    List<MainFilterOptionMetadataEntry> entries,
-  ) {
-    final collection = MainFilterOptionMetadataEntries();
-    for (final entry in entries) {
-      collection.add(entry);
+  static PoiFilterSourceValue? _buildFilterSourceValue(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
     }
-    return collection;
-  }
-
-  static PoiFilterLabelValue _buildFilterLabelValue(CityPoiCategory category) {
-    final value = PoiFilterLabelValue();
-    value.parse(category.name.trim());
+    final value = PoiFilterSourceValue();
+    value.parse(normalized);
     return value;
   }
 
@@ -2153,30 +2128,6 @@ class MockPoiDatabase {
       values.add(value);
     }
     return List<PoiTagValue>.unmodifiable(values.toSet().toList());
-  }
-
-  static PoiFilterKeyValue _buildMainFilterIdValue(String raw) {
-    final value = PoiFilterKeyValue();
-    value.parse(raw.trim().toLowerCase());
-    return value;
-  }
-
-  static PoiFilterLabelValue _buildMainFilterLabelValue(String raw) {
-    final value = PoiFilterLabelValue();
-    value.parse(raw.trim());
-    return value;
-  }
-
-  static PoiIconSymbolValue _buildMainFilterIconValue(String raw) {
-    final value = PoiIconSymbolValue();
-    value.parse(raw.trim());
-    return value;
-  }
-
-  static PoiFilterKeyValue _buildMetadataKeyValue(String raw) {
-    final value = PoiFilterKeyValue();
-    value.parse(raw.trim());
-    return value;
   }
 
   static List<CityPoiDTO> _buildGooglePoiDtos({

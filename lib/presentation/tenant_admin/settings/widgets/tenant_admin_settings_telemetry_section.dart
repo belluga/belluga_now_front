@@ -138,22 +138,26 @@ class TenantAdminSettingsTelemetrySection extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                         ],
-                        TextField(
-                          controller: controller.telemetryTokenController,
-                          decoration: const InputDecoration(
-                            labelText: 'Token (opcional)',
-                            border: OutlineInputBorder(),
+                        if (selectedType == 'mixpanel') ...[
+                          TextField(
+                            controller: controller.telemetryTokenController,
+                            decoration: const InputDecoration(
+                              labelText: 'Token',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: controller.telemetryUrlController,
-                          decoration: const InputDecoration(
-                            labelText: 'URL webhook (opcional)',
-                            border: OutlineInputBorder(),
+                          const SizedBox(height: 8),
+                        ],
+                        if (selectedType == 'webhook') ...[
+                          TextField(
+                            controller: controller.telemetryUrlController,
+                            decoration: const InputDecoration(
+                              labelText: 'URL webhook',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
+                          const SizedBox(height: 8),
+                        ],
                         Wrap(
                           spacing: 8,
                           children: [

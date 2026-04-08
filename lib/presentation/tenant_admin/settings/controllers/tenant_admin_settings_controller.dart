@@ -95,7 +95,6 @@ class TenantAdminSettingsController implements Disposable {
 
   static const List<String> telemetryTypes = [
     'mixpanel',
-    'firebase',
     'webhook',
   ];
 

@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_type_poi_visual_requests.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminStaticProfileTypesController implements Disposable {
@@ -18,6 +23,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     TenantAdminStaticAssetsRepositoryContract? repository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _repository = repository ??
             GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
@@ -25,7 +31,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null) {
+                : null),
+        _imageIngestionService =
+            imageIngestionService ?? TenantAdminImageIngestionService() {
     _bindTenantScope();
     _bindRepositoryStreams();
   }
@@ -33,6 +41,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   final TenantAdminStaticAssetsRepositoryContract _repository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminImageIngestionService _imageIngestionService;
   StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>
       get typesStreamValue => _repository.staticProfileTypesStreamValue;
   final StreamValue<bool> hasMoreTypesStreamValue =
@@ -79,6 +88,12 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       StreamValue<TenantAdminPoiVisualImageSource>(
     defaultValue: TenantAdminPoiVisualImageSource.avatar,
   );
+  final StreamValue<XFile?> typeAssetFileStreamValue =
+      StreamValue<XFile?>(defaultValue: null);
+  final StreamValue<String> typeAssetUrlStreamValue =
+      StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> removeTypeAssetStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController typeController = TextEditingController();
@@ -160,7 +175,11 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   void initForm(TenantAdminStaticProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
-    final poiVisual = definition?.poiVisual;
+    final visual = definition?.visual;
+    final existingTypeAssetUrl =
+        visual?.imageSource == TenantAdminPoiVisualImageSource.typeAsset
+            ? _normalizeOptionalText(visual?.imageUrl)
+            : null;
     capabilitiesStreamValue.addValue(
       TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: TenantAdminFlagValue(capabilities.isPoiEnabled),
@@ -176,11 +195,14 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     selectedTaxonomiesStreamValue.addValue(
       (definition?.allowedTaxonomies ?? const <String>[]).toSet(),
     );
-    if (poiVisual == null || poiVisual.mode == TenantAdminPoiVisualMode.icon) {
+    typeAssetFileStreamValue.addValue(null);
+    typeAssetUrlStreamValue.addValue(existingTypeAssetUrl ?? '');
+    removeTypeAssetStreamValue.addValue(false);
+    if (visual == null || visual.mode == TenantAdminPoiVisualMode.icon) {
       poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
-      poiVisualIconController.text = poiVisual?.icon ?? 'place';
-      poiVisualColorController.text = poiVisual?.color ?? '#2563EB';
-      poiVisualIconColorController.text = poiVisual?.iconColor ?? '#FFFFFF';
+      poiVisualIconController.text = visual?.icon ?? 'place';
+      poiVisualColorController.text = visual?.color ?? '#2563EB';
+      poiVisualIconColorController.text = visual?.iconColor ?? '#FFFFFF';
       poiVisualImageSourceStreamValue.addValue(
         TenantAdminPoiVisualImageSource.avatar,
       );
@@ -190,7 +212,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       poiVisualColorController.text = '#2563EB';
       poiVisualIconColorController.text = '#FFFFFF';
       poiVisualImageSourceStreamValue.addValue(
-        poiVisual.imageSource ?? TenantAdminPoiVisualImageSource.avatar,
+        visual.imageSource ?? TenantAdminPoiVisualImageSource.avatar,
       );
     }
     isSlugAutoEnabledStreamValue.addValue(true);
@@ -205,6 +227,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     poiVisualImageSourceStreamValue.addValue(
       TenantAdminPoiVisualImageSource.avatar,
     );
+    typeAssetFileStreamValue.addValue(null);
+    typeAssetUrlStreamValue.addValue('');
+    removeTypeAssetStreamValue.addValue(false);
     poiVisualIconController.text = 'place';
     poiVisualColorController.text = '#2563EB';
     poiVisualIconColorController.text = '#FFFFFF';
@@ -229,9 +254,12 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   void updatePoiVisualImageSource(TenantAdminPoiVisualImageSource source) {
     poiVisualImageSourceStreamValue.addValue(source);
+    if (source != TenantAdminPoiVisualImageSource.typeAsset) {
+      removeTypeAssetStreamValue.addValue(false);
+    }
   }
 
-  TenantAdminPoiVisual? buildCurrentPoiVisual() {
+  TenantAdminPoiVisual? buildCurrentVisual() {
     if (currentPoiVisualMode == TenantAdminPoiVisualMode.icon) {
       try {
         final iconValue = TenantAdminRequiredTextValue()
@@ -253,8 +281,82 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
     return TenantAdminPoiVisual.image(
       imageSource: currentPoiVisualImageSource,
+      imageUrlValue: currentPoiVisualImageSource ==
+              TenantAdminPoiVisualImageSource.typeAsset
+          ? _buildOptionalUrlValue(currentTypeAssetUrl)
+          : null,
     );
   }
+
+  XFile? get currentTypeAssetFile => typeAssetFileStreamValue.value;
+
+  String? get currentTypeAssetUrl {
+    if (removeTypeAssetStreamValue.value) {
+      return null;
+    }
+    return _normalizeOptionalText(typeAssetUrlStreamValue.value);
+  }
+
+  bool get isTypeAssetMarkedForRemoval => removeTypeAssetStreamValue.value;
+
+  Future<XFile?> pickTypeAssetImageFromDevice() {
+    return _imageIngestionService.pickFromDevice(
+      slot: TenantAdminImageSlot.typeVisual,
+    );
+  }
+
+  Future<XFile> fetchImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildTypeAssetUpload() {
+    return _imageIngestionService.buildUpload(
+      currentTypeAssetFile,
+      slot: TenantAdminImageSlot.typeVisual,
+    );
+  }
+
+  void updateTypeAssetFile(XFile? file) {
+    typeAssetFileStreamValue.addValue(file);
+    if (file != null) {
+      removeTypeAssetStreamValue.addValue(false);
+    }
+  }
+
+  void clearTypeAssetSelection() {
+    if (currentTypeAssetFile != null) {
+      typeAssetFileStreamValue.addValue(null);
+      return;
+    }
+
+    final hasExistingTypeAsset = currentTypeAssetUrl != null;
+    if (!hasExistingTypeAsset) {
+      removeTypeAssetStreamValue.addValue(false);
+      return;
+    }
+
+    removeTypeAssetStreamValue.addValue(!removeTypeAssetStreamValue.value);
+  }
+
+  @Deprecated('Use buildCurrentVisual instead.')
+  TenantAdminPoiVisual? buildCurrentPoiVisual() => buildCurrentVisual();
 
   void updateCapabilities({
     bool? isPoiEnabled,
@@ -362,20 +464,22 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool includeVisual = false,
   }) async {
-    final created = await tenantAdminCreateTypeWithOptionalPoiVisual<
+    final created = await tenantAdminCreateTypeWithOptionalVisual<
         TenantAdminStaticProfileTypeDefinition,
         TenantAdminStaticProfileTypeCapabilities,
         TenantAdminPoiVisual>(
-      includePoiVisual: includePoiVisual,
+      includeVisual: includeVisual,
       type: type,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
-      poiVisual: poiVisual,
-      createWithoutPoiVisual: ({
+      visual: visual,
+      typeAssetUpload: typeAssetUpload,
+      createWithoutVisual: ({
         required String type,
         required String label,
         required List<String> allowedTaxonomies,
@@ -390,21 +494,23 @@ class TenantAdminStaticProfileTypesController implements Disposable {
           capabilities: capabilities,
         );
       },
-      createWithPoiVisual: ({
+      createWithVisual: ({
         required String type,
         required String label,
         required List<String> allowedTaxonomies,
         required TenantAdminStaticProfileTypeCapabilities capabilities,
-        TenantAdminPoiVisual? poiVisual,
+        TenantAdminPoiVisual? visual,
+        Object? typeAssetUpload,
       }) {
-        return _repository.createStaticProfileTypeWithPoiVisual(
+        return _repository.createStaticProfileTypeWithVisual(
           type: TenantAdminStaticAssetsRepoString.fromRaw(type),
           label: TenantAdminStaticAssetsRepoString.fromRaw(label),
           allowedTaxonomies: allowedTaxonomies
               .map(TenantAdminStaticAssetsRepoString.fromRaw)
               .toList(growable: false),
           capabilities: capabilities,
-          poiVisual: poiVisual,
+          visual: visual,
+          typeAssetUpload: typeAssetUpload as TenantAdminMediaUpload?,
         );
       },
     );
@@ -418,21 +524,25 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool? removeTypeAsset,
+    bool includeVisual = false,
   }) async {
-    final updated = await tenantAdminUpdateTypeWithOptionalPoiVisual<
+    final updated = await tenantAdminUpdateTypeWithOptionalVisual<
         TenantAdminStaticProfileTypeDefinition,
         TenantAdminStaticProfileTypeCapabilities,
         TenantAdminPoiVisual>(
-      includePoiVisual: includePoiVisual,
+      includeVisual: includeVisual,
       type: type,
       newType: newType,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
-      poiVisual: poiVisual,
-      updateWithoutPoiVisual: ({
+      visual: visual,
+      typeAssetUpload: typeAssetUpload,
+      removeTypeAsset: removeTypeAsset,
+      updateWithoutVisual: ({
         required String type,
         String? newType,
         String? label,
@@ -453,15 +563,17 @@ class TenantAdminStaticProfileTypesController implements Disposable {
           capabilities: capabilities,
         );
       },
-      updateWithPoiVisual: ({
+      updateWithVisual: ({
         required String type,
         String? newType,
         String? label,
         List<String>? allowedTaxonomies,
         TenantAdminStaticProfileTypeCapabilities? capabilities,
-        TenantAdminPoiVisual? poiVisual,
+        TenantAdminPoiVisual? visual,
+        Object? typeAssetUpload,
+        bool? removeTypeAsset,
       }) {
-        return _repository.updateStaticProfileTypeWithPoiVisual(
+        return _repository.updateStaticProfileTypeWithVisual(
           type: TenantAdminStaticAssetsRepoString.fromRaw(type),
           newType: newType == null
               ? null
@@ -473,7 +585,14 @@ class TenantAdminStaticProfileTypesController implements Disposable {
               ?.map(TenantAdminStaticAssetsRepoString.fromRaw)
               .toList(growable: false),
           capabilities: capabilities,
-          poiVisual: poiVisual,
+          visual: visual,
+          typeAssetUpload: typeAssetUpload as TenantAdminMediaUpload?,
+          removeTypeAsset: removeTypeAsset == null
+              ? null
+              : TenantAdminStaticAssetsRepoBool.fromRaw(
+                  removeTypeAsset,
+                  defaultValue: false,
+                ),
         );
       },
     );
@@ -501,8 +620,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool includeVisual = false,
   }) async {
     try {
       await createType(
@@ -510,8 +630,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: includePoiVisual,
+        visual: visual,
+        typeAssetUpload: typeAssetUpload,
+        includeVisual: includeVisual,
       );
       if (_isDisposed) return;
       actionErrorMessageStreamValue.addValue(null);
@@ -528,8 +649,10 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-    TenantAdminPoiVisual? poiVisual,
-    bool includePoiVisual = false,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool? removeTypeAsset,
+    bool includeVisual = false,
   }) async {
     try {
       final updated = await updateType(
@@ -538,8 +661,10 @@ class TenantAdminStaticProfileTypesController implements Disposable {
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: includePoiVisual,
+        visual: visual,
+        typeAssetUpload: typeAssetUpload,
+        removeTypeAsset: removeTypeAsset,
+        includeVisual: includeVisual,
       );
       if (_isDisposed) return;
       final currentDetail = detailTypeStreamValue.value;
@@ -618,6 +743,24 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     }
   }
 
+  String? _normalizeOptionalText(Object? raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  TenantAdminOptionalUrlValue? _buildOptionalUrlValue(String? raw) {
+    final normalized = _normalizeOptionalText(raw);
+    if (normalized == null) {
+      return null;
+    }
+    final value = TenantAdminOptionalUrlValue();
+    value.parse(normalized);
+    return value;
+  }
+
   void _resetTenantScopedState() {
     _repository.resetStaticProfileTypesState();
     taxonomiesStreamValue.addValue(const []);
@@ -665,6 +808,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     isSlugAutoEnabledStreamValue.dispose();
     poiVisualModeStreamValue.dispose();
     poiVisualImageSourceStreamValue.dispose();
+    typeAssetFileStreamValue.dispose();
+    typeAssetUrlStreamValue.dispose();
+    removeTypeAssetStreamValue.dispose();
   }
 
   @override

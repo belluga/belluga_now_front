@@ -29,8 +29,6 @@ void main() {
     'AGENDA_E2E_EXPECT_NON_EMPTY',
     defaultValue: true,
   );
-  const pageSize =
-      int.fromEnvironment('AGENDA_E2E_PAGE_SIZE', defaultValue: 25);
   const maxDistanceOverrideRaw = String.fromEnvironment(
     'AGENDA_E2E_MAX_DISTANCE_METERS',
     defaultValue: '',
@@ -102,7 +100,6 @@ void main() {
 
       final scheduleRepository = ScheduleRepository(
         backendContract: backend,
-        appDataRepository: appDataRepository,
       );
 
       final origin = appDataRepository.appData.tenantDefaultOrigin;
@@ -112,10 +109,10 @@ void main() {
               ? maxDistanceOverride
               : appDataRepository.appData.mapRadiusMaxMeters;
 
-      final firstPage = await scheduleRepository.getEventsPage(
-        page: ScheduleRepoInt.fromRaw(1, defaultValue: 1),
-        pageSize: ScheduleRepoInt.fromRaw(pageSize, defaultValue: pageSize),
+      final firstPage = await scheduleRepository.loadHomeAgenda(
         showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+        confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
         originLat: origin == null
             ? null
             : ScheduleRepoDouble.fromRaw(
@@ -134,11 +131,11 @@ void main() {
         ),
       );
 
-      expect(firstPage.events, isA<List<EventModel>>());
+      expect(firstPage, isA<List<EventModel>>());
 
       if (expectNonEmpty) {
         expect(
-          firstPage.events,
+          firstPage,
           isNotEmpty,
           reason: 'Expected at least one eligible event on first page. '
               'If the environment has no seed data, run with '
@@ -146,12 +143,12 @@ void main() {
         );
       }
 
-      if (firstPage.events.isEmpty) {
+      if (firstPage.isEmpty) {
         return;
       }
 
       final now = DateTime.now();
-      final eligibleEvents = firstPage.events
+      final eligibleEvents = firstPage
           .where((event) => _isEligibleForHomeAgenda(event, now))
           .toList(growable: false);
 

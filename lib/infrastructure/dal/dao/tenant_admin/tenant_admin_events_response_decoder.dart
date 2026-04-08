@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -59,6 +60,25 @@ class TenantAdminEventsResponseDecoder {
     return _decodeAccountProfiles(envelope['data']);
   }
 
+  TenantAdminLegacyEventPartiesSummary decodeLegacyEventPartiesSummary(
+    Object? rawResponse,
+  ) {
+    final row = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'legacy event parties summary',
+    );
+    final data = _asMap(row['data']);
+    final summary = data.isEmpty ? row : data;
+
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: tenantAdminCount(summary['scanned']),
+      invalidValue: tenantAdminCount(summary['invalid']),
+      repairedValue: tenantAdminCount(summary['repaired']),
+      unchangedValue: tenantAdminCount(summary['unchanged']),
+      failedValue: tenantAdminCount(summary['failed']),
+    );
+  }
+
   String decodeErrorMessage({
     required Object? payload,
     required String fallback,
@@ -110,8 +130,11 @@ class TenantAdminEventsResponseDecoder {
         .whereType<TenantAdminEventOccurrence>()
         .toList(growable: false);
 
-    final artistIdsRaw = _asList(row['artist_ids']);
-    final artistIds = artistIdsRaw
+    final eventPartiesRaw = _asList(row['event_parties']);
+    final artistIds = eventPartiesRaw
+        .map(_asMap)
+        .where((party) => (_asString(party['party_type']) ?? '') == 'artist')
+        .map((party) => party['party_ref_id'])
         .map(_asString)
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
@@ -133,7 +156,6 @@ class TenantAdminEventsResponseDecoder {
           growable: false,
         );
 
-    final eventPartiesRaw = _asList(row['event_parties']);
     final eventParties = eventPartiesRaw
         .map(_asMap)
         .where((party) => party.isNotEmpty)
@@ -189,7 +211,7 @@ class TenantAdminEventsResponseDecoder {
               _asString(placeRefRow['type']) ?? '',
             ),
             idValue: tenantAdminRequiredText(
-              _asString(placeRefRow['id']) ?? '',
+              _extractPlaceRefId(placeRefRow) ?? '',
             ),
           );
 
@@ -415,11 +437,33 @@ class TenantAdminEventsResponseDecoder {
     if (value == null) {
       return null;
     }
+
+    if (value is! String && value is! num && value is! bool) {
+      throw FormatException('Invalid scalar text value: $value');
+    }
+
     final normalized = value.toString();
     if (normalized.trim().isEmpty) {
       return null;
     }
     return normalized;
+  }
+
+  String? _extractPlaceRefId(Map<String, dynamic> placeRefRow) {
+    final direct = _asString(placeRefRow['id']);
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final legacy = placeRefRow['_id'];
+    if (legacy is Map) {
+      final oid = _asString(legacy[r'$oid'] ?? legacy['oid']);
+      if (oid != null && oid.isNotEmpty) {
+        return oid;
+      }
+    }
+
+    return _asString(legacy);
   }
 
   double? _toDouble(Object? value) {
@@ -438,6 +482,12 @@ class TenantAdminEventsResponseDecoder {
   DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
       return TimezoneConverter.utcToLocal(value);
+    }
+    if (value is Map) {
+      final wrapped = value[r'$date'] ?? value['date'];
+      if (wrapped != null && wrapped != value) {
+        return _parseDate(wrapped);
+      }
     }
     if (value is String && value.trim().isNotEmpty) {
       final parsed = DateTime.tryParse(value);

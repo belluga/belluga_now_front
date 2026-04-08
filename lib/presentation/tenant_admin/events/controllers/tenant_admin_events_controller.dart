@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -71,6 +73,11 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<String?>(defaultValue: null);
   final StreamValue<bool> archivedFilterStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<Set<TenantAdminEventTemporalBucket>>
+      temporalFilterStreamValue =
+      StreamValue<Set<TenantAdminEventTemporalBucket>>(
+    defaultValue: TenantAdminEventTemporalBucket.defaultSelection,
+  );
 
   final StreamValue<TenantAdminEvent?> eventDetailStreamValue =
       StreamValue<TenantAdminEvent?>();
@@ -283,6 +290,7 @@ class TenantAdminEventsController implements Disposable {
     await _eventsRepository.loadEvents(
       status: _toNullableEventsText(statusFilterStreamValue.value),
       archived: _toEventsBool(archivedFilterStreamValue.value),
+      temporalBuckets: temporalFilterStreamValue.value,
     );
   }
 
@@ -296,6 +304,7 @@ class TenantAdminEventsController implements Disposable {
     await _eventsRepository.loadNextEventsPage(
       status: _toNullableEventsText(statusFilterStreamValue.value),
       archived: _toEventsBool(archivedFilterStreamValue.value),
+      temporalBuckets: temporalFilterStreamValue.value,
     );
   }
 
@@ -310,6 +319,21 @@ class TenantAdminEventsController implements Disposable {
 
   void updateArchivedFilter(bool archivedOnly) {
     archivedFilterStreamValue.addValue(archivedOnly);
+  }
+
+  void toggleTemporalFilter(TenantAdminEventTemporalBucket bucket) {
+    final current = Set<TenantAdminEventTemporalBucket>.from(
+      temporalFilterStreamValue.value,
+    );
+    if (current.contains(bucket)) {
+      if (current.length == 1) {
+        return;
+      }
+      current.remove(bucket);
+    } else {
+      current.add(bucket);
+    }
+    temporalFilterStreamValue.addValue(Set.unmodifiable(current));
   }
 
   Future<void> applyFilters() async {
@@ -342,7 +366,9 @@ class TenantAdminEventsController implements Disposable {
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedArtistIds: {
-        ...?existingEvent?.artistIds.map((artistId) => artistId.value),
+        ...?existingEvent?.eventParties
+            .where((party) => party.partyType == 'artist')
+            .map((party) => party.partyRefId),
       },
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
@@ -1184,6 +1210,18 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
+  Future<TenantAdminLegacyEventPartiesSummary>
+      inspectLegacyEventParties() async {
+    return _eventsRepository.fetchLegacyEventPartiesSummary();
+  }
+
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
+    final summary = await _eventsRepository.repairLegacyEventParties();
+    await loadEvents();
+    return summary;
+  }
+
   void clearSubmitMessages() {
     submitErrorMessageStreamValue.addValue(null);
     submitSuccessMessageStreamValue.addValue(null);
@@ -1200,6 +1238,8 @@ class TenantAdminEventsController implements Disposable {
     _eventsRepository.resetEventsState();
     statusFilterStreamValue.addValue(null);
     archivedFilterStreamValue.addValue(false);
+    temporalFilterStreamValue
+        .addValue(TenantAdminEventTemporalBucket.defaultSelection);
     eventDetailStreamValue.addValue(null);
     eventDetailLoadingStreamValue.addValue(false);
     eventDetailErrorStreamValue.addValue(null);
@@ -1333,6 +1373,7 @@ class TenantAdminEventsController implements Disposable {
     eventsErrorStreamValue.dispose();
     statusFilterStreamValue.dispose();
     archivedFilterStreamValue.dispose();
+    temporalFilterStreamValue.dispose();
     eventDetailStreamValue.dispose();
     eventDetailLoadingStreamValue.dispose();
     eventDetailErrorStreamValue.dispose();

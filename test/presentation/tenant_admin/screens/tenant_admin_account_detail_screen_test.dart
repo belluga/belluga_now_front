@@ -469,7 +469,7 @@ class _FakeAccountProfilesRepository
     return [
       tenantAdminAccountProfileFromRaw(
         id: 'profile-1',
-        accountId: accountId,
+        accountId: accountId.value,
         profileType: 'artist',
         displayName: 'Perfil',
       ),
@@ -539,15 +539,15 @@ class _FakeAccountProfilesRepository
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-created',
-      accountId: accountId,
-      profileType: profileType,
-      displayName: displayName,
+      accountId: accountId.value,
+      profileType: profileType.value,
+      displayName: displayName.value,
       location: location,
       taxonomyTerms: taxonomyTerms,
-      bio: bio,
-      content: content,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
+      bio: bio?.value,
+      content: content?.value,
+      avatarUrl: avatarUrl?.value,
+      coverUrl: coverUrl?.value,
     );
   }
 
@@ -569,17 +569,17 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     return tenantAdminAccountProfileFromRaw(
-      id: accountProfileId,
+      id: accountProfileId.value,
       accountId: 'acc-1',
-      profileType: profileType ?? 'artist',
-      displayName: displayName ?? 'Perfil',
-      slug: slug ?? 'perfil',
+      profileType: profileType?.value ?? 'artist',
+      displayName: displayName?.value ?? 'Perfil',
+      slug: slug?.value ?? 'perfil',
       location: location,
       taxonomyTerms: taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
-      bio: bio,
-      content: content,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
+      bio: bio?.value,
+      content: content?.value,
+      avatarUrl: avatarUrl?.value,
+      coverUrl: coverUrl?.value,
     );
   }
 

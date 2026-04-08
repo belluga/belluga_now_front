@@ -1,116 +1,168 @@
-import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_linked_profile.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_base_card.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:flutter/material.dart';
 
-class EventPoiDetailCard extends StatelessWidget {
+class EventPoiDetailCard extends PoiBaseCard {
   const EventPoiDetailCard({
     super.key,
-    required this.poi,
-    required this.colorScheme,
-    required this.onPrimaryAction,
-    required this.onShare,
-    required this.onRoute,
+    required super.poi,
+    required super.colorScheme,
+    required super.onPrimaryAction,
+    required super.secondaryAction,
+    required super.onRoute,
+    super.onClose,
+    super.heroMaxHeight,
   });
 
-  final CityPoiModel poi;
+  @override
+  Color resolveAccentColor() {
+    if (poi.isHappeningNow) {
+      return const Color(0xFFD93A56);
+    }
+    return super.resolveAccentColor();
+  }
+
+  @override
+  List<Widget Function(BuildContext)> buildSectionsBeforeDescription() => [
+        _scheduleSection,
+        _linkedProfilesSection,
+      ];
+
+  @override
+  List<Widget Function(BuildContext)> buildSectionsAfterDescription() => [
+        tagsSection,
+      ];
+
+  Widget _scheduleSection(BuildContext context) {
+    final scheduleLabel = PoiContentResolver.eventScheduleLabel(poi);
+    if (scheduleLabel == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          poi.isHappeningNow ? Icons.bolt_rounded : Icons.schedule_rounded,
+          size: 18,
+          color: resolveAccentColor(),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            scheduleLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _linkedProfilesSection(BuildContext context) {
+    if (poi.linkedProfiles.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: poi.linkedProfiles
+          .map(
+            (profile) => _LinkedProfileChip(
+              profile: profile,
+              colorScheme: colorScheme,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+class _LinkedProfileChip extends StatelessWidget {
+  const _LinkedProfileChip({
+    required this.profile,
+    required this.colorScheme,
+  });
+
+  final CityPoiLinkedProfile profile;
   final ColorScheme colorScheme;
-  final VoidCallback onPrimaryAction;
-  final VoidCallback onShare;
-  final VoidCallback onRoute;
 
   @override
   Widget build(BuildContext context) {
-    final badgeLabel = poi.isHappeningNow ? 'AGORA' : 'EVENTO';
-    final badgeColor = poi.isHappeningNow ? const Color(0xFFE53935) : colorScheme.primary;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      constraints: const BoxConstraints(maxWidth: 360),
-      padding: const EdgeInsets.all(20),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Chip(
-                backgroundColor: badgeColor,
-                label: Text(
-                  badgeLabel,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                poi.updatedAt == null
-                    ? 'Atualização indisponível'
-                    : 'Atualizado recentemente',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            poi.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.place_outlined, size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  poi.address,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            poi.description,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: onPrimaryAction,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _LinkedProfileAvatar(
+              imageUri: profile.avatarImageUri,
+              colorScheme: colorScheme,
             ),
-            child: const Text('Ver detalhes'),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                tooltip: 'Tracar rota',
-                onPressed: onRoute,
-                icon: const Icon(Icons.directions_outlined),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                profile.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: 'Compartilhar',
-                onPressed: onShare,
-                icon: const Icon(Icons.share_outlined),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkedProfileAvatar extends StatelessWidget {
+  const _LinkedProfileAvatar({
+    required this.imageUri,
+    required this.colorScheme,
+  });
+
+  final String? imageUri;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.14),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.person_outline,
+        color: colorScheme.primary,
+        size: 14,
+      ),
+    );
+    final resolvedImageUri = imageUri?.trim();
+    if (resolvedImageUri == null || resolvedImageUri.isEmpty) {
+      return fallback;
+    }
+    return ClipOval(
+      child: SizedBox(
+        width: 22,
+        height: 22,
+        child: BellugaNetworkImage(
+          resolvedImageUri,
+          fit: BoxFit.cover,
+          errorWidget: fallback,
+        ),
       ),
     );
   }

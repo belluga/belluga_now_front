@@ -65,7 +65,11 @@ void main() {
       ),
     );
 
-    final profiles = await backend.fetchAccountProfiles();
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+    final profiles = page.profiles;
 
     expect(adapter.lastRequest?.uri.path, '/api/v1/account_profiles');
     expect(adapter.lastRequest?.queryParameters['page'], 1);
@@ -74,6 +78,58 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Artist One');
     expect(profiles.first.slug, 'artist-one');
+  });
+
+  test(
+      'fetchAccountProfiles prefers taxonomy term name or label over slug-like value',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Artist One',
+            'slug': 'artist-one',
+            'profile_type': 'artist',
+            'taxonomy_terms': [
+              {
+                'type': 'genre',
+                'value': 'brasilidades',
+                'name': 'Brasilidades',
+              },
+              {
+                'type': 'vibe',
+                'value': 'beira-mar',
+                'label': 'Beira Mar',
+              },
+              {
+                'type': 'fallback',
+                'value': 'capixaba',
+              },
+            ],
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.profiles, hasLength(1));
+    expect(
+      page.profiles.first.tags.map((entry) => entry.value).toList(),
+      <String>['Brasilidades', 'Beira Mar', 'capixaba'],
+    );
   });
 
   test('fetchAccountProfiles bootstraps auth token when empty', () async {
@@ -103,7 +159,10 @@ void main() {
       ),
     );
 
-    await backend.fetchAccountProfiles();
+    await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
 
     expect(authRepository.initCallCount, 1);
     expect(
@@ -136,10 +195,155 @@ void main() {
       ),
     );
 
-    final profiles = await backend.fetchAccountProfiles();
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+    final profiles = page.profiles;
 
     expect(profiles, hasLength(1));
     expect(profiles.first.distanceMeters, closeTo(1425.75, 0.001));
+  });
+
+  test('fetchAccountProfileBySlug hits direct slug endpoint and parses profile',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'Slug Detail Artist',
+          'slug': 'slug-detail-artist',
+          'profile_type': 'artist',
+          'taxonomy_terms': const [],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug(
+      'slug-detail-artist',
+    );
+
+    expect(adapter.lastRequest?.uri.path,
+        '/api/v1/account_profiles/slug-detail-artist');
+    expect(adapter.lastRequest?.queryParameters, isEmpty);
+    expect(profile, isNotNull);
+    expect(profile?.name, 'Slug Detail Artist');
+    expect(profile?.slug, 'slug-detail-artist');
+  });
+
+  test('fetchAccountProfileBySlug returns null on not found', () async {
+    final adapter = _RecordingAdapter(
+      response: {
+        'message': 'Not Found',
+      },
+      statusCode: 404,
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('missing-slug');
+
+    expect(
+        adapter.lastRequest?.uri.path, '/api/v1/account_profiles/missing-slug');
+    expect(profile, isNull);
+  });
+
+  test(
+      'fetchAccountProfileBySlug parses agenda_occurrences into occurrence-first account profile agenda',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'Casa Marracini',
+          'slug': 'casa-marracini',
+          'profile_type': 'restaurant',
+          'taxonomy_terms': const [],
+          'agenda_occurrences': const [
+            {
+              'event_id': '507f1f77bcf86cd799439021',
+              'occurrence_id': '507f1f77bcf86cd799439121',
+              'slug': 'jazz-na-orla',
+              'title': 'Jazz na Orla',
+              'type': {
+                'name': 'Show',
+              },
+              'date_time_start': '2026-04-04T21:00:00Z',
+              'date_time_end': '2026-04-04T23:00:00Z',
+              'location': {'label': 'Deck Principal'},
+              'venue': {
+                'id': '507f1f77bcf86cd799439011',
+                'display_name': 'Casa Marracini',
+                'hero_image_url': 'https://example.com/casa.jpg',
+              },
+              'artists': [
+                {
+                  'id': '507f1f77bcf86cd799439099',
+                  'display_name': 'Marco Aurélio',
+                  'avatar_url': 'https://example.com/marco.jpg',
+                }
+              ],
+            },
+            {
+              'event_id': '507f1f77bcf86cd799439021',
+              'occurrence_id': '507f1f77bcf86cd799439122',
+              'slug': 'jazz-na-orla',
+              'title': 'Jazz na Orla',
+              'type': {
+                'name': 'Show',
+              },
+              'date_time_start': '2026-04-05T21:00:00Z',
+              'location': {'label': 'Deck Principal'},
+              'venue': {
+                'id': '507f1f77bcf86cd799439011',
+                'display_name': 'Casa Marracini',
+              },
+              'artists': [
+                {
+                  'id': '507f1f77bcf86cd799439099',
+                  'display_name': 'Marco Aurélio',
+                }
+              ],
+            },
+          ],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('casa-marracini');
+
+    expect(profile, isNotNull);
+    expect(profile?.agendaEvents, hasLength(2));
+    expect(profile?.agendaEvents.first.eventId, '507f1f77bcf86cd799439021');
+    expect(profile?.agendaEvents.first.occurrenceId, '507f1f77bcf86cd799439121');
+    expect(profile?.agendaEvents.last.occurrenceId, '507f1f77bcf86cd799439122');
+    expect(profile?.agendaEvents.first.primaryArtist?.id, '507f1f77bcf86cd799439099');
+    expect(profile?.agendaEvents.first.primaryArtist?.title, 'Marco Aurélio');
+    expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
+    expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');
+    expect(profile?.agendaEvents.first.eventTypeLabel, 'Show');
+    expect(profile?.agendaEvents.first.location, 'Deck Principal');
   });
 
   test(
@@ -213,7 +417,11 @@ void main() {
       ),
     );
 
-    final profiles = await backend.fetchAccountProfiles();
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+    final profiles = page.profiles;
 
     expect(profiles, hasLength(1));
     final expected = haversineDistanceMeters(
@@ -221,6 +429,45 @@ void main() {
       coordinateB: _coordinate(lat: targetLat, lng: targetLng),
     );
     expect(profiles.first.distanceMeters, closeTo(expected.value, 0.001));
+  });
+
+  test('fetchAccountProfiles preserves location coordinates for detail UI',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Casa Marracini',
+            'slug': 'casa-marracini',
+            'profile_type': 'restaurant',
+            'taxonomy_terms': const [],
+            'location': {
+              'lat': -20.7389,
+              'lng': -40.8212,
+            },
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+    final profiles = page.profiles;
+
+    expect(profiles, hasLength(1));
+    expect(profiles.first.locationLat, closeTo(-20.7389, 0.0001));
+    expect(profiles.first.locationLng, closeTo(-40.8212, 0.0001));
   });
 
   test('fetchNearbyAccountProfiles calls near endpoint with origin', () async {
@@ -435,10 +682,13 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({required Map<String, dynamic> response})
-      : _response = response;
+  _RecordingAdapter({
+    required Map<String, dynamic> response,
+    this.statusCode = 200,
+  }) : _response = response;
 
   final Map<String, dynamic> _response;
+  final int statusCode;
   RequestOptions? lastRequest;
 
   @override
@@ -453,7 +703,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     lastRequest = options;
     return ResponseBody.fromString(
       jsonEncode(_response),
-      200,
+      statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },

@@ -2,15 +2,21 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_poi_disable_confirmation.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_color_picker_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminStaticProfileTypeFormScreen extends StatefulWidget {
@@ -75,6 +81,7 @@ class _TenantAdminStaticProfileTypeFormScreenState
   }
 
   Future<void> _save() async {
+    final messenger = ScaffoldMessenger.of(context);
     final form = _controller.formKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -82,13 +89,31 @@ class _TenantAdminStaticProfileTypeFormScreenState
 
     final capabilities = _controller.currentCapabilities;
     final allowedTaxonomies = _selectedTaxonomies();
-    final poiVisual =
-        capabilities.isPoiEnabled ? _controller.buildCurrentPoiVisual() : null;
-    if (capabilities.isPoiEnabled && poiVisual == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    final visual = _controller.buildCurrentVisual();
+    if (visual == null) {
+      messenger.showSnackBar(
         const SnackBar(
           content: Text(
-            'Configuracao visual do POI invalida. Revise modo, icone/cor ou fonte de imagem.',
+            'Configuracao visual do tipo invalida. Revise modo, icone/cor ou fonte de imagem.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final requiresTypeAsset =
+        visual.mode == TenantAdminPoiVisualMode.image &&
+            visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
+    final typeAssetUpload = requiresTypeAsset
+        ? await _controller.buildTypeAssetUpload()
+        : null;
+    if (requiresTypeAsset &&
+        typeAssetUpload == null &&
+        _controller.currentTypeAssetUrl == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Envie uma imagem canônica do tipo ou escolha Avatar/Capa como fonte.',
           ),
         ),
       );
@@ -108,8 +133,10 @@ class _TenantAdminStaticProfileTypeFormScreenState
         label: _controller.labelController.text.trim(),
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
-        poiVisual: poiVisual,
-        includePoiVisual: true,
+        visual: visual,
+        typeAssetUpload: typeAssetUpload,
+        removeTypeAsset: _controller.isTypeAssetMarkedForRemoval,
+        includeVisual: true,
       );
       return;
     }
@@ -119,8 +146,9 @@ class _TenantAdminStaticProfileTypeFormScreenState
       label: _controller.labelController.text.trim(),
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
-      poiVisual: poiVisual,
-      includePoiVisual: true,
+      visual: visual,
+      typeAssetUpload: typeAssetUpload,
+      includeVisual: true,
     );
   }
 
@@ -248,11 +276,9 @@ class _TenantAdminStaticProfileTypeFormScreenState
                                     isPoiEnabled: value,
                                   ),
                                 ),
-                                if (capabilities.isPoiEnabled) ...[
-                                  const SizedBox(height: 12),
-                                  _buildPoiVisualEditor(context),
-                                  const SizedBox(height: 8),
-                                ],
+                                const SizedBox(height: 12),
+                                _buildPoiVisualEditor(context),
+                                const SizedBox(height: 8),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Bio habilitada'),
@@ -328,7 +354,7 @@ class _TenantAdminStaticProfileTypeFormScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Visual do POI',
+              'Visual do tipo',
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
@@ -373,26 +399,34 @@ class _TenantAdminStaticProfileTypeFormScreenState
               StreamValueBuilder<TenantAdminPoiVisualImageSource>(
                 streamValue: _controller.poiVisualImageSourceStreamValue,
                 builder: (context, imageSource) {
-                  return DropdownButtonFormField<
-                      TenantAdminPoiVisualImageSource>(
-                    initialValue: imageSource,
-                    decoration: const InputDecoration(
-                      labelText: 'Fonte da imagem',
-                    ),
-                    items: TenantAdminPoiVisualImageSource.values
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: item,
-                            child: Text(item.label),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      _controller.updatePoiVisualImageSource(value);
-                    },
+                  return Column(
+                    children: [
+                      DropdownButtonFormField<TenantAdminPoiVisualImageSource>(
+                        initialValue: imageSource,
+                        decoration: const InputDecoration(
+                          labelText: 'Fonte da imagem',
+                        ),
+                        items: TenantAdminPoiVisualImageSource.values
+                            .map(
+                              (item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(item.label),
+                              ),
+                            )
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          _controller.updatePoiVisualImageSource(value);
+                        },
+                      ),
+                      if (imageSource ==
+                          TenantAdminPoiVisualImageSource.typeAsset) ...[
+                        const SizedBox(height: 12),
+                        _buildTypeAssetUploadField(context),
+                      ],
+                    ],
                   );
                 },
               ),
@@ -446,6 +480,119 @@ class _TenantAdminStaticProfileTypeFormScreenState
     );
   }
 
+  Widget _buildTypeAssetUploadField(BuildContext context) {
+    return StreamValueBuilder<XFile?>(
+      streamValue: _controller.typeAssetFileStreamValue,
+      builder: (context, _) {
+        return StreamValueBuilder<String>(
+          streamValue: _controller.typeAssetUrlStreamValue,
+          builder: (context, currentUrl) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.removeTypeAssetStreamValue,
+              builder: (context, isMarkedForRemoval) {
+                final selectedFile = _controller.currentTypeAssetFile;
+                final trimmedUrl = currentUrl.trim();
+                final hasExistingUrl =
+                    !isMarkedForRemoval && trimmedUrl.isNotEmpty;
+                final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
+                final canRemove =
+                    selectedFile != null || hasExistingUrl || isMarkedForRemoval;
+                final selectedLabel = selectedFile?.name ??
+                    (isMarkedForRemoval
+                        ? 'Imagem canônica será removida ao salvar.'
+                        : normalizedUrl ?? 'Nenhuma imagem selecionada');
+
+                return TenantAdminCanonicalImageUploadField(
+                  variant: TenantAdminImageUploadVariant.cover,
+                  preview: _buildTypeAssetPreview(
+                    context,
+                    selectedFile: selectedFile,
+                    existingUrl: normalizedUrl,
+                    isMarkedForRemoval: isMarkedForRemoval,
+                  ),
+                  selectedLabel: selectedLabel,
+                  addLabel: 'Enviar imagem canônica',
+                  sourceSheetTitle: 'Adicionar imagem canônica do tipo',
+                  urlPromptTitle: 'URL da imagem canônica do tipo',
+                  removeLabel:
+                      isMarkedForRemoval ? 'Desfazer remoção' : 'Remover',
+                  busy: false,
+                  canRemove: canRemove,
+                  onRemove: _controller.clearTypeAssetSelection,
+                  initialWebUrl: normalizedUrl,
+                  slot: TenantAdminImageSlot.typeVisual,
+                  pickFromDevice: _controller.pickTypeAssetImageFromDevice,
+                  fetchImageFromUrlForCrop:
+                      _controller.fetchImageFromUrlForCrop,
+                  readBytesForCrop: _controller.readImageBytesForCrop,
+                  prepareCroppedFile: _controller.prepareCroppedImage,
+                  onImageSelected: (cropped) async {
+                    _controller.updateTypeAssetFile(cropped);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTypeAssetPreview(
+    BuildContext context, {
+    required XFile? selectedFile,
+    required String? existingUrl,
+    required bool isMarkedForRemoval,
+  }) {
+    if (selectedFile != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: TenantAdminXFilePreview(
+          file: selectedFile,
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    if (isMarkedForRemoval) {
+      return _buildTypeAssetPlaceholder(
+        context,
+        icon: Icons.delete_outline,
+      );
+    }
+
+    if (existingUrl != null && existingUrl.isNotEmpty) {
+      return BellugaNetworkImage(
+        existingUrl,
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(16),
+      );
+    }
+
+    return _buildTypeAssetPlaceholder(
+      context,
+      icon: Icons.photo_outlined,
+    );
+  }
+
+  Widget _buildTypeAssetPlaceholder(
+    BuildContext context, {
+    required IconData icon,
+  }) {
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(child: Icon(icon)),
+    );
+  }
   void _handleSuccessMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -2,7 +2,18 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
+import 'package:belluga_now/domain/partners/profile_type_definition.dart';
+import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/profile_type_visual.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_label_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_hex_color_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_visual_icon_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
@@ -10,6 +21,7 @@ import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,17 +122,107 @@ void main() {
 
     controller.onDispose();
   });
+
+  test('favorites section resolves compact preview using cover then type visual',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    final coverResolved = controller.resolvedVisualFor(
+      _favoriteResume(
+        title: 'Com Cover',
+        slug: 'com-cover',
+        targetType: 'account_profile',
+        profileType: 'artist',
+        coverUrl: 'https://cdn.test/profile-cover.png',
+      ),
+    );
+
+    expect(coverResolved, isNotNull);
+    expect(coverResolved!.compactImageUrl, 'https://cdn.test/profile-cover.png');
+
+    final typeVisualResolved = controller.resolvedVisualFor(
+      _favoriteResume(
+        title: 'Sem Imagem',
+        slug: 'sem-imagem',
+        targetType: 'account_profile',
+        profileType: 'artist',
+      ),
+    );
+
+    expect(typeVisualResolved, isNotNull);
+    expect(typeVisualResolved!.compactImageUrl, isNull);
+    expect(typeVisualResolved.typeVisual?.isIcon, isTrue);
+  });
+
+  test('favorites section derives halo state from snapshot-backed event state',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    expect(
+      controller.haloStateFor(
+        _favoriteResume(
+          title: 'Ao Vivo',
+          slug: 'ao-vivo',
+          liveNowEventOccurrenceId: 'occ-live',
+        ),
+      ),
+      FavoriteChipHaloState.liveNow,
+    );
+
+    expect(
+      controller.haloStateFor(
+        _favoriteResume(
+          title: 'Próximo',
+          slug: 'proximo',
+          nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+        ),
+      ),
+      FavoriteChipHaloState.upcoming,
+    );
+
+    expect(
+      controller.haloStateFor(
+        _favoriteResume(
+          title: 'Sem Evento',
+          slug: 'sem-evento',
+        ),
+      ),
+      FavoriteChipHaloState.none,
+    );
+  });
 }
 
 FavoriteResume _favoriteResume({
   required String title,
   required String? slug,
+  String? targetType,
+  String? profileType,
+  String? coverUrl,
+  DateTime? nextEventOccurrenceAt,
+  String? liveNowEventOccurrenceId,
 }) {
-  return FavoriteResume(
+  ThumbUriValue? coverImageUriValue;
+  if (coverUrl != null) {
+    coverImageUriValue =
+        ThumbUriValue(defaultValue: Uri.parse(coverUrl), isRequired: true)
+          ..parse(coverUrl);
+  }
+  return favoriteResumeFromRaw(
     titleValue: TitleValue()..parse(title),
     slugValue: slug != null ? (SlugValue()..parse(slug)) : null,
     assetPathValue: AssetPathValue()
       ..parse('assets/images/placeholder_avatar.png'),
+    targetType: targetType,
+    profileType: profileType,
+    coverImageUriValue: coverImageUriValue,
+    nextEventOccurrenceAt: nextEventOccurrenceAt,
+    liveNowEventOccurrenceId: liveNowEventOccurrenceId,
   );
 }
 
@@ -152,6 +254,32 @@ class _FakeAppData extends Fake implements AppData {
 
   @override
   MainColorValue get mainColor => MainColorValue()..parse('#112233');
+
+  @override
+  ProfileTypeRegistry get profileTypeRegistry {
+    final definitions = ProfileTypeDefinitions()
+      ..add(
+        ProfileTypeDefinition(
+          typeValue: ProfileTypeKeyValue('artist'),
+          labelValue: ProfileTypeLabelValue()..parse('Artist'),
+          capabilities: ProfileTypeCapabilities(
+            isFavoritableValue: _flag(true),
+            isPoiEnabledValue: _flag(false),
+            hasBioValue: _flag(true),
+            hasContentValue: _flag(false),
+            hasTaxonomiesValue: _flag(true),
+            hasAvatarValue: _flag(true),
+            hasCoverValue: _flag(true),
+            hasEventsValue: _flag(true),
+          ),
+          visual: ProfileTypeVisual.icon(
+            iconValue: ProfileTypeVisualIconValue()..parse('music_note'),
+            colorValue: ProfileTypeVisualHexColorValue()..parse('#F44336'),
+          ),
+        ),
+      );
+    return ProfileTypeRegistry(types: definitions);
+  }
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -193,3 +321,6 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 }
+
+ProfileTypeFlagValue _flag(bool value) =>
+    ProfileTypeFlagValue()..parse(value.toString());

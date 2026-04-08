@@ -5,6 +5,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
@@ -95,6 +97,7 @@ class TenantAdminEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     var page = 1;
     const pageSize = 100;
@@ -109,6 +112,7 @@ class TenantAdminEventsRepository
         search: search,
         status: status,
         archived: archived,
+        temporalBuckets: temporalBuckets,
       );
       events.addAll(result.items);
       hasMore = result.hasMore;
@@ -125,11 +129,17 @@ class TenantAdminEventsRepository
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? status,
     TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     try {
       final normalizedSearch = search?.value.trim();
       final normalizedStatus = status?.value.trim();
       final archivedValue = archived?.value ?? false;
+      final normalizedTemporal = temporalBuckets == null
+          ? const <String>[]
+          : temporalBuckets.map((bucket) => bucket.apiValue).toList(
+                growable: false,
+              );
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events',
         queryParameters: {
@@ -140,6 +150,8 @@ class TenantAdminEventsRepository
           if (normalizedStatus != null && normalizedStatus.isNotEmpty)
             'status': normalizedStatus,
           if (archivedValue) 'archived': 1,
+          if (normalizedTemporal.isNotEmpty)
+            'temporal': normalizedTemporal.join(','),
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
@@ -152,6 +164,18 @@ class TenantAdminEventsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'load events page');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'load events page',
+        uri: '$_apiBaseUrl/v1/events',
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'load events page',
+        uri: '$_apiBaseUrl/v1/events',
+      );
     }
   }
 
@@ -167,6 +191,18 @@ class TenantAdminEventsRepository
       return _responseDecoder.decodeEventItem(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load event');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'load event',
+        uri: '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'load event',
+        uri: '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
+      );
     }
   }
 
@@ -281,6 +317,34 @@ class TenantAdminEventsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'delete event');
+    }
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      fetchLegacyEventPartiesSummary() async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/events/legacy_event_parties/summary',
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _responseDecoder.decodeLegacyEventPartiesSummary(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load legacy event parties summary');
+    }
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
+    try {
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/events/legacy_event_parties/repair',
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _responseDecoder.decodeLegacyEventPartiesSummary(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'repair legacy event parties');
     }
   }
 
@@ -420,6 +484,26 @@ class TenantAdminEventsRepository
     );
     return FormatException(
       'Failed to $context [status=$status] ($uri): $message',
+    );
+  }
+
+  FormatException _wrapDecodeError(
+    FormatException error, {
+    required String context,
+    required String uri,
+  }) {
+    return FormatException(
+      'Failed to $context [decode] ($uri): ${error.message}',
+    );
+  }
+
+  FormatException _wrapUnknownDecodeError(
+    Object error, {
+    required String context,
+    required String uri,
+  }) {
+    return FormatException(
+      'Failed to $context [decode] ($uri): $error',
     );
   }
 

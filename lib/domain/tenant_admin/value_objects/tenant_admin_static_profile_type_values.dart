@@ -8,13 +8,14 @@ TenantAdminStaticProfileTypeDefinition
   required Object? label,
   required Object? allowedTaxonomies,
   required TenantAdminStaticProfileTypeCapabilities capabilities,
-  TenantAdminPoiVisual? poiVisual,
+  TenantAdminPoiVisual? visual,
+  @Deprecated('Use visual instead.') TenantAdminPoiVisual? poiVisual,
 }) {
   return TenantAdminStaticProfileTypeDefinition(
     typeValue: tenantAdminRequiredText(type),
     labelValue: tenantAdminRequiredText(label),
     allowedTaxonomiesValue: tenantAdminTrimmedStringList(allowedTaxonomies),
     capabilities: capabilities,
-    poiVisual: poiVisual,
+    visual: visual ?? poiVisual,
   );
 }
