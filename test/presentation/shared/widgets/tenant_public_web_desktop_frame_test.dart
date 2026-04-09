@@ -19,12 +19,20 @@ void main() {
         isTrue,
       );
       expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(EventSearchRoute.name),
+        isTrue,
+      );
+      expect(
         TenantPublicWebDesktopFrame.shouldFrameRoute(AppPromotionRoute.name),
         isTrue,
       );
       expect(
         TenantPublicWebDesktopFrame.shouldFrameRoute(
             LocationPermissionRoute.name),
+        isTrue,
+      );
+      expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(InviteShareRoute.name),
         isTrue,
       );
     });
