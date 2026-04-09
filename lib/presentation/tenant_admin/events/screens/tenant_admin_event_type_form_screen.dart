@@ -46,68 +46,78 @@ class _TenantAdminEventTypeFormScreenState
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
     final router = context.router;
+    if (_controller.eventTypeFormStateStreamValue.value.isSaving) {
+      return;
+    }
     final form = _controller.eventTypeFormKey.currentState;
     if (form == null || !form.validate()) {
-      return;
-    }
-
-    final name = _controller.eventTypeNameController.text.trim();
-    final slug = _controller.eventTypeSlugController.text.trim();
-    final description = _controller.eventTypeDescriptionController.text.trim();
-    final visual = _controller.buildCurrentEventTypeVisual();
-    if (visual == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Configuração visual do tipo inválida. Revise modo, ícone/cor ou fonte de imagem.',
-          ),
-        ),
-      );
-      return;
-    }
-    final requiresTypeAsset =
-        visual.mode == TenantAdminPoiVisualMode.image &&
-            visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
-    final typeAssetUpload = requiresTypeAsset
-        ? await _controller.buildEventTypeAssetUpload()
-        : null;
-    if (requiresTypeAsset &&
-        typeAssetUpload == null &&
-        _controller.currentEventTypeTypeAssetUrl == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Envie uma imagem canônica do tipo ou escolha Capa do evento como fonte.',
-          ),
-        ),
-      );
       return;
     }
 
     _controller.setEventTypeFormSaving(true);
     _controller.setEventTypeFormError(null);
 
-    _controller
-        .saveEventType(
-      name: name,
-      slug: slug,
-      description: description,
-      visual: visual,
-      typeAssetUpload: typeAssetUpload,
-      removeTypeAsset: _controller.isEventTypeTypeAssetMarkedForRemoval,
-      includeVisual: true,
-      existingType: widget.existingType,
-    )
-        .then((type) {
-      if (!mounted) {
+    final name = _controller.eventTypeNameController.text.trim();
+    final slug = _controller.eventTypeSlugController.text.trim();
+    final description = _controller.eventTypeDescriptionController.text.trim();
+    try {
+      final visual = _controller.buildCurrentEventTypeVisual();
+      if (visual == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Configuração visual do tipo inválida. Revise modo, ícone/cor ou fonte de imagem.',
+            ),
+          ),
+        );
+        _controller.setEventTypeFormSaving(false);
         return;
       }
-      router.maybePop(type);
-    }).catchError((error) {
+      final requiresTypeAsset =
+          visual.mode == TenantAdminPoiVisualMode.image &&
+              visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
+      final typeAssetUpload = requiresTypeAsset
+          ? await _controller.buildEventTypeAssetUpload()
+          : null;
+      if (requiresTypeAsset &&
+          typeAssetUpload == null &&
+          _controller.currentEventTypeTypeAssetUrl == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Envie uma imagem canônica do tipo ou escolha Capa do evento como fonte.',
+            ),
+          ),
+        );
+        _controller.setEventTypeFormSaving(false);
+        return;
+      }
+
+      _controller
+          .saveEventType(
+        name: name,
+        slug: slug,
+        description: description,
+        visual: visual,
+        typeAssetUpload: typeAssetUpload,
+        removeTypeAsset: _controller.isEventTypeTypeAssetMarkedForRemoval,
+        includeVisual: true,
+        existingType: widget.existingType,
+      )
+          .then((type) {
+        if (!mounted) {
+          return;
+        }
+        router.maybePop(type);
+      }).catchError((error) {
+        _controller.setEventTypeFormError(error.toString());
+      }).whenComplete(() {
+        _controller.setEventTypeFormSaving(false);
+      });
+    } catch (error) {
       _controller.setEventTypeFormError(error.toString());
-    }).whenComplete(() {
       _controller.setEventTypeFormSaving(false);
-    });
+    }
   }
 
   @override
