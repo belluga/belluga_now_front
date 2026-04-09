@@ -29,6 +29,7 @@ import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_ob
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/presentation/shared/push/push_option_selector_sheet.dart';
 import 'package:belluga_now/presentation/shared/push/push_step_validator.dart';
+import 'package:belluga_now/presentation/shared/widgets/tenant_public_web_desktop_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -709,6 +710,18 @@ class _ApplicationContractState extends State<ApplicationContract>
             navigatorObservers: () =>
                 kIsWeb ? const [] : [TelemetryRouteObserver()],
           ),
+          builder: (context, child) {
+            return ListenableBuilder(
+              listenable: widget.appRouter,
+              child: child ?? const SizedBox.shrink(),
+              builder: (context, routedChild) {
+                return TenantPublicWebDesktopFrame(
+                  routeName: widget.appRouter.topRoute.name,
+                  child: routedChild ?? const SizedBox.shrink(),
+                );
+              },
+            );
+          },
         );
       },
     );
