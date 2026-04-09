@@ -883,7 +883,8 @@ void main() {
     expect(chooser.lastTarget?.longitude, closeTo(-40.8212, 0.00001));
   });
 
-  testWidgets('renders fallback section when no tabs are available',
+  testWidgets(
+      'renders favorite CTA fallback when no tabs are available and profile is favoritable',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -904,7 +905,83 @@ void main() {
       find.byKey(const Key('accountProfileNoSectionsFallback')),
       findsOneWidget,
     );
+    expect(
+      find.text(
+        'Favorite para ser avisado das novidades sobre Perfil Sem Seções.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('accountProfileFavoriteFooterButton')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'keeps neutral fallback when no tabs are available and profile is already favorited',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      initialFavoriteIds: const {'507f1f77bcf86cd799439013'},
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AccountProfileDetailScreen(
+          accountProfile: _buildMinimalProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Mais sobre este perfil'), findsOneWidget);
+    expect(
+      find.text(
+        'Favorite para ser avisado das novidades sobre Perfil Sem Seções.',
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('accountProfileFavoriteFooterButton')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'keeps neutral fallback when no tabs are available and profile is not favoritable',
+      (tester) async {
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(_buildAppData(artistFavoritable: false));
+
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AccountProfileDetailScreen(
+          accountProfile: _buildMinimalProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mais sobre este perfil'), findsOneWidget);
+    expect(
+      find.text(
+        'Favorite para ser avisado das novidades sobre Perfil Sem Seções.',
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('accountProfileFavoriteFooterButton')),
+      findsNothing,
+    );
   });
 
   testWidgets('renders bio only once and without raw html tags',
@@ -1399,7 +1476,9 @@ AccountProfileModel _buildArtistHostAwareProfile() {
   );
 }
 
-AppData _buildAppData() {
+AppData _buildAppData({
+  bool artistFavoritable = true,
+}) {
   final remoteData = {
     'name': 'Tenant Test',
     'type': 'tenant',
@@ -1416,7 +1495,7 @@ AppData _buildAppData() {
           'icon_color': '#FFFFFF',
         },
         'capabilities': {
-          'is_favoritable': true,
+          'is_favoritable': artistFavoritable,
           'is_poi_enabled': false,
           'has_events': true,
           'has_bio': false,

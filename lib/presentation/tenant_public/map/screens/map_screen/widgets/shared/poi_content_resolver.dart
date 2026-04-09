@@ -37,6 +37,41 @@ class PoiContentResolver {
     return DateFormat('HH:mm').format(localStart);
   }
 
+  static String? eventRelativeTimingBadgeLabel(
+    CityPoiModel poi, {
+    DateTime? referenceTime,
+  }) {
+    if (!isEventPoi(poi)) {
+      return null;
+    }
+    if (poi.isHappeningNow) {
+      return 'AGORA';
+    }
+    final start = poi.timeStart;
+    if (start == null) {
+      return null;
+    }
+
+    final localStart = TimezoneConverter.utcToLocal(start);
+    final localReference = _resolveLocalReferenceTime(referenceTime);
+    final startDay = DateTime(localStart.year, localStart.month, localStart.day);
+    final referenceDay = DateTime(
+      localReference.year,
+      localReference.month,
+      localReference.day,
+    );
+    final timeLabel = DateFormat('HH:mm').format(localStart);
+    final dayOffset = startDay.difference(referenceDay).inDays;
+
+    if (dayOffset == 0) {
+      return 'Hoje $timeLabel';
+    }
+    if (dayOffset == 1) {
+      return 'Amanhã $timeLabel';
+    }
+    return '${DateFormat('dd/MM').format(localStart)} $timeLabel';
+  }
+
   static String? eventScheduleLabel(CityPoiModel poi) {
     if (!isEventPoi(poi)) {
       return null;
@@ -217,6 +252,14 @@ class PoiContentResolver {
     final hour = updatedAt.hour.toString().padLeft(2, '0');
     final minute = updatedAt.minute.toString().padLeft(2, '0');
     return 'Atualizado em $day/$month • $hour:$minute';
+  }
+
+  static DateTime _resolveLocalReferenceTime(DateTime? rawReferenceTime) {
+    final referenceTime = rawReferenceTime ?? DateTime.now();
+    if (referenceTime.isUtc) {
+      return TimezoneConverter.utcToLocal(referenceTime);
+    }
+    return referenceTime;
   }
 
   static String _humanizeToken(String raw) {

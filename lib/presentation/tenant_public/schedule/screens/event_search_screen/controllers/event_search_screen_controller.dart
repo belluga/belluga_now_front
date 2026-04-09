@@ -77,6 +77,8 @@ class EventSearchScreenController
   late StreamValue<InviteFilter> inviteFilterStreamValue;
   @override
   late StreamValue<double> radiusMetersStreamValue;
+  @override
+  late StreamValue<bool> isRadiusRefreshLoadingStreamValue;
   late StreamValue<double> _maxRadiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -152,6 +154,7 @@ class EventSearchScreenController
         StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
     radiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+    isRadiusRefreshLoadingStreamValue = StreamValue<bool>(defaultValue: false);
     _maxRadiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     _isScrollListenerAttached = false;
@@ -717,6 +720,7 @@ class EventSearchScreenController
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
+    isRadiusRefreshLoadingStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();

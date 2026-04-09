@@ -46,6 +46,51 @@ void main() {
       expect(PoiContentResolver.eventTimingBadgeLabel(poi), '18:30');
     });
 
+    test('event relative timing badge uses Hoje for same-day events', () {
+      final poi = _buildPoi(
+        refType: 'event',
+        timeStart: DateTime(2026, 4, 9, 18, 30),
+      );
+
+      expect(
+        PoiContentResolver.eventRelativeTimingBadgeLabel(
+          poi,
+          referenceTime: DateTime(2026, 4, 9, 9, 0),
+        ),
+        'Hoje 18:30',
+      );
+    });
+
+    test('event relative timing badge uses Amanhã for next-day events', () {
+      final poi = _buildPoi(
+        refType: 'event',
+        timeStart: DateTime(2026, 4, 10, 22, 0),
+      );
+
+      expect(
+        PoiContentResolver.eventRelativeTimingBadgeLabel(
+          poi,
+          referenceTime: DateTime(2026, 4, 9, 9, 0),
+        ),
+        'Amanhã 22:00',
+      );
+    });
+
+    test('event relative timing badge includes date for later events', () {
+      final poi = _buildPoi(
+        refType: 'event',
+        timeStart: DateTime(2026, 4, 12, 20, 15),
+      );
+
+      expect(
+        PoiContentResolver.eventRelativeTimingBadgeLabel(
+          poi,
+          referenceTime: DateTime(2026, 4, 9, 9, 0),
+        ),
+        '12/04 20:15',
+      );
+    });
+
     test('event schedule label exposes start and end time', () {
       final poi = _buildPoi(
         refType: 'event',
