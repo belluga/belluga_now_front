@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 
 class TenantAdminEventsRequestEncoder {
   const TenantAdminEventsRequestEncoder();
@@ -8,7 +9,10 @@ class TenantAdminEventsRequestEncoder {
     String? name,
     String? slug,
     String? description,
+    TenantAdminPoiVisual? visual,
     bool includeDescription = false,
+    bool includeVisual = false,
+    bool removeTypeAsset = false,
   }) {
     final payload = <String, dynamic>{};
     if (name != null) {
@@ -20,7 +24,31 @@ class TenantAdminEventsRequestEncoder {
     if (includeDescription || description != null) {
       payload['description'] = description;
     }
+    if (includeVisual) {
+      payload['visual'] = visual?.toJson();
+      payload['poi_visual'] = visual?.toJson();
+    }
+    if (removeTypeAsset) {
+      payload['remove_type_asset'] = true;
+    }
     return payload;
+  }
+
+  Map<String, dynamic> encodeEventTypeCreate({
+    required String name,
+    required String slug,
+    String? description,
+    TenantAdminPoiVisual? visual,
+    bool includeVisual = false,
+  }) {
+    return {
+      'name': name,
+      'slug': slug,
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      if (includeVisual) 'visual': visual?.toJson(),
+      if (includeVisual) 'poi_visual': visual?.toJson(),
+    };
   }
 
   Map<String, dynamic> encodeDraft(TenantAdminEventDraft draft) {

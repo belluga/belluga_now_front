@@ -145,6 +145,29 @@ void main() {
     expect(pois.first.visual?.color, '#EB2528');
     expect(pois.first.visual?.iconColor, '#101010');
   });
+
+  test('getPois preserves image visual contract from stacks payload',
+      () async {
+    final adapter = _PoiImageStacksAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    final pois = await service.getPois(PoiQuery());
+
+    expect(pois, hasLength(1));
+    expect(pois.first.visual, isNotNull);
+    expect(pois.first.visual?.mode, 'image');
+    expect(
+      pois.first.visual?.imageUri,
+      'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
+    );
+  });
 }
 
 PoiQuery _buildPoiQuery({
@@ -376,6 +399,57 @@ class _PoiStacksAdapter implements HttpClientAdapter {
                 'icon': {'value': 'restaurant'},
                 'color': {'value': '#EB2528'},
                 'icon_color': {'value': '#101010'},
+                'source': {'value': 'type_definition'},
+              },
+            },
+            'items': const <Object>[],
+          },
+        ],
+      }),
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _PoiImageStacksAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    return ResponseBody.fromString(
+      jsonEncode({
+        'stacks': [
+          {
+            'stack_key': 'event:poi-1',
+            'stack_count': 1,
+            'top_poi': {
+              'id': 'poi-1',
+              'title': 'Festival',
+              'subtitle': 'Descricao',
+              'description': 'Descricao',
+              'address': 'Endereco',
+              'category_slug': 'event',
+              'location': {
+                'lat': -20.0,
+                'lng': -40.0,
+              },
+              'visual': {
+                'mode': {'value': 'image'},
+                'image_uri': {
+                  'value':
+                      'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
+                },
                 'source': {'value': 'type_definition'},
               },
             },

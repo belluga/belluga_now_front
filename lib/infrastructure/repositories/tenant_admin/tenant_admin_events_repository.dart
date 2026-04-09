@@ -7,7 +7,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
@@ -370,15 +372,52 @@ class TenantAdminEventsRepository
   }) async {
     try {
       final normalizedDescription = description?.value.trim();
+      final payload = _requestEncoder.encodeEventTypeCreate(
+        name: name.value,
+        slug: slug.value,
+        description: normalizedDescription,
+      );
       final response = await _dio.post(
         '$_apiBaseUrl/v1/event_types',
-        data: {
-          'name': name.value,
-          'slug': slug.value,
-          if (normalizedDescription != null && normalizedDescription.isNotEmpty)
-            'description': normalizedDescription,
-        },
+        data: payload,
         options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _responseDecoder.decodeEventTypeItem(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create event type');
+    }
+  }
+
+  @override
+  Future<TenantAdminEventType> createEventTypeWithVisual({
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+  }) async {
+    try {
+      final normalizedDescription = description?.value.trim();
+      final payload = _requestEncoder.encodeEventTypeCreate(
+        name: name.value,
+        slug: slug.value,
+        description: normalizedDescription,
+        visual: visual,
+        includeVisual: true,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
+      );
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/event_types',
+        data: uploadPayload ?? payload,
+        options: uploadPayload == null
+            ? Options(headers: _buildLandlordHeaders())
+            : Options(
+                headers: _buildLandlordHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       return _responseDecoder.decodeEventTypeItem(response.data);
     } on DioException catch (error) {
@@ -407,6 +446,54 @@ class TenantAdminEventsRepository
         data: payload,
         options: Options(headers: _buildLandlordHeaders()),
       );
+
+      return _responseDecoder.decodeEventTypeItem(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update event type');
+    }
+  }
+
+  @override
+  Future<TenantAdminEventType> updateEventTypeWithVisual({
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminEventsRepoBool? removeTypeAsset,
+  }) async {
+    try {
+      final normalizedDescription = description?.value.trim();
+      final payload = _requestEncoder.encodeEventTypePatch(
+        name: name?.value,
+        slug: slug?.value,
+        description: normalizedDescription,
+        visual: visual,
+        includeDescription: true,
+        includeVisual: true,
+        removeTypeAsset: removeTypeAsset?.value ?? false,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildTypeAssetPayload(
+        payload: payload,
+        typeAssetUpload: typeAssetUpload,
+      );
+
+      final response = uploadPayload == null
+          ? await _dio.patch(
+              '$_apiBaseUrl/v1/event_types/${eventTypeId.value}',
+              data: payload,
+              options: Options(headers: _buildLandlordHeaders()),
+            )
+          : await _dio.post(
+              '$_apiBaseUrl/v1/event_types/${eventTypeId.value}',
+              data: uploadPayload
+                ..fields.add(const MapEntry('_method', 'PATCH')),
+              options: Options(
+                headers: _buildLandlordHeaders(),
+                contentType: 'multipart/form-data',
+              ),
+            );
 
       return _responseDecoder.decodeEventTypeItem(response.data);
     } on DioException catch (error) {

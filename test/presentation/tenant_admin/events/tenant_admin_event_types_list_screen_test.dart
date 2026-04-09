@@ -73,8 +73,8 @@ void main() {
 }
 
 class _NoopEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
     throw UnimplementedError();
