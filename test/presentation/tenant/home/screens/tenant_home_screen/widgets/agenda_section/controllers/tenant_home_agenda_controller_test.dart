@@ -304,6 +304,54 @@ void main() {
       controller.onDispose();
     });
 
+    test('keeps radius refresh loading active until repository refresh settles',
+        () async {
+      final appData = _buildAppData(
+        minKm: 2,
+        defaultKm: 7,
+        maxKm: 15,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = _buildAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+        radiusRefreshDebounce: const Duration(milliseconds: 20),
+      );
+
+      await controller.init();
+      expect(controller.isRadiusRefreshLoadingStreamValue.value, isFalse);
+
+      final pendingRefresh = Completer<void>();
+      scheduleRepository.nextFetchGate = pendingRefresh;
+
+      controller.setRadiusMeters(4000);
+      expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        1,
+        reason: 'Refresh should still be waiting on the debounce window.',
+      );
+      expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+      expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
+
+      pendingRefresh.complete();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.isRadiusRefreshLoadingStreamValue.value, isFalse);
+
+      controller.onDispose();
+    });
+
     test('normalizes invalid tenant radius settings when parsing app data', () {
       final appData = _buildAppData(
         minKm: 10,
@@ -673,6 +721,47 @@ void main() {
         controller.onDispose();
       },
     );
+
+    testWidgets('home radius action shows loading affordance while refreshing',
+        (tester) async {
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 15,
+          ),
+        ),
+      );
+
+      await controller.init();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: HomeAgendaAppBar(controller: controller),
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.radar), findsOneWidget);
+
+      controller.isRadiusRefreshLoadingStreamValue.addValue(true);
+      await tester.pump();
+
+      expect(find.byIcon(Icons.radar), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      controller.onDispose();
+    });
 
     test('uses tenant default origin when user location is unavailable',
         () async {
@@ -1787,6 +1876,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+  Completer<void>? nextFetchGate;
   _FakeHomeAgendaState? _homeAgendaState;
 
   @override
@@ -1958,6 +2048,11 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     getEventsPageCallCount += 1;
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
+    final fetchGate = nextFetchGate;
+    if (fetchGate != null) {
+      nextFetchGate = null;
+      await fetchGate.future;
+    }
     return const <EventModel>[];
   }
 

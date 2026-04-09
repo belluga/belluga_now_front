@@ -90,7 +90,7 @@ class _ClusterPickerItem extends StatelessWidget {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
         );
-    final badgeLabel = PoiContentResolver.eventTimingBadgeLabel(poi);
+    final badgeLabel = PoiContentResolver.eventRelativeTimingBadgeLabel(poi);
     final isLiveNow = poi.isHappeningNow && badgeLabel != null;
 
     return Material(

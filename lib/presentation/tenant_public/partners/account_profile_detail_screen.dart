@@ -115,6 +115,8 @@ class _AccountProfileDetailScreenState
                                       ? <ImmersiveTabItem>[
                                           _buildFallbackTab(
                                             resolvedAccountProfile,
+                                            isFav: isFav,
+                                            isFavoritable: isFavoritable,
                                           ),
                                         ]
                                       : configTabs;
@@ -129,7 +131,7 @@ class _AccountProfileDetailScreenState
                                         (context, innerBoxIsScrolled) =>
                                             _buildAppBarActions(
                                       context,
-                                            innerBoxIsScrolled,
+                                      innerBoxIsScrolled,
                                       resolvedAccountProfile,
                                       isFav: isFav,
                                       isFavoritable: isFavoritable,
@@ -389,12 +391,10 @@ class _AccountProfileDetailScreenState
   List<ImmersiveTabItem> _buildTabsFromConfig(
     AccountProfileModel accountProfile,
     PartnerProfileConfig config,
-    Map<ProfileModuleId, Object?> moduleData,
-    {
+    Map<ProfileModuleId, Object?> moduleData, {
     required bool isFav,
     required bool isFavoritable,
-  }
-  ) {
+  }) {
     final agendaEvents = _agendaEventsFromModuleData(moduleData);
     final locationView = _locationFromModuleData(moduleData);
 
@@ -458,10 +458,23 @@ class _AccountProfileDetailScreenState
     return true;
   }
 
-  ImmersiveTabItem _buildFallbackTab(AccountProfileModel accountProfile) {
+  ImmersiveTabItem _buildFallbackTab(
+    AccountProfileModel accountProfile, {
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
     return ImmersiveTabItem(
       title: 'Perfil',
-      content: _buildNoSectionsFallback(accountProfile),
+      content: _buildNoSectionsFallback(
+        accountProfile,
+        isFav: isFav,
+        isFavoritable: isFavoritable,
+      ),
+      footer: _buildFallbackFooter(
+        accountProfile,
+        isFav: isFav,
+        isFavoritable: isFavoritable,
+      ),
     );
   }
 
@@ -614,9 +627,14 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildNoSectionsFallback(AccountProfileModel accountProfile) {
+  Widget _buildNoSectionsFallback(
+    AccountProfileModel accountProfile, {
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final typeLabel = _controller.typeLabelFor(accountProfile);
+    final showFavoriteEmptyState = isFavoritable && !isFav;
     return Padding(
       key: const Key('accountProfileNoSectionsFallback'),
       padding: const EdgeInsets.all(16),
@@ -631,20 +649,24 @@ class _AccountProfileDetailScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Mais sobre este perfil',
+              showFavoriteEmptyState
+                  ? 'Favorite para ser avisado das novidades sobre ${accountProfile.name}.'
+                  : 'Mais sobre este perfil',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Este $typeLabel ainda não publicou módulos adicionais por aqui. '
-              'Novas informações devem aparecer em breve.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.45,
-                  ),
-            ),
+            if (!showFavoriteEmptyState) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Este $typeLabel ainda não publicou módulos adicionais por aqui. '
+                'Novas informações devem aparecer em breve.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+              ),
+            ],
           ],
         ),
       ),
@@ -750,6 +772,17 @@ class _AccountProfileDetailScreenState
     }
 
     return null;
+  }
+
+  Widget? _buildFallbackFooter(
+    AccountProfileModel accountProfile, {
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
+    if (!isFavoritable || isFav) {
+      return null;
+    }
+    return _favoriteFooter(accountProfile);
   }
 
   Widget _favoriteFooter(AccountProfileModel accountProfile) {
@@ -911,8 +944,7 @@ class _AccountProfileDetailScreenState
     final upcomingEvents = agenda
         .where(
           (event) =>
-              featuredEvent == null ||
-              event.uniqueId != featuredEvent.uniqueId,
+              featuredEvent == null || event.uniqueId != featuredEvent.uniqueId,
         )
         .toList(growable: false);
 
@@ -1056,9 +1088,7 @@ class _AccountProfileDetailScreenState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  hasAddress
-                                      ? 'Endereço'
-                                      : 'Ver no mapa',
+                                  hasAddress ? 'Endereço' : 'Ver no mapa',
                                   style: Theme.of(context)
                                       .textTheme
                                       .labelLarge
@@ -1439,14 +1469,17 @@ class _AccountProfileDetailScreenState
                     ],
                     Text(
                       headline,
-                      key: Key('accountProfileAgendaLiveHeadline_${event.uniqueId}'),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            height: 0.95,
-                          ),
+                      key: Key(
+                          'accountProfileAgendaLiveHeadline_${event.uniqueId}'),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                height: 0.95,
+                              ),
                     ),
-                    if (_agendaCounterparts(accountProfile, event).isNotEmpty) ...[
+                    if (_agendaCounterparts(accountProfile, event)
+                        .isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildAgendaCounterpartsLine(
                         accountProfile,

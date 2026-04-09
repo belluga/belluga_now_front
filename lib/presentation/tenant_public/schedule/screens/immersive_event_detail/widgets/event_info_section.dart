@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -14,6 +15,9 @@ class EventInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final html = event.content.value?.trim() ?? '';
+    if (InviteFromEventFactory.stripHtml(html).isEmpty) {
+      return const SizedBox.shrink();
+    }
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
@@ -26,7 +30,7 @@ class EventInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Html(
-            data: html.isEmpty ? '<p>Sem descrição disponível.</p>' : html,
+            data: html,
             style: {
               'body': Style(
                 margin: Margins.zero,
