@@ -46,6 +46,8 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart'
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -798,6 +800,9 @@ CityPoiModel _buildPoi({
   int stackCount = 1,
   CityPoiCategory category = CityPoiCategory.restaurant,
   String? categoryLabel,
+  bool isHappeningNow = false,
+  DateTime? timeStart,
+  DateTime? timeEnd,
   List<CityPoiModel>? stackItems,
   CityCoordinate? coordinate,
   double? distanceMeters,
@@ -832,6 +837,14 @@ CityPoiModel _buildPoi({
   final distanceMetersValue = distanceMeters == null
       ? null
       : (DistanceInMetersValue()..parse(distanceMeters.toString()));
+  final isHappeningNowValue =
+      PoiBooleanValue()..parse(isHappeningNow.toString());
+  final timeStartValue = timeStart == null
+      ? null
+      : (PoiTimeStartValue()..parse(timeStart.toUtc().toIso8601String()));
+  final timeEndValue = timeEnd == null
+      ? null
+      : (PoiTimeEndValue()..parse(timeEnd.toUtc().toIso8601String()));
   final coverImageUriValue = coverImageUri == null
       ? null
       : (PoiFilterImageUriValue()..parse(coverImageUri));
@@ -853,6 +866,9 @@ CityPoiModel _buildPoi({
     stackKeyValue: stackKeyValue,
     stackCountValue: stackCountValue,
     stackItems: stackItemCollection,
+    isHappeningNowValue: isHappeningNowValue,
+    timeStartValue: timeStartValue,
+    timeEndValue: timeEndValue,
     distanceMetersValue: distanceMetersValue,
   );
 }
@@ -1589,6 +1605,145 @@ void main() {
       },
     );
 
+    test(
+      'event catalog filter focuses the next upcoming event before nearer later events',
+      () async {
+        final reference = DateTime.now().toUtc();
+        final fakeMapHandle = _FakeMapHandle(
+          initialZoom: 15.2,
+          initialCenter: _buildPoi(id: 'seed').coordinate,
+        );
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: fakeMapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+          fakeMapHandle.dispose();
+        });
+
+        mapRepository.nextPois = <CityPoiModel>[
+          _buildPoi(
+            id: 'poi-later-near',
+            name: 'Mais perto depois',
+            refType: 'event',
+            refId: 'event-2',
+            refSlug: 'mais-perto-depois',
+            coordinate: _buildCoordinate('-20.100000', '-40.100000'),
+            distanceMeters: 120,
+            timeStart: reference.add(const Duration(hours: 6)),
+          ),
+          _buildPoi(
+            id: 'poi-soon-far',
+            name: 'Mais longe antes',
+            refType: 'event',
+            refId: 'event-1',
+            refSlug: 'mais-longe-antes',
+            coordinate: _buildCoordinate('-20.500000', '-40.500000'),
+            distanceMeters: 900,
+            timeStart: reference.add(const Duration(hours: 2)),
+          ),
+          _buildPoi(
+            id: 'poi-past-nearest',
+            name: 'Já terminou',
+            refType: 'event',
+            refId: 'event-3',
+            refSlug: 'ja-terminou',
+            coordinate: _buildCoordinate('-20.050000', '-40.050000'),
+            distanceMeters: 30,
+            timeStart: reference.subtract(const Duration(hours: 5)),
+          ),
+        ];
+
+        localController.toggleCatalogCategoryFilter(
+          _buildCategory(
+            key: 'event',
+            label: 'Eventos',
+            tags: const {},
+          ),
+        );
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(
+          localController.mapTrayModeStreamValue.value,
+          MapTrayMode.filterResults,
+        );
+        expect(localController.selectedPoiStreamValue.value, isNull);
+        expect(fakeMapHandle.moveCallCount, 1);
+        expect(fakeMapHandle.lastMoveCoordinate, isNotNull);
+        expect(
+          fakeMapHandle.lastMoveCoordinate!.latitude,
+          closeTo(-20.5, 1e-9),
+        );
+
+        final filteredPois = localController.filteredPoisStreamValue.value!;
+        final selectedLaterPoi = filteredPois.firstWhere(
+          (poi) => poi.id == 'poi-later-near',
+        );
+        final deckPois = localController.deckPoisForSelectedPoi(
+          selectedLaterPoi,
+        );
+
+        expect(
+          deckPois.map((poi) => poi.id).toList(growable: false),
+          equals(<String>[
+            'poi-soon-far',
+            'poi-later-near',
+            'poi-past-nearest',
+          ]),
+        );
+      },
+    );
+
+    test(
+      'orderedFilterResultPois keeps happening-now and upcoming events ahead of past ones',
+      () async {
+        final reference = DateTime.now().toUtc();
+        controller.activeCatalogFilterKeyStreamValue.addValue('event');
+
+        final ordered = controller.orderedFilterResultPois(
+          <CityPoiModel>[
+            _buildPoi(
+              id: 'poi-past',
+              name: 'Evento passado',
+              refType: 'event',
+              refId: 'event-past',
+              distanceMeters: 10,
+              timeStart: reference.subtract(const Duration(hours: 5)),
+            ),
+            _buildPoi(
+              id: 'poi-upcoming',
+              name: 'Evento futuro',
+              refType: 'event',
+              refId: 'event-upcoming',
+              distanceMeters: 900,
+              timeStart: reference.add(const Duration(hours: 3)),
+            ),
+            _buildPoi(
+              id: 'poi-now',
+              name: 'Evento agora',
+              refType: 'event',
+              refId: 'event-now',
+              isHappeningNow: true,
+              distanceMeters: 400,
+              timeStart: reference.subtract(const Duration(minutes: 30)),
+              timeEnd: reference.add(const Duration(minutes: 30)),
+            ),
+          ],
+        );
+
+        expect(ordered.map((poi) => poi.id).toList(), <String>[
+          'poi-now',
+          'poi-upcoming',
+          'poi-past',
+        ]);
+      },
+    );
+
     test('tapping the same active catalog filter reopens filter results tray',
         () async {
       final category = _buildCategory(
@@ -2247,6 +2402,80 @@ void main() {
         localController.filteredPoisStreamValue.value?.single.visual?.imageUri,
         isNull,
       );
+    });
+
+    test(
+        'marker tap hydrates account-profile poi aliases with avatar and cover',
+        () async {
+      final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+      final fakeMapHandle = _FakeMapHandle();
+      final localController = _buildMapController(
+        poiRepository: _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        ),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      for (final entry in const <({String id, String refType})>[
+        (id: 'poi-partner-alias', refType: 'partner'),
+        (id: 'poi-accountprofile-alias', refType: 'accountprofile'),
+      ]) {
+        mapRepository.nextPois = <CityPoiModel>[
+          _buildPoi(
+            id: entry.id,
+            name: 'Casa Marracini',
+            refType: entry.refType,
+            refId: '507f1f77bcf86cd799439011',
+            refSlug: 'casa-marracini',
+            refPath: '/parceiro/casa-marracini',
+          ),
+        ];
+        await localController.loadPois(PoiQuery());
+        localController.clearSelectedPoi();
+
+        final poi = localController.filteredPoisStreamValue.value!.single;
+        final hydration = Completer<AccountProfileModel?>();
+        localAccountProfilesRepository.pendingBySlug['casa-marracini'] =
+            hydration;
+
+        final selectionFuture = localController.handleMarkerTap(poi);
+        await _flushMicrotasks();
+
+        expect(localController.selectedPoiLoadingIdStreamValue.value, poi.id);
+        expect(localController.selectedPoiStreamValue.value, isNull);
+
+        hydration.complete(
+          buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439011',
+            name: 'Casa Marracini',
+            slug: 'casa-marracini',
+            type: 'beach_club_custom',
+            avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+            coverUrl: 'https://tenant.test/media/casa-cover.png',
+          ),
+        );
+
+        await selectionFuture;
+        await _flushMicrotasks();
+
+        expect(localController.selectedPoiStreamValue.value?.id, entry.id);
+        expect(
+          localController.selectedPoiStreamValue.value?.visual?.imageUri,
+          'https://tenant.test/media/casa-avatar.png',
+        );
+        expect(
+          localController.selectedPoiStreamValue.value?.coverImageUri,
+          'https://tenant.test/media/casa-cover.png',
+        );
+      }
     });
 
     test(
@@ -3770,8 +3999,7 @@ void main() {
         selectedPoi,
         tallerAdjacentPoi,
       ]);
-      controller.mapTrayModeStreamValue
-          .addValue(MapTrayMode.filterResults);
+      controller.mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
       controller.selectPoi(selectedPoi);
       controller.updatePoiDeckHeight('poi-near', 320);
       controller.updatePoiDeckHeight('poi-far', 440);
@@ -3907,6 +4135,70 @@ void main() {
       final nearTop = tester.getTopLeft(find.text('Mais perto')).dy;
       final farTop = tester.getTopLeft(find.text('Mais longe')).dy;
       expect(nearTop, lessThan(farTop));
+    });
+
+    testWidgets(
+        'filter results tray orders event filters by next start time before distance',
+        (tester) async {
+      final reference = DateTime.now().toUtc();
+      final router = _RecordingStackRouter()..canPopResult = false;
+
+      await _pumpMapScreen(
+        tester,
+        router: router,
+        fallbackRoute: const TenantHomeRoute(),
+      );
+
+      controller.mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
+      controller.activeCategoryKeysStreamValue
+          .addValue(const <String>{'event'});
+      controller.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: <PoiFilterCategory>[
+            _buildCategory(key: 'event', label: 'Eventos'),
+          ],
+        ),
+      );
+      controller.activeCatalogFilterKeyStreamValue.addValue('event');
+      controller.activeFilterLabelStreamValue.addValue('Eventos');
+      controller.filteredPoisStreamValue.addValue(
+        <CityPoiModel>[
+          _buildPoi(
+            id: 'poi-later-near',
+            name: 'Mais perto depois',
+            refType: 'event',
+            refId: 'event-2',
+            distanceMeters: 120,
+            timeStart: reference.add(const Duration(hours: 6)),
+          ),
+          _buildPoi(
+            id: 'poi-soon-far',
+            name: 'Mais longe antes',
+            refType: 'event',
+            refId: 'event-1',
+            distanceMeters: 900,
+            timeStart: reference.add(const Duration(hours: 2)),
+          ),
+          _buildPoi(
+            id: 'poi-past-nearest',
+            name: 'Já terminou',
+            refType: 'event',
+            refId: 'event-3',
+            distanceMeters: 30,
+            timeStart: reference.subtract(const Duration(hours: 5)),
+          ),
+        ],
+      );
+      await tester.pump();
+
+      expect(find.text('Próximos eventos'), findsOneWidget);
+      expect(find.text('Mais próximos de você'), findsNothing);
+
+      final soonTop = tester.getTopLeft(find.text('Mais longe antes')).dy;
+      final laterTop = tester.getTopLeft(find.text('Mais perto depois')).dy;
+      final pastTop = tester.getTopLeft(find.text('Já terminou')).dy;
+      expect(soonTop, lessThan(laterTop));
+      expect(laterTop, lessThan(pastTop));
     });
 
     testWidgets('selected filter state exposes an explicit clear affordance',
@@ -4797,6 +5089,134 @@ void main() {
             .where((ref) => ref == 'asset-3')
             .length,
         1,
+      );
+    });
+  });
+
+  group('MapScreenController late hydration dependencies', () {
+    late _FakeCityMapRepository mapRepository;
+    late _FakeUserLocationRepository userLocationRepository;
+    late _FakeTelemetryRepository telemetry;
+
+    setUp(() async {
+      await GetIt.I.reset(dispose: false);
+      mapRepository = _FakeCityMapRepository();
+      userLocationRepository = _FakeUserLocationRepository();
+      telemetry = _FakeTelemetryRepository();
+    });
+
+    tearDown(() async {
+      mapRepository.dispose();
+      userLocationRepository.dispose();
+      await GetIt.I.reset(dispose: false);
+    });
+
+    test(
+        'marker tap still hydrates account profiles when the profile repository is registered after poi repository construction',
+        () async {
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      final poiRepository = PoiRepository(dataSource: mapRepository);
+      final fakeMapHandle = _FakeMapHandle();
+      final controller = _buildMapController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await controller.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(
+        accountProfilesRepository,
+      );
+      accountProfilesRepository.profilesBySlug['casa-marracini'] =
+          buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Casa Marracini',
+        slug: 'casa-marracini',
+        type: 'beach_club_custom',
+        avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+        coverUrl: 'https://tenant.test/media/casa-cover.png',
+      );
+
+      final poi = _buildPoi(
+        id: 'poi-partner',
+        name: 'Casa Marracini',
+        refType: 'account_profile',
+        refId: '507f1f77bcf86cd799439011',
+        refSlug: 'casa-marracini',
+        refPath: '/parceiro/casa-marracini',
+      );
+
+      await controller.handleMarkerTap(poi);
+      await _flushMicrotasks();
+
+      expect(controller.selectedPoiStreamValue.value?.id, 'poi-partner');
+      expect(
+        controller.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/casa-avatar.png',
+      );
+      expect(
+        controller.selectedPoiStreamValue.value?.coverImageUri,
+        'https://tenant.test/media/casa-cover.png',
+      );
+    });
+
+    test(
+        'marker tap still hydrates static assets when the static assets repository is registered after poi repository construction',
+        () async {
+      final staticAssetsRepository = _FakeStaticAssetsRepository();
+      final poiRepository = PoiRepository(dataSource: mapRepository);
+      final fakeMapHandle = _FakeMapHandle();
+      final controller = _buildMapController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapHandle: fakeMapHandle,
+        appData: _buildAppData(),
+      );
+      addTearDown(() async {
+        await controller.onDispose();
+        fakeMapHandle.dispose();
+      });
+
+      GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
+        staticAssetsRepository,
+      );
+      staticAssetsRepository.assetsByRef['asset-77'] = _buildPublicStaticAsset(
+        id: 'asset-77',
+        name: 'Praia das Virtudes',
+        slug: 'praia-das-virtudes',
+        coverUrl: 'https://tenant.test/media/praia-cover.png',
+        description: 'Área de praia com quiosques e vista para o mar.',
+      );
+
+      final poi = _buildPoi(
+        id: 'poi-static',
+        name: 'Praia das Virtudes',
+        description: 'Ponto de interesse no mapa',
+        refType: 'static',
+        refId: 'asset-77',
+      );
+
+      await controller.handleMarkerTap(poi);
+      await _flushMicrotasks();
+
+      expect(controller.selectedPoiStreamValue.value?.id, 'poi-static');
+      expect(
+        controller.selectedPoiStreamValue.value?.visual?.imageUri,
+        'https://tenant.test/media/praia-cover.png',
+      );
+      expect(
+        controller.selectedPoiStreamValue.value?.coverImageUri,
+        'https://tenant.test/media/praia-cover.png',
+      );
+      expect(
+        controller.selectedPoiStreamValue.value?.description,
+        'Área de praia com quiosques e vista para o mar.',
       );
     });
   });

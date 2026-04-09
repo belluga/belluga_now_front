@@ -386,7 +386,7 @@ class _FilterResultsTrayBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = controller.visibleCatalogCategories(filterOptions);
-    final orderedPois = controller.orderedPoisByDistance(filteredPois);
+    final orderedPois = controller.orderedFilterResultPois(filteredPois);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -420,7 +420,9 @@ class _FilterResultsTrayBody extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _PoiSuggestionSection(
-          title: 'Mais próximos de você',
+          title: controller.isEventFilterContext
+              ? 'Próximos eventos'
+              : 'Mais próximos de você',
           pois: orderedPois,
           scrollViewKey: const ValueKey<String>('map-filter-results-scroll'),
           onPoiTap: controller.handleDeckPoiSelection,
@@ -896,7 +898,7 @@ class _SearchSuggestionCard extends StatelessWidget {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
         );
-    final badgeLabel = PoiContentResolver.eventTimingBadgeLabel(poi);
+    final badgeLabel = PoiContentResolver.eventRelativeTimingBadgeLabel(poi);
     final isLiveNow = poi.isHappeningNow && badgeLabel != null;
 
     return Material(

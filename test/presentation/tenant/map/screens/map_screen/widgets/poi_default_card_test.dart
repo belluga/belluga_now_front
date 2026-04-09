@@ -39,6 +39,29 @@ void main() {
     expect(find.text('Casa Marracini'), findsOneWidget);
   });
 
+  testWidgets('partner alias card also shows avatar next to the title',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PoiDefaultCard(
+            poi: _buildAccountProfilePoi(refType: 'partner'),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('poi-card-avatar')),
+      findsOneWidget,
+    );
+    expect(find.text('Casa Marracini'), findsOneWidget);
+  });
+
   testWidgets(
       'cards with remote cover use branded hero placeholder instead of generic gray image placeholder',
       (tester) async {
@@ -65,14 +88,16 @@ void main() {
   });
 }
 
-CityPoiModel _buildAccountProfilePoi() {
+CityPoiModel _buildAccountProfilePoi({
+  String refType = 'account_profile',
+}) {
   final idValue = CityPoiIdValue()..parse('poi-1');
   final nameValue = CityPoiNameValue()..parse('Casa Marracini');
   final descriptionValue = CityPoiDescriptionValue()
     ..parse('Restaurante no mapa');
   final addressValue = CityPoiAddressValue()..parse('Av. Brasil');
   final priorityValue = PoiPriorityValue()..parse('1');
-  final refTypeValue = PoiReferenceTypeValue()..parse('account_profile');
+  final refTypeValue = PoiReferenceTypeValue()..parse(refType);
   final refIdValue = PoiReferenceIdValue()..parse('profile-1');
   final latitude = LatitudeValue()..parse('-20.0');
   final longitude = LongitudeValue()..parse('-40.0');

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
@@ -1974,7 +1975,7 @@ class MapScreenController implements Disposable {
     if (selectedPoiStreamValue.value != null) {
       clearSelectedPoi(preserveMarkerMemory: false);
     }
-    final pois = orderedPoisByDistance(
+    final pois = orderedFilterResultPois(
       filteredPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     if (pois.isEmpty) {
@@ -2002,12 +2003,56 @@ class MapScreenController implements Disposable {
     return List<CityPoiModel>.unmodifiable(ordered);
   }
 
+  List<CityPoiModel> orderedFilterResultPois(List<CityPoiModel> pois) {
+    if (!_isEventFilterContext) {
+      return orderedPoisByDistance(pois);
+    }
+
+    final ordered = List<CityPoiModel>.from(pois);
+    final referenceTime = DateTime.now();
+    ordered.sort((left, right) {
+      final leftState = _eventFilterOrderStateForPoi(
+        left,
+        referenceTime: referenceTime,
+      );
+      final rightState = _eventFilterOrderStateForPoi(
+        right,
+        referenceTime: referenceTime,
+      );
+      final byState = leftState.index.compareTo(rightState.index);
+      if (byState != 0) {
+        return byState;
+      }
+
+      final leftStart = _eventStartTimeForPoi(left);
+      final rightStart = _eventStartTimeForPoi(right);
+      final byStart = leftState == _EventFilterOrderState.past
+          ? _compareNullableDateTimes(rightStart, leftStart)
+          : _compareNullableDateTimes(leftStart, rightStart);
+      if (byStart != 0) {
+        return byStart;
+      }
+
+      final leftDistance = left.distanceMeters ?? double.infinity;
+      final rightDistance = right.distanceMeters ?? double.infinity;
+      final byDistance = leftDistance.compareTo(rightDistance);
+      if (byDistance != 0) {
+        return byDistance;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+    return List<CityPoiModel>.unmodifiable(ordered);
+  }
+
+  bool get isEventFilterContext => _isEventFilterContext;
+
   List<CityPoiModel> deckPoisForSelectedPoi(CityPoiModel selectedPoi) {
     if (mapTrayModeStreamValue.value != MapTrayMode.filterResults) {
       return <CityPoiModel>[selectedPoi];
     }
 
-    final ordered = orderedPoisByDistance(
+    final ordered = orderedFilterResultPois(
       filteredPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     final selectedIndex = ordered.indexWhere((poi) => poi.id == selectedPoi.id);
@@ -2052,7 +2097,7 @@ class MapScreenController implements Disposable {
   }
 
   void _syncDeckIndexToPoi(CityPoiModel poi) {
-    final orderedPois = orderedPoisByDistance(
+    final orderedPois = orderedFilterResultPois(
       filteredPoisStreamValue.value ?? const <CityPoiModel>[],
     );
     final index = orderedPois.indexWhere((entry) => entry.id == poi.id);
@@ -2061,6 +2106,100 @@ class MapScreenController implements Disposable {
       return;
     }
     setPoiDeckIndex(index);
+  }
+
+  bool get _isEventFilterContext {
+    if (filterModeStreamValue.value == PoiFilterMode.events) {
+      return true;
+    }
+
+    if (_normalizeSource(_activeSource) == 'event') {
+      return true;
+    }
+
+    final activeCategoryKeys = activeCategoryKeysStreamValue.value;
+    if (_activeCategoryKeys.contains('event') ||
+        activeCategoryKeys.contains('event')) {
+      return true;
+    }
+
+    final activeCatalogFilterKey =
+        activeCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
+    if (activeCatalogFilterKey == 'event') {
+      return true;
+    }
+
+    final appliedCatalogFilterKey =
+        appliedCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
+    return appliedCatalogFilterKey == 'event';
+  }
+
+  DateTime? _eventStartTimeForPoi(CityPoiModel poi) {
+    final timeStart = poi.timeStart;
+    if (timeStart != null) {
+      return timeStart;
+    }
+
+    final hydratedStart = hydratedEventForPoi(poi)?.dateTimeStart.value;
+    return hydratedStart;
+  }
+
+  DateTime? _eventEndTimeForPoi(CityPoiModel poi) {
+    final timeEnd = poi.timeEnd;
+    if (timeEnd != null) {
+      return timeEnd;
+    }
+
+    final hydratedEnd = hydratedEventForPoi(poi)?.dateTimeEnd?.value;
+    return hydratedEnd;
+  }
+
+  _EventFilterOrderState _eventFilterOrderStateForPoi(
+    CityPoiModel poi, {
+    required DateTime referenceTime,
+  }) {
+    if (poi.isHappeningNow) {
+      return _EventFilterOrderState.now;
+    }
+
+    final start = _eventStartTimeForPoi(poi);
+    final end = _eventEndTimeForPoi(poi);
+
+    if (start == null) {
+      return _EventFilterOrderState.unknown;
+    }
+
+    final localStart = TimezoneConverter.utcToLocal(start);
+    final localEnd = end == null ? null : TimezoneConverter.utcToLocal(end);
+
+    if (localEnd != null) {
+      if (referenceTime.isBefore(localStart)) {
+        return _EventFilterOrderState.upcoming;
+      }
+      if (referenceTime.isAfter(localEnd)) {
+        return _EventFilterOrderState.past;
+      }
+      return _EventFilterOrderState.now;
+    }
+
+    if (!referenceTime.isBefore(localStart)) {
+      return _EventFilterOrderState.past;
+    }
+
+    return _EventFilterOrderState.upcoming;
+  }
+
+  int _compareNullableDateTimes(DateTime? left, DateTime? right) {
+    if (left == null && right == null) {
+      return 0;
+    }
+    if (left == null) {
+      return 1;
+    }
+    if (right == null) {
+      return -1;
+    }
+    return left.compareTo(right);
   }
 
   bool isCategoryFilterActive(PoiFilterCategory category) {
@@ -2691,3 +2830,5 @@ class MapScreenController implements Disposable {
     }));
   }
 }
+
+enum _EventFilterOrderState { now, upcoming, past, unknown }

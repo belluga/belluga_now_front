@@ -64,12 +64,19 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 
 class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   _TestTenantHomeAgendaController()
-      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null);
+      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
+        _isRadiusRefreshLoadingStreamValue =
+            StreamValue<bool>(defaultValue: false);
 
   final StreamValue<UserContract?> _authUserStreamValue;
+  final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
 
   @override
   StreamValue<UserContract?>? get authUserStreamValue => _authUserStreamValue;
+
+  @override
+  StreamValue<bool> get isRadiusRefreshLoadingStreamValue =>
+      _isRadiusRefreshLoadingStreamValue;
 
   @override
   bool get shouldShowInviteFilterAction => true;
