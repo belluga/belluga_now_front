@@ -116,11 +116,12 @@ class _ImmersiveEventDetailScreenState
                             : null;
 
                         final tabs = <ImmersiveTabItem>[
-                          ImmersiveTabItem(
-                            title: 'Sobre',
-                            content: EventInfoSection(event: resolvedEvent),
-                            footer: null,
-                          ),
+                          if (_hasAboutContent(resolvedEvent))
+                            ImmersiveTabItem(
+                              title: 'Sobre',
+                              content: EventInfoSection(event: resolvedEvent),
+                              footer: null,
+                            ),
                           ..._buildDynamicProfileTabs(
                             event: resolvedEvent,
                             favoriteAccountProfileIds:
@@ -219,6 +220,11 @@ class _ImmersiveEventDetailScreenState
       context.router,
       fallbackRoute: EventSearchRoute(),
     );
+  }
+
+  bool _hasAboutContent(EventModel event) {
+    final rawHtml = event.content.value ?? '';
+    return InviteFromEventFactory.stripHtml(rawHtml).isNotEmpty;
   }
 
   Future<void> _handleConfirmAttendance() async {

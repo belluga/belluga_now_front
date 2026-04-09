@@ -500,6 +500,55 @@ void main() {
     expect(find.text('Ver perfil do local'), findsNothing);
   });
 
+  testWidgets('event detail omits Sobre when content is effectively empty',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                contentHtml: '<p>&nbsp;</p><p><br></p>',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Sobre'), findsNothing);
+    expect(find.text('Sem descrição disponível.'), findsNothing);
+    expect(find.byType(Html), findsNothing);
+    expect(find.text('Como Chegar'), findsNWidgets(2));
+    expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
+  });
+
   testWidgets(
       'event detail only promotes Como Chegar footer after confirmation',
       (tester) async {

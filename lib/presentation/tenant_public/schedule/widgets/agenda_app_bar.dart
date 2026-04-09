@@ -92,25 +92,47 @@ class AgendaAppBar extends StatelessWidget {
                 ),
               ),
             if (!isSearchActive && actions.showRadius)
-              StreamValueBuilder<double>(
-                streamValue: controller.maxRadiusMetersStreamValue,
-                builder: (context, maxRadiusMeters) {
+              StreamValueBuilder<bool>(
+                streamValue: controller.isRadiusRefreshLoadingStreamValue,
+                builder: (context, isRadiusLoading) {
                   return StreamValueBuilder<double>(
-                    streamValue: controller.radiusMetersStreamValue,
-                    builder: (context, radiusMeters) {
-                      return IconButton(
-                        tooltip: 'Raio ${_formatRadiusLabel(radiusMeters)}',
-                        onPressed: () => _showRadiusSelector(
-                          context,
-                          radiusMeters,
-                          controller.minRadiusMeters,
-                          maxRadiusMeters,
-                          actions.radiusSheetPresentation,
-                        ),
-                        icon: Icon(
-                          Icons.radar,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                    streamValue: controller.maxRadiusMetersStreamValue,
+                    builder: (context, maxRadiusMeters) {
+                      return StreamValueBuilder<double>(
+                        streamValue: controller.radiusMetersStreamValue,
+                        builder: (context, radiusMeters) {
+                          return IconButton(
+                            tooltip: isRadiusLoading
+                                ? 'Atualizando raio...'
+                                : 'Raio ${_formatRadiusLabel(radiusMeters)}',
+                            onPressed: isRadiusLoading
+                                ? null
+                                : () => _showRadiusSelector(
+                                      context,
+                                      radiusMeters,
+                                      controller.minRadiusMeters,
+                                      maxRadiusMeters,
+                                      actions.radiusSheetPresentation,
+                                    ),
+                            icon: isRadiusLoading
+                                ? SizedBox.square(
+                                    key: const ValueKey<String>(
+                                      'agenda-radius-loading',
+                                    ),
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.radar,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                          );
+                        },
                       );
                     },
                   );
@@ -218,230 +240,61 @@ class AgendaAppBar extends StatelessWidget {
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
-            builder: (context, setModalState) {
-              final bottomSafeArea =
-                  MediaQuery.viewPaddingOf(context).bottom;
-              final currentLabel = draftRadiusKm.toStringAsFixed(0);
-              final requiresExplicitConfirmation =
-                  presentation?.requiresExplicitConfirmation ?? false;
-              final didChange =
-                  (draftRadiusKm - initialRadiusKm).abs() >= 0.001;
+          builder: (context, setModalState) {
+            final bottomSafeArea = MediaQuery.viewPaddingOf(context).bottom;
+            final currentLabel = draftRadiusKm.toStringAsFixed(0);
+            final requiresExplicitConfirmation =
+                presentation?.requiresExplicitConfirmation ?? false;
+            final didChange = (draftRadiusKm - initialRadiusKm).abs() >= 0.001;
 
-              if (requiresExplicitConfirmation && presentation != null) {
-                return SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      8,
-                      24,
-                      24 + bottomSafeArea,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          presentation.title,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 56,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withAlpha(120),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        RichText(
-                          text: TextSpan(
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w900,
-                            ),
-                            children: [
-                              TextSpan(text: currentLabel),
-                              TextSpan(
-                                text: ' km',
-                                style: theme.textTheme.headlineMedium?.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Slider(
-                          value: draftRadiusKm,
-                          min: minRadiusKm,
-                          max: maxKm,
-                          divisions: (maxKm - minRadiusKm).round().clamp(1, 200),
-                          onChanged: (value) {
-                            setModalState(() {
-                              draftRadiusKm = value;
-                            });
-                          },
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            children: [
-                              Text(
-                                '${minRadiusKm.toStringAsFixed(0)} km',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${maxKm.toStringAsFixed(0)} km',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer.withAlpha(140),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary.withAlpha(40),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.info_outline,
-                                  size: 18,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  presentation.description,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (presentation.helperText case final helperText?) ...[
-                          const SizedBox(height: 14),
-                          Text(
-                            helperText,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: didChange
-                                ? () {
-                                    controller.setRadiusMeters(
-                                      draftRadiusKm * 1000,
-                                    );
-                                    context.router.maybePop();
-                                  }
-                                : null,
-                            style: FilledButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(presentation.confirmButtonLabel!),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.check_circle_outline, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
+            if (requiresExplicitConfirmation && presentation != null) {
               return SingleChildScrollView(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    16,
+                    24,
                     8,
-                    16,
+                    24,
                     24 + bottomSafeArea,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (presentation != null) ...[
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.radar,
-                            color: colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          presentation.title,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          presentation.description,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ] else ...[
-                        Icon(
-                          Icons.my_location_outlined,
-                          size: 28,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(height: 8),
-                      ],
                       Text(
-                        '$currentLabel km',
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        presentation.title,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 12),
+                      Container(
+                        width: 56,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withAlpha(120),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      RichText(
+                        text: TextSpan(
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          children: [
+                            TextSpan(text: currentLabel),
+                            TextSpan(
+                              text: ' km',
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                       Slider(
                         value: draftRadiusKm,
                         min: minRadiusKm,
@@ -452,27 +305,193 @@ class AgendaAppBar extends StatelessWidget {
                             draftRadiusKm = value;
                           });
                         },
-                        onChangeEnd: (value) {
-                          controller.setRadiusMeters(value * 1000);
-                        },
                       ),
-                      if (presentation?.helperText case final helperText?)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            helperText,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${minRadiusKm.toStringAsFixed(0)} km',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                             ),
+                            const Spacer(),
+                            Text(
+                              '${maxKm.toStringAsFixed(0)} km',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withAlpha(140),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withAlpha(40),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.info_outline,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                presentation.description,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (presentation.helperText case final helperText?) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          helperText,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: didChange
+                              ? () {
+                                  controller.setRadiusMeters(
+                                    draftRadiusKm * 1000,
+                                  );
+                                  context.router.maybePop();
+                                }
+                              : null,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(presentation.confirmButtonLabel!),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.check_circle_outline, size: 18),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               );
-            },
-          );
+            }
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  24 + bottomSafeArea,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (presentation != null) ...[
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.radar,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        presentation.title,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        presentation.description,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else ...[
+                      Icon(
+                        Icons.my_location_outlined,
+                        size: 28,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      '$currentLabel km',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Slider(
+                      value: draftRadiusKm,
+                      min: minRadiusKm,
+                      max: maxKm,
+                      divisions: (maxKm - minRadiusKm).round().clamp(1, 200),
+                      onChanged: (value) {
+                        setModalState(() {
+                          draftRadiusKm = value;
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        controller.setRadiusMeters(value * 1000);
+                      },
+                    ),
+                    if (presentation?.helperText case final helperText?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          helperText,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
       },
     );
   }

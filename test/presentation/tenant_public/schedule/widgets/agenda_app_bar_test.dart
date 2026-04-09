@@ -198,6 +198,9 @@ class _FakeAgendaAppBarController implements AgendaAppBarController {
   @override
   final StreamValue<double> radiusMetersStreamValue =
       StreamValue<double>(defaultValue: 5000);
+  @override
+  final StreamValue<bool> isRadiusRefreshLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   @override
   final StreamValue<InviteFilter> inviteFilterStreamValue =

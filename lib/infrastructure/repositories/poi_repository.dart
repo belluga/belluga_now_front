@@ -28,23 +28,26 @@ class PoiRepository implements PoiRepositoryContract {
     ScheduleRepositoryContract? scheduleRepository,
     StaticAssetsRepositoryContract? staticAssetsRepository,
   })  : _dataSource = dataSource ?? GetIt.I.get<CityMapRepositoryContract>(),
-        _accountProfilesRepository = accountProfilesRepository ??
-            (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
-                ? GetIt.I.get<AccountProfilesRepositoryContract>()
-                : null),
-        _scheduleRepository = scheduleRepository ??
-            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-                ? GetIt.I.get<ScheduleRepositoryContract>()
-                : null),
-        _staticAssetsRepository = staticAssetsRepository ??
-            (GetIt.I.isRegistered<StaticAssetsRepositoryContract>()
-                ? GetIt.I.get<StaticAssetsRepositoryContract>()
-                : null);
+        _accountProfilesRepositoryOverride = accountProfilesRepository,
+        _scheduleRepositoryOverride = scheduleRepository,
+        _staticAssetsRepositoryOverride = staticAssetsRepository;
 
   final CityMapRepositoryContract _dataSource;
-  final AccountProfilesRepositoryContract? _accountProfilesRepository;
-  final ScheduleRepositoryContract? _scheduleRepository;
-  final StaticAssetsRepositoryContract? _staticAssetsRepository;
+  final AccountProfilesRepositoryContract? _accountProfilesRepositoryOverride;
+  final ScheduleRepositoryContract? _scheduleRepositoryOverride;
+  final StaticAssetsRepositoryContract? _staticAssetsRepositoryOverride;
+
+  AccountProfilesRepositoryContract? get _accountProfilesRepository =>
+      _accountProfilesRepositoryOverride ??
+      _resolveOptionalRepository<AccountProfilesRepositoryContract>();
+
+  ScheduleRepositoryContract? get _scheduleRepository =>
+      _scheduleRepositoryOverride ??
+      _resolveOptionalRepository<ScheduleRepositoryContract>();
+
+  StaticAssetsRepositoryContract? get _staticAssetsRepository =>
+      _staticAssetsRepositoryOverride ??
+      _resolveOptionalRepository<StaticAssetsRepositoryContract>();
 
   final allPoisStreamValue =
       StreamValue<List<CityPoiModel>?>(defaultValue: null);
@@ -64,14 +67,12 @@ class PoiRepository implements PoiRepositoryContract {
   @override
   final filterOptionsStreamValue = StreamValue<PoiFilterOptions?>();
   @override
-  final poiHydrationRevisionStreamValue =
-      StreamValue<int>(defaultValue: 0);
+  final poiHydrationRevisionStreamValue = StreamValue<int>(defaultValue: 0);
   final Map<String, Future<void>> _poiHydrationInFlightById =
       <String, Future<void>>{};
   final Map<String, AccountProfileModel> _hydratedAccountProfilesByPoiId =
       <String, AccountProfileModel>{};
-  final Map<String, EventModel> _hydratedEventsByPoiId =
-      <String, EventModel>{};
+  final Map<String, EventModel> _hydratedEventsByPoiId = <String, EventModel>{};
   final Map<String, PublicStaticAssetModel> _hydratedStaticAssetsByPoiId =
       <String, PublicStaticAssetModel>{};
 
@@ -332,7 +333,10 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   bool _isPartnerPoi(CityPoiModel poi) {
-    return poi.refType.trim().toLowerCase() == 'account_profile';
+    final refType = poi.refType.trim().toLowerCase();
+    return refType == 'account_profile' ||
+        refType == 'accountprofile' ||
+        refType == 'partner';
   }
 
   bool _isEventPoi(CityPoiModel poi) {
@@ -341,7 +345,9 @@ class PoiRepository implements PoiRepositoryContract {
 
   bool _isStaticPoi(CityPoiModel poi) {
     final refType = poi.refType.trim().toLowerCase();
-    return refType == 'static' || refType == 'static_asset' || refType == 'asset';
+    return refType == 'static' ||
+        refType == 'static_asset' ||
+        refType == 'asset';
   }
 
   String? _resolvePoiSlug(CityPoiModel poi) {
@@ -376,5 +382,12 @@ class PoiRepository implements PoiRepositoryContract {
       return refId;
     }
     return _resolvePoiSlug(poi);
+  }
+
+  T? _resolveOptionalRepository<T extends Object>() {
+    if (!GetIt.I.isRegistered<T>()) {
+      return null;
+    }
+    return GetIt.I.get<T>();
   }
 }
