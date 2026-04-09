@@ -1,8 +1,36 @@
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const decoder = TenantAdminEventsResponseDecoder();
+
+  test('decodes canonical visual payload for event types', () {
+    final eventType = decoder.decodeEventTypeItem({
+      'data': {
+        'id': 'type-1',
+        'name': 'Festival',
+        'slug': 'festival',
+        'description': 'Tipo com imagem canônica',
+        'visual': {
+          'mode': 'image',
+          'image_source': 'type_asset',
+          'image_url': 'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
+        },
+      },
+    });
+
+    expect(eventType.visual, isNotNull);
+    expect(eventType.visual?.mode, TenantAdminPoiVisualMode.image);
+    expect(
+      eventType.visual?.imageSource,
+      TenantAdminPoiVisualImageSource.typeAsset,
+    );
+    expect(
+      eventType.visual?.imageUrl,
+      'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
+    );
+  });
 
   test('prefers artist ids from event_parties when available', () {
     final event = decoder.decodeEventItem({

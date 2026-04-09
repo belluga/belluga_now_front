@@ -6,7 +6,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 typedef TenantAdminEventsRepoString
@@ -186,11 +188,33 @@ abstract class TenantAdminEventsRepositoryContract {
     throw UnimplementedError();
   }
 
+  Future<TenantAdminEventType> createEventTypeWithVisual({
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+  }) {
+    throw UnimplementedError();
+  }
+
   Future<TenantAdminEventType> updateEventType({
     required TenantAdminEventsRepoString eventTypeId,
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+  }) {
+    throw UnimplementedError();
+  }
+
+  Future<TenantAdminEventType> updateEventTypeWithVisual({
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminEventsRepoBool? removeTypeAsset,
   }) {
     throw UnimplementedError();
   }

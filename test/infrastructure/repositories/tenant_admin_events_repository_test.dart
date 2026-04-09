@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -736,6 +737,90 @@ void main() {
     expect(payload['slug'], 'show');
     expect(payload.containsKey('description'), isFalse);
   });
+
+  test('createEventTypeWithVisual sends canonical and legacy visual payloads',
+      () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEventTypeWithVisual(
+      name: _repoText('Festival'),
+      slug: _repoText('festival'),
+      description: _repoText('Tipo com imagem'),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.cover,
+      ),
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'POST' &&
+          candidate.path.endsWith('/admin/api/v1/event_types'),
+    );
+
+    expect(request.data, isA<Map<String, dynamic>>());
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['visual'], <String, dynamic>{
+      'mode': 'image',
+      'image_source': 'cover',
+    });
+    expect(payload['poi_visual'], <String, dynamic>{
+      'mode': 'image',
+      'image_source': 'cover',
+    });
+  });
+
+  test('updateEventTypeWithVisual uses multipart when type_asset upload exists',
+      () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEventTypeWithVisual(
+      eventTypeId: _repoText('507f1f77bcf86cd799439011'),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([4, 5, 6]),
+        fileName: 'festival-type.png',
+        mimeType: 'image/png',
+      ),
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'POST' &&
+          candidate.path
+              .endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
+    );
+
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'visual[image_source]' && entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'poi_visual[image_source]' && entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+  });
 }
 
 TenantAdminEventDraft _buildDraft({
@@ -1355,7 +1440,7 @@ class _EventTypeMutationsAdapter implements HttpClientAdapter {
     }
 
     if (options.path.contains('/admin/api/v1/event_types/') &&
-        options.method == 'PATCH') {
+        (options.method == 'PATCH' || options.method == 'POST')) {
       return ResponseBody.fromString(
         jsonEncode({
           'data': {

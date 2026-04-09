@@ -16,9 +16,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_buck
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -164,6 +168,27 @@ class TenantAdminEventsController implements Disposable {
   final TextEditingController eventTypeSlugController = TextEditingController();
   final TextEditingController eventTypeDescriptionController =
       TextEditingController();
+  final StreamValue<TenantAdminPoiVisualMode> eventTypePoiVisualModeStreamValue =
+      StreamValue<TenantAdminPoiVisualMode>(
+    defaultValue: TenantAdminPoiVisualMode.icon,
+  );
+  final StreamValue<TenantAdminPoiVisualImageSource>
+      eventTypePoiVisualImageSourceStreamValue =
+      StreamValue<TenantAdminPoiVisualImageSource>(
+    defaultValue: TenantAdminPoiVisualImageSource.cover,
+  );
+  final TextEditingController eventTypePoiVisualIconController =
+      TextEditingController();
+  final TextEditingController eventTypePoiVisualColorController =
+      TextEditingController();
+  final TextEditingController eventTypePoiVisualIconColorController =
+      TextEditingController();
+  final StreamValue<XFile?> eventTypeTypeAssetFileStreamValue =
+      StreamValue<XFile?>(defaultValue: null);
+  final StreamValue<String> eventTypeTypeAssetUrlStreamValue =
+      StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> eventTypeRemoveTypeAssetStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final StreamValue<TenantAdminEventTypeFormState>
       eventTypeFormStateStreamValue =
@@ -276,6 +301,16 @@ class TenantAdminEventsController implements Disposable {
       return null;
     }
     return trimmed;
+  }
+
+  TenantAdminOptionalUrlValue? _buildOptionalUrlValue(String? value) {
+    final normalized = _normalizeOptionalText(value);
+    if (normalized == null) {
+      return null;
+    }
+    final urlValue = TenantAdminOptionalUrlValue();
+    urlValue.parse(normalized);
+    return urlValue;
   }
 
   Future<void> loadEvents() async {
@@ -628,6 +663,7 @@ class TenantAdminEventsController implements Disposable {
     eventTypeNameController.text = existingType?.name ?? '';
     eventTypeSlugController.text = existingType?.slug ?? '';
     eventTypeDescriptionController.text = existingType?.description ?? '';
+    _syncEventTypeVisualForm(existingType?.visual);
 
     final nextState = TenantAdminEventTypeFormState(
       isEdit: isEdit,
@@ -673,6 +709,10 @@ class TenantAdminEventsController implements Disposable {
     required String name,
     required String slug,
     String? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    bool removeTypeAsset = false,
+    bool includeVisual = false,
     TenantAdminEventType? existingType,
   }) async {
     final normalizedName = name.trim();
@@ -691,17 +731,38 @@ class TenantAdminEventsController implements Disposable {
     final isEdit = eventTypeId != null && eventTypeId.isNotEmpty;
 
     final saved = isEdit
-        ? await _eventsRepository.updateEventType(
-            eventTypeId: _toEventsText(eventTypeId),
-            name: _toEventsText(normalizedName),
-            slug: _toEventsText(normalizedSlug),
-            description: _toNullableEventsText(descriptionForUpdate),
-          )
-        : await _eventsRepository.createEventType(
-            name: _toEventsText(normalizedName),
-            slug: _toEventsText(normalizedSlug),
-            description: _toNullableEventsText(descriptionForCreate),
-          );
+        ? includeVisual
+            ? await _eventsRepository.updateEventTypeWithVisual(
+                eventTypeId: _toEventsText(eventTypeId),
+                name: _toEventsText(normalizedName),
+                slug: _toEventsText(normalizedSlug),
+                description: _toNullableEventsText(descriptionForUpdate),
+                visual: visual,
+                typeAssetUpload: typeAssetUpload,
+                removeTypeAsset: TenantAdminEventsRepoBool.fromRaw(
+                  removeTypeAsset,
+                  defaultValue: false,
+                ),
+              )
+            : await _eventsRepository.updateEventType(
+                eventTypeId: _toEventsText(eventTypeId),
+                name: _toEventsText(normalizedName),
+                slug: _toEventsText(normalizedSlug),
+                description: _toNullableEventsText(descriptionForUpdate),
+              )
+        : includeVisual
+            ? await _eventsRepository.createEventTypeWithVisual(
+                name: _toEventsText(normalizedName),
+                slug: _toEventsText(normalizedSlug),
+                description: _toNullableEventsText(descriptionForCreate),
+                visual: visual,
+                typeAssetUpload: typeAssetUpload,
+              )
+            : await _eventsRepository.createEventType(
+                name: _toEventsText(normalizedName),
+                slug: _toEventsText(normalizedSlug),
+                description: _toNullableEventsText(descriptionForCreate),
+              );
 
     await _loadEventTypeCatalog();
     return saved;
@@ -1291,6 +1352,163 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  TenantAdminPoiVisualMode get currentEventTypePoiVisualMode =>
+      eventTypePoiVisualModeStreamValue.value;
+
+  TenantAdminPoiVisualImageSource get currentEventTypePoiVisualImageSource =>
+      eventTypePoiVisualImageSourceStreamValue.value;
+
+  void updateEventTypePoiVisualMode(TenantAdminPoiVisualMode mode) {
+    eventTypePoiVisualModeStreamValue.addValue(mode);
+    if (mode == TenantAdminPoiVisualMode.image &&
+        currentEventTypePoiVisualImageSource ==
+            TenantAdminPoiVisualImageSource.avatar) {
+      eventTypePoiVisualImageSourceStreamValue.addValue(
+        TenantAdminPoiVisualImageSource.cover,
+      );
+    }
+  }
+
+  void updateEventTypePoiVisualImageSource(
+    TenantAdminPoiVisualImageSource source,
+  ) {
+    if (source == TenantAdminPoiVisualImageSource.avatar) {
+      return;
+    }
+    eventTypePoiVisualImageSourceStreamValue.addValue(source);
+    if (source != TenantAdminPoiVisualImageSource.typeAsset) {
+      eventTypeRemoveTypeAssetStreamValue.addValue(false);
+    }
+  }
+
+  TenantAdminPoiVisual? buildCurrentEventTypeVisual() {
+    if (currentEventTypePoiVisualMode == TenantAdminPoiVisualMode.icon) {
+      try {
+        final iconValue = TenantAdminRequiredTextValue()
+          ..parse(eventTypePoiVisualIconController.text);
+        final colorValue = TenantAdminHexColorValue()
+          ..parse(eventTypePoiVisualColorController.text);
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(eventTypePoiVisualIconColorController.text);
+        final candidate = TenantAdminPoiVisual.icon(
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
+        );
+        return candidate.isValid ? candidate : null;
+      } on Object {
+        return null;
+      }
+    }
+
+    return TenantAdminPoiVisual.image(
+      imageSource: currentEventTypePoiVisualImageSource,
+      imageUrlValue:
+          currentEventTypePoiVisualImageSource ==
+                  TenantAdminPoiVisualImageSource.typeAsset
+              ? _buildOptionalUrlValue(currentEventTypeTypeAssetUrl)
+              : null,
+    );
+  }
+
+  XFile? get currentEventTypeTypeAssetFile =>
+      eventTypeTypeAssetFileStreamValue.value;
+
+  String? get currentEventTypeTypeAssetUrl {
+    if (eventTypeRemoveTypeAssetStreamValue.value) {
+      return null;
+    }
+    return _normalizeOptionalText(eventTypeTypeAssetUrlStreamValue.value);
+  }
+
+  bool get isEventTypeTypeAssetMarkedForRemoval =>
+      eventTypeRemoveTypeAssetStreamValue.value;
+
+  Future<XFile?> pickEventTypeAssetImageFromDevice() {
+    return _imageIngestionService.pickFromDevice(
+      slot: TenantAdminImageSlot.typeVisual,
+    );
+  }
+
+  Future<XFile> fetchEventTypeImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readEventTypeImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareEventTypeCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildEventTypeAssetUpload() {
+    return _imageIngestionService.buildUpload(
+      currentEventTypeTypeAssetFile,
+      slot: TenantAdminImageSlot.typeVisual,
+    );
+  }
+
+  void updateEventTypeTypeAssetFile(XFile? file) {
+    eventTypeTypeAssetFileStreamValue.addValue(file);
+    if (file != null) {
+      eventTypeRemoveTypeAssetStreamValue.addValue(false);
+    }
+  }
+
+  void clearEventTypeTypeAssetSelection() {
+    if (currentEventTypeTypeAssetFile != null) {
+      eventTypeTypeAssetFileStreamValue.addValue(null);
+      return;
+    }
+
+    final hasExistingTypeAsset = currentEventTypeTypeAssetUrl != null;
+    if (!hasExistingTypeAsset) {
+      eventTypeRemoveTypeAssetStreamValue.addValue(false);
+      return;
+    }
+
+    eventTypeRemoveTypeAssetStreamValue.addValue(
+      !eventTypeRemoveTypeAssetStreamValue.value,
+    );
+  }
+
+  void _syncEventTypeVisualForm(TenantAdminPoiVisual? visual) {
+    eventTypeTypeAssetFileStreamValue.addValue(null);
+    eventTypeRemoveTypeAssetStreamValue.addValue(false);
+    if (visual == null || visual.mode == TenantAdminPoiVisualMode.icon) {
+      eventTypePoiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
+      eventTypePoiVisualIconController.text = visual?.icon ?? 'place';
+      eventTypePoiVisualColorController.text = visual?.color ?? '#2563EB';
+      eventTypePoiVisualIconColorController.text =
+          visual?.iconColor ?? '#FFFFFF';
+      eventTypePoiVisualImageSourceStreamValue.addValue(
+        TenantAdminPoiVisualImageSource.cover,
+      );
+      eventTypeTypeAssetUrlStreamValue.addValue('');
+      return;
+    }
+
+    eventTypePoiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.image);
+    eventTypePoiVisualIconController.text = 'place';
+    eventTypePoiVisualColorController.text = '#2563EB';
+    eventTypePoiVisualIconColorController.text = '#FFFFFF';
+    final imageSource = visual.imageSource == TenantAdminPoiVisualImageSource.avatar
+        ? TenantAdminPoiVisualImageSource.cover
+        : (visual.imageSource ?? TenantAdminPoiVisualImageSource.cover);
+    eventTypePoiVisualImageSourceStreamValue.addValue(imageSource);
+    eventTypeTypeAssetUrlStreamValue.addValue(visual.imageUrl ?? '');
+  }
+
   String _tenantAdminSlugify(String rawValue) {
     final lower = rawValue.trim().toLowerCase();
     if (lower.isEmpty) {
@@ -1413,6 +1631,14 @@ class TenantAdminEventsController implements Disposable {
     eventTypeNameController.dispose();
     eventTypeSlugController.dispose();
     eventTypeDescriptionController.dispose();
+    eventTypePoiVisualModeStreamValue.dispose();
+    eventTypePoiVisualImageSourceStreamValue.dispose();
+    eventTypePoiVisualIconController.dispose();
+    eventTypePoiVisualColorController.dispose();
+    eventTypePoiVisualIconColorController.dispose();
+    eventTypeTypeAssetFileStreamValue.dispose();
+    eventTypeTypeAssetUrlStreamValue.dispose();
+    eventTypeRemoveTypeAssetStreamValue.dispose();
   }
 
   @override

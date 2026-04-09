@@ -3,8 +3,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
@@ -238,6 +241,7 @@ class TenantAdminEventsResponseDecoder {
           ),
           iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
           colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
+          visual: _decodeEventTypeVisual(typeRow),
         ),
         location: location,
         placeRef: placeRef,
@@ -283,6 +287,7 @@ class TenantAdminEventsResponseDecoder {
             tenantAdminOptionalText(_asString(typeRow['description'])),
         iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
         colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
+        visual: _decodeEventTypeVisual(typeRow),
       ),
       location: location,
       placeRef: placeRef,
@@ -322,6 +327,73 @@ class TenantAdminEventsResponseDecoder {
       descriptionValue: tenantAdminOptionalText(_asString(row['description'])),
       iconValue: tenantAdminOptionalText(_asString(row['icon'])),
       colorValue: tenantAdminOptionalText(_asString(row['color'])),
+      visual: _decodeEventTypeVisual(row),
+    );
+  }
+
+  TenantAdminPoiVisual? _decodeEventTypeVisual(Map<String, dynamic> row) {
+    final visualRow = _asMap(row['visual']);
+    final fallbackVisualRow = visualRow.isNotEmpty ? visualRow : _asMap(row['poi_visual']);
+    if (fallbackVisualRow.isEmpty) {
+      final icon = _asString(row['icon']);
+      final color = _asString(row['color']);
+      if (icon == null || icon.isEmpty || color == null || color.isEmpty) {
+        return null;
+      }
+      try {
+        final iconValue = TenantAdminRequiredTextValue()..parse(icon);
+        final colorValue = TenantAdminHexColorValue()..parse(color);
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(_asString(row['icon_color']) ?? '#FFFFFF');
+        return TenantAdminPoiVisual.icon(
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
+        );
+      } on Object {
+        return null;
+      }
+    }
+
+    final mode = (_asString(fallbackVisualRow['mode']) ?? '').trim();
+    if (mode == TenantAdminPoiVisualMode.icon.apiValue) {
+      try {
+        final iconValue = TenantAdminRequiredTextValue()
+          ..parse(_asString(fallbackVisualRow['icon']) ?? '');
+        final colorValue = TenantAdminHexColorValue()
+          ..parse(_asString(fallbackVisualRow['color']) ?? '');
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(_asString(fallbackVisualRow['icon_color']) ?? '#FFFFFF');
+        return TenantAdminPoiVisual.icon(
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
+        );
+      } on Object {
+        return null;
+      }
+    }
+
+    if (mode != TenantAdminPoiVisualMode.image.apiValue) {
+      return null;
+    }
+
+    final imageSourceRaw =
+        (_asString(fallbackVisualRow['image_source']) ?? '').trim();
+    TenantAdminPoiVisualImageSource? imageSource;
+    for (final candidate in TenantAdminPoiVisualImageSource.values) {
+      if (candidate.apiValue == imageSourceRaw) {
+        imageSource = candidate;
+        break;
+      }
+    }
+    if (imageSource == null) {
+      return null;
+    }
+
+    return TenantAdminPoiVisual.image(
+      imageSource: imageSource,
+      imageUrlValue: tenantAdminOptionalUrl(_asString(fallbackVisualRow['image_url'])),
     );
   }
 
