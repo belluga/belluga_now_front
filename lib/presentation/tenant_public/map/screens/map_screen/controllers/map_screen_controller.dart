@@ -2113,25 +2113,29 @@ class MapScreenController implements Disposable {
       return true;
     }
 
-    if (_normalizeSource(_activeSource) == 'event') {
+    if (_isEventFilterKey(_normalizeSource(_activeSource))) {
       return true;
     }
 
     final activeCategoryKeys = activeCategoryKeysStreamValue.value;
-    if (_activeCategoryKeys.contains('event') ||
-        activeCategoryKeys.contains('event')) {
+    if (_activeCategoryKeys.any(_isEventFilterKey) ||
+        activeCategoryKeys.any(_isEventFilterKey)) {
       return true;
     }
 
     final activeCatalogFilterKey =
         activeCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
-    if (activeCatalogFilterKey == 'event') {
+    if (_isEventFilterKey(activeCatalogFilterKey)) {
       return true;
     }
 
     final appliedCatalogFilterKey =
         appliedCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
-    return appliedCatalogFilterKey == 'event';
+    return _isEventFilterKey(appliedCatalogFilterKey);
+  }
+
+  bool _isEventFilterKey(String? value) {
+    return value == 'event' || value == 'events';
   }
 
   DateTime? _eventStartTimeForPoi(CityPoiModel poi) {
