@@ -107,6 +107,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final radiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  @override
+  final isRadiusRefreshLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<double> _maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
@@ -297,6 +300,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       }
       _isRefreshing = false;
       _consumeQueuedRefreshRequestIfNeeded();
+      _maybeResolveRadiusRefreshLoading();
     }
   }
 
@@ -676,12 +680,22 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   void _scheduleRadiusRefresh() {
     _radiusRefreshDebounceTimer?.cancel();
+    _ifAlive(() => isRadiusRefreshLoadingStreamValue.addValue(true));
     _radiusRefreshDebounceTimer = Timer(_radiusRefreshDebounce, () {
+      _radiusRefreshDebounceTimer = null;
       if (_isDisposed) {
         return;
       }
       unawaited(_refresh(preserveCurrentResults: true));
     });
+  }
+
+  void _maybeResolveRadiusRefreshLoading() {
+    final hasPendingDebounce = _radiusRefreshDebounceTimer?.isActive ?? false;
+    if (hasPendingDebounce || _isRefreshing || _hasQueuedRefresh) {
+      return;
+    }
+    _ifAlive(() => isRadiusRefreshLoadingStreamValue.addValue(false));
   }
 
   Future<void> _handleLocationUpdate() async {
@@ -887,6 +901,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
+    isRadiusRefreshLoadingStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();

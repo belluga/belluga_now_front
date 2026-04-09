@@ -395,7 +395,10 @@ abstract class PoiBaseCard extends StatelessWidget {
   }
 
   bool _shouldShowHeaderAvatar() {
-    return poi.refType.trim().toLowerCase() == 'account_profile';
+    final refType = poi.refType.trim().toLowerCase();
+    return refType == 'account_profile' ||
+        refType == 'accountprofile' ||
+        refType == 'partner';
   }
 
   Widget tagsSection(BuildContext context) {
