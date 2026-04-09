@@ -46,6 +46,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart'
 import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -799,7 +800,9 @@ CityPoiModel _buildPoi({
   int stackCount = 1,
   CityPoiCategory category = CityPoiCategory.restaurant,
   String? categoryLabel,
+  bool isHappeningNow = false,
   DateTime? timeStart,
+  DateTime? timeEnd,
   List<CityPoiModel>? stackItems,
   CityCoordinate? coordinate,
   double? distanceMeters,
@@ -834,9 +837,14 @@ CityPoiModel _buildPoi({
   final distanceMetersValue = distanceMeters == null
       ? null
       : (DistanceInMetersValue()..parse(distanceMeters.toString()));
+  final isHappeningNowValue =
+      PoiBooleanValue()..parse(isHappeningNow.toString());
   final timeStartValue = timeStart == null
       ? null
       : (PoiTimeStartValue()..parse(timeStart.toUtc().toIso8601String()));
+  final timeEndValue = timeEnd == null
+      ? null
+      : (PoiTimeEndValue()..parse(timeEnd.toUtc().toIso8601String()));
   final coverImageUriValue = coverImageUri == null
       ? null
       : (PoiFilterImageUriValue()..parse(coverImageUri));
@@ -858,7 +866,9 @@ CityPoiModel _buildPoi({
     stackKeyValue: stackKeyValue,
     stackCountValue: stackCountValue,
     stackItems: stackItemCollection,
+    isHappeningNowValue: isHappeningNowValue,
     timeStartValue: timeStartValue,
+    timeEndValue: timeEndValue,
     distanceMetersValue: distanceMetersValue,
   );
 }
@@ -1598,6 +1608,7 @@ void main() {
     test(
       'event catalog filter focuses the next upcoming event before nearer later events',
       () async {
+        final reference = DateTime.now().toUtc();
         final fakeMapHandle = _FakeMapHandle(
           initialZoom: 15.2,
           initialCenter: _buildPoi(id: 'seed').coordinate,
@@ -1623,7 +1634,7 @@ void main() {
             refSlug: 'mais-perto-depois',
             coordinate: _buildCoordinate('-20.100000', '-40.100000'),
             distanceMeters: 120,
-            timeStart: DateTime.utc(2026, 4, 8, 22),
+            timeStart: reference.add(const Duration(hours: 6)),
           ),
           _buildPoi(
             id: 'poi-soon-far',
@@ -1633,7 +1644,17 @@ void main() {
             refSlug: 'mais-longe-antes',
             coordinate: _buildCoordinate('-20.500000', '-40.500000'),
             distanceMeters: 900,
-            timeStart: DateTime.utc(2026, 4, 8, 18),
+            timeStart: reference.add(const Duration(hours: 2)),
+          ),
+          _buildPoi(
+            id: 'poi-past-nearest',
+            name: 'Já terminou',
+            refType: 'event',
+            refId: 'event-3',
+            refSlug: 'ja-terminou',
+            coordinate: _buildCoordinate('-20.050000', '-40.050000'),
+            distanceMeters: 30,
+            timeStart: reference.subtract(const Duration(hours: 5)),
           ),
         ];
 
@@ -1669,8 +1690,57 @@ void main() {
 
         expect(
           deckPois.map((poi) => poi.id).toList(growable: false),
-          equals(<String>['poi-soon-far', 'poi-later-near']),
+          equals(<String>[
+            'poi-soon-far',
+            'poi-later-near',
+            'poi-past-nearest',
+          ]),
         );
+      },
+    );
+
+    test(
+      'orderedFilterResultPois keeps happening-now and upcoming events ahead of past ones',
+      () async {
+        final reference = DateTime.now().toUtc();
+        controller.activeCatalogFilterKeyStreamValue.addValue('event');
+
+        final ordered = controller.orderedFilterResultPois(
+          <CityPoiModel>[
+            _buildPoi(
+              id: 'poi-past',
+              name: 'Evento passado',
+              refType: 'event',
+              refId: 'event-past',
+              distanceMeters: 10,
+              timeStart: reference.subtract(const Duration(hours: 5)),
+            ),
+            _buildPoi(
+              id: 'poi-upcoming',
+              name: 'Evento futuro',
+              refType: 'event',
+              refId: 'event-upcoming',
+              distanceMeters: 900,
+              timeStart: reference.add(const Duration(hours: 3)),
+            ),
+            _buildPoi(
+              id: 'poi-now',
+              name: 'Evento agora',
+              refType: 'event',
+              refId: 'event-now',
+              isHappeningNow: true,
+              distanceMeters: 400,
+              timeStart: reference.subtract(const Duration(minutes: 30)),
+              timeEnd: reference.add(const Duration(minutes: 30)),
+            ),
+          ],
+        );
+
+        expect(ordered.map((poi) => poi.id).toList(), <String>[
+          'poi-now',
+          'poi-upcoming',
+          'poi-past',
+        ]);
       },
     );
 
@@ -4070,6 +4140,7 @@ void main() {
     testWidgets(
         'filter results tray orders event filters by next start time before distance',
         (tester) async {
+      final reference = DateTime.now().toUtc();
       final router = _RecordingStackRouter()..canPopResult = false;
 
       await _pumpMapScreen(
@@ -4098,7 +4169,7 @@ void main() {
             refType: 'event',
             refId: 'event-2',
             distanceMeters: 120,
-            timeStart: DateTime.utc(2026, 4, 8, 22),
+            timeStart: reference.add(const Duration(hours: 6)),
           ),
           _buildPoi(
             id: 'poi-soon-far',
@@ -4106,7 +4177,15 @@ void main() {
             refType: 'event',
             refId: 'event-1',
             distanceMeters: 900,
-            timeStart: DateTime.utc(2026, 4, 8, 18),
+            timeStart: reference.add(const Duration(hours: 2)),
+          ),
+          _buildPoi(
+            id: 'poi-past-nearest',
+            name: 'Já terminou',
+            refType: 'event',
+            refId: 'event-3',
+            distanceMeters: 30,
+            timeStart: reference.subtract(const Duration(hours: 5)),
           ),
         ],
       );
@@ -4117,7 +4196,9 @@ void main() {
 
       final soonTop = tester.getTopLeft(find.text('Mais longe antes')).dy;
       final laterTop = tester.getTopLeft(find.text('Mais perto depois')).dy;
+      final pastTop = tester.getTopLeft(find.text('Já terminou')).dy;
       expect(soonTop, lessThan(laterTop));
+      expect(laterTop, lessThan(pastTop));
     });
 
     testWidgets('selected filter state exposes an explicit clear affordance',
