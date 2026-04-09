@@ -1744,6 +1744,40 @@ void main() {
       },
     );
 
+    test(
+      'orderedFilterResultPois also treats plural events filter keys as event context',
+      () async {
+        final reference = DateTime.now().toUtc();
+        controller.activeCatalogFilterKeyStreamValue.addValue('events');
+
+        final ordered = controller.orderedFilterResultPois(
+          <CityPoiModel>[
+            _buildPoi(
+              id: 'poi-past',
+              name: 'Evento passado',
+              refType: 'event',
+              refId: 'event-past',
+              distanceMeters: 10,
+              timeStart: reference.subtract(const Duration(hours: 5)),
+            ),
+            _buildPoi(
+              id: 'poi-upcoming',
+              name: 'Evento futuro',
+              refType: 'event',
+              refId: 'event-upcoming',
+              distanceMeters: 900,
+              timeStart: reference.add(const Duration(hours: 3)),
+            ),
+          ],
+        );
+
+        expect(ordered.map((poi) => poi.id).toList(), <String>[
+          'poi-upcoming',
+          'poi-past',
+        ]);
+      },
+    );
+
     test('tapping the same active catalog filter reopens filter results tray',
         () async {
       final category = _buildCategory(
