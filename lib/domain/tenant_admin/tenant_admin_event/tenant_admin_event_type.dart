@@ -8,6 +8,7 @@ class TenantAdminEventType {
     TenantAdminOptionalTextValue? descriptionValue,
     TenantAdminOptionalTextValue? iconValue,
     TenantAdminOptionalTextValue? colorValue,
+    this.visual,
   })  : idValue = idValue ?? TenantAdminOptionalTextValue(),
         descriptionValue = descriptionValue ?? TenantAdminOptionalTextValue(),
         iconValue = iconValue ?? TenantAdminOptionalTextValue(),
@@ -19,11 +20,18 @@ class TenantAdminEventType {
   final TenantAdminOptionalTextValue descriptionValue;
   final TenantAdminOptionalTextValue iconValue;
   final TenantAdminOptionalTextValue colorValue;
+  final TenantAdminPoiVisual? visual;
 
   String get name => nameValue.value;
   String get slug => slugValue.value;
   String? get id => idValue.nullableValue;
   String? get description => descriptionValue.nullableValue;
-  String? get icon => iconValue.nullableValue;
-  String? get color => colorValue.nullableValue;
+  String? get icon =>
+      iconValue.nullableValue ?? (visual?.mode == TenantAdminPoiVisualMode.icon
+          ? visual?.icon
+          : null);
+  String? get color =>
+      colorValue.nullableValue ?? (visual?.mode == TenantAdminPoiVisualMode.icon
+          ? visual?.color
+          : null);
 }

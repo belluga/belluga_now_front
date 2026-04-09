@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -7,7 +9,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -207,6 +211,46 @@ void main() {
     expect(eventsRepository.lastUpdateDescription, isNull);
   });
 
+  test('saveEventType delegates canonical visual mutation when requested',
+      () async {
+    final eventsRepository = _EventTypeVisualTrackingRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    await controller.saveEventType(
+      name: 'Festival',
+      slug: 'festival',
+      description: 'Tipo com imagem',
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'festival-type.png',
+      ),
+      removeTypeAsset: true,
+      includeVisual: true,
+      existingType: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    );
+
+    expect(eventsRepository.visualUpdateCalls, 1);
+    expect(eventsRepository.lastVisual?.mode, TenantAdminPoiVisualMode.image);
+    expect(
+      eventsRepository.lastVisual?.imageSource,
+      TenantAdminPoiVisualImageSource.typeAsset,
+    );
+    expect(eventsRepository.lastRemoveTypeAsset, isTrue);
+    expect(eventsRepository.lastTypeAssetUpload, isNotNull);
+  });
+
   test('artist search is backend-driven, paginated, and resets on query change',
       () async {
     final eventsRepository = _SearchableArtistCandidatesRepository();
@@ -299,8 +343,8 @@ TenantAdminEventDraft _buildDraft() {
 }
 
 class _FailingDeleteEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({
     required TenantAdminEventDraft draft,
@@ -492,8 +536,8 @@ class _NoopTaxonomiesRepository
 }
 
 class _TrackingEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
   bool? lastLoadArchived;
@@ -663,8 +707,8 @@ class _FakeLandlordAuthRepositoryWithToken
 }
 
 class _AccountScopedEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   int fetchEventTypesCalls = 0;
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
@@ -818,6 +862,36 @@ class _EventTypeUpdateTrackingRepository
       nameValue: tenantAdminRequiredText(name?.value ?? 'Show'),
       slugValue: tenantAdminRequiredText(slug?.value ?? 'show'),
       descriptionValue: tenantAdminOptionalText(description?.value),
+    );
+  }
+}
+
+class _EventTypeVisualTrackingRepository extends _AccountScopedEventsRepository {
+  int visualUpdateCalls = 0;
+  TenantAdminPoiVisual? lastVisual;
+  TenantAdminMediaUpload? lastTypeAssetUpload;
+  bool? lastRemoveTypeAsset;
+
+  @override
+  Future<TenantAdminEventType> updateEventTypeWithVisual({
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+    TenantAdminEventsRepoBool? removeTypeAsset,
+  }) async {
+    visualUpdateCalls += 1;
+    lastVisual = visual;
+    lastTypeAssetUpload = typeAssetUpload;
+    lastRemoveTypeAsset = removeTypeAsset?.value;
+    return TenantAdminEventType(
+      idValue: tenantAdminOptionalText(eventTypeId.value),
+      nameValue: tenantAdminRequiredText(name?.value ?? 'Festival'),
+      slugValue: tenantAdminRequiredText(slug?.value ?? 'festival'),
+      descriptionValue: tenantAdminOptionalText(description?.value),
+      visual: visual,
     );
   }
 }
