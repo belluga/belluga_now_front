@@ -509,8 +509,8 @@ Future<void> _fillRequiredFields(
 }
 
 class _FakeEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   List<TenantAdminEventType> eventTypes = <TenantAdminEventType>[];
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;

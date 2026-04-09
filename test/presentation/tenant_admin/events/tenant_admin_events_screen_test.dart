@@ -226,8 +226,8 @@ Future<void> _pumpEventsRouter(WidgetTester tester) async {
 }
 
 class _EventsRepositoryWithSeedData
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
     throw UnimplementedError();

@@ -219,8 +219,8 @@ class _FakeLandlordTenantsRepository
 }
 
 class _FakeTenantAdminEventsRepository
-    with TenantAdminEventsPaginationMixin
-    implements TenantAdminEventsRepositoryContract {
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
   _FakeTenantAdminEventsRepository()
       : _events = <TenantAdminEvent>[
           TenantAdminEvent(
