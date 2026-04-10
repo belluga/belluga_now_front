@@ -475,63 +475,21 @@ jobs:
             echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Enable auto-merge in web-app PR
+      - name: Hand off merge to web-app CI
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
         env:
-          GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
           WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
           PR_NUMBER: ${{ steps.create_web_pr.outputs.pr_number }}
         run: |
           set -euo pipefail
 
           if [[ -z "${PR_NUMBER:-}" ]]; then
-            echo "ERROR: missing PR number for web-app auto-merge." >&2
+            echo "ERROR: missing PR number for web-app publish handoff." >&2
             exit 1
           fi
 
-          is_auto_enabled="$(gh pr view "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --json autoMergeRequest --jq '.autoMergeRequest != null')"
-          if [[ "${is_auto_enabled}" == "true" ]]; then
-            echo "INFO: auto-merge already enabled for web-app PR #${PR_NUMBER}."
-            exit 0
-          fi
-
-          enable_auto_merge() {
-            local strategy="$1"
-            local output_file
-            output_file="$(mktemp)"
-
-            if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto "--${strategy}" >"${output_file}" 2>&1; then
-              cat "${output_file}"
-              rm -f "${output_file}"
-              echo "Enabled auto-merge using ${strategy} strategy for web-app PR #${PR_NUMBER}."
-              return 0
-            fi
-
-            if grep -Fq 'Protected branch rules not configured for this branch' "${output_file}"; then
-              cat "${output_file}"
-              rm -f "${output_file}"
-              echo "::warning::web-app PR #${PR_NUMBER} cannot enable auto-merge because the target branch has no protected-branch auto-merge support. Leaving the PR open for manual follow-up."
-              return 2
-            fi
-
-            cat "${output_file}" >&2
-            rm -f "${output_file}"
-            return 1
-          }
-
-          for strategy in merge squash rebase; do
-            if enable_auto_merge "${strategy}"; then
-              exit 0
-            fi
-
-            status=$?
-            if [[ "${status}" -eq 2 ]]; then
-              exit 0
-            fi
-          done
-
-          echo "ERROR: failed to enable auto-merge for web-app PR #${PR_NUMBER}." >&2
-          exit 1
+          echo "INFO: web-app PR #${PR_NUMBER} prepared in ${WEB_APP_REPO}."
+          echo "INFO: merge is handled by web-app CI after its lane checks succeed."
 
       - name: No changes notice
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'true'
