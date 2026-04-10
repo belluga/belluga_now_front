@@ -284,6 +284,7 @@ void main() {
       appDataRepository: appDataRepository,
       leadCaptureService: leadCaptureService,
     );
+    router.canPopValue = true;
 
     await tester.pumpWidget(_buildWidget(router: router));
     await tester.pumpAndSettle();
@@ -327,6 +328,66 @@ void main() {
 
     expect(router.popCalls, 1);
     expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets('success CTA falls back to invite preview when there is no stack',
+      (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      'Maria Tester',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      'tester@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      '27999999999',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+      'Mapa confiável e agenda atualizada.',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_continue_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes, isNotNull);
+    expect(
+        router.lastReplaceAllRoutes!.single.routeName, InviteEntryRoute.name);
+    expect(
+      router.lastReplaceAllRoutes!.single.rawQueryParams['code'],
+      'CODE123',
+    );
   });
 
   testWidgets(
@@ -422,6 +483,33 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     replaceAllCalls += 1;
     lastReplaceAllRoutes = routes;
+  }
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    if (path == null) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(path);
+    if (uri == null) {
+      return null;
+    }
+
+    return switch (uri.path) {
+      '/' || '/home' => const TenantHomeRoute(),
+      '/invite' => PageRouteInfo(
+          InviteEntryRoute.name,
+          rawQueryParams: uri.queryParameters,
+        ),
+      _ => PageRouteInfo(
+          'mock:${uri.path}',
+          rawQueryParams: uri.queryParameters,
+        ),
+    };
   }
 }
 

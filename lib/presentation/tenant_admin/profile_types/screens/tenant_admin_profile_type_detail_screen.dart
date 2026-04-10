@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -120,6 +121,7 @@ class _TenantAdminProfileTypeDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return StreamValueBuilder<TenantAdminProfileTypeDefinition?>(
       streamValue: _controller.detailTypeStreamValue,
       builder: (context, detailDefinition) {
@@ -140,6 +142,11 @@ class _TenantAdminProfileTypeDetailScreenState
           builder: (context, isSaving) {
             return Scaffold(
               appBar: AppBar(
+                leading: IconButton(
+                  tooltip: 'Voltar',
+                  onPressed: backPolicy.handleBack,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
                 title: Text(definition.label),
                 actions: [
                   FilledButton.tonalIcon(

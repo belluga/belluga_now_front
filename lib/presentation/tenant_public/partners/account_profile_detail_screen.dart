@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
@@ -136,7 +137,16 @@ class _AccountProfileDetailScreenState
                                       isFav: isFav,
                                       isFavoritable: isFavoritable,
                                     ),
-                                    onBackPressed: _handleBack,
+                                    backPolicy: buildTenantPublicSafeBackPolicy(
+                                      context.router,
+                                      fallbackRoute: const DiscoveryRoute(),
+                                      reentrancyKey:
+                                          resolveRouteBackReentrancyKey(
+                                        context,
+                                        fallbackRouteName:
+                                            PartnerDetailRoute.name,
+                                      ),
+                                    ),
                                     onSharePressed: () => unawaited(
                                       _shareAccountProfile(
                                         resolvedAccountProfile,
@@ -225,13 +235,6 @@ class _AccountProfileDetailScreenState
           ),
         ),
       ],
-    );
-  }
-
-  void _handleBack() {
-    performTenantPublicSafeBack(
-      context.router,
-      fallbackRoute: const DiscoveryRoute(),
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
 import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -33,7 +34,8 @@ class StaticAssetDetailScreen extends StatefulWidget {
   final DirectionsAppChooserContract? directionsAppChooser;
 
   @override
-  State<StaticAssetDetailScreen> createState() => _StaticAssetDetailScreenState();
+  State<StaticAssetDetailScreen> createState() =>
+      _StaticAssetDetailScreenState();
 }
 
 class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
@@ -51,18 +53,18 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
         title: widget.asset.displayName,
         collapsedToolbarHeight: 72,
         centerCollapsedTitle: false,
-        onBackPressed: _handleBack,
+        backPolicy: buildTenantPublicSafeBackPolicy(
+          context.router,
+          fallbackRoute: const DiscoveryRoute(),
+          reentrancyKey: resolveRouteBackReentrancyKey(
+            context,
+            fallbackRouteName: StaticAssetDetailRoute.name,
+          ),
+        ),
         onSharePressed: () => unawaited(_shareStaticAsset()),
         shareIcon: BooraIcons.share,
         tabs: tabs,
       ),
-    );
-  }
-
-  void _handleBack() {
-    performTenantPublicSafeBack(
-      context.router,
-      fallbackRoute: const DiscoveryRoute(),
     );
   }
 
@@ -432,7 +434,8 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
         ),
       );
     } catch (_) {
-      _showStatusMessage('Não foi possível compartilhar ${widget.asset.displayName}.');
+      _showStatusMessage(
+          'Não foi possível compartilhar ${widget.asset.displayName}.');
     }
   }
 

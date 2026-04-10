@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -254,6 +255,9 @@ class _TenantAdminAccountProfileCreateScreenState
     context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
+        backFallbackRoute: TenantAdminAccountProfileCreateRoute(
+          accountSlug: _currentAccountSlugForRequests(),
+        ),
       ),
     );
   }
@@ -351,6 +355,7 @@ class _TenantAdminAccountProfileCreateScreenState
                     _hasTaxonomies(state.selectedProfileType);
                 final accountSlugForUi = _currentAccountSlugForRequests();
                 return TenantAdminFormScaffold(
+                  closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
                   title: 'Criar Perfil - $accountSlugForUi',
                   child: SingleChildScrollView(
                     child: Form(
@@ -397,7 +402,7 @@ class _TenantAdminAccountProfileCreateScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 

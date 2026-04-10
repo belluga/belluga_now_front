@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/theme/tenant_admin_scope_theme.dart';
@@ -48,14 +51,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       icon: Icons.event_outlined,
       selectedIcon: Icons.event,
       route: TenantAdminEventsRoute(),
-      routeNames: {
-        TenantAdminEventsRoute.name,
-        TenantAdminEventCreateRoute.name,
-        TenantAdminEventEditRoute.name,
-        TenantAdminEventTypesRoute.name,
-        TenantAdminEventTypeCreateRoute.name,
-        TenantAdminEventTypeEditRoute.name,
-      },
+      routeNames: tenantAdminEventsRouteNames,
     ),
     _AdminDestination(
       label: 'Contas',
@@ -63,20 +59,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       icon: Icons.groups_outlined,
       selectedIcon: Icons.groups,
       route: TenantAdminAccountsListRoute(),
-      routeNames: {
-        TenantAdminAccountsListRoute.name,
-        TenantAdminAccountCreateRoute.name,
-        TenantAdminAccountDetailRoute.name,
-        TenantAdminAccountProfileCreateRoute.name,
-        TenantAdminAccountProfileEditRoute.name,
-        TenantAdminOrganizationsListRoute.name,
-        TenantAdminOrganizationCreateRoute.name,
-        TenantAdminOrganizationDetailRoute.name,
-        TenantAdminProfileTypesListRoute.name,
-        TenantAdminProfileTypeDetailRoute.name,
-        TenantAdminProfileTypeCreateRoute.name,
-        TenantAdminProfileTypeEditRoute.name,
-      },
+      routeNames: tenantAdminAccountsRouteNames,
     ),
     _AdminDestination(
       label: 'Ativos',
@@ -84,23 +67,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       icon: Icons.place_outlined,
       selectedIcon: Icons.place,
       route: TenantAdminStaticAssetsListRoute(),
-      routeNames: {
-        TenantAdminStaticAssetsListRoute.name,
-        TenantAdminStaticAssetDetailRoute.name,
-        TenantAdminStaticAssetCreateRoute.name,
-        TenantAdminStaticAssetEditRoute.name,
-        TenantAdminStaticProfileTypesListRoute.name,
-        TenantAdminStaticProfileTypeDetailRoute.name,
-        TenantAdminStaticProfileTypeCreateRoute.name,
-        TenantAdminStaticProfileTypeEditRoute.name,
-        TenantAdminTaxonomiesListRoute.name,
-        TenantAdminTaxonomyCreateRoute.name,
-        TenantAdminTaxonomyEditRoute.name,
-        TenantAdminTaxonomyTermsRoute.name,
-        TenantAdminTaxonomyTermDetailRoute.name,
-        TenantAdminTaxonomyTermCreateRoute.name,
-        TenantAdminTaxonomyTermEditRoute.name,
-      },
+      routeNames: tenantAdminAssetsRouteNames,
     ),
     _AdminDestination(
       label: 'Config',
@@ -108,13 +75,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
       route: TenantAdminSettingsRoute(),
-      routeNames: {
-        TenantAdminSettingsRoute.name,
-        TenantAdminSettingsLocalPreferencesRoute.name,
-        TenantAdminSettingsVisualIdentityRoute.name,
-        TenantAdminSettingsTechnicalIntegrationsRoute.name,
-        TenantAdminSettingsEnvironmentSnapshotRoute.name,
-      },
+      routeNames: tenantAdminSettingsRouteNames,
     ),
   ];
 
@@ -195,21 +156,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       TenantAdminEventTypesRoute.name => 'Tipos de evento',
       _ => null,
     };
-  }
-
-  void _navigateBackFromHeader(
-    BuildContext context, {
-    required String? routeName,
-  }) {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop();
-      return;
-    }
-    final destination = _destinationForRoute(routeName);
-    if (destination != null) {
-      router.replace(destination.route);
-    }
   }
 
   _ShellHeaderContext _headerContextForRoute(String? routeName) {
@@ -607,7 +553,14 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   Widget _buildWorkspaceSurface({
     required BuildContext context,
     required Widget child,
+    RouteBackPolicy? backPolicy,
   }) {
+    if (backPolicy != null) {
+      return RouteBackScope(
+        backPolicy: backPolicy,
+        child: child,
+      );
+    }
     return child;
   }
 
@@ -704,6 +657,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   Theme.of(context),
                 );
                 final headerContext = _headerContextForRoute(currentName);
+                final shouldUseSafeBack =
+                    shouldUseTenantAdminSafeBackForRoute(currentName);
+                final routeBackPolicy = shouldUseSafeBack
+                    ? buildTenantAdminCurrentRouteBackPolicy(context)
+                    : null;
 
                 return Theme(
                   data: scopedTheme,
@@ -775,13 +733,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                                         breadcrumbs:
                                                             headerContext
                                                                 .breadcrumbs,
-                                                        showBackButton: false,
-                                                        onBack: () =>
-                                                            _navigateBackFromHeader(
-                                                          scopeContext,
-                                                          routeName:
-                                                              currentName,
-                                                        ),
+                                                        showBackButton:
+                                                            headerContext
+                                                                .canGoBack,
+                                                        onBack: routeBackPolicy
+                                                            ?.handleBack,
                                                         tenantLabel:
                                                             selectedTenantLabel,
                                                         canChangeTenant:
@@ -799,6 +755,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                                 Expanded(
                                                   child: _buildWorkspaceSurface(
                                                     context: scopeContext,
+                                                    backPolicy: routeBackPolicy,
                                                     child: AutoRouter(
                                                       key: shellRouterKey,
                                                     ),
@@ -831,11 +788,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                                 headerContext.breadcrumbs,
                                             showBackButton:
                                                 headerContext.canGoBack,
-                                            onBack: () =>
-                                                _navigateBackFromHeader(
-                                              scopeContext,
-                                              routeName: currentName,
-                                            ),
+                                            onBack: routeBackPolicy?.handleBack,
                                             tenantLabel: selectedTenantLabel,
                                             canChangeTenant: canChangeTenant,
                                             onChangeTenant: _controller
@@ -849,6 +802,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                     Expanded(
                                       child: _buildWorkspaceSurface(
                                         context: scopeContext,
+                                        backPolicy: routeBackPolicy,
                                         child: AutoRouter(
                                           key: shellRouterKey,
                                         ),

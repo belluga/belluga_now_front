@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_admin_ui/belluga_admin_ui.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_rule_sheet.dart';
@@ -39,18 +40,11 @@ class _TenantAdminSettingsLocalPreferencesScreenState
     await _controller.loadMapUiSettings();
   }
 
-  void _handleBack() {
-    if (context.router.canPop()) {
-      context.router.pop();
-      return;
-    }
-    context.router.replace(const TenantAdminSettingsRoute());
-  }
-
   Future<void> _openDefaultOriginPicker() {
     return context.router.push(
       TenantAdminLocationPickerRoute(
         initialLocation: _controller.currentMapDefaultOriginLocation(),
+        backFallbackRoute: const TenantAdminSettingsLocalPreferencesRoute(),
       ),
     );
   }
@@ -156,6 +150,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return ListView(
       key: TenantAdminSettingsKeys.localPreferencesScreen,
       padding: const EdgeInsets.all(16),
@@ -164,7 +159,7 @@ class _TenantAdminSettingsLocalPreferencesScreenState
           key: TenantAdminSettingsKeys.localPreferencesScopedAppBar,
           title: 'Preferências',
           backButtonKey: TenantAdminSettingsKeys.localPreferencesBackButton,
-          onBack: _handleBack,
+          onBack: backPolicy.handleBack,
         ),
         const SizedBox(height: 12),
         TenantAdminSettingsSection(

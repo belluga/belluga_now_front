@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +15,14 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Voltar',
+          onPressed: backPolicy.handleBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
         title: Text(asset.displayName),
         actions: [
           FilledButton.tonalIcon(

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_admin_ui/belluga_admin_ui.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
@@ -12,7 +12,6 @@ import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_ad
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_telemetry_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_scoped_section_app_bar.dart';
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -50,14 +49,6 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
     });
   }
 
-  void _handleBack() {
-    if (context.router.canPop()) {
-      context.router.pop();
-      return;
-    }
-    context.router.replace(const TenantAdminSettingsRoute());
-  }
-
   Future<void> _focusInitialSection() async {
     if (!mounted) {
       return;
@@ -83,6 +74,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return ListView(
       key: TenantAdminSettingsKeys.technicalIntegrationsScreen,
       padding: const EdgeInsets.all(16),
@@ -92,7 +84,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
           title: 'Integrações técnicas',
           backButtonKey:
               TenantAdminSettingsKeys.technicalIntegrationsBackButton,
-          onBack: _handleBack,
+          onBack: backPolicy.handleBack,
         ),
         const SizedBox(height: 12),
         TenantAdminSettingsRemoteStatusPanel(

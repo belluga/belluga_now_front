@@ -1,4 +1,4 @@
-import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +29,7 @@ class _TenantAdminOrganizationCreateScreenState
           builder: (context, errorMessage) {
             _handleCreateErrorMessage(errorMessage);
             return TenantAdminFormScaffold(
+              closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
               title: 'Criar Organizacao',
               child: SingleChildScrollView(
                 child: Form(
@@ -99,7 +100,7 @@ class _TenantAdminOrganizationCreateScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 

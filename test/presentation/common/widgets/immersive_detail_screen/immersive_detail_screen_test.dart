@@ -1,3 +1,5 @@
+import 'package:belluga_now/application/router/support/back_surface_kind.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,7 @@ void main() {
           home: ImmersiveDetailScreen(
             title: 'Profile',
             collapsedToolbarHeight: 72,
+            backPolicy: _FakeBackPolicy(),
             heroContent: Container(color: Colors.black),
             tabs: [
               ImmersiveTabItem(
@@ -80,6 +83,7 @@ void main() {
           home: ImmersiveDetailScreen(
             title: 'Event',
             collapsedToolbarHeight: 72,
+            backPolicy: _FakeBackPolicy(),
             heroContent: Stack(
               children: [
                 Container(color: Colors.black),
@@ -149,14 +153,15 @@ void main() {
   );
 
   testWidgets(
-    'back button delegates to host callback when provided',
+    'visible back delegates to the configured back policy',
     (tester) async {
-      var backPressCount = 0;
+      final backPolicy = _FakeBackPolicy();
 
       await tester.pumpWidget(
         MaterialApp(
           home: ImmersiveDetailScreen(
             title: 'Profile',
+            backPolicy: backPolicy,
             heroContent: Container(color: Colors.black),
             tabs: [
               ImmersiveTabItem(
@@ -164,9 +169,6 @@ void main() {
                 content: SizedBox(height: 200, child: Text('Section')),
               ),
             ],
-            onBackPressed: () {
-              backPressCount += 1;
-            },
           ),
         ),
       );
@@ -175,7 +177,52 @@ void main() {
       await tester.tap(find.byIcon(Icons.arrow_back));
       await tester.pumpAndSettle();
 
-      expect(backPressCount, 1);
+      expect(backPolicy.callCount, 1);
     },
   );
+
+  testWidgets(
+    'system back delegates to the configured back policy',
+    (tester) async {
+      final backPolicy = _FakeBackPolicy();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImmersiveDetailScreen(
+            title: 'Profile',
+            backPolicy: backPolicy,
+            heroContent: Container(color: Colors.black),
+            tabs: [
+              ImmersiveTabItem(
+                title: 'Sobre',
+                content: SizedBox(height: 200, child: Text('Section')),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
+
+      expect(backPolicy.callCount, 1);
+    },
+  );
+}
+
+class _FakeBackPolicy implements RouteBackPolicy {
+  int callCount = 0;
+
+  @override
+  BackSurfaceKind get surfaceKind => BackSurfaceKind.rootOpenable;
+
+  @override
+  void handleBack() {
+    callCount += 1;
+  }
 }

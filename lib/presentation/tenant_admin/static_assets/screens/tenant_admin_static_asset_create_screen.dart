@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -77,6 +78,8 @@ class _TenantAdminStaticAssetCreateScreenState
                     final hasCover =
                         selectedDefinition?.capabilities.hasCover ?? false;
                     return TenantAdminFormScaffold(
+                      closePolicy:
+                          buildTenantAdminCurrentRouteBackPolicy(context),
                       title: 'Criar ativo',
                       child: Form(
                         key: _controller.formKey,
@@ -176,6 +179,7 @@ class _TenantAdminStaticAssetCreateScreenState
     context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
+        backFallbackRoute: const TenantAdminStaticAssetCreateRoute(),
       ),
     );
   }
@@ -230,7 +234,7 @@ class _TenantAdminStaticAssetCreateScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 

@@ -1,12 +1,16 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -62,19 +66,16 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: context.router.canPop(),
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _exitInviteFlow();
-      },
+    final backPolicy = _buildBackPolicy(context);
+    return RouteBackScope(
+      backPolicy: backPolicy,
       child: Scaffold(
-        body: _buildContent(),
+        body: _buildContent(backPolicy),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(RouteBackPolicy backPolicy) {
     final invites = widget.invites;
     if (invites.isEmpty) {
       if (kIsWeb) {
@@ -100,7 +101,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           onAccept: () => _handleDecision(invite, InviteDecision.accepted),
           onDecline: () => _handleDecision(invite, InviteDecision.declined),
           onViewDetails: () => _openEventDetails(invite),
-          onClose: _exitInviteFlow,
+          onClose: backPolicy.handleBack,
           remainingCount: remaining,
           requiresAuthentication: widget.requiresAuthentication,
           onRequestAuthentication: _openAuthForInviteDecision,
@@ -270,13 +271,19 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     );
   }
 
+  RouteBackPolicy _buildBackPolicy(BuildContext context) {
+    return buildTenantPublicSafeBackPolicy(
+      context.router,
+      fallbackRoute: const TenantHomeRoute(),
+      reentrancyKey: resolveRouteBackReentrancyKey(
+        context,
+        fallbackRouteName: InviteFlowRoute.name,
+      ),
+    );
+  }
+
   void _exitInviteFlow() {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop();
-      return;
-    }
-    router.replaceAll([const TenantHomeRoute()]);
+    _buildBackPolicy(context).handleBack();
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {

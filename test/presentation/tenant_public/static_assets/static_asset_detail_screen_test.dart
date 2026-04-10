@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -16,7 +17,8 @@ void main() {
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
   });
 
-  testWidgets('static asset detail is share-only and renders Sobre + Como Chegar',
+  testWidgets(
+      'static asset detail is share-only and renders Sobre + Como Chegar',
       (tester) async {
     final asset = PublicStaticAssetModel(
       idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
@@ -28,17 +30,20 @@ void main() {
         defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
         isRequired: false,
       ),
-      locationLatitudeValue: LatitudeValue(isRequired: false)..parse('-20.6701'),
-      locationLongitudeValue:
-          LongitudeValue(isRequired: false)..parse('-40.5001'),
+      locationLatitudeValue: LatitudeValue(isRequired: false)
+        ..parse('-20.6701'),
+      locationLongitudeValue: LongitudeValue(isRequired: false)
+        ..parse('-40.5001'),
     );
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: StaticAssetDetailScreen(
+      _buildRoutedTestApp(
+        router: router,
+        child: StaticAssetDetailScreen(
           asset: asset,
           controller: controller,
         ),
@@ -116,4 +121,37 @@ AppData _buildAppData() {
     remoteData: remoteData,
     localInfo: localInfo,
   );
+}
+
+Widget _buildRoutedTestApp({
+  required _RecordingStackRouter router,
+  required Widget child,
+}) {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(fullPath: '/static/asset-ref'),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: RouteDataScope(
+        routeData: routeData,
+        child: child,
+      ),
+    ),
+  );
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({required this.fullPath});
+
+  @override
+  final String fullPath;
 }

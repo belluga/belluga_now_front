@@ -1480,12 +1480,14 @@ class TenantAdminLocationPickerRoute
   TenantAdminLocationPickerRoute({
     _i66.Key? key,
     _i72.TenantAdminLocation? initialLocation,
+    _i65.PageRouteInfo<dynamic>? backFallbackRoute,
     List<_i65.PageRouteInfo>? children,
   }) : super(
           TenantAdminLocationPickerRoute.name,
           args: TenantAdminLocationPickerRouteArgs(
             key: key,
             initialLocation: initialLocation,
+            backFallbackRoute: backFallbackRoute,
           ),
           initialChildren: children,
         );
@@ -1501,32 +1503,42 @@ class TenantAdminLocationPickerRoute
       return _i34.TenantAdminLocationPickerRoutePage(
         key: args.key,
         initialLocation: args.initialLocation,
+        backFallbackRoute: args.backFallbackRoute,
       );
     },
   );
 }
 
 class TenantAdminLocationPickerRouteArgs {
-  const TenantAdminLocationPickerRouteArgs({this.key, this.initialLocation});
+  const TenantAdminLocationPickerRouteArgs({
+    this.key,
+    this.initialLocation,
+    this.backFallbackRoute,
+  });
 
   final _i66.Key? key;
 
   final _i72.TenantAdminLocation? initialLocation;
 
+  final _i65.PageRouteInfo<dynamic>? backFallbackRoute;
+
   @override
   String toString() {
-    return 'TenantAdminLocationPickerRouteArgs{key: $key, initialLocation: $initialLocation}';
+    return 'TenantAdminLocationPickerRouteArgs{key: $key, initialLocation: $initialLocation, backFallbackRoute: $backFallbackRoute}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminLocationPickerRouteArgs) return false;
-    return key == other.key && initialLocation == other.initialLocation;
+    return key == other.key &&
+        initialLocation == other.initialLocation &&
+        backFallbackRoute == other.backFallbackRoute;
   }
 
   @override
-  int get hashCode => key.hashCode ^ initialLocation.hashCode;
+  int get hashCode =>
+      key.hashCode ^ initialLocation.hashCode ^ backFallbackRoute.hashCode;
 }
 
 /// generated route for
