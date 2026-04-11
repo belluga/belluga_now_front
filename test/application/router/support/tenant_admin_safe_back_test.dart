@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/back_surface_kind.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
@@ -104,6 +105,92 @@ void main() {
       router.replacedRoute?.routeName,
       TenantAdminSettingsLocalPreferencesRoute.name,
     );
+  });
+
+  testWidgets(
+      'tenant admin current back policy falls back safely without RouteDataScope',
+      (tester) async {
+    final router = _RecordingStackRouter(canPopResult: false);
+    late RouteBackPolicy policy;
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              policy = buildTenantAdminCurrentRouteBackPolicy(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    policy.handleBack();
+    await tester.pump();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      TenantAdminDashboardRoute.name,
+    );
+  });
+
+  testWidgets(
+      'tenant admin perform back uses the same compat fallback without RouteDataScope',
+      (tester) async {
+    final router = _RecordingStackRouter(canPopResult: false);
+    late BuildContext capturedContext;
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              capturedContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    performTenantAdminCurrentRouteBack(capturedContext);
+    await tester.pump();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      TenantAdminDashboardRoute.name,
+    );
+  });
+
+  testWidgets(
+      'tenant admin current back policy is a no-op compat policy without AutoRoute scopes',
+      (tester) async {
+    late RouteBackPolicy policy;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            policy = buildTenantAdminCurrentRouteBackPolicy(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(policy.surfaceKind, BackSurfaceKind.internalOnly);
+    expect(policy.handleBack, returnsNormally);
   });
 }
 

@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -210,7 +213,15 @@ Widget _buildRoutedTestApp({
   required Widget child,
 }) {
   final routeData = RouteData(
-    route: _FakeRouteMatch(fullPath: '/admin/event-types/test'),
+    route: _FakeRouteMatch(
+      name: TenantAdminEventTypeCreateRoute.name,
+      fullPath: '/admin/events/types/create',
+      meta: canonicalRouteMeta(
+        family: CanonicalRouteFamily.tenantAdminEventsInternal,
+        chromeMode: RouteChromeMode.fullscreen,
+      ),
+      pageRouteInfo: const TenantAdminEventTypeCreateRoute(),
+    ),
     router: router,
     stackKey: const ValueKey<String>('stack'),
     pendingChildren: const <RouteMatch>[],
@@ -471,10 +482,26 @@ class _RecordingStackRouter extends Fake implements StackRouter {
 }
 
 class _FakeRouteMatch extends Fake implements RouteMatch {
-  _FakeRouteMatch({required this.fullPath});
+  _FakeRouteMatch({
+    required this.name,
+    required this.fullPath,
+    required this.meta,
+    required this.pageRouteInfo,
+  });
+
+  @override
+  final String name;
 
   @override
   final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 const List<int> _validPngBytes = <int>[

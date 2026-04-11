@@ -91,12 +91,19 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   bool get shouldShowInviteFilterAction => true;
 }
 
-class _RecordingBackRouter extends MockStackRouter {
-  _RecordingBackRouter({required this.canPopResult});
+class _RecordingBackRouter extends Fake implements StackRouter {
+  _RecordingBackRouter({
+    required this.canPopResult,
+    GlobalKey<NavigatorState>? navigatorKey,
+  }) : _navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>();
 
   bool canPopResult;
+  final GlobalKey<NavigatorState> _navigatorKey;
   int canPopCallCount = 0;
   int popCallCount = 0;
+
+  @override
+  GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
 
   @override
   RootStackRouter get root => _FakeRootStackRouter('/');
@@ -114,6 +121,10 @@ class _RecordingBackRouter extends MockStackRouter {
   @override
   void pop<T extends Object?>([T? result]) {
     popCallCount += 1;
+    final navigatorState = _navigatorKey.currentState;
+    if (navigatorState != null && navigatorState.canPop()) {
+      navigatorState.pop<T>(result);
+    }
   }
 }
 
@@ -134,7 +145,10 @@ void _stubMockRouterRoot(MockStackRouter router, {String currentPath = '/'}) {
   mockito.when(router.root).thenReturn(_FakeRootStackRouter(currentPath));
 }
 
-Widget _buildRoutedTenantHomeApp(StackRouter router) {
+Widget _buildRoutedTenantHomeApp(
+  StackRouter router, {
+  GlobalKey<NavigatorState>? navigatorKey,
+}) {
   final routeData = RouteData(
     route: RouteMatch(
       config: AutoRoute(
@@ -158,6 +172,7 @@ Widget _buildRoutedTenantHomeApp(StackRouter router) {
     controller: router,
     stateHash: 0,
     child: MaterialApp(
+      navigatorKey: navigatorKey,
       home: RouteDataScope(
         routeData: routeData,
         child: const TenantHomeScreen(),
@@ -488,9 +503,15 @@ void main() {
   testWidgets(
       'tenant home system back opens exit confirmation when root-opened without history',
       (tester) async {
-    final router = _RecordingBackRouter(canPopResult: false);
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final router = _RecordingBackRouter(
+      canPopResult: false,
+      navigatorKey: navigatorKey,
+    );
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
+    );
     await tester.pumpAndSettle();
 
     final popScope = tester.widget<PopScope<dynamic>>(
@@ -504,17 +525,33 @@ void main() {
     expect(find.text('Sair do app?'), findsOneWidget);
     expect(find.text('Deseja fechar o aplicativo agora?'), findsOneWidget);
 
-    Navigator.of(
-      tester.element(find.byType(TenantHomeScreen)),
-      rootNavigator: true,
-    ).pop(false);
+    await tester.tap(find.text('Cancelar'));
     await tester.pumpAndSettle();
+    expect(find.text('Sair do app?'), findsNothing);
   });
 
   testWidgets('tenant home exit confirmation delegates to SystemNavigator.pop',
       (tester) async {
-    final router = _RecordingBackRouter(canPopResult: false);
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final router = _RecordingBackRouter(
+      canPopResult: false,
+      navigatorKey: navigatorKey,
+    );
     var systemPopCallCount = 0;
+
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sair'), findsOneWidget);
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
       SystemChannels.platform,
@@ -526,19 +563,7 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
-    await tester.pumpAndSettle();
-
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
-
-    Navigator.of(
-      tester.element(find.byType(TenantHomeScreen)),
-      rootNavigator: true,
-    ).pop(true);
+    await tester.tap(find.text('Sair'));
     await tester.pumpAndSettle();
 
     expect(systemPopCallCount, 1);
@@ -546,9 +571,15 @@ void main() {
 
   testWidgets('tenant home system back pops when previous history exists',
       (tester) async {
-    final router = _RecordingBackRouter(canPopResult: true);
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final router = _RecordingBackRouter(
+      canPopResult: true,
+      navigatorKey: navigatorKey,
+    );
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
+    );
     await tester.pumpAndSettle();
 
     final popScope = tester.widget<PopScope<dynamic>>(
