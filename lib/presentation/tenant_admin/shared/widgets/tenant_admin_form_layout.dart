@@ -3,7 +3,7 @@ export 'tenant_admin_primary_form_action.dart';
 
 import 'dart:math' as math;
 
-import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:flutter/material.dart';
 
 class TenantAdminFormScaffold extends StatelessWidget {
@@ -11,7 +11,7 @@ class TenantAdminFormScaffold extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
-    this.onClose,
+    required this.closePolicy,
     this.closeTooltip = 'Fechar',
     this.showHandle = true,
     this.maxContentWidth = 760,
@@ -19,7 +19,7 @@ class TenantAdminFormScaffold extends StatelessWidget {
 
   final String title;
   final Widget child;
-  final VoidCallback? onClose;
+  final RouteBackPolicy closePolicy;
   final String closeTooltip;
   final bool showHandle;
   final double maxContentWidth;
@@ -69,7 +69,7 @@ class TenantAdminFormScaffold extends StatelessWidget {
                       children: [
                         IconButton(
                           tooltip: closeTooltip,
-                          onPressed: onClose ?? () => context.router.maybePop(),
+                          onPressed: closePolicy.handleBack,
                           icon: const Icon(Icons.close),
                         ),
                         Expanded(

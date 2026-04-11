@@ -8,11 +8,15 @@ class TenantAdminLocationPickerRoutePage extends StatelessWidget {
   const TenantAdminLocationPickerRoutePage({
     super.key,
     this.initialLocation,
+    this.backFallbackRoute,
   });
 
   final TenantAdminLocation? initialLocation;
+  final PageRouteInfo<dynamic>? backFallbackRoute;
 
   @override
-  Widget build(BuildContext context) =>
-      TenantAdminLocationPickerScreen(initialLocation: initialLocation);
+  Widget build(BuildContext context) => TenantAdminLocationPickerScreen(
+        initialLocation: initialLocation,
+        backFallbackRoute: backFallbackRoute,
+      );
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -83,6 +84,7 @@ class _TenantAdminAccountCreateScreenState
     context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
+        backFallbackRoute: const TenantAdminAccountCreateRoute(),
       ),
     );
   }
@@ -192,6 +194,7 @@ class _TenantAdminAccountCreateScreenState
         final showCover = definition?.capabilities.hasCover ?? false;
         final showMediaSection = showAvatar || showCover;
         return TenantAdminFormScaffold(
+          closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
           title: 'Criar Conta',
           child: SingleChildScrollView(
             child: Form(

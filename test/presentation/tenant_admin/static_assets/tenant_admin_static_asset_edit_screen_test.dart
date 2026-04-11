@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
@@ -236,8 +239,12 @@ RootStackRouter _buildTestRouter(Widget child) {
   return RootStackRouter.build(
     routes: [
       NamedRouteDef(
-        name: 'static-asset-edit-test',
+        name: TenantAdminStaticAssetEditRoute.name,
         path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
         builder: (_, __) => child,
       ),
     ],

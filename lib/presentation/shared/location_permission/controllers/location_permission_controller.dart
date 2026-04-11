@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/router/support/location_permission_blocker.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,14 +10,40 @@ import 'package:stream_value/core/stream_value.dart';
 class LocationPermissionController implements Disposable {
   LocationPermissionController({
     bool? isWeb,
+    LocationPermissionBlockerLoader? initialStateLoader,
   })  : _isWeb = isWeb ?? kIsWeb,
+        _initialStateLoader =
+            initialStateLoader ?? loadCurrentLocationPermissionBlocker,
+        initialStateStreamValue =
+            StreamValue<LocationPermissionState?>(defaultValue: null),
         loading = StreamValue<bool>(defaultValue: false),
         resultStreamValue = StreamValue<bool?>(defaultValue: null);
 
   final bool _isWeb;
+  final LocationPermissionBlockerLoader _initialStateLoader;
+  bool _didResolveInitialState = false;
 
+  final StreamValue<LocationPermissionState?> initialStateStreamValue;
   final StreamValue<bool> loading;
   final StreamValue<bool?> resultStreamValue;
+
+  Future<void> ensureInitialState({
+    LocationPermissionState? initialState,
+  }) async {
+    if (_didResolveInitialState) {
+      return;
+    }
+    _didResolveInitialState = true;
+
+    if (initialState != null) {
+      initialStateStreamValue.addValue(initialState);
+      return;
+    }
+
+    final resolvedState =
+        await _initialStateLoader() ?? LocationPermissionState.denied;
+    initialStateStreamValue.addValue(resolvedState);
+  }
 
   Future<void> requestPermission({
     required LocationPermissionState initialState,
@@ -80,6 +107,7 @@ class LocationPermissionController implements Disposable {
 
   @override
   FutureOr<void> onDispose() async {
+    initialStateStreamValue.dispose();
     loading.dispose();
     resultStreamValue.dispose();
   }

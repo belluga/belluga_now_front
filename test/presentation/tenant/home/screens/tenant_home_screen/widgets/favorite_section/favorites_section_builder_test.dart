@@ -92,6 +92,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 class _RecordingStackRouter extends Mock implements StackRouter {
   bool replaceAllCalled = false;
   List<PageRouteInfo>? lastRoutes;
+  int pushCalls = 0;
+  PageRouteInfo<dynamic>? lastPushedRoute;
 
   @override
   Future<void> replaceAll(
@@ -101,6 +103,17 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     replaceAllCalled = true;
     lastRoutes = routes;
+  }
+
+  @override
+  Future<T?> push<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+    bool notify = true,
+  }) async {
+    pushCalls += 1;
+    lastPushedRoute = route;
+    return null;
   }
 }
 
@@ -117,7 +130,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('Direct favorite tap triggers route change', (tester) async {
+  testWidgets('direct favorite tap preserves stack and pushes event search',
+      (tester) async {
     final favoriteItem = FavoriteResume(
       titleValue: TitleValue()..parse('Pizza Place'),
       assetPathValue: AssetPathValue()
@@ -150,8 +164,9 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(router.replaceAllCalled, isTrue);
-    expect(router.lastRoutes?.first, isA<EventSearchRoute>());
+    expect(router.replaceAllCalled, isFalse);
+    expect(router.pushCalls, 1);
+    expect(router.lastPushedRoute, isA<EventSearchRoute>());
   });
 }
 

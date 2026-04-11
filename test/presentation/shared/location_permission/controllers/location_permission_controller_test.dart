@@ -120,6 +120,44 @@ void main() {
     expect(controller.loading.value, isFalse);
     controller.onDispose();
   });
+
+  test('ensureInitialState loads blocker when no state was injected', () async {
+    final controller = LocationPermissionController(
+      isWeb: true,
+      initialStateLoader: () async => LocationPermissionState.deniedForever,
+    );
+
+    await controller.ensureInitialState();
+
+    expect(
+      controller.initialStateStreamValue.value,
+      LocationPermissionState.deniedForever,
+    );
+    controller.onDispose();
+  });
+
+  test('ensureInitialState preserves injected state without calling loader',
+      () async {
+    var loaderCalls = 0;
+    final controller = LocationPermissionController(
+      isWeb: true,
+      initialStateLoader: () async {
+        loaderCalls += 1;
+        return LocationPermissionState.denied;
+      },
+    );
+
+    await controller.ensureInitialState(
+      initialState: LocationPermissionState.serviceDisabled,
+    );
+
+    expect(
+      controller.initialStateStreamValue.value,
+      LocationPermissionState.serviceDisabled,
+    );
+    expect(loaderCalls, 0);
+    controller.onDispose();
+  });
 }
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {

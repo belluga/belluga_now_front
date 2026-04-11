@@ -1,19 +1,15 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
+import 'package:belluga_now/application/router/support/location_permission_blocker.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
-import 'package:belluga_now/application/router/guards/location_permission_state.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:get_it/get_it.dart';
-
-typedef LocationPermissionBlockerLoader = Future<LocationPermissionState?>
-    Function();
 
 class AnyLocationRouteGuard extends AutoRouteGuard {
   AnyLocationRouteGuard({
     LocationPermissionBlockerLoader? blockerLoader,
-  }) : _blockerLoader = blockerLoader ?? _defaultCurrentBlocker;
+  }) : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker;
 
   final LocationPermissionBlockerLoader _blockerLoader;
 
@@ -22,13 +18,12 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
     NavigationResolver resolver,
     StackRouter router,
   ) async {
-    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+    final pendingRedirectPath = buildRedirectPathFromRouteMatch(resolver.route);
+    var didResolveGate = false;
+    if (LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry()) {
       resolver.next(true);
       return;
     }
-
-    final locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
-    await locationRepository.ensureLoaded();
 
     final blocker = await _blockerLoader();
     if (blocker == null) {
@@ -41,6 +36,11 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
         initialState: blocker,
         allowContinueWithoutLocation: true,
         onResult: (result) {
+          if (didResolveGate) {
+            return;
+          }
+          didResolveGate = true;
+
           switch (result) {
             case LocationPermissionGateResult.granted:
               resolver.next(true);
@@ -48,26 +48,15 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
               LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
               resolver.next(true);
             case LocationPermissionGateResult.cancelled:
-              resolver.next(false);
+              resolveGuardedBoundaryCancellation(
+                resolver: resolver,
+                router: router,
+                kind: BoundaryDismissKind.locationPermission,
+                redirectPath: pendingRedirectPath,
+              );
           }
         },
       ),
     );
-  }
-
-  static Future<LocationPermissionState?> _defaultCurrentBlocker() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return LocationPermissionState.serviceDisabled;
-    }
-
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      return LocationPermissionState.denied;
-    }
-    if (permission == LocationPermission.deniedForever) {
-      return LocationPermissionState.deniedForever;
-    }
-    return null;
   }
 }

@@ -30,15 +30,17 @@ void main() {
     GetIt.I.registerSingleton<UserLocationRepositoryContract>(
       _FakeUserLocationRepository(),
     );
+    final router = _RecordingStackRouter();
 
     final guard = AnyLocationRouteGuard(
       blockerLoader: () async => null,
     );
     final resolver = _RecordingNavigationResolver(
+      router: router,
       route: _FakeRouteMatch(fullPath: '/mapa'),
     );
 
-    await guard.onNavigation(resolver, _RecordingStackRouter());
+    await guard.onNavigation(resolver, router);
 
     expect(resolver.nextCalls, [true]);
     expect(resolver.redirectedRoute, isNull);
@@ -49,15 +51,17 @@ void main() {
     GetIt.I.registerSingleton<UserLocationRepositoryContract>(
       _FakeUserLocationRepository(),
     );
+    final router = _RecordingStackRouter();
 
     final guard = AnyLocationRouteGuard(
       blockerLoader: () async => LocationPermissionState.denied,
     );
     final resolver = _RecordingNavigationResolver(
+      router: router,
       route: _FakeRouteMatch(fullPath: '/mapa'),
     );
 
-    await guard.onNavigation(resolver, _RecordingStackRouter());
+    await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
     final args = captured.args;
@@ -79,18 +83,20 @@ void main() {
     GetIt.I.registerSingleton<UserLocationRepositoryContract>(
       _FakeUserLocationRepository(),
     );
+    final router = _RecordingStackRouter();
 
     final guard = AnyLocationRouteGuard(
       blockerLoader: () async => LocationPermissionState.serviceDisabled,
     );
     final resolver = _RecordingNavigationResolver(
+      router: router,
       route: _FakeRouteMatch(
         fullPath: '/mapa/poi',
         queryParams: const {'poi': 'event:evt-001'},
       ),
     );
 
-    await guard.onNavigation(resolver, _RecordingStackRouter());
+    await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
     captured.args?.onResult
@@ -107,28 +113,105 @@ void main() {
     GetIt.I.registerSingleton<UserLocationRepositoryContract>(
       _FakeUserLocationRepository(),
     );
+    final router = _RecordingStackRouter();
 
     final guard = AnyLocationRouteGuard(
       blockerLoader: () async => LocationPermissionState.deniedForever,
     );
     final resolver = _RecordingNavigationResolver(
+      router: router,
       route: _FakeRouteMatch(fullPath: '/mapa'),
     );
 
-    await guard.onNavigation(resolver, _RecordingStackRouter());
+    await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
 
     expect(resolver.nextCalls, [false]);
   });
+
+  test('cancelled gate falls back to home when there is no history', () async {
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    final router = _RecordingStackRouter();
+
+    final guard = AnyLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(fullPath: '/mapa'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
+    await Future<void>.microtask(() {});
+
+    expect(resolver.nextCalls, [false]);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  test('cancelled gate preserves existing history without fallback', () async {
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    final router = _RecordingStackRouter()..canPopValue = true;
+
+    final guard = AnyLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(fullPath: '/mapa'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
+    await Future<void>.microtask(() {});
+
+    expect(resolver.nextCalls, [false]);
+    expect(router.replaceAllCalls, 0);
+  });
+
+  test('cancelled gate resolution is one-shot', () async {
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    final router = _RecordingStackRouter();
+
+    final guard = AnyLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(fullPath: '/mapa'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
+    captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
+    await Future<void>.microtask(() {});
+
+    expect(resolver.nextCalls, [false]);
+    expect(router.replaceAllCalls, 1);
+  });
 }
 
 class _RecordingNavigationResolver extends NavigationResolver {
   _RecordingNavigationResolver({
+    required StackRouter router,
     required RouteMatch route,
   }) : super(
-          _RecordingStackRouter(),
+          router,
           Completer<ResolverResult>(),
           route,
         );
@@ -151,7 +234,61 @@ class _RecordingNavigationResolver extends NavigationResolver {
   }
 }
 
-class _RecordingStackRouter extends Mock implements StackRouter {}
+class _RecordingStackRouter extends Mock implements StackRouter {
+  bool canPopValue = false;
+  int replaceAllCalls = 0;
+  List<PageRouteInfo>? lastReplaceAllRoutes;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter();
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return canPopValue;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo>? routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllCalls += 1;
+    lastReplaceAllRoutes = routes;
+  }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  @override
+  RootStackRouter get root => this;
+
+  @override
+  String get currentPath => '/location/permission';
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    final uri = Uri.tryParse(path ?? '');
+    if (uri == null) {
+      return null;
+    }
+
+    return switch (uri.path) {
+      '/' => const TenantHomeRoute(),
+      '/profile' => const ProfileRoute(),
+      _ => null,
+    };
+  }
+}
 
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({

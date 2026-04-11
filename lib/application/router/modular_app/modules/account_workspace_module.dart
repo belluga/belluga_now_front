@@ -5,6 +5,8 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_account_by_slug_route_resolver.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
@@ -70,16 +72,25 @@ class AccountWorkspaceModule extends ModuleContract {
           path: '/workspace',
           page: AccountWorkspaceHomeRoute.page,
           guards: [TenantRouteGuard(), AuthRouteGuard()],
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.accountWorkspaceHome,
+          ),
         ),
         AutoRoute(
           path: '/workspace/:accountSlug',
           page: AccountWorkspaceScopedRoute.page,
           guards: [TenantRouteGuard(), AuthRouteGuard()],
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.accountWorkspaceScoped,
+          ),
         ),
         AutoRoute(
           path: '/workspace/:accountSlug/events/create',
           page: AccountWorkspaceCreateEventRoute.page,
           guards: [TenantRouteGuard(), AuthRouteGuard()],
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.accountWorkspaceCreateEvent,
+          ),
         ),
       ];
 }

@@ -1,4 +1,7 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
@@ -184,8 +187,29 @@ class _FakeUser implements UserContract {
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
   bool replaceAllCalled = false;
   List<PageRouteInfo>? lastRoutes;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/profile');
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCallCount += 1;
+  }
 
   @override
   Future<void> replaceAll(
@@ -196,6 +220,19 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     replaceAllCalled = true;
     lastRoutes = routes;
   }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
 }
 
 void main() {
@@ -238,13 +275,7 @@ void main() {
     );
     GetIt.I.registerSingleton<ProfileScreenController>(controller);
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: const MaterialApp(
-          home: ProfileScreen(),
-        ),
-      ),
+      _buildRoutedTestApp(router: mockRouter),
     );
 
     await tester.pump();
@@ -253,6 +284,76 @@ void main() {
     expect(mockRouter.replaceAllCalled, isFalse);
     expect(find.text('Perfil'), findsOneWidget);
     expect(find.text('Alice Smith'), findsWidgets);
+  });
+
+  testWidgets('profile visible back falls back to home when no history exists',
+      (tester) async {
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+    );
+    mockRouter.canPopResult = false;
+    GetIt.I.registerSingleton<ProfileScreenController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(router: mockRouter),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(mockRouter.canPopCallCount, 1);
+    expect(mockRouter.popCallCount, 0);
+    expect(mockRouter.replaceAllCalled, isTrue);
+    expect(mockRouter.lastRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets('profile system back falls back to home when no history exists',
+      (tester) async {
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+    );
+    mockRouter.canPopResult = false;
+    GetIt.I.registerSingleton<ProfileScreenController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(router: mockRouter),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(mockRouter.canPopCallCount, 1);
+    expect(mockRouter.popCallCount, 0);
+    expect(mockRouter.replaceAllCalled, isTrue);
+    expect(mockRouter.lastRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets('profile visible back pops when history exists', (tester) async {
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+    );
+    mockRouter.canPopResult = true;
+    GetIt.I.registerSingleton<ProfileScreenController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(router: mockRouter),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(mockRouter.canPopCallCount, 1);
+    expect(mockRouter.popCallCount, 1);
+    expect(mockRouter.replaceAllCalled, isFalse);
   });
 
   testWidgets('Profile updates when user stream changes', (tester) async {
@@ -268,13 +369,7 @@ void main() {
 
     GetIt.I.registerSingleton<ProfileScreenController>(controller);
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: const MaterialApp(
-          home: ProfileScreen(),
-        ),
-      ),
+      _buildRoutedTestApp(router: mockRouter),
     );
     await tester.pump();
 
@@ -314,6 +409,35 @@ ProfileScreenController _buildController({
   );
 }
 
+Widget _buildRoutedTestApp({
+  required _RecordingStackRouter router,
+}) {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      name: ProfileRoute.name,
+      fullPath: '/profile',
+      meta: canonicalRouteMeta(
+        family: CanonicalRouteFamily.profileRoot,
+      ),
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: RouteDataScope(
+        routeData: routeData,
+        child: const ProfileScreen(),
+      ),
+    ),
+  );
+}
+
 UserContract _buildUser() {
   return _FakeUser(
     uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
@@ -322,4 +446,27 @@ UserContract _buildUser() {
       emailValue: EmailAddressValue()..parse('alice@example.com'),
     ),
   );
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.name,
+    required this.fullPath,
+    required this.meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
+  }) : pageRouteInfo = pageRouteInfo ?? const ProfileRoute();
+
+  @override
+  final String name;
+
+  @override
+  final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }

@@ -5,6 +5,8 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/application/router/resolvers/account_profile_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/static_asset_detail_route_resolver.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
@@ -36,16 +38,21 @@ class DiscoveryModule extends ModuleContract {
           path: '/descobrir',
           page: DiscoveryRoute.page,
           guards: [TenantRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
         ),
         AutoRoute(
           path: '/parceiro/:slug',
           page: PartnerDetailRoute.page,
           guards: [TenantRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.partnerDetail),
         ),
         AutoRoute(
           path: '/static/:assetRef',
           page: StaticAssetDetailRoute.page,
           guards: [TenantRouteGuard()],
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.staticAssetDetail,
+          ),
         ),
       ];
 }

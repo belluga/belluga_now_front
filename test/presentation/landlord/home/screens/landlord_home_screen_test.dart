@@ -1,3 +1,7 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -9,6 +13,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/landlord_home_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -43,11 +48,10 @@ void main() {
       appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
     );
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
+    final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: LandlordHomeScreen(),
-      ),
+      _buildRoutedLandlordHomeApp(router),
     );
     await tester.pumpAndSettle();
 
@@ -77,17 +81,137 @@ void main() {
       appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
     );
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
+    final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: LandlordHomeScreen(),
-      ),
+      _buildRoutedLandlordHomeApp(router),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Acessar área admin'), findsOneWidget);
     expect(find.text('Entrar como Admin'), findsNothing);
   });
+
+  testWidgets('landlord home system back delegates to SystemNavigator.pop',
+      (tester) async {
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(isLandlordMode: false),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        domains: ['tenant-one.example.com'],
+      ),
+    );
+    final controller = LandlordHomeScreenController(
+      adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
+      landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
+      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+    );
+    GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
+    final router = _RecordingStackRouter();
+    var systemPopCallCount = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'SystemNavigator.pop') {
+          systemPopCallCount += 1;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+      return Future<void>.value();
+    });
+
+    await tester.pumpWidget(
+      _buildRoutedLandlordHomeApp(router),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(systemPopCallCount, 1);
+  });
+}
+
+Widget _buildRoutedLandlordHomeApp(_RecordingStackRouter router) {
+  final routeData = RouteData(
+    route: RouteMatch(
+      config: AutoRoute(
+        page: LandlordHomeRoute.page,
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.landlordHome,
+        ),
+      ),
+      segments: const <String>[],
+      stringMatch: '/',
+      key: const ValueKey<String>('landlord-home'),
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const <RouteMatch>[],
+    type: const RouteType.material(),
+  );
+
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: RouteDataScope(
+        routeData: routeData,
+        child: const LandlordHomeScreen(),
+      ),
+    ),
+  );
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  int canPopCallCount = 0;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/');
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return false;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {}
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
 }
 
 class _FakeAdminModeRepository implements AdminModeRepositoryContract {

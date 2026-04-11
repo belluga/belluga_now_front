@@ -1,4 +1,5 @@
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -45,6 +46,8 @@ void main() {
       controller.initialRouteStack.map((route) => route.routeName).toList(),
       [TenantHomeRoute.name],
     );
+    expect(controller.startupNavigationPlan, isA<AppStartupNavigationPlan>());
+    expect(controller.startupNavigationPlan.hasOverride, isFalse);
   });
 
   test('tenant with pending invites stacks invite flow on top of home',
@@ -66,6 +69,7 @@ void main() {
         InviteFlowRoute.name,
       ],
     );
+    expect(controller.startupNavigationPlan.hasOverride, isTrue);
   });
 
   test('landlord ignores tenant invite flow and resolves landlord home',
@@ -84,6 +88,7 @@ void main() {
       controller.initialRouteStack.map((route) => route.routeName).toList(),
       [LandlordHomeRoute.name],
     );
+    expect(controller.startupNavigationPlan.hasOverride, isFalse);
   });
 
   test('initialize bootstraps auth before loading invites', () async {
@@ -110,20 +115,21 @@ void main() {
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
-        deferredLinkRepository: _FakeDeferredLinkRepository(
-          DeferredLinkCaptureResult(
-            status: DeferredLinkCaptureStatus.captured,
-            codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
-            storeChannelValue:
-                DeferredLinkStoreChannelValue(defaultValue: 'play'),
-          ),
+      deferredLinkRepository: _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
+          storeChannelValue:
+              DeferredLinkStoreChannelValue(defaultValue: 'play'),
         ),
+      ),
       telemetryRepository: _FakeTelemetryRepository(),
     );
 
     await controller.initialize();
 
     expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+    expect(controller.startupNavigationPlan.hasOverride, isTrue);
   });
 }
 

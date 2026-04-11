@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -1722,8 +1724,9 @@ Future<void> _pumpWithAutoRoute(
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
-        name: 'settings-test',
+        name: _settingsTestRouteNameForChild(child),
         path: '/',
+        meta: _settingsTestMetaForChild(child),
         builder: (_, __) => child,
       ),
     ],
@@ -1736,6 +1739,52 @@ Future<void> _pumpWithAutoRoute(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Map<String, dynamic> _settingsTestMetaForChild(Widget child) {
+  if (_isInternalSettingsTestChild(child)) {
+    return canonicalRouteMeta(
+      family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+      chromeMode: RouteChromeMode.scopedSectionAppBar,
+    );
+  }
+
+  return canonicalRouteMeta(
+    family: CanonicalRouteFamily.tenantAdminSettingsRoot,
+  );
+}
+
+String _settingsTestRouteNameForChild(Widget child) {
+  if (_isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(child)) {
+    return 'settings-environment-snapshot-test';
+  }
+  if (_isScaffoldWithBody<TenantAdminSettingsLocalPreferencesScreen>(child)) {
+    return 'settings-local-preferences-test';
+  }
+  if (_isScaffoldWithBody<TenantAdminSettingsTechnicalIntegrationsScreen>(
+    child,
+  )) {
+    return 'settings-technical-integrations-test';
+  }
+  if (_isScaffoldWithBody<TenantAdminSettingsVisualIdentityScreen>(child)) {
+    return 'settings-visual-identity-test';
+  }
+  return 'settings-test';
+}
+
+bool _isInternalSettingsTestChild(Widget child) {
+  return _isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(
+        child,
+      ) ||
+      _isScaffoldWithBody<TenantAdminSettingsLocalPreferencesScreen>(child) ||
+      _isScaffoldWithBody<TenantAdminSettingsTechnicalIntegrationsScreen>(
+        child,
+      ) ||
+      _isScaffoldWithBody<TenantAdminSettingsVisualIdentityScreen>(child);
+}
+
+bool _isScaffoldWithBody<T extends Widget>(Widget child) {
+  return child is Scaffold && child.body is T;
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {

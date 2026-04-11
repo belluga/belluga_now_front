@@ -4,6 +4,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart'
     show FormValidationFailure;
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -1092,11 +1094,19 @@ Future<void> _pumpWithAutoRoute(
       NamedRouteDef(
         name: TenantAdminAccountCreateRoute.name,
         path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
         builder: (_, __) => child,
       ),
       NamedRouteDef(
         name: TenantAdminAccountDetailRoute.name,
         path: '/admin/accounts/:accountSlug',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
         builder: (_, data) => Scaffold(
           body: Text('Detail: ${data.params.getString('accountSlug')}'),
         ),

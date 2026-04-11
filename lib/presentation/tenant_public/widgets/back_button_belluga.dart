@@ -1,13 +1,17 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 class BackButtonBelluga extends StatelessWidget {
-  const BackButtonBelluga({super.key});
+  const BackButtonBelluga({
+    super.key,
+    required this.onBack,
+  });
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: context.router.maybePop,
+      onPressed: onBack,
       icon: const Icon(
         Icons.arrow_back_ios,
         // color: Color(0xff212435),
