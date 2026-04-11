@@ -86,10 +86,8 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
           );
           return;
         case FavoriteNavigationSearch():
-          router.replaceAll(
-            [
-              EventSearchRoute(),
-            ],
+          router.push(
+            EventSearchRoute(),
           );
           return;
       }

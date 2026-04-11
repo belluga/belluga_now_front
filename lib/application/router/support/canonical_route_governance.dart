@@ -1,20 +1,15 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
 import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
-import 'package:belluga_now/application/router/support/canonical_route_history_state.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/deterministic_route_back_policy.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/application/router/support/route_back_spec.dart';
 import 'package:belluga_now/application/router/support/route_no_history_outcome.dart';
-import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,10 +19,6 @@ typedef _CanonicalRouteNoHistoryBuilder = RouteNoHistoryOutcome Function(
   RouteNoHistoryDelegate? requestExit,
 );
 
-typedef _CanonicalRouteHistoryBuilder = List<_CanonicalHistoryStage> Function(
-  _CanonicalRouteContext context,
-);
-
 final class _CanonicalRouteContext {
   _CanonicalRouteContext._({
     required this.routeData,
@@ -35,15 +26,11 @@ final class _CanonicalRouteContext {
     required this.family,
     required this.chromeMode,
     required this.currentRoute,
-    required this.currentPath,
-    required this.pathState,
   });
 
   factory _CanonicalRouteContext.fromRouteData({
     required RouteData routeData,
     StackRouter? router,
-    String? currentPath,
-    Object? pathState,
   }) {
     final effectiveRouter = _resolveCanonicalStackRouter(
       routeData: routeData,
@@ -56,8 +43,6 @@ final class _CanonicalRouteContext {
       family: classification.family,
       chromeMode: classification.chromeMode,
       currentRoute: routeData.route.toPageRouteInfo(),
-      currentPath: currentPath ?? effectiveRouter.root.currentPath,
-      pathState: pathState ?? (kIsWeb ? effectiveRouter.root.pathState : null),
     );
   }
 
@@ -66,8 +51,6 @@ final class _CanonicalRouteContext {
   final CanonicalRouteFamily family;
   final RouteChromeMode chromeMode;
   final PageRouteInfo<dynamic> currentRoute;
-  final String currentPath;
-  final Object? pathState;
 
   RootStackRouter get rootRouter => router.root;
   Parameters get params => routeData.params;
@@ -96,40 +79,17 @@ StackRouter _resolveCanonicalStackRouter({
   );
 }
 
-final class _CanonicalHistoryStage {
-  const _CanonicalHistoryStage({
-    required this.family,
-    required this.stageId,
-    required this.path,
-    required this.routes,
-  });
-
-  final CanonicalRouteFamily family;
-  final String stageId;
-  final String path;
-  final List<PageRouteInfo<dynamic>> routes;
-
-  CanonicalRouteHistoryState get historyState {
-    return CanonicalRouteHistoryState(
-      family: family,
-      stageId: stageId,
-    );
-  }
-}
-
 final class _CanonicalRouteDescriptor {
   const _CanonicalRouteDescriptor({
     required this.family,
     required this.surfaceKind,
     required this.buildNoHistoryOutcome,
-    required this.buildHistoryStages,
     this.adminSection,
   });
 
   final CanonicalRouteFamily family;
   final BackSurfaceKind surfaceKind;
   final _CanonicalRouteNoHistoryBuilder buildNoHistoryOutcome;
-  final _CanonicalRouteHistoryBuilder buildHistoryStages;
   final AdminShellSection? adminSection;
 
   bool get isAdminDashboardRoot =>
@@ -269,32 +229,6 @@ void performCanonicalCurrentRouteBack(
   ).handleBack();
 }
 
-final class CanonicalRouteDeepLinkCoordinator extends ChangeNotifier {
-  CanonicalRouteDeepLinkCoordinator(
-    RootStackRouter router, {
-    RouteInformationProvider Function(RootStackRouter router)?
-        routeInfoProviderResolver,
-    bool Function(RootStackRouter router)? canNavigateBackResolver,
-  });
-
-  bool get hasPendingHistorySeed => false;
-
-  void schedulePendingHistorySeedFlush() {}
-
-  bool stageCurrentRouteHistorySeedIfNeeded(
-    RouteData routeData, {
-    bool notify = false,
-  }) {
-    return false;
-  }
-
-  FutureOr<DeepLink> handlePlatformDeepLink(PlatformDeepLink deepLink) {
-    return deepLink;
-  }
-
-  void flushPendingHistorySeedIfNeeded() {}
-}
-
 final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
     <CanonicalRouteFamily, _CanonicalRouteDescriptor>{
   CanonicalRouteFamily.tenantHome: _CanonicalRouteDescriptor(
@@ -303,9 +237,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
     buildNoHistoryOutcome: (_, __, requestExit) => requestExit == null
         ? RouteNoHistoryOutcome.noop()
         : RouteNoHistoryOutcome.requestExit(requestExit),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-    ],
   ),
   CanonicalRouteFamily.tenantPrivacyPolicy: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.tenantPrivacyPolicy,
@@ -314,18 +245,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (_) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.tenantPrivacyPolicy,
-        stageId: 'privacy-policy',
-        path: '/privacy-policy',
-        routes: const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          TenantPrivacyPolicyRoute(),
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.discoveryRoot: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.discoveryRoot,
@@ -334,18 +253,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (_) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.discoveryRoot,
-        stageId: 'discovery',
-        path: '/descobrir',
-        routes: const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          DiscoveryRoute(),
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.partnerDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.partnerDetail,
@@ -354,20 +261,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const DiscoveryRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _discoveryStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.partnerDetail,
-        stageId: 'partner-detail',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const DiscoveryRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.staticAssetDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.staticAssetDetail,
@@ -376,20 +269,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const DiscoveryRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _discoveryStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.staticAssetDetail,
-        stageId: 'static-asset-detail',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const DiscoveryRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.profileRoot: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.profileRoot,
@@ -398,18 +277,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (_) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.profileRoot,
-        stageId: 'profile',
-        path: '/profile',
-        routes: const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          ProfileRoute(),
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.eventSearch: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.eventSearch,
@@ -418,20 +285,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const ProfileRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _profileStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.eventSearch,
-        stageId: 'agenda',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const ProfileRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.immersiveEventDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.immersiveEventDetail,
@@ -440,18 +293,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.immersiveEventDetail,
-        stageId: 'event-detail',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.cityMap: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.cityMap,
@@ -460,18 +301,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.cityMap,
-        stageId: 'map',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.poiDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.poiDetail,
@@ -480,28 +309,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? CityMapRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.cityMap,
-        stageId: 'map',
-        path: _mapRootPathFromContext(context),
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          _cityMapRouteFromContext(context),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.poiDetail,
-        stageId: 'poi-detail',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          _cityMapRouteFromContext(context),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.inviteFlow: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteFlow,
@@ -510,18 +317,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (_) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.inviteFlow,
-        stageId: 'invite-flow',
-        path: '/convites',
-        routes: const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          InviteFlowRoute(),
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.inviteEntry: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteEntry,
@@ -530,18 +325,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.inviteEntry,
-        stageId: 'invite-entry',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.inviteShare: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteShare,
@@ -550,28 +333,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const InviteFlowRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      const _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.inviteFlow,
-        stageId: 'invite-flow',
-        path: '/convites',
-        routes: <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          InviteFlowRoute(),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.inviteShare,
-        stageId: 'invite-share',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const InviteFlowRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.appPromotion: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.appPromotion,
@@ -580,7 +341,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? _promotionDismissRoute(context),
     ),
-    buildHistoryStages: (context) => _buildPromotionStages(context),
   ),
   CanonicalRouteFamily.authLogin: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.authLogin,
@@ -589,18 +349,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.authLogin,
-        stageId: 'auth-login',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.recoveryPassword: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.recoveryPassword,
@@ -609,28 +357,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? AuthLoginRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.authLogin,
-        stageId: 'auth-login',
-        path: '/auth/login',
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          AuthLoginRoute(),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.recoveryPassword,
-        stageId: 'auth-recovery',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          AuthLoginRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.authCreateNewPassword: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.authCreateNewPassword,
@@ -639,18 +365,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const TenantHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.authCreateNewPassword,
-        stageId: 'auth-create-password',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.landlordHome: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.landlordHome,
@@ -658,16 +372,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
     buildNoHistoryOutcome: (_, __, requestExit) => requestExit == null
         ? RouteNoHistoryOutcome.noop()
         : RouteNoHistoryOutcome.requestExit(requestExit),
-    buildHistoryStages: (_) => <_CanonicalHistoryStage>[
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.landlordHome,
-        stageId: 'landlord-home',
-        path: '/',
-        routes: const <PageRouteInfo<dynamic>>[
-          LandlordHomeRoute(),
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.accountWorkspaceHome: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceHome,
@@ -676,20 +380,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const ProfileRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _profileStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceHome,
-        stageId: 'workspace-home',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const ProfileRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.accountWorkspaceScoped: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceScoped,
@@ -698,31 +388,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _profileStage(),
-      const _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceHome,
-        stageId: 'workspace-home',
-        path: '/workspace',
-        routes: <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          ProfileRoute(),
-          AccountWorkspaceHomeRoute(),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceScoped,
-        stageId: 'workspace-scoped',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const ProfileRoute(),
-          const AccountWorkspaceHomeRoute(),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.accountWorkspaceCreateEvent: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceCreateEvent,
@@ -731,43 +396,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         RouteNoHistoryOutcome.fallback(
       explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _tenantHomeStage(),
-      _profileStage(),
-      const _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceHome,
-        stageId: 'workspace-home',
-        path: '/workspace',
-        routes: <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          ProfileRoute(),
-          AccountWorkspaceHomeRoute(),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceScoped,
-        stageId: 'workspace-scoped',
-        path: _accountWorkspaceScopedPath(context),
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const ProfileRoute(),
-          const AccountWorkspaceHomeRoute(),
-          _accountWorkspaceScopedRoute(context),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.accountWorkspaceCreateEvent,
-        stageId: 'workspace-create-event',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          const ProfileRoute(),
-          const AccountWorkspaceHomeRoute(),
-          _accountWorkspaceScopedRoute(context),
-          context.currentRoute,
-        ],
-      ),
-    ],
   ),
   CanonicalRouteFamily.tenantAdminDashboard: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.tenantAdminDashboard,
@@ -778,22 +406,6 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
         _publicRootRoute(),
       ]),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _publicRootStage(),
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.tenantAdminDashboard,
-        stageId: 'tenant-admin-dashboard',
-        path: '/admin',
-        routes: <PageRouteInfo<dynamic>>[
-          _publicRootRoute(),
-          const TenantAdminShellRoute(
-            children: <PageRouteInfo<dynamic>>[
-              TenantAdminDashboardRoute(),
-            ],
-          ),
-        ],
-      ),
-    ],
     adminSection: AdminShellSection.dashboard,
   ),
   CanonicalRouteFamily.tenantAdminEventsRoot: _adminSectionRootDescriptor(
@@ -860,24 +472,6 @@ _CanonicalRouteDescriptor _adminSectionRootDescriptor({
         RouteNoHistoryOutcome.delegateToShell(
       () => context.router.replace(const TenantAdminDashboardRoute()),
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _publicRootStage(),
-      _tenantAdminDashboardStage(),
-      _CanonicalHistoryStage(
-        family: family,
-        stageId: '${section.name}-root',
-        path: sectionPath,
-        routes: <PageRouteInfo<dynamic>>[
-          _publicRootRoute(),
-          TenantAdminShellRoute(
-            children: <PageRouteInfo<dynamic>>[
-              const TenantAdminDashboardRoute(),
-              sectionRootRoute,
-            ],
-          ),
-        ],
-      ),
-    ],
   );
 }
 
@@ -895,113 +489,6 @@ _CanonicalRouteDescriptor _adminInternalDescriptor({
         RouteNoHistoryOutcome.replace(
       explicitFallbackRoute ?? sectionRootRoute,
     ),
-    buildHistoryStages: (context) => <_CanonicalHistoryStage>[
-      _publicRootStage(),
-      _tenantAdminDashboardStage(),
-      _CanonicalHistoryStage(
-        family: _adminRootFamilyForSection(section),
-        stageId: '${section.name}-root',
-        path: sectionPath,
-        routes: <PageRouteInfo<dynamic>>[
-          _publicRootRoute(),
-          TenantAdminShellRoute(
-            children: <PageRouteInfo<dynamic>>[
-              const TenantAdminDashboardRoute(),
-              sectionRootRoute,
-            ],
-          ),
-        ],
-      ),
-      _CanonicalHistoryStage(
-        family: family,
-        stageId: '${section.name}-internal',
-        path: context.currentPath,
-        routes: <PageRouteInfo<dynamic>>[
-          _publicRootRoute(),
-          TenantAdminShellRoute(
-            children: <PageRouteInfo<dynamic>>[
-              const TenantAdminDashboardRoute(),
-              sectionRootRoute,
-              context.currentRoute,
-            ],
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
-CanonicalRouteFamily _adminRootFamilyForSection(AdminShellSection section) {
-  return switch (section) {
-    AdminShellSection.dashboard => CanonicalRouteFamily.tenantAdminDashboard,
-    AdminShellSection.events => CanonicalRouteFamily.tenantAdminEventsRoot,
-    AdminShellSection.accounts => CanonicalRouteFamily.tenantAdminAccountsRoot,
-    AdminShellSection.assets => CanonicalRouteFamily.tenantAdminAssetsRoot,
-    AdminShellSection.settings => CanonicalRouteFamily.tenantAdminSettingsRoot,
-  };
-}
-
-_CanonicalHistoryStage _tenantHomeStage() {
-  return const _CanonicalHistoryStage(
-    family: CanonicalRouteFamily.tenantHome,
-    stageId: 'tenant-home',
-    path: '/',
-    routes: <PageRouteInfo<dynamic>>[
-      TenantHomeRoute(),
-    ],
-  );
-}
-
-_CanonicalHistoryStage _discoveryStage() {
-  return const _CanonicalHistoryStage(
-    family: CanonicalRouteFamily.discoveryRoot,
-    stageId: 'discovery',
-    path: '/descobrir',
-    routes: <PageRouteInfo<dynamic>>[
-      TenantHomeRoute(),
-      DiscoveryRoute(),
-    ],
-  );
-}
-
-_CanonicalHistoryStage _profileStage() {
-  return const _CanonicalHistoryStage(
-    family: CanonicalRouteFamily.profileRoot,
-    stageId: 'profile',
-    path: '/profile',
-    routes: <PageRouteInfo<dynamic>>[
-      TenantHomeRoute(),
-      ProfileRoute(),
-    ],
-  );
-}
-
-_CanonicalHistoryStage _publicRootStage() {
-  return _CanonicalHistoryStage(
-    family: _isTenantEnvironment()
-        ? CanonicalRouteFamily.tenantHome
-        : CanonicalRouteFamily.landlordHome,
-    stageId: 'public-root',
-    path: '/',
-    routes: <PageRouteInfo<dynamic>>[
-      _publicRootRoute(),
-    ],
-  );
-}
-
-_CanonicalHistoryStage _tenantAdminDashboardStage() {
-  return _CanonicalHistoryStage(
-    family: CanonicalRouteFamily.tenantAdminDashboard,
-    stageId: 'tenant-admin-dashboard',
-    path: '/admin',
-    routes: <PageRouteInfo<dynamic>>[
-      _publicRootRoute(),
-      const TenantAdminShellRoute(
-        children: <PageRouteInfo<dynamic>>[
-          TenantAdminDashboardRoute(),
-        ],
-      ),
-    ],
   );
 }
 
@@ -1021,73 +508,10 @@ bool _isTenantEnvironment() {
   return appData.typeValue.value == EnvironmentType.tenant;
 }
 
-String _mapRootPathFromContext(_CanonicalRouteContext context) {
-  final uri = Uri.parse(context.currentPath);
-  return uri.replace(path: '/mapa').toString();
-}
-
-CityMapRoute _cityMapRouteFromContext(_CanonicalRouteContext context) {
-  return CityMapRoute(
-    poi: context.queryParams.optString('poi'),
-    stack: context.queryParams.optString('stack'),
-  );
-}
-
 PageRouteInfo<dynamic> _promotionDismissRoute(_CanonicalRouteContext context) {
   return resolveBoundaryDismissRoute(
     kind: BoundaryDismissKind.appPromotion,
     redirectPath: context.queryParams.optString('redirect'),
     buildRouteFromPath: context.buildRouteFromPath,
   );
-}
-
-List<_CanonicalHistoryStage> _buildPromotionStages(
-    _CanonicalRouteContext context) {
-  final redirectPath = context.queryParams.optString('redirect');
-  final dismissPath = resolveWebPromotionDismissPath(
-    redirectPath: redirectPath ?? '/',
-  );
-  final stages = <_CanonicalHistoryStage>[
-    _tenantHomeStage(),
-  ];
-  if (dismissPath.startsWith('/invite')) {
-    stages.add(
-      _CanonicalHistoryStage(
-        family: CanonicalRouteFamily.inviteEntry,
-        stageId: 'invite-entry',
-        path: dismissPath,
-        routes: <PageRouteInfo<dynamic>>[
-          const TenantHomeRoute(),
-          context.buildRouteFromPath(dismissPath) ?? const InviteEntryRoute(),
-        ],
-      ),
-    );
-  }
-  stages.add(
-    _CanonicalHistoryStage(
-      family: CanonicalRouteFamily.appPromotion,
-      stageId: 'app-promotion',
-      path: context.currentPath,
-      routes: <PageRouteInfo<dynamic>>[
-        if (stages.length == 1) ...const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-        ] else
-          ...stages.last.routes,
-        context.currentRoute,
-      ],
-    ),
-  );
-  return stages;
-}
-
-AccountWorkspaceScopedRoute _accountWorkspaceScopedRoute(
-  _CanonicalRouteContext context,
-) {
-  return AccountWorkspaceScopedRoute(
-    accountSlug: context.params.getString('accountSlug'),
-  );
-}
-
-String _accountWorkspaceScopedPath(_CanonicalRouteContext context) {
-  return '/workspace/${Uri.encodeComponent(context.params.getString('accountSlug'))}';
 }
