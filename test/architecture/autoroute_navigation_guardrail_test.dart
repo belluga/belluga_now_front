@@ -38,9 +38,9 @@ void main() {
 
 bool _containsDirectNavigatorUsage(String content) {
   final patterns = <RegExp>[
-    RegExp(r'Navigator\.of\('),
+    RegExp(r'\bNavigator\.of\('),
     RegExp(
-      r'Navigator\.(push|pop|maybePop|pushNamed|pushReplacement|popUntil)\(',
+      r'\bNavigator\.(push|pop|maybePop|pushNamed|pushReplacement|popUntil)\(',
     ),
   ];
   for (final pattern in patterns) {

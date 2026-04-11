@@ -1,4 +1,4 @@
-import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -97,12 +97,10 @@ class _TenantAdminProfileTypeFormScreenState
       return;
     }
 
-    final requiresTypeAsset =
-        visual.mode == TenantAdminPoiVisualMode.image &&
-            visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
-    final typeAssetUpload = requiresTypeAsset
-        ? await _controller.buildTypeAssetUpload()
-        : null;
+    final requiresTypeAsset = visual.mode == TenantAdminPoiVisualMode.image &&
+        visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
+    final typeAssetUpload =
+        requiresTypeAsset ? await _controller.buildTypeAssetUpload() : null;
     if (requiresTypeAsset &&
         typeAssetUpload == null &&
         _controller.currentTypeAssetUrl == null) {
@@ -185,6 +183,7 @@ class _TenantAdminProfileTypeFormScreenState
           builder: (context, errorMessage) {
             _handleErrorMessage(errorMessage);
             return TenantAdminFormScaffold(
+              closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
               title: _isEdit ? 'Editar Tipo' : 'Criar Tipo',
               child: SingleChildScrollView(
                 child: Form(
@@ -535,8 +534,9 @@ class _TenantAdminProfileTypeFormScreenState
                 final hasExistingUrl =
                     !isMarkedForRemoval && trimmedUrl.isNotEmpty;
                 final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
-                final canRemove =
-                    selectedFile != null || hasExistingUrl || isMarkedForRemoval;
+                final canRemove = selectedFile != null ||
+                    hasExistingUrl ||
+                    isMarkedForRemoval;
                 final selectedLabel = selectedFile?.name ??
                     (isMarkedForRemoval
                         ? 'Imagem canônica será removida ao salvar.'
@@ -633,6 +633,7 @@ class _TenantAdminProfileTypeFormScreenState
       child: Center(child: Icon(icon)),
     );
   }
+
   void _handleSuccessMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -640,7 +641,7 @@ class _TenantAdminProfileTypeFormScreenState
         SnackBar(content: Text(message)),
       );
       _controller.clearSuccessMessage();
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 

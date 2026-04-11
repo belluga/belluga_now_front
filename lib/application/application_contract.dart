@@ -7,6 +7,9 @@ import 'package:belluga_now/application/configurations/custom_scroll_behavior.da
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/application/router/modular_app/module_settings.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_coordinator.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
+import 'package:belluga_now/application/startup/app_startup_plan_resolver.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -60,6 +63,10 @@ abstract class ApplicationContract extends ModularAppContract {
 
   final AppRouter _appRouter;
   final _moduleSettings = ModuleSettings();
+  late final AppStartupNavigationCoordinator _startupNavigationCoordinator =
+      AppStartupNavigationCoordinator(
+    planLoader: _loadStartupNavigationPlan,
+  );
   static const Locale appLocale = Locale('pt', 'BR');
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
   StreamSubscription<dynamic>? _telemetryIdentitySubscription;
@@ -94,9 +101,18 @@ abstract class ApplicationContract extends ModularAppContract {
     }
 
     await super.init();
+    await _startupNavigationCoordinator.initialize();
     await _initializeFirebaseIfAvailable();
     await _initializePushHandler();
     _initializeTelemetryIdentityListener();
+  }
+
+  Future<AppStartupNavigationPlan> _loadStartupNavigationPlan() async {
+    if (!GetIt.I.isRegistered<AppStartupPlanResolver>()) {
+      return const AppStartupNavigationPlan.none();
+    }
+    final resolver = GetIt.I.get<AppStartupPlanResolver>();
+    return resolver.resolvePlan();
   }
 
   Future<void> _initializePushHandler() async {
@@ -403,6 +419,7 @@ class _ApplicationContractState extends State<ApplicationContract>
   static const Duration _appInitRetryDelay = Duration(milliseconds: 500);
   int _appInitRetryCount = 0;
   Timer? _appInitRetryTimer;
+  bool _didMarkPushPresentationReady = false;
 
   void _debugWebTelemetry(String message, [Object? details]) {
     if (kIsWeb) {
@@ -419,6 +436,16 @@ class _ApplicationContractState extends State<ApplicationContract>
     _registerTelemetryLifecycleObserver();
     _registerRouterTelemetryObserver();
     unawaited(_trackAppInit());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _didMarkPushPresentationReady) {
+        return;
+      }
+      _didMarkPushPresentationReady = true;
+      if (!GetIt.I.isRegistered<PushPresentationGateContract>()) {
+        return;
+      }
+      GetIt.I.get<PushPresentationGateContract>().markReady();
+    });
   }
 
   @override
@@ -693,6 +720,13 @@ class _ApplicationContractState extends State<ApplicationContract>
       streamValue: appDataRepository.themeModeStreamValue,
       builder: (context, themeMode) {
         final resolvedThemeMode = themeMode ?? ThemeMode.system;
+        final routerConfig = widget.appRouter.config(
+          includePrefixMatches: false,
+          deepLinkBuilder:
+              widget._startupNavigationCoordinator.resolvePlatformDeepLink,
+          navigatorObservers: () =>
+              kIsWeb ? const [] : [TelemetryRouteObserver()],
+        );
         return MaterialApp.router(
           locale: ApplicationContract.appLocale,
           supportedLocales: const <Locale>[ApplicationContract.appLocale],
@@ -705,11 +739,10 @@ class _ApplicationContractState extends State<ApplicationContract>
           theme: widget.getLightThemeData(),
           darkTheme: widget.getDarkThemeData(),
           scrollBehavior: CustomScrollBehavior(),
-          routerConfig: widget.appRouter.config(
-            includePrefixMatches: false,
-            navigatorObservers: () =>
-                kIsWeb ? const [] : [TelemetryRouteObserver()],
-          ),
+          routeInformationParser: routerConfig.routeInformationParser,
+          routeInformationProvider: widget.appRouter.routeInfoProvider(),
+          routerDelegate: routerConfig.routerDelegate,
+          backButtonDispatcher: routerConfig.backButtonDispatcher,
           builder: (context, child) {
             return ListenableBuilder(
               listenable: widget.appRouter,

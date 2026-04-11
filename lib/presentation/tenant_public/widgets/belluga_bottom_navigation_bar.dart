@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_public_map_entry_flow.dart';
 import 'package:flutter/material.dart';
 
 class BellugaBottomNavigationBar extends StatelessWidget {
@@ -64,15 +67,19 @@ class BellugaBottomNavigationBar extends StatelessWidget {
   }
 
   void _onItemTapped(BuildContext context, int index) {
+    if (index == currentIndex) {
+      return;
+    }
+
     switch (index) {
       case 0:
-        context.router.replaceAll([TenantHomeRoute()]);
+        context.router.navigate(const TenantHomeRoute());
         break;
       default:
         if (index == 1) {
-          context.router.replaceAll([CityMapRoute()]);
+          unawaited(openTenantPublicMapEntryFlow(context.router));
         } else if (index == 2) {
-          context.router.replaceAll([ProfileRoute()]);
+          context.router.push(const ProfileRoute());
         }
     }
   }

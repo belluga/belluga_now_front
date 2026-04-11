@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
@@ -125,6 +126,7 @@ class _TenantAdminTaxonomyTermDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return StreamValueBuilder<TenantAdminTaxonomyTermDefinition?>(
       streamValue: _controller.detailTermStreamValue,
       builder: (context, termValue) {
@@ -134,6 +136,11 @@ class _TenantAdminTaxonomyTermDetailScreenState
           builder: (context, isSaving) {
             return Scaffold(
               appBar: AppBar(
+                leading: IconButton(
+                  tooltip: 'Voltar',
+                  onPressed: backPolicy.handleBack,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
                 title: Text(term.name),
                 actions: [
                   FilledButton.tonalIcon(

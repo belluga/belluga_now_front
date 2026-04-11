@@ -2,10 +2,10 @@ export 'init_screen_ui_state.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
@@ -25,7 +25,6 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     AuthRepositoryContract? authRepository,
     DeferredLinkRepositoryContract? deferredLinkRepository,
     TelemetryRepositoryContract? telemetryRepository,
-    PushPresentationGateContract? pushPresentationGate,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _appDataRepository =
@@ -41,10 +40,6 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
         _telemetryRepository = telemetryRepository ??
             (GetIt.I.isRegistered<TelemetryRepositoryContract>()
                 ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null),
-        _pushPresentationGate = pushPresentationGate ??
-            (GetIt.I.isRegistered<PushPresentationGateContract>()
-                ? GetIt.I.get<PushPresentationGateContract>()
                 : null);
 
   final InvitesRepositoryContract _invitesRepository;
@@ -52,7 +47,6 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   final AuthRepositoryContract? _authRepository;
   final DeferredLinkRepositoryContract? _deferredLinkRepository;
   final TelemetryRepositoryContract? _telemetryRepository;
-  final PushPresentationGateContract? _pushPresentationGate;
 
   @override
   final loadingStatusStreamValue = StreamValue<String>(
@@ -83,6 +77,18 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     return [route];
   }
 
+  AppStartupNavigationPlan get startupNavigationPlan {
+    final path = initialRoutePath;
+    if (path != null && path.isNotEmpty) {
+      return AppStartupNavigationPlan.path(path);
+    }
+    final stack = initialRouteStack;
+    if (stack.length > 1) {
+      return AppStartupNavigationPlan.routes(stack);
+    }
+    return const AppStartupNavigationPlan.none();
+  }
+
   AppData get appData => _appDataRepository.appData;
 
   void resetUiState() {
@@ -99,10 +105,6 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     _updateUiState(
       uiStateStreamValue.value.copyWith(errorMessage: message),
     );
-  }
-
-  void markPushReady() {
-    _pushPresentationGate?.markReady();
   }
 
   @override

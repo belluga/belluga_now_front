@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
@@ -10,7 +12,9 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -32,14 +36,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        _handleBackPressed();
-      },
+    final backPolicy = _buildBackPolicy(context);
+    return RouteBackScope(
+      backPolicy: backPolicy,
       child: Scaffold(
         bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
         body: SafeArea(
@@ -133,7 +132,15 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  Future<bool> _handleBackPressed() async {
+  RouteBackPolicy _buildBackPolicy(BuildContext context) {
+    return buildCanonicalCurrentRouteBackPolicy(
+      context,
+      consumeBackNavigationIfNeeded: _consumeScrollBackIfNeeded,
+      requestExit: _requestExit,
+    );
+  }
+
+  Future<bool> _consumeScrollBackIfNeeded() async {
     final scrollController = _controller.scrollController;
     if (scrollController.hasClients && scrollController.offset > 0) {
       await scrollController.animateTo(
@@ -141,9 +148,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );
-      return false;
+      return true;
     }
 
+    return false;
+  }
+
+  Future<void> _requestExit() async {
     final shouldExit = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -166,11 +177,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     if (shouldExit) {
       _performExitNavigation();
     }
-
-    return false;
   }
 
   void _performExitNavigation() {
-    context.router.pop();
+    SystemNavigator.pop();
   }
 }

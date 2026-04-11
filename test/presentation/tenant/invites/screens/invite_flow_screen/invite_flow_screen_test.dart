@@ -6,6 +6,8 @@ import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -141,7 +143,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts) async =>
+          InviteContacts contacts) async =>
       const [];
 
   @override
@@ -249,6 +251,9 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   bool popCalled = false;
 
   @override
+  RootStackRouter get root => _FakeRootStackRouter('/convites');
+
+  @override
   bool canPop({
     bool ignoreChildRoutes = false,
     bool ignoreParentRoutes = false,
@@ -291,6 +296,19 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   void pop<T extends Object?>([T? result]) {
     popCalled = true;
   }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
 }
 
 void main() {
@@ -420,8 +438,7 @@ void main() {
     expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
   });
 
-  testWidgets(
-      'Unauthenticated invite accepts through canonical anonymous flow',
+  testWidgets('Unauthenticated invite accepts through canonical anonymous flow',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('1');
     final controller = InviteFlowScreenController(
@@ -697,6 +714,67 @@ void main() {
   });
 
   testWidgets(
+      'Invite flow system back routes home and keeps invite pending when there is no stack',
+      (tester) async {
+    final invite = _buildInviteWithPrimaryInviter('pending-system-back');
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: 'pending-system-back',
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.byType(PopScope<dynamic>).evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pump();
+
+    expect(router.replaceAllCalled, isTrue);
+    expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
+    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+    expect(
+      controller.pendingInvitesStreamValue.value.first.id,
+      'pending-system-back',
+    );
+  });
+
+  testWidgets(
       'Authenticated multi-inviter share invite with empty picker id still uses canonical decision',
       (tester) async {
     final invite = _buildInviteWithEmptyCandidateIds('multi-1');
@@ -822,6 +900,11 @@ RouteData _buildRouteData(
     config: AutoRoute(
       page: path == '/invite' ? InviteEntryRoute.page : InviteFlowRoute.page,
       path: path,
+      meta: canonicalRouteMeta(
+        family: path == '/invite'
+            ? CanonicalRouteFamily.inviteEntry
+            : CanonicalRouteFamily.inviteFlow,
+      ),
     ),
     segments: normalizedSegments,
     stringMatch: path,
@@ -906,8 +989,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _TestHttpClient implements HttpClient {

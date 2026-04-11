@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -74,17 +75,15 @@ class _TenantAdminEventFormScreenState
               builder: (context, isSubmitting) {
                 return StreamValueBuilder<List<TenantAdminAccountProfile>>(
                   streamValue: _controller.venueCandidatesStreamValue,
-                      builder: (context, venues) {
+                  builder: (context, venues) {
                     _controller.hydrateDefaultEventVenue(venues);
                     return StreamValueBuilder<bool>(
-                      streamValue:
-                          _controller
-                              .accountProfileCandidatesLoadingStreamValue,
+                      streamValue: _controller
+                          .accountProfileCandidatesLoadingStreamValue,
                       builder: (context, partyCandidatesLoading) {
                         return StreamValueBuilder<String?>(
-                          streamValue:
-                              _controller
-                                  .accountProfileCandidatesErrorStreamValue,
+                          streamValue: _controller
+                              .accountProfileCandidatesErrorStreamValue,
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
                                 List<TenantAdminAccountProfile>>(
@@ -131,6 +130,10 @@ class _TenantAdminEventFormScreenState
                                                         isCoverMarkedForRemoval,
                                                       ) {
                                                         return TenantAdminFormScaffold(
+                                                          closePolicy:
+                                                              buildTenantAdminCurrentRouteBackPolicy(
+                                                            context,
+                                                          ),
                                                           title: _isEditing
                                                               ? 'Editar evento'
                                                               : 'Criar evento',
@@ -950,7 +953,8 @@ class _TenantAdminEventFormScreenState
                                 streamValue:
                                     _controller.artistSearchResultsStreamValue,
                                 builder: (context, searchResults) {
-                                  if (isSearchLoading && searchResults.isEmpty) {
+                                  if (isSearchLoading &&
+                                      searchResults.isEmpty) {
                                     return const Center(
                                       child: CircularProgressIndicator(),
                                     );
@@ -970,7 +974,8 @@ class _TenantAdminEventFormScreenState
                                           FilledButton(
                                             onPressed:
                                                 _controller.retryArtistSearch,
-                                            child: const Text('Tentar novamente'),
+                                            child:
+                                                const Text('Tentar novamente'),
                                           ),
                                         ],
                                       ),
@@ -989,8 +994,8 @@ class _TenantAdminEventFormScreenState
                                       (isSearchPageLoading ? 1 : 0);
 
                                   return ListView.separated(
-                                    controller:
-                                        _controller.artistSearchScrollController,
+                                    controller: _controller
+                                        .artistSearchScrollController,
                                     itemCount: itemCount,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: 8),
@@ -1001,8 +1006,7 @@ class _TenantAdminEventFormScreenState
                                             vertical: 12,
                                           ),
                                           child: Center(
-                                            child:
-                                                CircularProgressIndicator(),
+                                            child: CircularProgressIndicator(),
                                           ),
                                         );
                                       }
@@ -1019,7 +1023,8 @@ class _TenantAdminEventFormScreenState
                                           leading:
                                               const Icon(Icons.person_outline),
                                           title: Text(artist.displayName),
-                                          subtitle: Text(artist.slug ?? artist.id),
+                                          subtitle:
+                                              Text(artist.slug ?? artist.id),
                                           trailing: Icon(
                                             isAlreadySelected
                                                 ? Icons.check_circle_outline
@@ -1028,7 +1033,7 @@ class _TenantAdminEventFormScreenState
                                           onTap: isAlreadySelected
                                               ? null
                                               : () => context.router.maybePop<
-                                                  TenantAdminAccountProfile>(
+                                                      TenantAdminAccountProfile>(
                                                   artist),
                                         ),
                                       );

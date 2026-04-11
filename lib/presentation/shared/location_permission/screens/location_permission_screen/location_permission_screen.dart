@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
@@ -14,12 +14,12 @@ import 'package:get_it/get_it.dart';
 class LocationPermissionScreen extends StatefulWidget {
   const LocationPermissionScreen({
     super.key,
-    required this.initialState,
+    this.initialState,
     this.allowContinueWithoutLocation = true,
     this.onResult,
   });
 
-  final LocationPermissionState initialState;
+  final LocationPermissionState? initialState;
   final bool allowContinueWithoutLocation;
   final ValueChanged<LocationPermissionGateResult>? onResult;
 
@@ -33,184 +33,210 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       GetIt.I.get<LocationPermissionController>();
 
   @override
-  Widget build(BuildContext context) {
-    final primaryLabel = switch (widget.initialState) {
-      LocationPermissionState.serviceDisabled => 'Ativar localização',
-      LocationPermissionState.denied => 'Permitir localização',
-      LocationPermissionState.deniedForever =>
-        kIsWeb ? 'Tentar novamente' : 'Abrir configurações',
-    };
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
+  void initState() {
+    super.initState();
+    unawaited(
+      _controller.ensureInitialState(
+        initialState: widget.initialState,
+      ),
+    );
+  }
 
-    return StreamValueBuilder<bool?>(
-      streamValue: _controller.resultStreamValue,
-      builder: (context, result) {
-        _handleResult(result);
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) {
-              return;
-            }
-            unawaited(_finishFlow(LocationPermissionGateResult.cancelled));
-          },
-          child: Scaffold(
-            body: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _TopBar(onBackPressed: _onBackPressed),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final content = ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 420),
-                            child: widget.initialState ==
-                                    LocationPermissionState.deniedForever
-                                ? Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      _TitleBlock(
-                                        textTheme: textTheme,
-                                        colorScheme: colorScheme,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      _HeroCard(
-                                        colorScheme: colorScheme,
-                                        textTheme: textTheme,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme
-                                              .surfaceContainerHighest,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<LocationPermissionState?>(
+      streamValue: _controller.initialStateStreamValue,
+      onNullWidget: const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator.adaptive(),
+        ),
+      ),
+      builder: (context, initialState) {
+        final resolvedInitialState = initialState!;
+        final primaryLabel = switch (resolvedInitialState) {
+          LocationPermissionState.serviceDisabled => 'Ativar localização',
+          LocationPermissionState.denied => 'Permitir localização',
+          LocationPermissionState.deniedForever =>
+            kIsWeb ? 'Tentar novamente' : 'Abrir configurações',
+        };
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        final textTheme = theme.textTheme;
+
+        return StreamValueBuilder<bool?>(
+          streamValue: _controller.resultStreamValue,
+          builder: (context, result) {
+            _handleResult(result);
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) {
+                  return;
+                }
+                unawaited(_finishFlow(LocationPermissionGateResult.cancelled));
+              },
+              child: Scaffold(
+                body: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _TopBar(onBackPressed: _onBackPressed),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final content = ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 420),
+                                child: resolvedInitialState ==
+                                        LocationPermissionState.deniedForever
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _TitleBlock(
+                                            textTheme: textTheme,
+                                            colorScheme: colorScheme,
+                                          ),
+                                          const SizedBox(height: 24),
+                                          _HeroCard(
+                                            colorScheme: colorScheme,
+                                            textTheme: textTheme,
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: colorScheme
+                                                  .surfaceContainerHighest,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Como liberar:',
+                                                  style: textTheme.titleMedium
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                ..._deniedForeverSteps().map(
+                                                  (step) => Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                      bottom: 6,
+                                                    ),
+                                                    child: Text(
+                                                      step,
+                                                      style: textTheme
+                                                          .bodyMedium
+                                                          ?.copyWith(
+                                                        color: colorScheme
+                                                            .onSurfaceVariant,
+                                                        height: 1.35,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : SizedBox(
+                                        height: constraints.maxHeight,
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment.stretch,
                                           children: [
-                                            Text(
-                                              'Como liberar:',
-                                              style: textTheme.titleMedium
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                              ),
+                                            _TitleBlock(
+                                              textTheme: textTheme,
+                                              colorScheme: colorScheme,
                                             ),
-                                            const SizedBox(height: 10),
-                                            ..._deniedForeverSteps().map(
-                                              (step) => Padding(
-                                                padding: const EdgeInsets.only(
-                                                  bottom: 6,
-                                                ),
-                                                child: Text(
-                                                  step,
-                                                  style: textTheme.bodyMedium
-                                                      ?.copyWith(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant,
-                                                    height: 1.35,
-                                                  ),
+                                            const SizedBox(height: 24),
+                                            Expanded(
+                                              child: Center(
+                                                child: _HeroCard(
+                                                  colorScheme: colorScheme,
+                                                  textTheme: textTheme,
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ],
-                                  )
-                                : SizedBox(
-                                    height: constraints.maxHeight,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        _TitleBlock(
-                                          textTheme: textTheme,
-                                          colorScheme: colorScheme,
-                                        ),
-                                        const SizedBox(height: 24),
-                                        Expanded(
-                                          child: Center(
-                                            child: _HeroCard(
-                                              colorScheme: colorScheme,
-                                              textTheme: textTheme,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          );
+                              );
 
-                          if (widget.initialState ==
-                              LocationPermissionState.deniedForever) {
-                            return SingleChildScrollView(
-                              child: Center(child: content),
-                            );
-                          }
-
-                          return Center(child: content);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            StreamValueBuilder(
-                              streamValue: _controller.loading,
-                              builder: (context, isLoading) {
-                                return ButtonLoading(
-                                  label: primaryLabel,
-                                  isLoading: isLoading,
-                                  onPressed: _onPrimaryPressed,
-                                  style: ElevatedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(56),
-                                    backgroundColor: colorScheme.primary,
-                                    foregroundColor: colorScheme.onPrimary,
-                                    shape: const StadiumBorder(),
-                                    elevation: 0,
-                                  ),
+                              if (resolvedInitialState ==
+                                  LocationPermissionState.deniedForever) {
+                                return SingleChildScrollView(
+                                  child: Center(child: content),
                                 );
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextButton(
-                              onPressed: _onSecondaryPressed,
-                              child: Text(
-                                widget.allowContinueWithoutLocation
-                                    ? 'Continuar sem localização'
-                                    : 'Agora não',
-                              ),
-                            ),
-                          ],
+                              }
+
+                              return Center(child: content);
+                            },
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                StreamValueBuilder(
+                                  streamValue: _controller.loading,
+                                  builder: (context, isLoading) {
+                                    return ButtonLoading(
+                                      label: primaryLabel,
+                                      isLoading: isLoading,
+                                      onPressed: () => _onPrimaryPressed(
+                                        resolvedInitialState,
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size.fromHeight(56),
+                                        backgroundColor: colorScheme.primary,
+                                        foregroundColor: colorScheme.onPrimary,
+                                        shape: const StadiumBorder(),
+                                        elevation: 0,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: _onSecondaryPressed,
+                                  child: Text(
+                                    widget.allowContinueWithoutLocation
+                                        ? 'Continuar sem localização'
+                                        : 'Agora não',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  void _onPrimaryPressed() {
-    _controller.requestPermission(initialState: widget.initialState);
+  void _onPrimaryPressed(LocationPermissionState initialState) {
+    _controller.requestPermission(initialState: initialState);
   }
 
   Future<void> _onBackPressed() async {
@@ -239,7 +265,10 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       router.pop(result);
       return;
     }
-    router.replace(const TenantHomeRoute());
+    await replaceAllWithBoundaryDismissRoute(
+      router: router,
+      kind: BoundaryDismissKind.locationPermission,
+    );
   }
 
   void _handleResult(bool? result) {

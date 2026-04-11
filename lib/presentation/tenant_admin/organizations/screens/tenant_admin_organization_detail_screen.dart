@@ -1,4 +1,4 @@
-import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -133,6 +133,7 @@ class _TenantAdminOrganizationDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return StreamValueBuilder<bool>(
       streamValue: _controller.organizationDetailLoadingStreamValue,
       builder: (context, isLoading) {
@@ -147,7 +148,7 @@ class _TenantAdminOrganizationDetailScreenState
                     title: const Text('Organizacao'),
                     leading: IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.router.maybePop(),
+                      onPressed: backPolicy.handleBack,
                       tooltip: 'Voltar',
                     ),
                   ),

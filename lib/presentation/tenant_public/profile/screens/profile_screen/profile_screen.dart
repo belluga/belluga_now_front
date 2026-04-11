@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_header.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_section_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,214 +36,217 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Perfil',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
+    return RouteBackScope(
+      backPolicy: backPolicy,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Perfil',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
+          leading: BackButton(
+            onPressed: backPolicy.handleBack,
+          ),
+          actions: [
+            StreamValueBuilder<UserContract?>(
+              streamValue: _controller.userStreamValue,
+              onNullWidget: const SizedBox.shrink(),
+              builder: (context, user) {
+                return IconButton(
+                  tooltip: 'Sair',
+                  onPressed: _logout,
+                  icon: const Icon(Icons.exit_to_app),
+                );
+              },
+            ),
+          ],
         ),
-        leading: BackButton(
-          onPressed: () {
-            if (context.router.canPop()) {
-              context.router.pop();
-              return;
-            }
-            context.router.replaceAll([TenantHomeRoute()]);
-          },
-        ),
-        actions: [
-          StreamValueBuilder<UserContract?>(
+        body: SafeArea(
+          child: StreamValueBuilder<UserContract?>(
             streamValue: _controller.userStreamValue,
-            onNullWidget: const SizedBox.shrink(),
+            onNullWidget: const Center(
+              child: CircularProgressIndicator.adaptive(),
+            ),
             builder: (context, user) {
-              return IconButton(
-                tooltip: 'Sair',
-                onPressed: _logout,
-                icon: const Icon(Icons.exit_to_app),
+              final avatarUrl =
+                  user!.profile.pictureUrlValue?.value?.toString();
+
+              return StreamValueBuilder<int>(
+                streamValue: _controller.formVersionStreamValue,
+                builder: (context, _) {
+                  final hasPendingChanges = _controller.hasPendingChanges;
+
+                  return StreamValueBuilder<String?>(
+                    streamValue: _controller.localAvatarPathStreamValue,
+                    builder: (context, localPath) {
+                      final avatarImage = _resolveAvatarImage(
+                        localPath: localPath,
+                        remoteUrl: avatarUrl,
+                      );
+
+                      return ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                        children: [
+                          ProfileHeader(
+                            avatarImage: avatarImage,
+                            displayName: _controller.nameController.text,
+                            onChangeAvatar: _onChangeAvatar,
+                            invitesSent:
+                                0, // TODO(Delphi): bind convites enviados.
+                            invitesAccepted:
+                                0, // TODO(Delphi): bind convites aceitos.
+                            hasPendingChanges: hasPendingChanges,
+                          ),
+                          const SizedBox(height: 16),
+                          ProfileSectionCard(
+                            title: 'Seus dados',
+                            children: [
+                              ProfileEditableTile(
+                                label: 'Nome',
+                                value: _controller.nameController.text,
+                                icon: Icons.person_outline,
+                                onTap: () => _openEditField(
+                                  context,
+                                  label: 'Nome',
+                                  controller: _controller.nameController,
+                                  keyboardType: TextInputType.name,
+                                ),
+                              ),
+                              ProfileEditableTile(
+                                label: 'Descrição',
+                                value: _controller.descriptionController.text,
+                                icon: Icons.short_text,
+                                onTap: () => _openEditField(
+                                  context,
+                                  label: 'Descrição',
+                                  controller: _controller.descriptionController,
+                                  keyboardType: TextInputType.multiline,
+                                  maxLines: 3,
+                                ),
+                              ),
+                              ProfileEditableTile(
+                                label: 'E-mail',
+                                value: _controller.emailController.text,
+                                icon: Icons.email_outlined,
+                                onTap: () => _openEditField(
+                                  context,
+                                  label: 'E-mail',
+                                  controller: _controller.emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                ),
+                              ),
+                              ProfileEditableTile(
+                                label: 'Telefone',
+                                value: _controller.phoneController.text,
+                                icon: Icons.phone_outlined,
+                                onTap: () => _openEditField(
+                                  context,
+                                  label: 'Telefone',
+                                  controller: _controller.phoneController,
+                                  keyboardType: TextInputType.phone,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ProfileSectionCard(
+                            title: 'Preferências',
+                            children: [
+                              StreamValueBuilder<ThemeMode?>(
+                                streamValue: _controller.themeModeStreamValue,
+                                builder: (context, mode) {
+                                  final isDark = mode == ThemeMode.dark;
+                                  return SwitchListTile.adaptive(
+                                    value: isDark,
+                                    onChanged: (value) =>
+                                        _controller.setThemeMode(
+                                      value ? ThemeMode.dark : ThemeMode.light,
+                                    ),
+                                    title: const Text('Tema escuro'),
+                                    subtitle: Text(
+                                      isDark
+                                          ? 'Usando tema escuro'
+                                          : 'Usando tema claro',
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    secondary: Icon(
+                                      isDark
+                                          ? Icons.dark_mode
+                                          : Icons.light_mode,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                  );
+                                },
+                              ),
+                              StreamValueBuilder<double>(
+                                streamValue:
+                                    _controller.maxRadiusMetersStreamValue,
+                                builder: (context, radiusMeters) {
+                                  return ListTile(
+                                    leading:
+                                        const Icon(Icons.my_location_outlined),
+                                    title: const Text('Raio máximo'),
+                                    subtitle: Text(
+                                      _formatRadiusLabel(radiusMeters),
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _openRadiusSelector(
+                                      context,
+                                      radiusMeters,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ProfileSectionCard(
+                            title: 'Privacidade & segurança',
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.visibility_outlined),
+                                title: const Text('Visibilidade'),
+                                subtitle: const Text(
+                                  'Público · Amigos verão convites em breve',
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => _showComingSoon(context),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.shield_outlined),
+                                title: const Text('Alterar senha'),
+                                subtitle:
+                                    const Text('Atualize a senha da sua conta'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => _showComingSoon(context),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.policy_outlined),
+                                title: const Text('Política de privacidade'),
+                                subtitle:
+                                    const Text('Como tratamos seus dados'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => context.router.pushPath(
+                                  '/privacy-policy',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               );
             },
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: StreamValueBuilder<UserContract?>(
-          streamValue: _controller.userStreamValue,
-          onNullWidget: const Center(
-            child: CircularProgressIndicator.adaptive(),
-          ),
-          builder: (context, user) {
-            final avatarUrl = user!.profile.pictureUrlValue?.value?.toString();
-
-            return StreamValueBuilder<int>(
-              streamValue: _controller.formVersionStreamValue,
-              builder: (context, _) {
-                final hasPendingChanges = _controller.hasPendingChanges;
-
-                return StreamValueBuilder<String?>(
-                  streamValue: _controller.localAvatarPathStreamValue,
-                  builder: (context, localPath) {
-                    final avatarImage = _resolveAvatarImage(
-                      localPath: localPath,
-                      remoteUrl: avatarUrl,
-                    );
-
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                      children: [
-                        ProfileHeader(
-                          avatarImage: avatarImage,
-                          displayName: _controller.nameController.text,
-                          onChangeAvatar: _onChangeAvatar,
-                          invitesSent:
-                              0, // TODO(Delphi): bind convites enviados.
-                          invitesAccepted:
-                              0, // TODO(Delphi): bind convites aceitos.
-                          hasPendingChanges: hasPendingChanges,
-                        ),
-                        const SizedBox(height: 16),
-                        ProfileSectionCard(
-                          title: 'Seus dados',
-                          children: [
-                            ProfileEditableTile(
-                              label: 'Nome',
-                              value: _controller.nameController.text,
-                              icon: Icons.person_outline,
-                              onTap: () => _openEditField(
-                                context,
-                                label: 'Nome',
-                                controller: _controller.nameController,
-                                keyboardType: TextInputType.name,
-                              ),
-                            ),
-                            ProfileEditableTile(
-                              label: 'Descrição',
-                              value: _controller.descriptionController.text,
-                              icon: Icons.short_text,
-                              onTap: () => _openEditField(
-                                context,
-                                label: 'Descrição',
-                                controller: _controller.descriptionController,
-                                keyboardType: TextInputType.multiline,
-                                maxLines: 3,
-                              ),
-                            ),
-                            ProfileEditableTile(
-                              label: 'E-mail',
-                              value: _controller.emailController.text,
-                              icon: Icons.email_outlined,
-                              onTap: () => _openEditField(
-                                context,
-                                label: 'E-mail',
-                                controller: _controller.emailController,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                            ),
-                            ProfileEditableTile(
-                              label: 'Telefone',
-                              value: _controller.phoneController.text,
-                              icon: Icons.phone_outlined,
-                              onTap: () => _openEditField(
-                                context,
-                                label: 'Telefone',
-                                controller: _controller.phoneController,
-                                keyboardType: TextInputType.phone,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ProfileSectionCard(
-                          title: 'Preferências',
-                          children: [
-                            StreamValueBuilder<ThemeMode?>(
-                              streamValue: _controller.themeModeStreamValue,
-                              builder: (context, mode) {
-                                final isDark = mode == ThemeMode.dark;
-                                return SwitchListTile.adaptive(
-                                  value: isDark,
-                                  onChanged: (value) =>
-                                      _controller.setThemeMode(
-                                    value ? ThemeMode.dark : ThemeMode.light,
-                                  ),
-                                  title: const Text('Tema escuro'),
-                                  subtitle: Text(
-                                    isDark
-                                        ? 'Usando tema escuro'
-                                        : 'Usando tema claro',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  secondary: Icon(
-                                    isDark ? Icons.dark_mode : Icons.light_mode,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                );
-                              },
-                            ),
-                            StreamValueBuilder<double>(
-                              streamValue:
-                                  _controller.maxRadiusMetersStreamValue,
-                              builder: (context, radiusMeters) {
-                                return ListTile(
-                                  leading:
-                                      const Icon(Icons.my_location_outlined),
-                                  title: const Text('Raio máximo'),
-                                  subtitle: Text(
-                                    _formatRadiusLabel(radiusMeters),
-                                  ),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () => _openRadiusSelector(
-                                    context,
-                                    radiusMeters,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ProfileSectionCard(
-                          title: 'Privacidade & segurança',
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.visibility_outlined),
-                              title: const Text('Visibilidade'),
-                              subtitle: const Text(
-                                'Público · Amigos verão convites em breve',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _showComingSoon(context),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.shield_outlined),
-                              title: const Text('Alterar senha'),
-                              subtitle:
-                                  const Text('Atualize a senha da sua conta'),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _showComingSoon(context),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.policy_outlined),
-                              title: const Text('Política de privacidade'),
-                              subtitle: const Text('Como tratamos seus dados'),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.router.pushPath(
-                                '/privacy-policy',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            );
-          },
         ),
       ),
     );

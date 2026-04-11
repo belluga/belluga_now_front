@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -73,9 +74,8 @@ class _TenantAdminEventTypeFormScreenState
         _controller.setEventTypeFormSaving(false);
         return;
       }
-      final requiresTypeAsset =
-          visual.mode == TenantAdminPoiVisualMode.image &&
-              visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
+      final requiresTypeAsset = visual.mode == TenantAdminPoiVisualMode.image &&
+          visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
       final typeAssetUpload = requiresTypeAsset
           ? await _controller.buildEventTypeAssetUpload()
           : null;
@@ -127,6 +127,7 @@ class _TenantAdminEventTypeFormScreenState
       builder: (context, formState) {
         final formError = formState.formError;
         return TenantAdminFormScaffold(
+          closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
           title: _isEdit ? 'Editar tipo de evento' : 'Criar tipo de evento',
           showHandle: false,
           child: SingleChildScrollView(
@@ -182,12 +183,13 @@ class _TenantAdminEventTypeFormScreenState
                                   'Slug inválido. Use letras minúsculas, números, - ou _.',
                             );
                           },
-                          onChanged:
-                              _controller.updateEventTypeSlugAutoFlagFromManualInput,
+                          onChanged: _controller
+                              .updateEventTypeSlugAutoFlagFromManualInput,
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
-                          controller: _controller.eventTypeDescriptionController,
+                          controller:
+                              _controller.eventTypeDescriptionController,
                           decoration: const InputDecoration(
                             labelText: 'Descrição (opcional)',
                           ),
@@ -266,10 +268,10 @@ class _TenantAdminEventTypeFormScreenState
             ] else ...[
               const SizedBox(height: 12),
               StreamValueBuilder<TenantAdminPoiVisualImageSource>(
-                streamValue: _controller.eventTypePoiVisualImageSourceStreamValue,
+                streamValue:
+                    _controller.eventTypePoiVisualImageSourceStreamValue,
                 builder: (context, imageSource) {
-                  final imageSourceItems =
-                      <TenantAdminPoiVisualImageSource>[
+                  final imageSourceItems = <TenantAdminPoiVisualImageSource>[
                     TenantAdminPoiVisualImageSource.cover,
                     TenantAdminPoiVisualImageSource.typeAsset,
                   ];
@@ -332,8 +334,9 @@ class _TenantAdminEventTypeFormScreenState
                 final hasExistingUrl =
                     !isMarkedForRemoval && trimmedUrl.isNotEmpty;
                 final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
-                final canRemove =
-                    selectedFile != null || hasExistingUrl || isMarkedForRemoval;
+                final canRemove = selectedFile != null ||
+                    hasExistingUrl ||
+                    isMarkedForRemoval;
                 final selectedLabel = selectedFile?.name ??
                     (isMarkedForRemoval
                         ? 'Imagem canônica será removida ao salvar.'
@@ -361,8 +364,7 @@ class _TenantAdminEventTypeFormScreenState
                   pickFromDevice: _controller.pickEventTypeAssetImageFromDevice,
                   fetchImageFromUrlForCrop:
                       _controller.fetchEventTypeImageFromUrlForCrop,
-                  readBytesForCrop:
-                      _controller.readEventTypeImageBytesForCrop,
+                  readBytesForCrop: _controller.readEventTypeImageBytesForCrop,
                   prepareCroppedFile: _controller.prepareEventTypeCroppedImage,
                   onImageSelected: (cropped) async {
                     _controller.updateEventTypeTypeAssetFile(cropped);

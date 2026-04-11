@@ -1,6 +1,4 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -131,36 +129,6 @@ class _InitScreenState extends State<InitScreen> {
     } finally {
       _controller.setRetrying(false);
     }
-
-    // Small delay for splash screen
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    // Navigate to initial route determined by controller
-    _gotoInitialRoute();
-  }
-
-  void _gotoInitialRoute() {
-    final initialPath = _controller.initialRoutePath;
-    if (initialPath != null && initialPath.isNotEmpty) {
-      debugPrint('[Push] Init path override ready ($initialPath).');
-      context.router.replacePath(initialPath);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('[Push] Init path presented; releasing push gate.');
-        _controller.markPushReady();
-      });
-      return;
-    }
-
-    final routes = _controller.initialRouteStack;
-    debugPrint(
-      '[Push] Init stack ready '
-      '(base=${routes.first.routeName}, invite=${routes.any((route) => route is InviteFlowRoute)}).',
-    );
-    context.router.replaceAll(routes);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('[Push] Init stack presented; releasing push gate.');
-      _controller.markPushReady();
-    });
   }
 
   Color? _tryParseHexColor(String raw) {

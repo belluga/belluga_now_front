@@ -1,4 +1,4 @@
-import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
@@ -140,6 +140,7 @@ class _TenantAdminTaxonomyFormScreenState
           builder: (context, actionErrorMessage) {
             _handleActionErrorMessage(actionErrorMessage);
             return TenantAdminFormScaffold(
+              closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
               title: _isEdit ? 'Editar taxonomia' : 'Criar taxonomia',
               child: SingleChildScrollView(
                 child: Form(
@@ -349,7 +350,7 @@ class _TenantAdminTaxonomyFormScreenState
       if (!mounted) {
         return;
       }
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 

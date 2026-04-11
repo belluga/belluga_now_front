@@ -5,6 +5,8 @@ import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -187,7 +189,8 @@ void main() {
     expect(find.text('Bóora!'), findsOneWidget);
   });
 
-  testWidgets('event detail back falls back to agenda when no history exists',
+  testWidgets(
+      'event detail visible back falls back to home when no history exists',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -230,10 +233,112 @@ void main() {
     expect(router.popCallCount, 0);
     expect(router.replaceAllRoutes, hasLength(1));
     expect(
-        router.replaceAllRoutes.single.single.routeName, EventSearchRoute.name);
+        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
   });
 
-  testWidgets('event detail back returns to previous route when history exists',
+  testWidgets(
+      'event detail system back falls back to home when no history exists',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter()..canPopResult = false;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets(
+      'event detail visible back returns to previous route when history exists',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter()..canPopResult = true;
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        name: ImmersiveEventDetailRoute.name,
+        fullPath: '/agenda/evento/evento-de-teste',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.immersiveEventDetail,
+        ),
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets(
+      'event detail system back returns to previous route when history exists',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -270,7 +375,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
     expect(router.popCallCount, 1);
@@ -609,6 +717,10 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
+  RootStackRouter get root =>
+      _FakeRootStackRouter('/agenda/evento/evento-de-teste');
+
+  @override
   Future<T?> pushPath<T extends Object?>(
     String path, {
     bool includePrefixMatches = false,
@@ -661,19 +773,52 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }
 }
 
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({
+    String? name,
     required this.fullPath,
+    Map<String, dynamic>? meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  }) : _queryParams = Parameters(queryParams);
+  })  : name = name ?? ImmersiveEventDetailRoute.name,
+        meta = meta ??
+            canonicalRouteMeta(
+              family: CanonicalRouteFamily.immersiveEventDetail,
+            ),
+        pageRouteInfo = pageRouteInfo ?? EventSearchRoute(),
+        _queryParams = Parameters(queryParams);
+
+  @override
+  final String name;
 
   @override
   final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
 
   final Parameters _queryParams;
 
   @override
   Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {

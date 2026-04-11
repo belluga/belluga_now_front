@@ -5,6 +5,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -5262,14 +5264,37 @@ Future<void> _pumpMapScreen(
   required PageRouteInfo<dynamic> fallbackRoute,
   String? initialPoiQuery,
 }) async {
+  final isPoiDetail = initialPoiQuery != null;
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      name: isPoiDetail ? PoiDetailsRoute.name : CityMapRoute.name,
+      fullPath: isPoiDetail ? '/mapa/poi' : '/mapa',
+      meta: canonicalRouteMeta(
+        family:
+            isPoiDetail ? CanonicalRouteFamily.poiDetail : CanonicalRouteFamily.cityMap,
+      ),
+      pageRouteInfo:
+          isPoiDetail ? PoiDetailsRoute(poi: initialPoiQuery) : CityMapRoute(),
+      queryParams: isPoiDetail
+          ? <String, dynamic>{'poi': initialPoiQuery}
+          : const <String, dynamic>{},
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const <RouteMatch>[],
+    type: const RouteType.material(),
+  );
+
   await tester.pumpWidget(
     MaterialApp(
       home: StackRouterScope(
         controller: router,
         stateHash: 0,
-        child: MapScreen(
-          backFallbackRoute: fallbackRoute,
-          initialPoiQuery: initialPoiQuery,
+        child: RouteDataScope(
+          routeData: routeData,
+          child: MapScreen(
+            initialPoiQuery: initialPoiQuery,
+          ),
         ),
       ),
     ),
@@ -5299,12 +5324,20 @@ Future<void> _pumpPoiDetailDeck(
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {
+  _RecordingStackRouter();
+
   bool canPopResult = false;
   int canPopCallCount = 0;
   int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
   final List<PageRouteInfo<dynamic>> pushedRoutes = [];
   final List<PageRouteInfo<dynamic>> replacedRoutes = [];
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter(currentPath);
+
+  @override
+  String get currentPath => '/mapa';
 
   @override
   bool canPop({
@@ -5350,6 +5383,48 @@ class _RecordingStackRouter extends Fake implements StackRouter {
     replacedRoutes.add(route);
     return null;
   }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.name,
+    required this.fullPath,
+    required this.meta,
+    required this.pageRouteInfo,
+    Map<String, dynamic> queryParams = const <String, dynamic>{},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  final String name;
+
+  @override
+  final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 class _TestHttpOverrides extends HttpOverrides {

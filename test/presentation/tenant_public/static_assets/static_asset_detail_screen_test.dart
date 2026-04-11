@@ -1,3 +1,7 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -16,7 +20,8 @@ void main() {
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
   });
 
-  testWidgets('static asset detail is share-only and renders Sobre + Como Chegar',
+  testWidgets(
+      'static asset detail is share-only and renders Sobre + Como Chegar',
       (tester) async {
     final asset = PublicStaticAssetModel(
       idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
@@ -28,17 +33,20 @@ void main() {
         defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
         isRequired: false,
       ),
-      locationLatitudeValue: LatitudeValue(isRequired: false)..parse('-20.6701'),
-      locationLongitudeValue:
-          LongitudeValue(isRequired: false)..parse('-40.5001'),
+      locationLatitudeValue: LatitudeValue(isRequired: false)
+        ..parse('-20.6701'),
+      locationLongitudeValue: LongitudeValue(isRequired: false)
+        ..parse('-40.5001'),
     );
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: StaticAssetDetailScreen(
+      _buildRoutedTestApp(
+        router: router,
+        child: StaticAssetDetailScreen(
           asset: asset,
           controller: controller,
         ),
@@ -56,6 +64,98 @@ void main() {
       'Como Chegar',
     );
     expect(find.text('Quiosques, píer e acesso fácil.'), findsOneWidget);
+  });
+
+  testWidgets(
+      'static asset detail visible back falls back to discovery when no history exists',
+      (tester) async {
+    final controller = StaticAssetDetailController(
+      appData: _buildAppData(),
+    );
+    final router = _RecordingStackRouter()..canPopResult = false;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: StaticAssetDetailScreen(
+          asset: _buildStaticAsset(),
+          controller: controller,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      DiscoveryRoute.name,
+    );
+  });
+
+  testWidgets(
+      'static asset detail system back falls back to discovery when no history exists',
+      (tester) async {
+    final controller = StaticAssetDetailController(
+      appData: _buildAppData(),
+    );
+    final router = _RecordingStackRouter()..canPopResult = false;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: StaticAssetDetailScreen(
+          asset: _buildStaticAsset(),
+          controller: controller,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+      router.replaceAllRoutes.single.single.routeName,
+      DiscoveryRoute.name,
+    );
+  });
+
+  testWidgets(
+      'static asset detail visible back pops when previous history exists',
+      (tester) async {
+    final controller = StaticAssetDetailController(
+      appData: _buildAppData(),
+    );
+    final router = _RecordingStackRouter()..canPopResult = true;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: StaticAssetDetailScreen(
+          asset: _buildStaticAsset(),
+          controller: controller,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
   });
 }
 
@@ -116,4 +216,121 @@ AppData _buildAppData() {
     remoteData: remoteData,
     localInfo: localInfo,
   );
+}
+
+PublicStaticAssetModel _buildStaticAsset() {
+  return PublicStaticAssetModel(
+    idValue: PublicStaticAssetIdValue(defaultValue: 'asset-1'),
+    profileTypeValue: PublicStaticAssetTypeValue(defaultValue: 'beach'),
+    displayNameValue:
+        PublicStaticAssetNameValue(defaultValue: 'Praia das Virtudes'),
+    slugValue: SlugValue()..parse('praia-das-virtudes'),
+    contentValue: PublicStaticAssetDescriptionValue(
+      defaultValue: '<p>Quiosques, píer e acesso fácil.</p>',
+      isRequired: false,
+    ),
+    locationLatitudeValue: LatitudeValue(isRequired: false)..parse('-20.6701'),
+    locationLongitudeValue: LongitudeValue(isRequired: false)
+      ..parse('-40.5001'),
+  );
+}
+
+Widget _buildRoutedTestApp({
+  required _RecordingStackRouter router,
+  required Widget child,
+}) {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(fullPath: '/static/asset-ref'),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: RouteDataScope(
+        routeData: routeData,
+        child: child,
+      ),
+    ),
+  );
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  bool canPopResult = false;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
+  final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes =
+      <List<PageRouteInfo<dynamic>>>[];
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/static/praia-das-virtudes');
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCallCount += 1;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllRoutes.add(routes);
+  }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    String? name,
+    Map<String, dynamic>? meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
+  })  : name = name ?? StaticAssetDetailRoute.name,
+        meta = meta ??
+            canonicalRouteMeta(
+              family: CanonicalRouteFamily.staticAssetDetail,
+            ),
+        pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute();
+
+  @override
+  final String name;
+
+  @override
+  final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }

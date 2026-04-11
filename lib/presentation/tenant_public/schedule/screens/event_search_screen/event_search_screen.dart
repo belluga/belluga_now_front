@@ -1,11 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -45,15 +46,10 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final topPadding = MediaQuery.of(context).padding.top;
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        _handleBack();
-      },
+    return RouteBackScope(
+      backPolicy: backPolicy,
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(kToolbarHeight + topPadding),
@@ -61,7 +57,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
             padding: EdgeInsets.only(top: topPadding),
             child: AgendaAppBar(
               controller: _controller,
-              onBack: _handleBack,
+              onBack: backPolicy.handleBack,
               actions: const AgendaAppBarActions(
                 showBack: true,
                 showSearch: false,
@@ -173,11 +169,4 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   }
 
   // AgendaAppBar handles icons/tooltips and radius modal.
-
-  void _handleBack() {
-    performTenantPublicSafeBack(
-      context.router,
-      fallbackRoute: const ProfileRoute(),
-    );
-  }
 }
