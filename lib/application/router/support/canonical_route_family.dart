@@ -1,0 +1,46 @@
+enum CanonicalRouteFamily {
+  tenantHome,
+  tenantPrivacyPolicy,
+  discoveryRoot,
+  partnerDetail,
+  staticAssetDetail,
+  profileRoot,
+  eventSearch,
+  immersiveEventDetail,
+  cityMap,
+  poiDetail,
+  inviteFlow,
+  inviteEntry,
+  inviteShare,
+  appPromotion,
+  authLogin,
+  recoveryPassword,
+  authCreateNewPassword,
+  landlordHome,
+  accountWorkspaceHome,
+  accountWorkspaceScoped,
+  accountWorkspaceCreateEvent,
+  tenantAdminDashboard,
+  tenantAdminEventsRoot,
+  tenantAdminEventsInternal,
+  tenantAdminAccountsRoot,
+  tenantAdminAccountsInternal,
+  tenantAdminAssetsRoot,
+  tenantAdminAssetsInternal,
+  tenantAdminSettingsRoot,
+  tenantAdminSettingsInternal,
+}
+
+enum RouteChromeMode {
+  standard,
+  fullscreen,
+  scopedSectionAppBar,
+}
+
+enum AdminShellSection {
+  dashboard,
+  events,
+  accounts,
+  assets,
+  settings,
+}

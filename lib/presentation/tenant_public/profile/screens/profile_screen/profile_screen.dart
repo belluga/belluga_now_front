@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
@@ -38,14 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: const TenantHomeRoute(),
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: ProfileRoute.name,
-      ),
-    );
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
     return RouteBackScope(
       backPolicy: backPolicy,
       child: Scaffold(

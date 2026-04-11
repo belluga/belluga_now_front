@@ -5,6 +5,8 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -32,6 +34,7 @@ class InvitesModule extends ModuleContract {
               allowAnonymousWeb: _allowAnonymousInvitePreview,
             ),
           ],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteFlow),
         ),
         AutoRoute(
           path: '/invite',
@@ -42,11 +45,13 @@ class InvitesModule extends ModuleContract {
               allowAnonymousWeb: _allowAnonymousInvitePreview,
             ),
           ],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteEntry),
         ),
         AutoRoute(
           path: '/convites/compartilhar',
           page: InviteShareRoute.page,
           guards: [TenantRouteGuard(), AuthRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteShare),
         ),
       ];
 

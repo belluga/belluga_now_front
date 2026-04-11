@@ -64,6 +64,19 @@ final class DeterministicRouteBackPolicy implements RouteBackPolicy {
       return;
     }
 
+    if (_canNavigateBackWithManagedHistory(_router)) {
+      _router.root.back();
+      return;
+    }
+
     await spec.noHistoryOutcome.run(_router);
+  }
+}
+
+bool _canNavigateBackWithManagedHistory(StackRouter router) {
+  try {
+    return router.root.navigationHistory.canNavigateBack;
+  } catch (_) {
+    return false;
   }
 }

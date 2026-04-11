@@ -1,7 +1,4 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_redirect_path.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_tester_waitlist_controller.dart';
@@ -42,15 +39,7 @@ class _AppPromotionScreenState extends State<AppPromotionScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final redirectPath = _controller.normalizeRedirectPath(widget.redirectPath);
-    final dismissPath = resolveWebPromotionDismissPath(
-      redirectPath: redirectPath,
-    );
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute:
-          context.router.buildPageRoute(dismissPath) ?? const TenantHomeRoute(),
-      reentrancyKey: AppPromotionRoute.name,
-    );
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
 
     return RouteBackScope(
       backPolicy: backPolicy,

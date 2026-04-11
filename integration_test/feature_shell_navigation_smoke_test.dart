@@ -126,7 +126,7 @@ void main() {
   }
 
   testWidgets(
-    'Home to Map to Home to Profile navigation',
+    'Home to Map to Home to Profile navigation via system back',
     (tester) async {
       final getIt = GetIt.I;
       _unregisterIfRegistered<ApplicationContract>();
@@ -173,7 +173,7 @@ void main() {
       await _dismissLocationGateIfNeeded(tester);
       await _waitForFinder(tester, find.byType(MapScreen));
 
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.binding.handlePopRoute();
       await _pumpFor(tester, const Duration(seconds: 1));
       await _dismissLocationGateIfNeeded(tester);
       await _dismissInviteOverlayIfNeeded(tester);
@@ -205,7 +205,7 @@ void main() {
       }
 
       if (foundProfile || foundLogin) {
-        await tester.tap(find.byIcon(Icons.arrow_back));
+        await tester.binding.handlePopRoute();
         await _pumpFor(tester, const Duration(seconds: 1));
       }
       await _waitForFinder(

@@ -1,9 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
@@ -272,14 +271,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   RouteBackPolicy _buildBackPolicy(BuildContext context) {
-    return buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: const TenantHomeRoute(),
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: InviteFlowRoute.name,
-      ),
-    );
+    return buildCanonicalCurrentRouteBackPolicy(context);
   }
 
   void _exitInviteFlow() {

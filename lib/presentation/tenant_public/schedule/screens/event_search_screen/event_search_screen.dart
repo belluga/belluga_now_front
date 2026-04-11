@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -47,14 +46,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final topPadding = MediaQuery.of(context).padding.top;
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: const ProfileRoute(),
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: EventSearchRoute.name,
-      ),
-    );
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
 
     return RouteBackScope(
       backPolicy: backPolicy,

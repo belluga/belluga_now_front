@@ -1,9 +1,6 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
@@ -22,12 +19,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
-    required this.backFallbackRoute,
     this.initialPoiQuery,
     this.initialPoiStackQuery,
   });
 
-  final PageRouteInfo<dynamic> backFallbackRoute;
   final String? initialPoiQuery;
   final String? initialPoiStackQuery;
 
@@ -72,16 +67,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildScaffold() {
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: widget.backFallbackRoute,
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: widget.initialPoiQuery?.trim().isNotEmpty ?? false
-            ? PoiDetailsRoute.name
-            : CityMapRoute.name,
-      ),
-    );
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
     return RouteBackScope(
       backPolicy: backPolicy,
       child: Scaffold(

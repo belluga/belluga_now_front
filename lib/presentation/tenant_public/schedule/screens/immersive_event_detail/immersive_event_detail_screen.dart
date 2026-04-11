@@ -5,9 +5,8 @@ import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -201,15 +200,8 @@ class _ImmersiveEventDetailScreenState
                             // Don't auto-navigate, let user scroll naturally
                             // initialTabIndex defaults to 0
                             footer: footer,
-                            backPolicy: buildTenantPublicSafeBackPolicy(
-                              context.router,
-                              fallbackRoute: EventSearchRoute(),
-                              reentrancyKey: resolveRouteBackReentrancyKey(
-                                context,
-                                fallbackRouteName:
-                                    ImmersiveEventDetailRoute.name,
-                              ),
-                            ),
+                            backPolicy:
+                                buildCanonicalCurrentRouteBackPolicy(context),
                           ),
                         );
                       },

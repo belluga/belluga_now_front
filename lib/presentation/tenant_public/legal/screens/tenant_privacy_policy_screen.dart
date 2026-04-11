@@ -1,7 +1,4 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
 
@@ -11,14 +8,7 @@ class TenantPrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: const TenantHomeRoute(),
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: TenantPrivacyPolicyRoute.name,
-      ),
-    );
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
 
     return RouteBackScope(
       backPolicy: backPolicy,

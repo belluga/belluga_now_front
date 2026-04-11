@@ -3,6 +3,8 @@ import 'package:belluga_now/application/contracts/promotion/promotion_lead_captu
 import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
@@ -277,6 +279,37 @@ void main() {
     expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
   });
 
+  testWidgets(
+      'system back falls back to home when auth-owned redirect has no stack',
+      (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+    router.canPopValue = false;
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        redirectPath: '/profile',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes, isNotNull);
+    expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
+  });
+
   testWidgets('success CTA uses pop only', (tester) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
@@ -444,12 +477,28 @@ Widget _buildWidget({
   required _RecordingStackRouter router,
   String redirectPath = '/invite?code=CODE123',
 }) {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      fullPath: '/baixe-o-app',
+      queryParams: <String, dynamic>{
+        'redirect': redirectPath,
+      },
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const <RouteMatch>[],
+    type: const RouteType.material(),
+  );
+
   return StackRouterScope(
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      home: AppPromotionScreen(
-        redirectPath: redirectPath,
+      home: RouteDataScope(
+        routeData: routeData,
+        child: AppPromotionScreen(
+          redirectPath: redirectPath,
+        ),
       ),
     ),
   );
@@ -460,6 +509,12 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   int replaceAllCalls = 0;
   bool canPopValue = false;
   List<PageRouteInfo>? lastReplaceAllRoutes;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter(
+        currentPath: '/baixe-o-app',
+        buildPageRouteDelegate: buildPageRoute,
+      );
 
   @override
   bool canPop({
@@ -511,6 +566,64 @@ class _RecordingStackRouter extends Mock implements StackRouter {
         ),
     };
   }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter({
+    required this.currentPath,
+    required this.buildPageRouteDelegate,
+  });
+
+  @override
+  final String currentPath;
+
+  final PageRouteInfo? Function(
+    String? path, {
+    bool includePrefixMatches,
+  }) buildPageRouteDelegate;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    return buildPageRouteDelegate(
+      path,
+      includePrefixMatches: includePrefixMatches,
+    );
+  }
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const <String, dynamic>{},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  String get name => AppPromotionRoute.name;
+
+  @override
+  final String fullPath;
+
+  @override
+  Map<String, dynamic> get meta => canonicalRouteMeta(
+        family: CanonicalRouteFamily.appPromotion,
+      );
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => AppPromotionRoute();
 }
 
 class _FakePromotionLeadCaptureService

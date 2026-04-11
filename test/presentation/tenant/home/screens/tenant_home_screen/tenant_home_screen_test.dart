@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/tenant_home_screen.dart';
@@ -28,6 +31,7 @@ import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/annotations.dart';
@@ -85,6 +89,81 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
   @override
   bool get shouldShowInviteFilterAction => true;
+}
+
+class _RecordingBackRouter extends MockStackRouter {
+  _RecordingBackRouter({required this.canPopResult});
+
+  bool canPopResult;
+  int canPopCallCount = 0;
+  int popCallCount = 0;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/');
+
+  @override
+  bool canPop({
+    bool? ignoreChildRoutes,
+    bool? ignoreParentRoutes,
+    bool? ignorePagelessRoutes,
+  }) {
+    canPopCallCount += 1;
+    return canPopResult;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCallCount += 1;
+  }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
+void _stubMockRouterRoot(MockStackRouter router, {String currentPath = '/'}) {
+  mockito.when(router.root).thenReturn(_FakeRootStackRouter(currentPath));
+}
+
+Widget _buildRoutedTenantHomeApp(StackRouter router) {
+  final routeData = RouteData(
+    route: RouteMatch(
+      config: AutoRoute(
+        page: TenantHomeRoute.page,
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantHome,
+        ),
+      ),
+      segments: const <String>[],
+      stringMatch: '/',
+      key: const ValueKey<String>('tenant-home'),
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const <RouteMatch>[],
+    type: const RouteType.material(),
+  );
+
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: RouteDataScope(
+        routeData: routeData,
+        child: const TenantHomeScreen(),
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -209,9 +288,7 @@ void main() {
     mockito
         .when(mockAgendaController.hasMoreStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito
-        .when(mockAgendaController.displayStateStreamValue)
-        .thenReturn(
+    mockito.when(mockAgendaController.displayStateStreamValue).thenReturn(
           StreamValue<TenantHomeAgendaDisplayState?>(
             defaultValue: TenantHomeAgendaDisplayState(events: []),
           ),
@@ -243,6 +320,11 @@ void main() {
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    );
     testScrollController.dispose();
     await GetIt.I.reset();
   });
@@ -261,17 +343,10 @@ void main() {
           StreamValue<List<VenueEventResume>>(defaultValue: [event]),
         );
     final mockRouter = MockStackRouter();
+    _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: MaterialApp(
-          home: TenantHomeScreen(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     // Verify AppBar
@@ -312,17 +387,10 @@ void main() {
         );
 
     final mockRouter = MockStackRouter();
+    _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: MaterialApp(
-          home: TenantHomeScreen(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
 
     await tester.pump();
 
@@ -357,17 +425,10 @@ void main() {
         .thenReturn(pendingInviteStream);
 
     final mockRouter = MockStackRouter();
+    _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: const MaterialApp(
-          home: TenantHomeScreen(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     expect(find.text('Voce tem 1 convites pendentes'), findsOneWidget);
@@ -386,17 +447,10 @@ void main() {
         );
 
     final mockRouter = MockStackRouter();
+    _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.maybePop()).thenAnswer((_) async => true);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: const MaterialApp(
-          home: TenantHomeScreen(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     await tester.tap(find.text('Usando localização fixa.'));
@@ -404,6 +458,108 @@ void main() {
 
     expect(find.text('Usando localização fixa'), findsOneWidget);
     expect(find.text('Explicação da localização fixa.'), findsOneWidget);
+  });
+
+  testWidgets(
+      'tenant home system back consumes scroll position before pop or exit',
+      (tester) async {
+    final router = _RecordingBackRouter(canPopResult: false);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    testScrollController.jumpTo(120);
+    await tester.pump();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(testScrollController.offset, 0);
+    expect(router.canPopCallCount, 0);
+    expect(router.popCallCount, 0);
+    expect(find.text('Sair do app?'), findsNothing);
+  });
+
+  testWidgets(
+      'tenant home system back opens exit confirmation when root-opened without history',
+      (tester) async {
+    final router = _RecordingBackRouter(canPopResult: false);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(find.text('Sair do app?'), findsOneWidget);
+    expect(find.text('Deseja fechar o aplicativo agora?'), findsOneWidget);
+
+    Navigator.of(
+      tester.element(find.byType(TenantHomeScreen)),
+      rootNavigator: true,
+    ).pop(false);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('tenant home exit confirmation delegates to SystemNavigator.pop',
+      (tester) async {
+    final router = _RecordingBackRouter(canPopResult: false);
+    var systemPopCallCount = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'SystemNavigator.pop') {
+          systemPopCallCount += 1;
+        }
+        return null;
+      },
+    );
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    Navigator.of(
+      tester.element(find.byType(TenantHomeScreen)),
+      rootNavigator: true,
+    ).pop(true);
+    await tester.pumpAndSettle();
+
+    expect(systemPopCallCount, 1);
+  });
+
+  testWidgets('tenant home system back pops when previous history exists',
+      (tester) async {
+    final router = _RecordingBackRouter(canPopResult: true);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(find.text('Sair do app?'), findsNothing);
   });
 }
 

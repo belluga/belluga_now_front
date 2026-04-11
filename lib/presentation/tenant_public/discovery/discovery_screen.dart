@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_back_reentrancy_key.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -38,13 +37,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final backPolicy = buildTenantPublicSafeBackPolicy(
-      context.router,
-      fallbackRoute: const TenantHomeRoute(),
-      reentrancyKey: resolveRouteBackReentrancyKey(
-        context,
-        fallbackRouteName: DiscoveryRoute.name,
-      ),
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(
+      context,
       consumeBackNavigationIfNeeded: _controller.consumeBackNavigationIfNeeded,
     );
     return RouteBackScope(

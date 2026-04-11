@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
@@ -61,8 +60,7 @@ class _TenantAdminLocationPickerScreenState
   Widget build(BuildContext context) {
     final backPolicy = buildTenantAdminCurrentRouteBackPolicy(
       context,
-      fallbackRoute:
-          widget.backFallbackRoute ?? const TenantAdminAccountsListRoute(),
+      fallbackRoute: widget.backFallbackRoute,
     );
     return Scaffold(
       appBar: AppBar(

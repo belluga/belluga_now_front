@@ -12,6 +12,8 @@ import 'package:belluga_now/application/router/resolvers/tenant_admin_static_pro
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_model.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_resolver.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
@@ -155,10 +157,16 @@ class TenantAdminModule extends ModuleContract {
               path: '',
               page: TenantAdminDashboardRoute.page,
               initial: true,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminDashboard,
+              ),
             ),
             AutoRoute(
               path: 'events',
               page: TenantAdminEventsRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsRoot,
+              ),
             ),
             CustomRoute(
               path: 'events/create',
@@ -166,6 +174,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'events/edit',
@@ -173,10 +185,17 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'events/types',
               page: TenantAdminEventTypesRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+              ),
             ),
             CustomRoute(
               path: 'events/types/create',
@@ -184,6 +203,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'events/types/edit',
@@ -191,10 +214,17 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'accounts',
               page: TenantAdminAccountsListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsRoot,
+              ),
             ),
             CustomRoute(
               path: 'accounts/create',
@@ -202,6 +232,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'accounts/location-picker',
@@ -209,10 +243,18 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'accounts/:accountSlug',
               page: TenantAdminAccountDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'accounts/:accountSlug/profiles/create',
@@ -220,6 +262,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'accounts/:accountSlug/profiles/:accountProfileId/edit',
@@ -227,10 +273,17 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'organizations',
               page: TenantAdminOrganizationsListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+              ),
             ),
             CustomRoute(
               path: 'organizations/create',
@@ -238,18 +291,33 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'organizations/:organizationId',
               page: TenantAdminOrganizationDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'profile-types',
               page: TenantAdminProfileTypesListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+              ),
             ),
             AutoRoute(
               path: 'profile-types/:profileType',
               page: TenantAdminProfileTypeDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'profile-types/create',
@@ -257,6 +325,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'profile-types/:profileType/edit',
@@ -264,14 +336,25 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'static_profile_types',
               page: TenantAdminStaticProfileTypesListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+              ),
             ),
             AutoRoute(
               path: 'static_profile_types/:profileType',
               page: TenantAdminStaticProfileTypeDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'static_profile_types/create',
@@ -279,6 +362,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'static_profile_types/:profileType/edit',
@@ -286,10 +373,17 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'taxonomies',
               page: TenantAdminTaxonomiesListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+              ),
             ),
             CustomRoute(
               path: 'taxonomies/create',
@@ -297,6 +391,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'taxonomies/:taxonomyId/edit',
@@ -304,14 +402,26 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'taxonomies/:taxonomyId/terms',
               page: TenantAdminTaxonomyTermsRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'taxonomies/:taxonomyId/terms/:termId',
               page: TenantAdminTaxonomyTermDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'taxonomies/:taxonomyId/terms/create',
@@ -319,6 +429,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'taxonomies/:taxonomyId/terms/:termId/edit',
@@ -326,14 +440,25 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'static_assets',
               page: TenantAdminStaticAssetsListRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsRoot,
+              ),
             ),
             AutoRoute(
               path: 'static_assets/:assetId',
               page: TenantAdminStaticAssetDetailRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'static_assets/create',
@@ -341,6 +466,10 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             CustomRoute(
               path: 'static_assets/:assetId/edit',
@@ -348,26 +477,49 @@ class TenantAdminModule extends ModuleContract {
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAssetsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
             ),
             AutoRoute(
               path: 'settings',
               page: TenantAdminSettingsRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsRoot,
+              ),
             ),
             AutoRoute(
               path: 'settings/local-preferences',
               page: TenantAdminSettingsLocalPreferencesRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
+              ),
             ),
             AutoRoute(
               path: 'settings/visual-identity',
               page: TenantAdminSettingsVisualIdentityRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
+              ),
             ),
             AutoRoute(
               path: 'settings/technical-integrations',
               page: TenantAdminSettingsTechnicalIntegrationsRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
+              ),
             ),
             AutoRoute(
               path: 'settings/environment-snapshot',
               page: TenantAdminSettingsEnvironmentSnapshotRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
+              ),
             ),
           ],
         ),

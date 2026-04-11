@@ -1,9 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/support/back_surface_kind.dart';
-import 'package:belluga_now/application/router/support/deterministic_route_back_policy.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
-import 'package:belluga_now/application/router/support/route_back_spec.dart';
-import 'package:belluga_now/application/router/support/route_no_history_outcome.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
@@ -136,14 +133,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   RouteBackPolicy _buildBackPolicy(BuildContext context) {
-    return DeterministicRouteBackPolicy(
-      context.router,
-      spec: RouteBackSpec(
-        surfaceKind: BackSurfaceKind.rootOpenable,
-        consumeLocalStateIfNeeded: _consumeScrollBackIfNeeded,
-        noHistoryOutcome: RouteNoHistoryOutcome.requestExit(_requestExit),
-        reentrancyKey: TenantHomeRoute.name,
-      ),
+    return buildCanonicalCurrentRouteBackPolicy(
+      context,
+      consumeBackNavigationIfNeeded: _consumeScrollBackIfNeeded,
+      requestExit: _requestExit,
     );
   }
 
