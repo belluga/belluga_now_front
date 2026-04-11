@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +12,11 @@ class TenantAdminLocationPickerScreen extends StatefulWidget {
   const TenantAdminLocationPickerScreen({
     super.key,
     this.initialLocation,
+    this.backFallbackRoute,
   });
 
   final TenantAdminLocation? initialLocation;
+  final PageRouteInfo<dynamic>? backFallbackRoute;
 
   @override
   State<TenantAdminLocationPickerScreen> createState() =>
@@ -55,12 +58,16 @@ class _TenantAdminLocationPickerScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(
+      context,
+      fallbackRoute: widget.backFallbackRoute,
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Selecionar Localização'),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.router.maybePop(),
+          onPressed: backPolicy.handleBack,
         ),
       ),
       body: StreamValueBuilder<TenantAdminLocation?>(
@@ -139,7 +146,11 @@ class _TenantAdminLocationPickerScreenState
                             onPressed: switch (location) {
                               final _? => () {
                                   _controller.confirmSelection();
-                                  context.router.maybePop();
+                                  if (context.router.canPop()) {
+                                    context.router.pop();
+                                    return;
+                                  }
+                                  backPolicy.handleBack();
                                 },
                               null => null,
                             },

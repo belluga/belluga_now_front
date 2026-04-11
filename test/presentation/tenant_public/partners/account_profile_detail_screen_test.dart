@@ -2,6 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -46,8 +48,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildArtistProfile(),
         ),
       ),
@@ -64,8 +67,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildArtistProfile(),
         ),
       ),
@@ -83,8 +87,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildArtistProfile(),
         ),
       ),
@@ -865,8 +870,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildRestaurantProfile(),
           directionsAppChooser: chooser,
         ),
@@ -893,8 +899,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildMinimalProfile(),
         ),
       ),
@@ -929,8 +936,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildMinimalProfile(),
         ),
       ),
@@ -963,8 +971,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildMinimalProfile(),
         ),
       ),
@@ -993,8 +1002,9 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: AccountProfileDetailScreen(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
           accountProfile: _buildVenueWithBioProfile(),
         ),
       ),
@@ -1037,6 +1047,39 @@ void main() {
         router.replaceAllRoutes.single.single.routeName, DiscoveryRoute.name);
   });
 
+  testWidgets(
+      'partner detail system back falls back to discovery when no history exists',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter()..canPopResult = false;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, DiscoveryRoute.name);
+  });
+
   testWidgets('partner detail back pops when previous history exists',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1057,6 +1100,36 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.arrow_back).first);
+    await tester.pumpAndSettle();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 1);
+    expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets('partner detail system back pops when previous history exists',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter()..canPopResult = true;
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
     await tester.pumpAndSettle();
 
     expect(router.canPopCallCount, 1);
@@ -1105,6 +1178,9 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
+  RootStackRouter get root => _FakeRootStackRouter('/parceiro/ananda-torres');
+
+  @override
   Future<T?> pushPath<T extends Object?>(
     String path, {
     bool includePrefixMatches = false,
@@ -1150,19 +1226,52 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   }
 }
 
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({
     required this.fullPath,
+    String? name,
+    Map<String, dynamic>? meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  }) : _queryParams = Parameters(queryParams);
+  })  : name = name ?? PartnerDetailRoute.name,
+        meta = meta ??
+            canonicalRouteMeta(
+              family: CanonicalRouteFamily.partnerDetail,
+            ),
+        pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute(),
+        _queryParams = Parameters(queryParams);
+
+  @override
+  final String name;
 
   @override
   final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
 
   final Parameters _queryParams;
 
   @override
   Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {

@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
@@ -250,6 +251,7 @@ class _TenantAdminAccountDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return StreamValueBuilder<bool>(
       streamValue: _profilesController.accountDeletingStreamValue,
       builder: (context, isDeleting) {
@@ -275,6 +277,11 @@ class _TenantAdminAccountDetailScreenState
 
                         return Scaffold(
                           appBar: AppBar(
+                            leading: IconButton(
+                              tooltip: 'Voltar',
+                              onPressed: backPolicy.handleBack,
+                              icon: const Icon(Icons.arrow_back_rounded),
+                            ),
                             title: Text('Conta: $accountSlugForUi'),
                             actions: [
                               if (profile case final _?)

@@ -40,6 +40,25 @@ void main() {
     expect(result, '/');
   });
 
+  test('resolveWebPromotionDismissPath falls back to home for auth-owned paths',
+      () {
+    final result = resolveWebPromotionDismissPath(
+      redirectPath: '/profile',
+    );
+
+    expect(result, '/');
+  });
+
+  test(
+      'resolveWebPromotionDismissPath preserves invite preview redirect when code exists',
+      () {
+    final result = resolveWebPromotionDismissPath(
+      redirectPath: '/invite?code=ABCD1234',
+    );
+
+    expect(result, '/invite?code=ABCD1234');
+  });
+
   test('resolveWebPromotionShareCode returns code for invite context', () {
     final result = resolveWebPromotionShareCode(
       redirectPath: '/invite?code=ABCD1234',
@@ -67,7 +86,8 @@ void main() {
     );
   });
 
-  test('isAuthOwnedPromotionRedirectPath matches auth-owned redirect family', () {
+  test('isAuthOwnedPromotionRedirectPath matches auth-owned redirect family',
+      () {
     expect(isAuthOwnedPromotionRedirectPath('/profile'), isTrue);
     expect(isAuthOwnedPromotionRedirectPath('/workspace/tenant-a'), isTrue);
     expect(isAuthOwnedPromotionRedirectPath('/auth/login'), isTrue);

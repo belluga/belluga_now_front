@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
@@ -141,8 +142,14 @@ class _TenantAdminTaxonomyTermsScreenState
     required String? error,
     required Widget body,
   }) {
+    final backPolicy = buildTenantAdminCurrentRouteBackPolicy(context);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Voltar',
+          onPressed: backPolicy.handleBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
         title: Text('Termos: ${widget.taxonomy.name}'),
       ),
       floatingActionButton: FloatingActionButton.extended(

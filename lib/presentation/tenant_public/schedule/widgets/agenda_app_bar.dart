@@ -11,12 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AgendaAppBar extends StatelessWidget {
-  const AgendaAppBar({
+  AgendaAppBar({
     super.key,
     required this.controller,
     this.onBack,
     this.actions = const AgendaAppBarActions(),
-  });
+  }) : assert(!actions.showBack || onBack != null);
 
   final AgendaAppBarController controller;
   final VoidCallback? onBack;
@@ -39,7 +39,7 @@ class AgendaAppBar extends StatelessWidget {
           leading: showBack
               ? IconButton(
                   tooltip: 'Voltar',
-                  onPressed: onBack ?? () => context.router.maybePop(),
+                  onPressed: onBack,
                   icon: Icon(
                     Icons.arrow_back,
                     color: colorScheme.onSurfaceVariant,

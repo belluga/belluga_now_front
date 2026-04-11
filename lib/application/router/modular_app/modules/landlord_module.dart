@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_home_login_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_login_sheet_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
@@ -34,6 +36,7 @@ class LandlordModule extends ModuleContract {
           path: '/',
           page: LandlordHomeRoute.page,
           guards: [LandlordRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.landlordHome),
         ),
         RedirectRoute(
           path: '/landlord',

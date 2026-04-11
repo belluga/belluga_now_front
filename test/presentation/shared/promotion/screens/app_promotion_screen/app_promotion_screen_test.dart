@@ -3,6 +3,8 @@ import 'package:belluga_now/application/contracts/promotion/promotion_lead_captu
 import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
@@ -277,7 +279,92 @@ void main() {
     expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
   });
 
+  testWidgets(
+      'system back falls back to home when auth-owned redirect has no stack',
+      (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+    router.canPopValue = false;
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        redirectPath: '/profile',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes, isNotNull);
+    expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
+  });
+
   testWidgets('success CTA uses pop only', (tester) async {
+    _registerControllers(
+      experience: AppPromotionExperience.testerWaitlist,
+      preferredStorePlatformResolver: () => null,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+    router.canPopValue = true;
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_name_field')),
+      'Maria Tester',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      'tester@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+      '27999999999',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_platform_android')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+      'Mapa confiável e agenda atualizada.',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_submit_button')),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('app_promotion_waitlist_continue_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 1);
+    expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets('success CTA falls back to invite preview when there is no stack',
+      (tester) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
       preferredStorePlatformResolver: () => null,
@@ -325,8 +412,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.popCalls, 1);
-    expect(router.replaceAllCalls, 0);
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes, isNotNull);
+    expect(
+        router.lastReplaceAllRoutes!.single.routeName, InviteEntryRoute.name);
+    expect(
+      router.lastReplaceAllRoutes!.single.rawQueryParams['code'],
+      'CODE123',
+    );
   });
 
   testWidgets(
@@ -383,12 +477,28 @@ Widget _buildWidget({
   required _RecordingStackRouter router,
   String redirectPath = '/invite?code=CODE123',
 }) {
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      fullPath: '/baixe-o-app',
+      queryParams: <String, dynamic>{
+        'redirect': redirectPath,
+      },
+    ),
+    router: router,
+    stackKey: const ValueKey<String>('stack'),
+    pendingChildren: const <RouteMatch>[],
+    type: const RouteType.material(),
+  );
+
   return StackRouterScope(
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      home: AppPromotionScreen(
-        redirectPath: redirectPath,
+      home: RouteDataScope(
+        routeData: routeData,
+        child: AppPromotionScreen(
+          redirectPath: redirectPath,
+        ),
       ),
     ),
   );
@@ -399,6 +509,12 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   int replaceAllCalls = 0;
   bool canPopValue = false;
   List<PageRouteInfo>? lastReplaceAllRoutes;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter(
+        currentPath: '/baixe-o-app',
+        buildPageRouteDelegate: buildPageRoute,
+      );
 
   @override
   bool canPop({
@@ -423,6 +539,91 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     replaceAllCalls += 1;
     lastReplaceAllRoutes = routes;
   }
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    if (path == null) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(path);
+    if (uri == null) {
+      return null;
+    }
+
+    return switch (uri.path) {
+      '/' || '/home' => const TenantHomeRoute(),
+      '/invite' => PageRouteInfo(
+          InviteEntryRoute.name,
+          rawQueryParams: uri.queryParameters,
+        ),
+      _ => PageRouteInfo(
+          'mock:${uri.path}',
+          rawQueryParams: uri.queryParameters,
+        ),
+    };
+  }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter({
+    required this.currentPath,
+    required this.buildPageRouteDelegate,
+  });
+
+  @override
+  final String currentPath;
+
+  final PageRouteInfo? Function(
+    String? path, {
+    bool includePrefixMatches,
+  }) buildPageRouteDelegate;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    return buildPageRouteDelegate(
+      path,
+      includePrefixMatches: includePrefixMatches,
+    );
+  }
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.fullPath,
+    Map<String, dynamic> queryParams = const <String, dynamic>{},
+  }) : _queryParams = Parameters(queryParams);
+
+  @override
+  String get name => AppPromotionRoute.name;
+
+  @override
+  final String fullPath;
+
+  @override
+  Map<String, dynamic> get meta => canonicalRouteMeta(
+        family: CanonicalRouteFamily.appPromotion,
+      );
+
+  final Parameters _queryParams;
+
+  @override
+  Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => AppPromotionRoute();
 }
 
 class _FakePromotionLeadCaptureService

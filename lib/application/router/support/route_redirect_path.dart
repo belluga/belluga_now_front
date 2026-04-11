@@ -44,6 +44,18 @@ String resolveWebPromotionPath({
   ).toString();
 }
 
+String resolveWebPromotionDismissPath({
+  required String redirectPath,
+}) {
+  if (isAuthOwnedPromotionRedirectPath(redirectPath)) {
+    return '/';
+  }
+
+  return resolveWebPromotionPath(
+    redirectPath: redirectPath,
+  );
+}
+
 String? resolveWebPromotionShareCode({
   required String redirectPath,
 }) {

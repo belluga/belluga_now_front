@@ -1,3 +1,5 @@
+import 'package:belluga_now/application/router/support/back_surface_kind.dart';
+import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
@@ -125,6 +127,7 @@ void main() {
       tester,
       child: TenantAdminFormScaffold(
         title: 'Criar taxonomia',
+        closePolicy: const _NoopRouteBackPolicy(),
         child: SingleChildScrollView(
           child: Column(
             children: [
@@ -167,4 +170,14 @@ void main() {
       ),
     );
   });
+}
+
+class _NoopRouteBackPolicy implements RouteBackPolicy {
+  const _NoopRouteBackPolicy();
+
+  @override
+  BackSurfaceKind get surfaceKind => BackSurfaceKind.internalOnly;
+
+  @override
+  void handleBack() {}
 }

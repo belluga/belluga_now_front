@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
@@ -84,6 +85,8 @@ class _TenantAdminStaticAssetEditScreenState
                     final hasCover =
                         selectedDefinition?.capabilities.hasCover ?? false;
                     return TenantAdminFormScaffold(
+                      closePolicy:
+                          buildTenantAdminCurrentRouteBackPolicy(context),
                       title: 'Editar ativo',
                       child: Form(
                         key: _controller.formKey,
@@ -185,6 +188,9 @@ class _TenantAdminStaticAssetEditScreenState
     context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
+        backFallbackRoute: TenantAdminStaticAssetEditRoute(
+          assetId: widget.assetId,
+        ),
       ),
     );
   }
@@ -1040,7 +1046,7 @@ class _TenantAdminStaticAssetEditScreenState
     if (!confirmed) return;
     _controller.deleteAsset(asset.id).then((_) {
       if (!mounted) return;
-      context.router.maybePop();
+      performTenantAdminCurrentRouteBack(context);
     });
   }
 }

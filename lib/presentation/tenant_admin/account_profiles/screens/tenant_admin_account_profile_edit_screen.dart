@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -439,6 +440,10 @@ class _TenantAdminAccountProfileEditScreenState
     context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
+        backFallbackRoute: TenantAdminAccountProfileEditRoute(
+          accountSlug: _currentAccountSlugForRequests(),
+          accountProfileId: _currentAccountProfileIdForRequests(),
+        ),
       ),
     );
   }
@@ -566,6 +571,10 @@ class _TenantAdminAccountProfileEditScreenState
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
+                                    closePolicy:
+                                        buildTenantAdminCurrentRouteBackPolicy(
+                                      context,
+                                    ),
                                     title: 'Editar Perfil',
                                     child: TenantAdminErrorBanner(
                                       rawError: loadError ?? '',
@@ -582,6 +591,10 @@ class _TenantAdminAccountProfileEditScreenState
                                 if (profile is! TenantAdminAccountProfile &&
                                     isLoading) {
                                   return TenantAdminFormScaffold(
+                                    closePolicy:
+                                        buildTenantAdminCurrentRouteBackPolicy(
+                                      context,
+                                    ),
                                     title: 'Editar Perfil',
                                     child: const Center(
                                       child: CircularProgressIndicator(),
@@ -590,6 +603,10 @@ class _TenantAdminAccountProfileEditScreenState
                                 }
 
                                 return TenantAdminFormScaffold(
+                                  closePolicy:
+                                      buildTenantAdminCurrentRouteBackPolicy(
+                                    context,
+                                  ),
                                   title: 'Editar Perfil',
                                   child: SingleChildScrollView(
                                     child: Form(

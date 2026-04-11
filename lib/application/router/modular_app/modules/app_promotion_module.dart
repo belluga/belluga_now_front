@@ -4,6 +4,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/contracts/promotion/promotion_lead_capture_service_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/promotion/tenant_public_api_promotion_lead_capture_service.dart';
@@ -37,6 +39,7 @@ class AppPromotionModule extends ModuleContract {
           path: webPromotionRoutePath,
           page: AppPromotionRoute.page,
           guards: [TenantRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.appPromotion),
         ),
       ];
 }

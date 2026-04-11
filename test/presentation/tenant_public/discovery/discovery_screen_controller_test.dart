@@ -3,6 +3,8 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -1214,6 +1216,9 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
 
   @override
+  RootStackRouter get root => _FakeRootStackRouter('/descobrir');
+
+  @override
   bool canPop({
     bool ignoreChildRoutes = false,
     bool ignoreParentRoutes = false,
@@ -1239,19 +1244,52 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }
 }
 
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({
     required this.fullPath,
+    String? name,
+    Map<String, dynamic>? meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  }) : _queryParams = Parameters(queryParams);
+  })  : name = name ?? DiscoveryRoute.name,
+        meta = meta ??
+            canonicalRouteMeta(
+              family: CanonicalRouteFamily.discoveryRoot,
+            ),
+        pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute(),
+        _queryParams = Parameters(queryParams);
+
+  @override
+  final String name;
 
   @override
   final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
 
   final Parameters _queryParams;
 
   @override
   Parameters get queryParams => _queryParams;
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {

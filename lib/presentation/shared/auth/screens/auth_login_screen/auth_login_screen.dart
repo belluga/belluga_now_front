@@ -1,10 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_header_expanded_content.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_header_headline.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_canva_content.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -32,6 +34,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
     return StreamValueBuilder<String?>(
       streamValue: _controller.generalErrorStreamValue,
       builder: (context, generalError) {
@@ -48,42 +51,48 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                   onClearGeneralError: _controller.clearGeneralError,
                   onClearLoginResult: _controller.clearLoginResult,
                   onClearSignUpResult: _controller.clearSignUpResult,
-                  child: Scaffold(
-                    body: CustomScrollView(
-                      controller:
-                          _controller.sliverAppBarController.scrollController,
-                      slivers: [
-                        SliverAppBar(
-                          elevation: 0,
-                          automaticallyImplyLeading: true,
-                          collapsedHeight: _controller
-                              .sliverAppBarController.collapsedBarHeight,
-                          expandedHeight: _controller
-                              .sliverAppBarController.expandedBarHeight,
-                          pinned: true,
-                          backgroundColor: Theme.of(context).primaryColor,
-                          title: MainLogo(appData: _controller.appData),
-                          flexibleSpace: FlexibleSpaceBar(
-                            collapseMode: CollapseMode.parallax,
-                            background: AuthHeaderExpandedContent(),
+                  child: RouteBackScope(
+                    backPolicy: backPolicy,
+                    child: Scaffold(
+                      body: CustomScrollView(
+                        controller:
+                            _controller.sliverAppBarController.scrollController,
+                        slivers: [
+                          SliverAppBar(
+                            elevation: 0,
+                            automaticallyImplyLeading: false,
+                            leading: BackButton(
+                              onPressed: backPolicy.handleBack,
+                            ),
+                            collapsedHeight: _controller
+                                .sliverAppBarController.collapsedBarHeight,
+                            expandedHeight: _controller
+                                .sliverAppBarController.expandedBarHeight,
+                            pinned: true,
+                            backgroundColor: Theme.of(context).primaryColor,
+                            title: MainLogo(appData: _controller.appData),
+                            flexibleSpace: FlexibleSpaceBar(
+                              collapseMode: CollapseMode.parallax,
+                              background: AuthHeaderExpandedContent(),
+                            ),
                           ),
-                        ),
-                        SliverToBoxAdapter(child: AuthHeaderHeadline()),
-                        SliverToBoxAdapter(
-                          child: Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 24.0,
-                                vertical: 24,
-                              ),
-                              child: AuthLoginCanvaContent(
-                                navigateToPasswordRecover:
-                                    _navigateToPasswordRecover,
+                          SliverToBoxAdapter(child: AuthHeaderHeadline()),
+                          SliverToBoxAdapter(
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 24,
+                                ),
+                                child: AuthLoginCanvaContent(
+                                  navigateToPasswordRecover:
+                                      _navigateToPasswordRecover,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );

@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
@@ -12,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/status_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -19,12 +19,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
-    required this.backFallbackRoute,
     this.initialPoiQuery,
     this.initialPoiStackQuery,
   });
 
-  final PageRouteInfo<dynamic> backFallbackRoute;
   final String? initialPoiQuery;
   final String? initialPoiStackQuery;
 
@@ -69,14 +67,9 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildScaffold() {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        _handleBack();
-      },
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(context);
+    return RouteBackScope(
+      backPolicy: backPolicy,
       child: Scaffold(
         body: Stack(
           children: [
@@ -101,7 +94,7 @@ class _MapScreenState extends State<MapScreen> {
                             backgroundColor: Colors.black54,
                             foregroundColor: Colors.white,
                           ),
-                          onPressed: _handleBack,
+                          onPressed: backPolicy.handleBack,
                           icon: const Icon(Icons.arrow_back),
                         ),
                         const Spacer(),
@@ -175,8 +168,9 @@ class _MapScreenState extends State<MapScreen> {
           streamValue: _controller.poiDeckHeightRevisionStreamValue,
           builder: (_, __) {
             final selectedPoi = _controller.selectedPoiStreamValue.value;
-            final selectedDeckHeight =
-                selectedPoi == null ? 0.0 : _selectedDeckHeight(context, selectedPoi);
+            final selectedDeckHeight = selectedPoi == null
+                ? 0.0
+                : _selectedDeckHeight(context, selectedPoi);
             final double bottomOffset = !hasSelectedPoi
                 ? 16.0 + 88.0
                 : 24.0 + selectedDeckHeight + 20.0;
@@ -224,7 +218,8 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    final deckIndex = _controller.deckIndexForSelectedPoi(selectedPoi, deckPois);
+    final deckIndex =
+        _controller.deckIndexForSelectedPoi(selectedPoi, deckPois);
     final safeFallbackHeight = _safePoiDeckHeight(context);
     return _clampPoiDeckHeight(
       context,
@@ -353,13 +348,6 @@ class _MapScreenState extends State<MapScreen> {
     await _controller.init(
       initialPoiQuery: widget.initialPoiQuery,
       initialPoiStackQuery: widget.initialPoiStackQuery,
-    );
-  }
-
-  void _handleBack() {
-    performTenantPublicSafeBack(
-      context.router,
-      fallbackRoute: widget.backFallbackRoute,
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/tenant_public_safe_back.dart';
+import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discove
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
+import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -36,20 +37,18 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        _handleBackNavigation(context);
-      },
+    final backPolicy = buildCanonicalCurrentRouteBackPolicy(
+      context,
+      consumeBackNavigationIfNeeded: _controller.consumeBackNavigationIfNeeded,
+    );
+    return RouteBackScope(
+      backPolicy: backPolicy,
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
             key: const ValueKey<String>('discovery-safe-back-button'),
             tooltip: 'Voltar',
-            onPressed: () => _handleBackNavigation(context),
+            onPressed: backPolicy.handleBack,
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
           title: StreamValueBuilder<bool>(
@@ -99,14 +98,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void _handleBackNavigation(BuildContext context) {
-    performTenantPublicSafeBack(
-      context.router,
-      fallbackRoute: const TenantHomeRoute(),
-      consumeBackNavigationIfNeeded: _controller.consumeBackNavigationIfNeeded,
     );
   }
 

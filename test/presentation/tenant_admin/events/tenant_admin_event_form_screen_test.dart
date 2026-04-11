@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -459,6 +461,10 @@ Future<void> _pumpWithAutoRoute(
       NamedRouteDef(
         name: 'events-form-test',
         path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminEventsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
         builder: (_, __) => child,
       ),
     ],
