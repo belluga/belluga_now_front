@@ -1,4 +1,7 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -16,44 +19,43 @@ void main() {
   testWidgets(
     'tab tap keeps the target section start visible with taller collapsed app bar',
     (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImmersiveDetailScreen(
-            title: 'Profile',
-            collapsedToolbarHeight: 72,
-            backPolicy: _FakeBackPolicy(),
-            heroContent: Container(color: Colors.black),
-            tabs: [
-              ImmersiveTabItem(
-                title: 'Sobre',
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      key: const Key('sectionOneStart'),
-                      padding: const EdgeInsets.all(16),
-                      child: const Text('Section 1 Start'),
-                    ),
-                    Container(height: 900, color: Colors.red),
-                  ],
-                ),
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          collapsedToolbarHeight: 72,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('sectionOneStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Section 1 Start'),
+                  ),
+                  Container(height: 900, color: Colors.red),
+                ],
               ),
-              ImmersiveTabItem(
-                title: 'Agenda',
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      key: const Key('sectionTwoStart'),
-                      padding: const EdgeInsets.all(16),
-                      child: const Text('Section 2 Start'),
-                    ),
-                    Container(height: 600, color: Colors.blue),
-                  ],
-                ),
+            ),
+            ImmersiveTabItem(
+              title: 'Agenda',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('sectionTwoStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Section 2 Start'),
+                  ),
+                  Container(height: 600, color: Colors.blue),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
 
@@ -78,57 +80,56 @@ void main() {
   testWidgets(
     'returning to first tab resets immersive scroll to the real top',
     (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImmersiveDetailScreen(
-            title: 'Event',
-            collapsedToolbarHeight: 72,
-            backPolicy: _FakeBackPolicy(),
-            heroContent: Stack(
-              children: [
-                Container(color: Colors.black),
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: Container(
-                    key: const Key('heroTopMarker'),
-                    width: 24,
-                    height: 24,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            tabs: [
-              ImmersiveTabItem(
-                title: 'Sobre',
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      key: const Key('firstSectionStart'),
-                      padding: const EdgeInsets.all(16),
-                      child: const Text('First Section'),
-                    ),
-                    Container(height: 900, color: Colors.red),
-                  ],
-                ),
-              ),
-              ImmersiveTabItem(
-                title: 'Artists',
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      key: const Key('secondSectionStart'),
-                      padding: const EdgeInsets.all(16),
-                      child: const Text('Second Section'),
-                    ),
-                    Container(height: 900, color: Colors.blue),
-                  ],
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Event',
+          collapsedToolbarHeight: 72,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Stack(
+            children: [
+              Container(color: Colors.black),
+              Align(
+                alignment: Alignment.topLeft,
+                child: Container(
+                  key: const Key('heroTopMarker'),
+                  width: 24,
+                  height: 24,
+                  color: Colors.white,
                 ),
               ),
             ],
           ),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('firstSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('First Section'),
+                  ),
+                  Container(height: 900, color: Colors.red),
+                ],
+              ),
+            ),
+            ImmersiveTabItem(
+              title: 'Artists',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('secondSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Second Section'),
+                  ),
+                  Container(height: 900, color: Colors.blue),
+                ],
+              ),
+            ),
+          ],
         ),
       );
 
@@ -157,19 +158,18 @@ void main() {
     (tester) async {
       final backPolicy = _FakeBackPolicy();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImmersiveDetailScreen(
-            title: 'Profile',
-            backPolicy: backPolicy,
-            heroContent: Container(color: Colors.black),
-            tabs: [
-              ImmersiveTabItem(
-                title: 'Sobre',
-                content: SizedBox(height: 200, child: Text('Section')),
-              ),
-            ],
-          ),
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: backPolicy,
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: SizedBox(height: 200, child: Text('Section')),
+            ),
+          ],
         ),
       );
 
@@ -186,19 +186,18 @@ void main() {
     (tester) async {
       final backPolicy = _FakeBackPolicy();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImmersiveDetailScreen(
-            title: 'Profile',
-            backPolicy: backPolicy,
-            heroContent: Container(color: Colors.black),
-            tabs: [
-              ImmersiveTabItem(
-                title: 'Sobre',
-                content: SizedBox(height: 200, child: Text('Section')),
-              ),
-            ],
-          ),
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: backPolicy,
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: SizedBox(height: 200, child: Text('Section')),
+            ),
+          ],
         ),
       );
 
@@ -212,6 +211,31 @@ void main() {
 
       expect(backPolicy.callCount, 1);
     },
+  );
+}
+
+Future<void> _pumpImmersiveScreen(
+  WidgetTester tester,
+  ImmersiveDetailScreen child,
+) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'immersive-detail-test',
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.immersiveEventDetail,
+        ),
+        builder: (_, __) => child,
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
   );
 }
 
