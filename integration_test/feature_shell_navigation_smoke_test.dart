@@ -4,6 +4,8 @@ import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/support/tenant_public_map_entry_flow.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -45,8 +47,19 @@ void main() {
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   final originalGeolocator = GeolocatorPlatform.instance;
 
-  setUpAll(() {
-    GeolocatorPlatform.instance = _TestGeolocatorPlatform();
+  setUp(() async {
+    await GetIt.I.reset();
+    LocationPermissionGateRuntime.resetForTesting();
+    resetTenantPublicMapEntryFlowForTesting();
+    GeolocatorPlatform.instance = _TestGeolocatorPlatform(
+      permission: LocationPermission.whileInUse,
+    );
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+    LocationPermissionGateRuntime.resetForTesting();
+    resetTenantPublicMapEntryFlowForTesting();
   });
 
   tearDownAll(() {
@@ -112,7 +125,7 @@ void main() {
       await _pumpFor(tester, const Duration(seconds: 2));
     }
 
-    final continueButton = find.text('Continuar sem localização ao vivo');
+    final continueButton = find.text('Continuar sem localização');
     if (await _waitForMaybeFinder(tester, continueButton)) {
       await tester.tap(continueButton.first);
       await _pumpFor(tester, const Duration(seconds: 1));
@@ -214,9 +227,150 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'Home to Map permission gate to Home navigation via system back',
+    (tester) async {
+      final getIt = GetIt.I;
+      _unregisterIfRegistered<ApplicationContract>();
+      _unregisterIfRegistered<AppDataRepository>();
+      _unregisterIfRegistered<ScheduleRepositoryContract>();
+      _unregisterIfRegistered<UserEventsRepositoryContract>();
+      _unregisterIfRegistered<InvitesRepositoryContract>();
+      _unregisterIfRegistered<UserLocationRepositoryContract>();
+
+      getIt.registerSingleton<AppDataRepository>(
+        AppDataRepository(
+          backend: AppDataBackend(),
+          localInfoSource: AppDataLocalInfoSource(),
+        ),
+      );
+      getIt.registerSingleton<ScheduleRepositoryContract>(
+        _FakeScheduleRepository(),
+      );
+      getIt.registerSingleton<UserEventsRepositoryContract>(
+        _FakeUserEventsRepository(),
+      );
+      getIt.registerSingleton<InvitesRepositoryContract>(
+        _FakeInvitesRepository(),
+      );
+      getIt.registerSingleton<UserLocationRepositoryContract>(
+        _FakeUserLocationRepository(),
+      );
+      final app = Application();
+      getIt.registerSingleton<ApplicationContract>(app);
+      await app.init();
+
+      await tester.pumpWidget(app);
+
+      await _pumpFor(tester, const Duration(seconds: 2));
+      await _dismissInviteOverlayIfNeeded(tester);
+      await _waitForFinder(
+        tester,
+        find.text('Seus Favoritos', skipOffstage: false),
+      );
+
+      GeolocatorPlatform.instance = _TestGeolocatorPlatform(
+        permission: LocationPermission.denied,
+      );
+
+      await tester.tap(find.widgetWithText(NavigationDestination, 'Mapa'));
+      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForFinder(
+        tester,
+        find.text('Veja o que está perto de você', skipOffstage: false),
+      );
+
+      await tester.binding.handlePopRoute();
+      await _pumpFor(tester, const Duration(seconds: 1));
+
+      await _waitForFinder(
+        tester,
+        find.text('Seus Favoritos', skipOffstage: false),
+      );
+    },
+  );
+
+  testWidgets(
+    'Home to Map permission grant replaces boundary and preserves back stack',
+    (tester) async {
+      final getIt = GetIt.I;
+      _unregisterIfRegistered<ApplicationContract>();
+      _unregisterIfRegistered<AppDataRepository>();
+      _unregisterIfRegistered<ScheduleRepositoryContract>();
+      _unregisterIfRegistered<UserEventsRepositoryContract>();
+      _unregisterIfRegistered<InvitesRepositoryContract>();
+      _unregisterIfRegistered<UserLocationRepositoryContract>();
+
+      getIt.registerSingleton<AppDataRepository>(
+        AppDataRepository(
+          backend: AppDataBackend(),
+          localInfoSource: AppDataLocalInfoSource(),
+        ),
+      );
+      getIt.registerSingleton<ScheduleRepositoryContract>(
+        _FakeScheduleRepository(),
+      );
+      getIt.registerSingleton<UserEventsRepositoryContract>(
+        _FakeUserEventsRepository(),
+      );
+      getIt.registerSingleton<InvitesRepositoryContract>(
+        _FakeInvitesRepository(),
+      );
+      getIt.registerSingleton<UserLocationRepositoryContract>(
+        _FakeUserLocationRepository(),
+      );
+      final app = Application();
+      getIt.registerSingleton<ApplicationContract>(app);
+      await app.init();
+
+      await tester.pumpWidget(app);
+
+      await _pumpFor(tester, const Duration(seconds: 2));
+      await _dismissInviteOverlayIfNeeded(tester);
+      await _waitForFinder(
+        tester,
+        find.text('Seus Favoritos', skipOffstage: false),
+      );
+
+      GeolocatorPlatform.instance = _TestGeolocatorPlatform(
+        permission: LocationPermission.denied,
+        requestPermissionResult: LocationPermission.whileInUse,
+      );
+
+      await tester.tap(find.widgetWithText(NavigationDestination, 'Mapa'));
+      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForFinder(
+        tester,
+        find.text('Veja o que está perto de você', skipOffstage: false),
+      );
+
+      await tester.tap(find.text('Permitir localização').first);
+      await _pumpFor(tester, const Duration(seconds: 2));
+      await _waitForFinder(tester, find.byType(MapScreen));
+
+      await tester.binding.handlePopRoute();
+      await _pumpFor(tester, const Duration(seconds: 1));
+
+      await _waitForFinder(
+        tester,
+        find.text('Seus Favoritos', skipOffstage: false),
+      );
+    },
+  );
 }
 
 class _TestGeolocatorPlatform extends GeolocatorPlatform {
+  _TestGeolocatorPlatform({
+    required this.permission,
+    LocationPermission? requestPermissionResult,
+  })  : _requestPermissionResult = requestPermissionResult ?? permission,
+        _currentPermission = permission;
+
+  final LocationPermission permission;
+  final LocationPermission _requestPermissionResult;
+  LocationPermission _currentPermission;
+
   static final Position _position = Position(
     latitude: -20.6772,
     longitude: -40.5093,
@@ -231,12 +385,13 @@ class _TestGeolocatorPlatform extends GeolocatorPlatform {
   );
 
   @override
-  Future<LocationPermission> checkPermission() async =>
-      LocationPermission.whileInUse;
+  Future<LocationPermission> checkPermission() async => _currentPermission;
 
   @override
-  Future<LocationPermission> requestPermission() async =>
-      LocationPermission.whileInUse;
+  Future<LocationPermission> requestPermission() async {
+    _currentPermission = _requestPermissionResult;
+    return _currentPermission;
+  }
 
   @override
   Future<bool> isLocationServiceEnabled() async => true;

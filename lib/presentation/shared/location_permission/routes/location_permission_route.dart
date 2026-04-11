@@ -21,10 +21,9 @@ class LocationPermissionRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedInitialState = initialState ?? LocationPermissionState.denied;
     return ModuleScope<InitializationModule>(
       child: LocationPermissionScreen(
-        initialState: resolvedInitialState,
+        initialState: initialState,
         allowContinueWithoutLocation: allowContinueWithoutLocation,
         onResult: onResult,
       ),

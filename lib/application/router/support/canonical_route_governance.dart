@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
+import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_history_state.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
@@ -1033,11 +1034,11 @@ CityMapRoute _cityMapRouteFromContext(_CanonicalRouteContext context) {
 }
 
 PageRouteInfo<dynamic> _promotionDismissRoute(_CanonicalRouteContext context) {
-  final redirectPath = context.queryParams.optString('redirect');
-  final dismissPath = resolveWebPromotionDismissPath(
-    redirectPath: redirectPath ?? '/',
+  return resolveBoundaryDismissRoute(
+    kind: BoundaryDismissKind.appPromotion,
+    redirectPath: context.queryParams.optString('redirect'),
+    buildRouteFromPath: context.buildRouteFromPath,
   );
-  return context.buildRouteFromPath(dismissPath) ?? const TenantHomeRoute();
 }
 
 List<_CanonicalHistoryStage> _buildPromotionStages(

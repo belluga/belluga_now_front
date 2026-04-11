@@ -1,14 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/any_location_route_guard.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
-import 'package:belluga_now/application/router/guards/location_permission_state.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
+import 'package:belluga_now/application/router/support/location_permission_blocker.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 
 class LiveLocationRouteGuard extends AutoRouteGuard {
   LiveLocationRouteGuard({
     LocationPermissionBlockerLoader? blockerLoader,
-  }) : _blockerLoader = blockerLoader ?? _defaultCurrentBlocker;
+  }) : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker;
 
   final LocationPermissionBlockerLoader _blockerLoader;
 
@@ -17,6 +17,8 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
     NavigationResolver resolver,
     StackRouter router,
   ) async {
+    final pendingRedirectPath = buildRedirectPathFromRouteMatch(resolver.route);
+    var didResolveGate = false;
     final blocker = await _blockerLoader();
     if (blocker == null) {
       resolver.next(true);
@@ -28,25 +30,24 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
         initialState: blocker,
         allowContinueWithoutLocation: false,
         onResult: (result) {
-          resolver.next(result == LocationPermissionGateResult.granted);
+          if (didResolveGate) {
+            return;
+          }
+          didResolveGate = true;
+
+          if (result == LocationPermissionGateResult.granted) {
+            resolver.next(true);
+            return;
+          }
+
+          resolveGuardedBoundaryCancellation(
+            resolver: resolver,
+            router: router,
+            kind: BoundaryDismissKind.locationPermission,
+            redirectPath: pendingRedirectPath,
+          );
         },
       ),
     );
-  }
-
-  static Future<LocationPermissionState?> _defaultCurrentBlocker() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return LocationPermissionState.serviceDisabled;
-    }
-
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      return LocationPermissionState.denied;
-    }
-    if (permission == LocationPermission.deniedForever) {
-      return LocationPermissionState.deniedForever;
-    }
-    return null;
   }
 }

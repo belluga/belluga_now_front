@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
@@ -5,6 +7,7 @@ import 'package:belluga_now/presentation/shared/location_permission/screens/loca
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:mockito/mockito.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -166,4 +169,179 @@ void main() {
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.textContaining('Não foi possível liberar'), findsOneWidget);
   });
+
+  testWidgets('back button falls back to home when there is no stack',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: const LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets('system back falls back to home when there is no stack',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: const LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets('back button uses pop when the permission route has stack history',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter()..canPopValue = true;
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: const LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(router.popCalls, 1);
+    expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets('back button returns cancelled result when onResult is present',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter();
+    LocationPermissionGateResult? capturedResult;
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+          onResult: (result) => capturedResult = result,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(capturedResult, LocationPermissionGateResult.cancelled);
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 0);
+  });
+}
+
+Widget _buildWidget({
+  required _RecordingStackRouter router,
+  required Widget child,
+}) {
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      home: child,
+    ),
+  );
+}
+
+class _RecordingStackRouter extends Mock implements StackRouter {
+  int popCalls = 0;
+  int replaceAllCalls = 0;
+  bool canPopValue = false;
+  List<PageRouteInfo>? lastReplaceAllRoutes;
+
+  @override
+  RootStackRouter get root => _FakeRootStackRouter();
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return canPopValue;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCalls += 1;
+  }
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo>? routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {
+    replaceAllCalls += 1;
+    lastReplaceAllRoutes = routes;
+  }
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  @override
+  RootStackRouter get root => this;
+
+  @override
+  String get currentPath => '/location/permission';
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  PageRouteInfo? buildPageRoute(
+    String? path, {
+    bool includePrefixMatches = true,
+  }) {
+    final uri = Uri.tryParse(path ?? '');
+    if (uri == null) {
+      return null;
+    }
+
+    return switch (uri.path) {
+      '/' => const TenantHomeRoute(),
+      '/profile' => const ProfileRoute(),
+      _ => null,
+    };
+  }
 }
