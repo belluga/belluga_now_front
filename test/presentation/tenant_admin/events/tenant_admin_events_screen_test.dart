@@ -42,7 +42,10 @@ void main() {
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await _pumpEventsRouter(tester);
+    await _pumpEventsRouter(
+      tester,
+      viewportSize: const Size(390, 844),
+    );
 
     expect(find.byType(TenantAdminEventsScreen), findsOneWidget);
     await tester.tap(
@@ -67,6 +70,103 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
+  });
+
+  testWidgets(
+      'compact layout hides filters behind the bottom sheet and shows active-filter badge',
+      (tester) async {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _EventsRepositoryWithSeedData(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(
+      tester,
+      viewportSize: const Size(390, 844),
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-open-filters-button'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-date-filter-button'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-related-filter-button'),
+      ),
+      findsNothing,
+    );
+
+    controller.selectVenueFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'venue-main',
+        accountId: 'account-venue-main',
+        profileType: 'venue',
+        displayName: 'Main Venue Candidate',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-open-filters-badge'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-open-filters-badge-label'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-open-filters-button'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Filtros'), findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-date-filter-button'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-related-filter-button'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-events-clear-filters-button'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -335,7 +435,13 @@ void main() {
   });
 }
 
-Future<void> _pumpEventsRouter(WidgetTester tester) async {
+Future<void> _pumpEventsRouter(
+  WidgetTester tester, {
+  Size viewportSize = const Size(1280, 900),
+}) async {
+  await tester.binding.setSurfaceSize(viewportSize);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -376,6 +482,13 @@ Future<void> _pumpEventsRouter(WidgetTester tester) async {
 
   await tester.pumpWidget(
     MaterialApp.router(
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(size: viewportSize),
+          child: child!,
+        );
+      },
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),

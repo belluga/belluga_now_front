@@ -13,6 +13,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -469,7 +470,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     return null;
   }
 
-  TenantAdminEventOccurrence? _resolvePrimaryOccurrence(TenantAdminEvent event) {
+  TenantAdminEventOccurrence? _resolvePrimaryOccurrence(
+      TenantAdminEvent event) {
     if (event.occurrences.isEmpty) {
       return null;
     }
@@ -564,7 +566,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
   }
 
   String _buildVenueLabel(TenantAdminEvent event) {
-    return event.venueDisplayName ?? event.placeRef?.id ?? 'Local não informado';
+    return event.venueDisplayName ??
+        event.placeRef?.id ??
+        'Local não informado';
   }
 
   String _buildSpecificDateFilterLabel(
@@ -681,10 +685,12 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     );
   }
 
-  Widget _buildFilters({
-    required String? error,
-    required bool isCompactLayout,
-  }) {
+  Future<void> _clearAllFilters() async {
+    _controller.resetEventFilters();
+    await _controller.applyFilters();
+  }
+
+  Widget _buildFilterControls() {
     final specificDateFilter = StreamValueBuilder<DateTime?>(
       streamValue: _controller.specificDateFilterStreamValue,
       builder: (context, selectedDate) {
@@ -765,7 +771,29 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       },
     );
 
-    final actionButtons = Wrap(
+    final filterChips = Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        specificDateFilter,
+        venueFilter,
+        relatedProfileFilter,
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        filterChips,
+        const SizedBox(height: 12),
+        temporalFilter,
+      ],
+    );
+  }
+
+  Widget _buildActionButtons({required bool isCompactLayout}) {
+    return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: [
@@ -779,7 +807,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
               const ValueKey<String>('tenant-admin-events-legacy-check-button'),
           onPressed: _openLegacyEventsDialog,
           icon: const Icon(Icons.health_and_safety_outlined),
-          label: const Text('Verificar Eventos Legados'),
+          label: Text(
+            isCompactLayout ? 'Verificar legados' : 'Verificar Eventos Legados',
+          ),
         ),
         if (!isCompactLayout)
           FilledButton.icon(
@@ -789,18 +819,223 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
           ),
       ],
     );
+  }
 
-    final filterChips = Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        specificDateFilter,
-        venueFilter,
-        relatedProfileFilter,
-      ],
+  Widget _buildErrorBanner(String? error) {
+    if (error == null || error.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return TenantAdminErrorBanner(
+      rawError: error,
+      fallbackMessage: 'Unable to load events.',
+      onRetry: _controller.loadEvents,
     );
+  }
 
+  int _countAppliedFilters({
+    required DateTime? selectedDate,
+    required TenantAdminAccountProfile? selectedVenue,
+    required TenantAdminAccountProfile? selectedProfile,
+    required Set<TenantAdminEventTemporalBucket> temporalBuckets,
+  }) {
+    var count = 0;
+    if (selectedDate != null) {
+      count += 1;
+    }
+    if (selectedVenue != null) {
+      count += 1;
+    }
+    if (selectedProfile != null) {
+      count += 1;
+    }
+    if (selectedDate == null &&
+        !setEquals(
+          temporalBuckets,
+          TenantAdminEventTemporalBucket.defaultSelection,
+        )) {
+      count += 1;
+    }
+    return count;
+  }
+
+  Widget _buildAppliedFilterCountBuilder({
+    required Widget Function(int appliedCount) builder,
+  }) {
+    return StreamValueBuilder<DateTime?>(
+      streamValue: _controller.specificDateFilterStreamValue,
+      builder: (context, selectedDate) {
+        return StreamValueBuilder<TenantAdminAccountProfile?>(
+          streamValue: _controller.venueFilterStreamValue,
+          builder: (context, selectedVenue) {
+            return StreamValueBuilder<TenantAdminAccountProfile?>(
+              streamValue: _controller.relatedAccountProfileFilterStreamValue,
+              builder: (context, selectedProfile) {
+                return StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
+                  streamValue: _controller.temporalFilterStreamValue,
+                  builder: (context, temporalBuckets) {
+                    return builder(
+                      _countAppliedFilters(
+                        selectedDate: selectedDate,
+                        selectedVenue: selectedVenue,
+                        selectedProfile: selectedProfile,
+                        temporalBuckets: temporalBuckets,
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactToolbarAction({
+    required Key key,
+    required String tooltip,
+    required VoidCallback onPressed,
+    required Widget icon,
+    bool isHighlighted = false,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Tooltip(
+      message: tooltip,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isHighlighted
+              ? colorScheme.secondaryContainer
+              : colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isHighlighted
+                ? colorScheme.secondary.withValues(alpha: 0.28)
+                : colorScheme.outlineVariant,
+          ),
+        ),
+        child: IconButton(
+          key: key,
+          onPressed: onPressed,
+          icon: icon,
+          color: isHighlighted
+              ? colorScheme.onSecondaryContainer
+              : colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactFiltersButton() {
+    return _buildAppliedFilterCountBuilder(
+      builder: (appliedCount) {
+        final tooltip = appliedCount == 0
+            ? 'Filtros'
+            : '$appliedCount filtro${appliedCount == 1 ? '' : 's'} ativo${appliedCount == 1 ? '' : 's'}';
+
+        return _buildCompactToolbarAction(
+          key:
+              const ValueKey<String>('tenant-admin-events-open-filters-button'),
+          tooltip: tooltip,
+          onPressed: _openCompactFiltersSheet,
+          isHighlighted: appliedCount > 0,
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(Icons.tune),
+              if (appliedCount > 0)
+                Positioned(
+                  right: -8,
+                  top: -8,
+                  child: Container(
+                    key: const ValueKey<String>(
+                      'tenant-admin-events-open-filters-badge',
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$appliedCount',
+                      key: const ValueKey<String>(
+                        'tenant-admin-events-open-filters-badge-label',
+                      ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openCompactFiltersSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAppliedFilterCountBuilder(
+                  builder: (appliedCount) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Filtros',
+                            style: Theme.of(sheetContext).textTheme.titleMedium,
+                          ),
+                        ),
+                        if (appliedCount > 0)
+                          TextButton(
+                            key: const ValueKey<String>(
+                              'tenant-admin-events-clear-filters-button',
+                            ),
+                            onPressed: _clearAllFilters,
+                            child: const Text('Limpar'),
+                          ),
+                        IconButton(
+                          tooltip: 'Fechar',
+                          onPressed: () => sheetContext.router.maybePop(),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildFilterControls(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopFiltersPanel({required String? error}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
@@ -809,21 +1044,49 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
           if (error != null && error.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: TenantAdminErrorBanner(
-                rawError: error,
-                fallbackMessage: 'Unable to load events.',
-                onRetry: () {
-                  _controller.loadEvents();
-                },
-              ),
+              child: _buildErrorBanner(error),
             ),
-          filterChips,
-          const SizedBox(height: 12),
-          temporalFilter,
+          _buildFilterControls(),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: actionButtons,
+            child: _buildActionButtons(isCompactLayout: false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactToolbar({required String? error}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (error != null && error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildErrorBanner(error),
+            ),
+          Row(
+            children: [
+              _buildCompactFiltersButton(),
+              const Spacer(),
+              _buildCompactToolbarAction(
+                key: const ValueKey<String>('tenant-admin-events-types-button'),
+                tooltip: 'Tipos de evento',
+                onPressed: _openEventTypes,
+                icon: const Icon(Icons.category_outlined),
+              ),
+              const SizedBox(width: 8),
+              _buildCompactToolbarAction(
+                key: const ValueKey<String>(
+                    'tenant-admin-events-legacy-check-button'),
+                tooltip: 'Verificar eventos legados',
+                onPressed: _openLegacyEventsDialog,
+                icon: const Icon(Icons.health_and_safety_outlined),
+              ),
+            ],
           ),
         ],
       ),
@@ -889,6 +1152,33 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     );
   }
 
+  Widget _buildCompactContent({
+    required String? error,
+    required List<TenantAdminEvent> events,
+    required bool hasMore,
+    required bool isPageLoading,
+  }) {
+    return Column(
+      children: [
+        _buildCompactToolbar(error: error),
+        Expanded(
+          child: events.isEmpty
+              ? const TenantAdminEmptyState(
+                  icon: Icons.event_busy_outlined,
+                  title: 'Nenhum evento cadastrado',
+                  description:
+                      'Use "Novo evento" para iniciar a gestão de eventos do tenant.',
+                )
+              : _buildEventsList(
+                  events: events,
+                  hasMore: hasMore,
+                  isPageLoading: isPageLoading,
+                ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCompactLayout = MediaQuery.of(context).size.width < 900;
@@ -908,30 +1198,37 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                   ),
                   builder: (context, events) {
                     final loadedEvents = events ?? const <TenantAdminEvent>[];
+                    final desktopContent = Column(
+                      children: [
+                        _buildDesktopFiltersPanel(error: error),
+                        Expanded(
+                          child: loadedEvents.isEmpty
+                              ? const TenantAdminEmptyState(
+                                  icon: Icons.event_busy_outlined,
+                                  title: 'Nenhum evento cadastrado',
+                                  description:
+                                      'Use "Novo evento" para iniciar a gestão de eventos do tenant.',
+                                )
+                              : _buildEventsList(
+                                  events: loadedEvents,
+                                  hasMore: hasMore,
+                                  isPageLoading: isPageLoading,
+                                ),
+                        ),
+                      ],
+                    );
+
                     return Stack(
                       children: [
-                        Column(
-                          children: [
-                            _buildFilters(
-                              error: error,
-                              isCompactLayout: isCompactLayout,
-                            ),
-                            Expanded(
-                              child: loadedEvents.isEmpty
-                                  ? const TenantAdminEmptyState(
-                                      icon: Icons.event_busy_outlined,
-                                      title: 'Nenhum evento cadastrado',
-                                      description:
-                                          'Use "Novo evento" para iniciar a gestão de eventos do tenant.',
-                                    )
-                                  : _buildEventsList(
-                                      events: loadedEvents,
-                                      hasMore: hasMore,
-                                      isPageLoading: isPageLoading,
-                                    ),
-                            ),
-                          ],
-                        ),
+                        if (isCompactLayout)
+                          _buildCompactContent(
+                            error: error,
+                            events: loadedEvents,
+                            hasMore: hasMore,
+                            isPageLoading: isPageLoading,
+                          )
+                        else
+                          desktopContent,
                         if (isCompactLayout)
                           Positioned(
                             right: 16,
@@ -1167,9 +1464,9 @@ class _TenantAdminMetaPill extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontWeight: FontWeight.w700,
-        ),
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }
@@ -1219,9 +1516,9 @@ class _TenantAdminProfileChip extends StatelessWidget {
           Text(
             profile.displayName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ],
       ),
@@ -1252,9 +1549,9 @@ class _TenantAdminInfoRow extends StatelessWidget {
           child: Text(
             text,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
         ),
       ],

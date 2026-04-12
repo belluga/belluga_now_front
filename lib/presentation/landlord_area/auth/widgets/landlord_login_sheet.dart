@@ -6,16 +6,22 @@ Future<bool> showLandlordLoginSheet(
   BuildContext context, {
   required LandlordLoginSheetControllerContract controller,
 }) async {
-  controller.resetForm();
-  return _showLandlordLoginSheet(
-    context,
-    emailController: controller.emailController,
-    passwordController: controller.passwordController,
-    onSubmit: (email, password) async {
-      await controller.enterAdminModeWithCredentials(email, password);
-      return true;
-    },
-  );
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  try {
+    return await _showLandlordLoginSheet(
+      context,
+      emailController: emailController,
+      passwordController: passwordController,
+      onSubmit: (email, password) async {
+        await controller.enterAdminModeWithCredentials(email, password);
+        return true;
+      },
+    );
+  } finally {
+    emailController.dispose();
+    passwordController.dispose();
+  }
 }
 
 Future<bool> showLandlordCredentialsSheet(

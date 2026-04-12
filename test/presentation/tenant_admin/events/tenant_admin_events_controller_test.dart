@@ -142,6 +142,45 @@ void main() {
     expect(controller.specificDateFilterStreamValue.value, isNull);
   });
 
+  test(
+      'resetEventFilters clears specific date, venue, related profile, and restores default temporal selection',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+    controller.selectVenueFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'venue-1',
+        accountId: 'acc-venue-1',
+        profileType: 'venue',
+        displayName: 'Main Venue',
+      ),
+    );
+    controller.selectRelatedAccountProfileFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-profile-1',
+        profileType: 'artist',
+        displayName: 'DJ Test',
+      ),
+    );
+
+    controller.resetEventFilters();
+
+    expect(controller.specificDateFilterStreamValue.value, isNull);
+    expect(controller.venueFilterStreamValue.value, isNull);
+    expect(controller.relatedAccountProfileFilterStreamValue.value, isNull);
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(TenantAdminEventTemporalBucket.defaultSelection),
+    );
+  });
+
   test('toggleTemporalFilter keeps at least one bucket selected', () {
     final controller = TenantAdminEventsController(
       eventsRepository: _TrackingEventsRepository(),

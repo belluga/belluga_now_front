@@ -405,6 +405,15 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.addValue(null);
   }
 
+  void resetEventFilters() {
+    specificDateFilterStreamValue.addValue(null);
+    venueFilterStreamValue.addValue(null);
+    relatedAccountProfileFilterStreamValue.addValue(null);
+    temporalFilterStreamValue.addValue(
+      TenantAdminEventTemporalBucket.defaultSelection,
+    );
+  }
+
   void toggleTemporalFilter(TenantAdminEventTemporalBucket bucket) {
     final current = Set<TenantAdminEventTemporalBucket>.from(
       temporalFilterStreamValue.value,
