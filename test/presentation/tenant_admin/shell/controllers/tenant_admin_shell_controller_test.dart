@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -259,6 +261,8 @@ class _FakeAppData extends Fake implements AppData {
   _FakeAppData({
     required List<String> domains,
     required List<String> appDomains,
+    this.environmentType = EnvironmentType.landlord,
+    this.hostname = 'landlord.example.com',
   })  : _domains = domains
             .map((domain) => DomainValue()..parse(_normalize(domain)))
             .toList(growable: false),
@@ -268,6 +272,9 @@ class _FakeAppData extends Fake implements AppData {
 
   final List<DomainValue> _domains;
   final List<AppDomainValue> _appDomains;
+  final EnvironmentType environmentType;
+  @override
+  final String hostname;
 
   @override
   List<DomainValue> get domains => _domains;
@@ -276,7 +283,11 @@ class _FakeAppData extends Fake implements AppData {
   List<AppDomainValue>? get appDomains => _appDomains;
 
   @override
-  String get hostname => 'landlord.example.com';
+  String get href => 'https://$hostname';
+
+  @override
+  EnvironmentTypeValue get typeValue =>
+      EnvironmentTypeValue()..parse(environmentType.name);
 
   static String _normalize(String domain) {
     if (domain.contains('://')) {
