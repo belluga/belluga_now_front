@@ -72,8 +72,7 @@ void main() {
   });
 }
 
-class _NoopEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
@@ -100,7 +99,10 @@ class _NoopEventsRepository
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -112,7 +114,10 @@ class _NoopEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -158,7 +163,8 @@ class _NoopEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),

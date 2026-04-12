@@ -258,7 +258,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       final stopwatch = Stopwatch()..start();
       if (shouldShowInitialLoading) {
-        initialLoadingLabelStreamValue.addValue('Localizando...');
+        _ifAlive(() => initialLoadingLabelStreamValue.addValue('Localizando...'));
         await _resolveEffectiveOrigin(
           warmUpIfPossible: shouldShowInitialLoading,
         );
@@ -284,6 +284,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
           'API fetch took ${totalElapsed - locationElapsed}ms. '
           'Total: ${totalElapsed}ms.');
     } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
       debugPrint('TenantHomeAgendaController._refresh failed: $error');
       if (shouldShowInitialLoading) {
         final recovered = await _retryFirstPageAfterFailure();

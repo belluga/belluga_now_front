@@ -41,21 +41,6 @@ void main() {
     expect(error, contains('delete failed'));
   });
 
-  test('loadEvents forwards archived filter to repository', () async {
-    final eventsRepository = _TrackingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    controller.updateArchivedFilter(true);
-    await controller.loadEvents();
-
-    expect(eventsRepository.lastLoadArchived, isTrue);
-  });
-
   test('loadEvents forwards default temporal filters to repository', () async {
     final eventsRepository = _TrackingEventsRepository();
     final controller = TenantAdminEventsController(
@@ -69,6 +54,129 @@ void main() {
 
     expect(
       eventsRepository.lastTemporalBuckets,
+      equals(TenantAdminEventTemporalBucket.defaultSelection),
+    );
+  });
+
+  test('loadEvents forwards specific date, venue, and related profile filters',
+      () async {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+    controller.selectVenueFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'venue-1',
+        accountId: 'acc-venue-1',
+        profileType: 'venue',
+        displayName: 'Main Venue',
+      ),
+    );
+    controller.selectRelatedAccountProfileFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-profile-1',
+        profileType: 'artist',
+        displayName: 'DJ Test',
+      ),
+    );
+
+    await controller.loadEvents();
+
+    expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
+    expect(eventsRepository.lastLoadVenueProfileId, 'venue-1');
+    expect(eventsRepository.lastLoadRelatedAccountProfileId, 'profile-1');
+  });
+
+  test('loadEvents records repository errors when a filtered reload fails',
+      () async {
+    final eventsRepository = _FailingFilteredLoadEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+
+    await controller.loadEvents();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
+    expect(controller.eventsStreamValue.value, isEmpty);
+    expect(
+      controller.eventsErrorStreamValue.value,
+      contains('filtered load failed'),
+    );
+  });
+
+  test(
+      'selectSpecificDateFilter expands temporal buckets and clearing restores defaults',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(TenantAdminEventTemporalBucket.values.toSet()),
+    );
+
+    controller.clearSpecificDateFilter();
+
+    expect(
+      controller.temporalFilterStreamValue.value,
+      equals(TenantAdminEventTemporalBucket.defaultSelection),
+    );
+    expect(controller.specificDateFilterStreamValue.value, isNull);
+  });
+
+  test(
+      'resetEventFilters clears specific date, venue, related profile, and restores default temporal selection',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+    controller.selectVenueFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'venue-1',
+        accountId: 'acc-venue-1',
+        profileType: 'venue',
+        displayName: 'Main Venue',
+      ),
+    );
+    controller.selectRelatedAccountProfileFilter(
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-profile-1',
+        profileType: 'artist',
+        displayName: 'DJ Test',
+      ),
+    );
+
+    controller.resetEventFilters();
+
+    expect(controller.specificDateFilterStreamValue.value, isNull);
+    expect(controller.venueFilterStreamValue.value, isNull);
+    expect(controller.relatedAccountProfileFilterStreamValue.value, isNull);
+    expect(
+      controller.temporalFilterStreamValue.value,
       equals(TenantAdminEventTemporalBucket.defaultSelection),
     );
   });
@@ -388,7 +496,10 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -400,7 +511,10 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -542,7 +656,9 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
-  bool? lastLoadArchived;
+  String? lastLoadSpecificDate;
+  String? lastLoadVenueProfileId;
+  String? lastLoadRelatedAccountProfileId;
   Set<TenantAdminEventTemporalBucket>? lastTemporalBuckets;
 
   @override
@@ -572,12 +688,17 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsCalls += 1;
-    lastLoadArchived = archived?.value;
+    lastLoadSpecificDate = specificDate?.value;
+    lastLoadVenueProfileId = venueProfileId?.value;
+    lastLoadRelatedAccountProfileId = relatedAccountProfileId?.value;
     lastTemporalBuckets = temporalBuckets;
     return <TenantAdminEvent>[];
   }
@@ -587,12 +708,17 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     fetchEventsPageCalls += 1;
-    lastLoadArchived = archived?.value;
+    lastLoadSpecificDate = specificDate?.value;
+    lastLoadVenueProfileId = venueProfileId?.value;
+    lastLoadRelatedAccountProfileId = relatedAccountProfileId?.value;
     lastTemporalBuckets = temporalBuckets;
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminEvent>[],
@@ -645,6 +771,28 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
       unchangedValue: TenantAdminCountValue(0),
       failedValue: TenantAdminCountValue(0),
     );
+  }
+}
+
+class _FailingFilteredLoadEventsRepository extends _TrackingEventsRepository {
+  @override
+  Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
+    TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
+  }) async {
+    lastLoadSpecificDate = specificDate?.value;
+    lastLoadVenueProfileId = venueProfileId?.value;
+    lastLoadRelatedAccountProfileId = relatedAccountProfileId?.value;
+    lastTemporalBuckets = temporalBuckets;
+
+    throw StateError('filtered load failed');
   }
 }
 
@@ -773,7 +921,10 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -786,7 +937,10 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {

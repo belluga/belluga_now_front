@@ -51,7 +51,7 @@ void main() {
   }
 
   testWidgets(
-    'event soft delete hides from active list and appears in archived list',
+    'event soft delete removes the event from the current management list',
     (tester) async {
       final getIt = GetIt.I;
       await getIt.reset();
@@ -136,15 +136,6 @@ void main() {
 
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.text(eventTitle), findsNothing);
-
-      final visibilityField = find.text('Ativos');
-      await tester.ensureVisible(visibilityField.first);
-      await tester.tap(visibilityField.first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Arquivados').last);
-      await tester.pumpAndSettle();
-
-      await _waitForFinder(tester, find.text(eventTitle));
     },
   );
 }
@@ -301,14 +292,14 @@ class _FakeTenantAdminEventsRepository
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
-    return _filterEvents(
-      status: status?.value,
-      archived: archived?.value ?? false,
-    );
+    return _filterEvents();
   }
 
   @override
@@ -316,14 +307,14 @@ class _FakeTenantAdminEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
-    final filtered = _filterEvents(
-      status: status?.value,
-      archived: archived?.value ?? false,
-    );
+    final filtered = _filterEvents();
     if (page.value <= 0 || pageSize.value <= 0) {
       return tenantAdminPagedResultFromRaw(
         items: <TenantAdminEvent>[],
@@ -346,23 +337,9 @@ class _FakeTenantAdminEventsRepository
     );
   }
 
-  List<TenantAdminEvent> _filterEvents({
-    String? status,
-    required bool archived,
-  }) {
-    final normalizedStatus = status?.trim();
-
+  List<TenantAdminEvent> _filterEvents() {
     return _events.where((event) {
-      final isArchived = event.deletedAt != null;
-      if (archived != isArchived) {
-        return false;
-      }
-      if (normalizedStatus != null &&
-          normalizedStatus.isNotEmpty &&
-          event.publication.status != normalizedStatus) {
-        return false;
-      }
-      return true;
+      return event.deletedAt == null;
     }).toList(growable: false);
   }
 

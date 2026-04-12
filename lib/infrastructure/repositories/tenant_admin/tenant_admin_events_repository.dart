@@ -97,7 +97,10 @@ class TenantAdminEventsRepository
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -112,7 +115,10 @@ class TenantAdminEventsRepository
         pageSize:
             TenantAdminEventsRepoInt.fromRaw(pageSize, defaultValue: pageSize),
         search: search,
+        specificDate: specificDate,
         status: status,
+        venueProfileId: venueProfileId,
+        relatedAccountProfileId: relatedAccountProfileId,
         archived: archived,
         temporalBuckets: temporalBuckets,
       );
@@ -129,13 +135,19 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     try {
-      final normalizedSearch = search?.value.trim();
+      final normalizedSpecificDate = specificDate?.value.trim();
       final normalizedStatus = status?.value.trim();
+      final normalizedVenueProfileId = venueProfileId?.value.trim();
+      final normalizedRelatedAccountProfileId =
+          relatedAccountProfileId?.value.trim();
       final archivedValue = archived?.value ?? false;
       final normalizedTemporal = temporalBuckets == null
           ? const <String>[]
@@ -147,10 +159,17 @@ class TenantAdminEventsRepository
         queryParameters: {
           'page': page.value,
           'page_size': pageSize.value,
-          if (normalizedSearch != null && normalizedSearch.isNotEmpty)
-            'search': normalizedSearch,
+          if (normalizedSpecificDate != null &&
+              normalizedSpecificDate.isNotEmpty)
+            'date': normalizedSpecificDate,
           if (normalizedStatus != null && normalizedStatus.isNotEmpty)
             'status': normalizedStatus,
+          if (normalizedVenueProfileId != null &&
+              normalizedVenueProfileId.isNotEmpty)
+            'venue_profile_id': normalizedVenueProfileId,
+          if (normalizedRelatedAccountProfileId != null &&
+              normalizedRelatedAccountProfileId.isNotEmpty)
+            'related_account_profile_id': normalizedRelatedAccountProfileId,
           if (archivedValue) 'archived': 1,
           if (normalizedTemporal.isNotEmpty)
             'temporal': normalizedTemporal.join(','),

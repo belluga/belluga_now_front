@@ -6,6 +6,7 @@ import 'package:belluga_now/application/router/support/tenant_admin_safe_back.da
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -913,9 +914,13 @@ class _TenantAdminEventFormScreenState
   Future<void> _openRelatedAccountProfilePickerSheet({
     required TenantAdminEventFormState formState,
   }) async {
-    unawaited(_controller.prepareRelatedAccountProfilePicker(
-      accountSlug: widget.accountSlugForOwnCreate,
-    ));
+    unawaited(
+      _controller.prepareAccountProfilePicker(
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        accountSlug: widget.accountSlugForOwnCreate,
+      ),
+    );
 
     final selectedAccountProfile =
         await showModalBottomSheet<TenantAdminAccountProfile>(
@@ -935,32 +940,32 @@ class _TenantAdminEventFormScreenState
             child: Column(
               children: [
                 TextField(
-                  controller: _controller.relatedAccountProfileSearchController,
+                  controller: _controller.accountProfilePickerSearchController,
                   autofocus: true,
                   decoration: const InputDecoration(
                     labelText: 'Buscar perfil relacionado',
                     prefixIcon: Icon(Icons.search),
                   ),
-                  onChanged: _controller.updateRelatedAccountProfileSearchQuery,
+                  onChanged: _controller.updateAccountProfilePickerSearchQuery,
                 ),
                 const SizedBox(height: 12),
                 Expanded(
                   child: StreamValueBuilder<String>(
                     streamValue:
-                        _controller.relatedAccountProfileSearchErrorStreamValue,
+                        _controller.accountProfilePickerErrorStreamValue,
                     builder: (context, searchError) {
                       return StreamValueBuilder<bool>(
-                        streamValue: _controller
-                            .relatedAccountProfileSearchLoadingStreamValue,
+                        streamValue:
+                            _controller.accountProfilePickerLoadingStreamValue,
                         builder: (context, isSearchLoading) {
                           return StreamValueBuilder<bool>(
                             streamValue: _controller
-                                .relatedAccountProfileSearchPageLoadingStreamValue,
+                                .accountProfilePickerPageLoadingStreamValue,
                             builder: (context, isSearchPageLoading) {
                               return StreamValueBuilder<
                                   List<TenantAdminAccountProfile>>(
                                 streamValue: _controller
-                                    .relatedAccountProfileSearchResultsStreamValue,
+                                    .accountProfilePickerResultsStreamValue,
                                 builder: (context, searchResults) {
                                   if (isSearchLoading &&
                                       searchResults.isEmpty) {
@@ -982,7 +987,7 @@ class _TenantAdminEventFormScreenState
                                           const SizedBox(height: 12),
                                           FilledButton(
                                             onPressed: _controller
-                                                .retryRelatedAccountProfileSearch,
+                                                .retryAccountProfilePickerSearch,
                                             child:
                                                 const Text('Tentar novamente'),
                                           ),
@@ -1004,7 +1009,7 @@ class _TenantAdminEventFormScreenState
 
                                   return ListView.separated(
                                     controller: _controller
-                                        .relatedAccountProfileSearchScrollController,
+                                        .accountProfilePickerScrollController,
                                     itemCount: itemCount,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: 8),

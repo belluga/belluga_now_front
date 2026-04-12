@@ -51,7 +51,10 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<void> loadEvents({
     TenantAdminEventsRepoInt? pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -62,7 +65,10 @@ abstract class TenantAdminEventsRepositoryContract {
       page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
       pageSize: pageSize ?? _defaultPageSize,
       search: search,
+      specificDate: specificDate,
       status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
       archived: archived ?? _defaultArchived,
       temporalBuckets: temporalBuckets,
     );
@@ -71,7 +77,10 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<void> loadNextEventsPage({
     TenantAdminEventsRepoInt? pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -86,7 +95,10 @@ abstract class TenantAdminEventsRepositoryContract {
       ),
       pageSize: pageSize ?? _defaultPageSize,
       search: search,
+      specificDate: specificDate,
       status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
       archived: archived ?? _defaultArchived,
       temporalBuckets: temporalBuckets,
     );
@@ -104,7 +116,10 @@ abstract class TenantAdminEventsRepositoryContract {
 
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   });
@@ -113,13 +128,19 @@ abstract class TenantAdminEventsRepositoryContract {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     final events = await fetchEvents(
       search: search,
+      specificDate: specificDate,
       status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
       archived: archived,
       temporalBuckets: temporalBuckets,
     );
@@ -320,7 +341,10 @@ abstract class TenantAdminEventsRepositoryContract {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     required TenantAdminEventsRepoBool archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -343,7 +367,10 @@ abstract class TenantAdminEventsRepositoryContract {
         page: page,
         pageSize: pageSize,
         search: search,
+        specificDate: specificDate,
         status: status,
+        venueProfileId: venueProfileId,
+        relatedAccountProfileId: relatedAccountProfileId,
         archived: archived,
         temporalBuckets: temporalBuckets,
       );
@@ -526,7 +553,10 @@ mixin TenantAdminEventsPaginationMixin
   Future<void> loadEvents({
     TenantAdminEventsRepoInt? pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -537,7 +567,10 @@ mixin TenantAdminEventsPaginationMixin
       page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
       pageSize: pageSize ?? _defaultPageSize,
       search: search,
+      specificDate: specificDate,
       status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
       archived: archived ?? _defaultArchived,
       temporalBuckets: temporalBuckets,
     );
@@ -547,7 +580,10 @@ mixin TenantAdminEventsPaginationMixin
   Future<void> loadNextEventsPage({
     TenantAdminEventsRepoInt? pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -562,7 +598,10 @@ mixin TenantAdminEventsPaginationMixin
       ),
       pageSize: pageSize ?? _defaultPageSize,
       search: search,
+      specificDate: specificDate,
       status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
       archived: archived ?? _defaultArchived,
       temporalBuckets: temporalBuckets,
     );
@@ -701,7 +740,10 @@ mixin TenantAdminEventsPaginationMixin
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     required TenantAdminEventsRepoBool archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -724,7 +766,10 @@ mixin TenantAdminEventsPaginationMixin
         page: page,
         pageSize: pageSize,
         search: search,
+        specificDate: specificDate,
         status: status,
+        venueProfileId: venueProfileId,
+        relatedAccountProfileId: relatedAccountProfileId,
         archived: archived,
         temporalBuckets: temporalBuckets,
       );

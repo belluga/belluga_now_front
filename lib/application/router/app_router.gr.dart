@@ -83,6 +83,8 @@ import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_adm
     as _i42;
 import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_local_preferences_route.dart'
     as _i43;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_domains_route.dart'
+    as _i74;
 import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_route.dart'
     as _i44;
 import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_technical_integrations_route.dart'
@@ -1835,6 +1837,26 @@ class TenantAdminSettingsLocalPreferencesRoute
     name,
     builder: (data) {
       return const _i43.TenantAdminSettingsLocalPreferencesRoutePage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i74.TenantAdminSettingsDomainsRoutePage]
+class TenantAdminSettingsDomainsRoute extends _i65.PageRouteInfo<void> {
+  const TenantAdminSettingsDomainsRoute({
+    List<_i65.PageRouteInfo>? children,
+  }) : super(
+          TenantAdminSettingsDomainsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'TenantAdminSettingsDomainsRoute';
+
+  static _i65.PageInfo page = _i65.PageInfo(
+    name,
+    builder: (data) {
+      return const _i74.TenantAdminSettingsDomainsRoutePage();
     },
   );
 }

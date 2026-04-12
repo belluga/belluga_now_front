@@ -3,6 +3,7 @@ export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_links_
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_brightness.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_update_input.dart';
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_domain_entry.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_firebase_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_default_origin.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_catalog_item.dart';
@@ -19,3 +20,4 @@ export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_resend_ema
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_resend_email_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_telemetry_integration.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_telemetry_settings_snapshot.dart';
+export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_domain_status_value.dart';
