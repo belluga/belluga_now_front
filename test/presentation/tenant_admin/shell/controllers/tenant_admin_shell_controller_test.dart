@@ -261,8 +261,6 @@ class _FakeAppData extends Fake implements AppData {
   _FakeAppData({
     required List<String> domains,
     required List<String> appDomains,
-    this.environmentType = EnvironmentType.landlord,
-    this.hostname = 'landlord.example.com',
   })  : _domains = domains
             .map((domain) => DomainValue()..parse(_normalize(domain)))
             .toList(growable: false),
@@ -272,9 +270,9 @@ class _FakeAppData extends Fake implements AppData {
 
   final List<DomainValue> _domains;
   final List<AppDomainValue> _appDomains;
-  final EnvironmentType environmentType;
+  final EnvironmentType environmentType = EnvironmentType.landlord;
   @override
-  final String hostname;
+  final String hostname = 'landlord.example.com';
 
   @override
   List<DomainValue> get domains => _domains;
