@@ -289,7 +289,7 @@ class _FakeTenantAdminEventsRepository
       publication: current.publication,
       location: current.location,
       placeRef: current.placeRef,
-      artistIdValues: current.artistIds,
+      relatedAccountProfileIdValues: current.relatedAccountProfileIds,
       eventParties: current.eventParties,
       taxonomyTerms: current.taxonomyTerms,
       createdAtValue: tenantAdminOptionalDateTime(current.createdAt),

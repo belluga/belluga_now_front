@@ -2,8 +2,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_date_time_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_date_time_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_double_value.dart';
@@ -32,16 +32,18 @@ class TenantAdminEvent {
     this.location,
     this.placeRef,
     TenantAdminOptionalUrlValue? thumbUrlValue,
-    List<TenantAdminArtistIdValue>? artistIdValues,
-    this.artistProfiles = const <TenantAdminAccountProfile>[],
+    List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
+    this.relatedAccountProfiles = const <TenantAdminAccountProfile>[],
     this.eventParties = const <TenantAdminEventParty>[],
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminOptionalDateTimeValue? createdAtValue,
     TenantAdminOptionalDateTimeValue? updatedAtValue,
     TenantAdminOptionalDateTimeValue? deletedAtValue,
   })  : thumbUrlValue = thumbUrlValue ?? TenantAdminOptionalUrlValue(),
-        artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
-          artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        relatedAccountProfileIdValues =
+            List<TenantAdminAccountProfileIdValue>.unmodifiable(
+          relatedAccountProfileIdValues ??
+              const <TenantAdminAccountProfileIdValue>[],
         ),
         createdAtValue =
             createdAtValue ?? TenantAdminOptionalDateTimeValue(null),
@@ -61,8 +63,8 @@ class TenantAdminEvent {
   final TenantAdminOptionalUrlValue thumbUrlValue;
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
-  final List<TenantAdminArtistIdValue> artistIdValues;
-  final List<TenantAdminAccountProfile> artistProfiles;
+  final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
+  final List<TenantAdminAccountProfile> relatedAccountProfiles;
   final List<TenantAdminEventParty> eventParties;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final TenantAdminOptionalDateTimeValue createdAtValue;
@@ -74,7 +76,8 @@ class TenantAdminEvent {
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get thumbUrl => thumbUrlValue.nullableValue;
-  List<TenantAdminArtistIdValue> get artistIds => artistIdValues;
+  List<TenantAdminAccountProfileIdValue> get relatedAccountProfileIds =>
+      relatedAccountProfileIdValues;
   DateTime? get createdAt => createdAtValue.value;
   DateTime? get updatedAt => updatedAtValue.value;
   DateTime? get deletedAt => deletedAtValue.value;

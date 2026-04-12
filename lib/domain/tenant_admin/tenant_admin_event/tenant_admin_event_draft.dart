@@ -12,16 +12,18 @@ class TenantAdminEventDraft {
     TenantAdminOptionalUrlValue? coverUrlValue,
     this.coverUpload,
     TenantAdminFlagValue? removeCoverValue,
-    List<TenantAdminArtistIdValue>? artistIdValues,
-    List<TenantAdminAccountProfile>? artistProfiles,
+    List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
+    List<TenantAdminAccountProfile>? relatedAccountProfiles,
     TenantAdminTaxonomyTerms? taxonomyTerms,
   })  : coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
         removeCoverValue = removeCoverValue ?? TenantAdminFlagValue(false),
-        artistIdValues = List<TenantAdminArtistIdValue>.unmodifiable(
-          artistIdValues ?? const <TenantAdminArtistIdValue>[],
+        relatedAccountProfileIdValues =
+            List<TenantAdminAccountProfileIdValue>.unmodifiable(
+          relatedAccountProfileIdValues ??
+              const <TenantAdminAccountProfileIdValue>[],
         ),
-        artistProfiles = List<TenantAdminAccountProfile>.unmodifiable(
-          artistProfiles ?? const <TenantAdminAccountProfile>[],
+        relatedAccountProfiles = List<TenantAdminAccountProfile>.unmodifiable(
+          relatedAccountProfiles ?? const <TenantAdminAccountProfile>[],
         ),
         taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
@@ -35,13 +37,14 @@ class TenantAdminEventDraft {
   final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminMediaUpload? coverUpload;
   final TenantAdminFlagValue removeCoverValue;
-  final List<TenantAdminArtistIdValue> artistIdValues;
-  final List<TenantAdminAccountProfile> artistProfiles;
+  final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
+  final List<TenantAdminAccountProfile> relatedAccountProfiles;
   final TenantAdminTaxonomyTerms taxonomyTerms;
 
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get coverUrl => coverUrlValue.nullableValue;
   bool get removeCover => removeCoverValue.value;
-  List<TenantAdminArtistIdValue> get artistIds => artistIdValues;
+  List<TenantAdminAccountProfileIdValue> get relatedAccountProfileIds =>
+      relatedAccountProfileIdValues;
 }

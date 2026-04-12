@@ -70,10 +70,10 @@ void main() {
   });
 
   testWidgets(
-      'screen renders events from backend payload when artists are summarized',
+      'screen renders events from backend payload when related account profiles are summarized',
       (tester) async {
     final dio = Dio()
-      ..httpClientAdapter = _EventsScreenSummarizedArtistsAdapter();
+      ..httpClientAdapter = _EventsScreenSummarizedRelatedProfilesAdapter();
     final scope = _ScreenTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
       dio: dio,
@@ -112,7 +112,8 @@ void main() {
     await _pumpEventsRouter(tester);
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('tenant-admin-events-legacy-check-button')),
+      find.byKey(
+          const ValueKey<String>('tenant-admin-events-legacy-check-button')),
     );
     await tester.pumpAndSettle();
 
@@ -121,7 +122,8 @@ void main() {
     expect(find.text('Inválidos: 4'), findsOneWidget);
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('tenant-admin-events-repair-legacy-button')),
+      find.byKey(
+          const ValueKey<String>('tenant-admin-events-repair-legacy-button')),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -142,19 +144,25 @@ void main() {
     await _pumpEventsRouter(tester);
 
     final pastChip = tester.widget<FilterChip>(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-temporal-past'),
-      ).first,
+      find
+          .byKey(
+            const ValueKey<String>('tenant-admin-events-temporal-past'),
+          )
+          .first,
     );
     final nowChip = tester.widget<FilterChip>(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-temporal-now'),
-      ).first,
+      find
+          .byKey(
+            const ValueKey<String>('tenant-admin-events-temporal-now'),
+          )
+          .first,
     );
     final futureChip = tester.widget<FilterChip>(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-temporal-future'),
-      ).first,
+      find
+          .byKey(
+            const ValueKey<String>('tenant-admin-events-temporal-future'),
+          )
+          .first,
     );
 
     expect(pastChip.selected, isFalse);
@@ -162,16 +170,20 @@ void main() {
     expect(futureChip.selected, isTrue);
 
     await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-temporal-past'),
-      ).first,
+      find
+          .byKey(
+            const ValueKey<String>('tenant-admin-events-temporal-past'),
+          )
+          .first,
     );
     await tester.pumpAndSettle();
 
     final updatedPastChip = tester.widget<FilterChip>(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-temporal-past'),
-      ).first,
+      find
+          .byKey(
+            const ValueKey<String>('tenant-admin-events-temporal-past'),
+          )
+          .first,
     );
     expect(updatedPastChip.selected, isTrue);
   });
@@ -225,8 +237,7 @@ Future<void> _pumpEventsRouter(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-class _EventsRepositoryWithSeedData
-    extends TenantAdminEventsRepositoryContract
+class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
@@ -318,7 +329,8 @@ class _EventsRepositoryWithSeedData
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -362,7 +374,8 @@ class _LegacySummaryEventsRepository extends _EventsRepositoryWithSeedData {
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(12),
       invalidValue: TenantAdminCountValue(0),
@@ -427,7 +440,8 @@ class _ScreenTenantScope implements TenantAdminTenantScopeContract {
   }
 }
 
-class _EventsScreenSummarizedArtistsAdapter implements HttpClientAdapter {
+class _EventsScreenSummarizedRelatedProfilesAdapter
+    implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 
@@ -453,13 +467,21 @@ class _EventsScreenSummarizedArtistsAdapter implements HttpClientAdapter {
               "occurrences": [
                 { "date_time_start": "2026-03-05T20:00:00Z" }
               ],
-              "artists": [
+              "event_parties": [
+                {
+                  "party_type": "artist",
+                  "party_ref_id": "artist-summary-screen-1",
+                  "permissions": { "can_edit": true }
+                }
+              ],
+              "linked_account_profiles": [
                 {
                   "id": "artist-summary-screen-1",
+                  "account_id": "artist-summary-screen-1",
                   "display_name": "DJ Summary",
+                  "profile_type": "artist",
                   "avatar_url": "https://example.com/dj-summary.jpg",
-                  "highlight": false,
-                  "genres": ["house"]
+                  "slug": "dj-summary-screen"
                 }
               ]
             }

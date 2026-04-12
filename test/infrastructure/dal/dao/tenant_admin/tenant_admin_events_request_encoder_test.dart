@@ -2,13 +2,15 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('encodes selected artists as canonical event_parties payload', () {
+  test(
+      'encodes selected related account profiles as canonical event_parties payload',
+      () {
     const encoder = TenantAdminEventsRequestEncoder();
     final payload = encoder.encodeDraft(
       TenantAdminEventDraft(
@@ -28,11 +30,11 @@ void main() {
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText('draft'),
         ),
-        artistIdValues: [
-          TenantAdminArtistIdValue('artist-1'),
-          TenantAdminArtistIdValue('artist-2'),
+        relatedAccountProfileIdValues: [
+          TenantAdminAccountProfileIdValue('artist-1'),
+          TenantAdminAccountProfileIdValue('artist-2'),
         ],
-        artistProfiles: [
+        relatedAccountProfiles: [
           tenantAdminAccountProfileFromRaw(
             id: 'artist-1',
             accountId: 'account-1',
@@ -64,6 +66,8 @@ void main() {
     );
 
     expect(payload.containsKey('artist_ids'), isFalse);
+    expect(payload.containsKey('artists'), isFalse);
+    expect(payload.containsKey('artistProfiles'), isFalse);
     expect(payload['event_parties'], [
       {
         'party_type': 'artist',

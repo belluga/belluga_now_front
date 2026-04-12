@@ -114,12 +114,13 @@ void main() {
     expect(eventsRepository.fetchEventTypesCalls, 1);
     expect(eventsRepository.fetchEventsCalls, 0);
     expect(eventsRepository.accountProfileCandidatePageCalls, 2);
-    expect(eventsRepository.lastAccountProfileCandidatesAccountSlug, 'my-account');
+    expect(
+        eventsRepository.lastAccountProfileCandidatesAccountSlug, 'my-account');
     expect(
       eventsRepository.candidateTypes,
       containsAll(<TenantAdminEventAccountProfileCandidateType>[
         TenantAdminEventAccountProfileCandidateType.physicalHost,
-        TenantAdminEventAccountProfileCandidateType.artist,
+        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
       ]),
     );
   });
@@ -251,48 +252,50 @@ void main() {
     expect(eventsRepository.lastTypeAssetUpload, isNotNull);
   });
 
-  test('artist search is backend-driven, paginated, and resets on query change',
+  test(
+      'related account profile search is backend-driven, paginated, and resets on query change',
       () async {
-    final eventsRepository = _SearchableArtistCandidatesRepository();
+    final eventsRepository =
+        _SearchableRelatedAccountProfileCandidatesRepository();
     final controller = TenantAdminEventsController(
       eventsRepository: eventsRepository,
       taxonomiesRepository: _NoopTaxonomiesRepository(),
     );
 
     await controller.loadFormDependencies();
-    await controller.prepareArtistPicker();
+    await controller.prepareRelatedAccountProfilePicker();
 
-    controller.updateArtistSearchQuery('zulu');
-    await controller.retryArtistSearch();
+    controller.updateRelatedAccountProfileSearchQuery('zulu');
+    await controller.retryRelatedAccountProfileSearch();
 
     expect(
-      controller.artistSearchResultsStreamValue.value
-          .map((artist) => artist.displayName)
+      controller.relatedAccountProfileSearchResultsStreamValue.value
+          .map((profile) => profile.displayName)
           .toList(growable: false),
       ['Zulu Artist 1'],
     );
-    expect(eventsRepository.artistSearchRequests.last, ('zulu', 1));
+    expect(eventsRepository.searchRequests.last, ('zulu', 1));
 
-    await controller.loadNextArtistSearchPage();
+    await controller.loadNextRelatedAccountProfileSearchPage();
 
     expect(
-      controller.artistSearchResultsStreamValue.value
-          .map((artist) => artist.displayName)
+      controller.relatedAccountProfileSearchResultsStreamValue.value
+          .map((profile) => profile.displayName)
           .toList(growable: false),
       ['Zulu Artist 1', 'Zulu Artist 2'],
     );
-    expect(eventsRepository.artistSearchRequests.last, ('zulu', 2));
+    expect(eventsRepository.searchRequests.last, ('zulu', 2));
 
-    controller.updateArtistSearchQuery('echo');
-    await controller.retryArtistSearch();
+    controller.updateRelatedAccountProfileSearchQuery('echo');
+    await controller.retryRelatedAccountProfileSearch();
 
     expect(
-      controller.artistSearchResultsStreamValue.value
-          .map((artist) => artist.displayName)
+      controller.relatedAccountProfileSearchResultsStreamValue.value
+          .map((profile) => profile.displayName)
           .toList(growable: false),
       ['Echo Artist'],
     );
-    expect(eventsRepository.artistSearchRequests.last, ('echo', 1));
+    expect(eventsRepository.searchRequests.last, ('echo', 1));
   });
 
   test('inspectLegacyEventParties delegates to repository', () async {
@@ -342,8 +345,7 @@ TenantAdminEventDraft _buildDraft() {
   );
 }
 
-class _FailingDeleteEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({
@@ -432,7 +434,8 @@ class _FailingDeleteEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -535,8 +538,7 @@ class _NoopTaxonomiesRepository
   }
 }
 
-class _TrackingEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
@@ -634,7 +636,8 @@ class _TrackingEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -706,8 +709,7 @@ class _FakeLandlordAuthRepositoryWithToken
   }
 }
 
-class _AccountScopedEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   int fetchEventTypesCalls = 0;
   int fetchEventsCalls = 0;
@@ -739,7 +741,7 @@ class _AccountScopedEventsRepository
       type: draft.type,
       publication: draft.publication,
       occurrences: draft.occurrences,
-      artistIdValues: draft.artistIds,
+      relatedAccountProfileIdValues: draft.relatedAccountProfileIds,
       taxonomyTerms: draft.taxonomyTerms,
       location: draft.location,
       placeRef: draft.placeRef,
@@ -834,7 +836,8 @@ class _AccountScopedEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -866,7 +869,8 @@ class _EventTypeUpdateTrackingRepository
   }
 }
 
-class _EventTypeVisualTrackingRepository extends _AccountScopedEventsRepository {
+class _EventTypeVisualTrackingRepository
+    extends _AccountScopedEventsRepository {
   int visualUpdateCalls = 0;
   TenantAdminPoiVisual? lastVisual;
   TenantAdminMediaUpload? lastTypeAssetUpload;
@@ -914,7 +918,8 @@ class _LegacySummaryTrackingEventsRepository extends _TrackingEventsRepository {
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     repairCalls += 1;
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(7),
@@ -926,8 +931,9 @@ class _LegacySummaryTrackingEventsRepository extends _TrackingEventsRepository {
   }
 }
 
-class _SearchableArtistCandidatesRepository extends _AccountScopedEventsRepository {
-  final List<(String, int)> artistSearchRequests = <(String, int)>[];
+class _SearchableRelatedAccountProfileCandidatesRepository
+    extends _AccountScopedEventsRepository {
+  final List<(String, int)> searchRequests = <(String, int)>[];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
@@ -947,7 +953,7 @@ class _SearchableArtistCandidatesRepository extends _AccountScopedEventsReposito
     }
 
     final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
-    artistSearchRequests.add((normalizedSearch, page.value));
+    searchRequests.add((normalizedSearch, page.value));
 
     final result = switch ((normalizedSearch, page.value)) {
       ('', 1) => (
