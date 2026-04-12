@@ -8,6 +8,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_card_preferences');
   static const hubCardVisualIdentity =
       ValueKey('tenant_admin_settings_hub_card_visual_identity');
+  static const hubCardDomains =
+      ValueKey('tenant_admin_settings_hub_card_domains');
   static const hubCardTechnicalIntegrations =
       ValueKey('tenant_admin_settings_hub_card_technical_integrations');
   static const hubCardEnvironmentSnapshot =
@@ -17,6 +19,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_action_preferences');
   static const hubActionVisualIdentity =
       ValueKey('tenant_admin_settings_hub_action_visual_identity');
+  static const hubActionDomains =
+      ValueKey('tenant_admin_settings_hub_action_domains');
   static const hubActionTechnicalIntegrations =
       ValueKey('tenant_admin_settings_hub_action_technical_integrations');
   static const hubActionEnvironmentSnapshot =
@@ -35,6 +39,7 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_local_preferences_screen');
   static const visualIdentityScreen =
       ValueKey('tenant_admin_settings_visual_identity_screen');
+  static const domainsScreen = ValueKey('tenant_admin_settings_domains_screen');
   static const technicalIntegrationsScreen =
       ValueKey('tenant_admin_settings_technical_integrations_screen');
   static const environmentSnapshotScreen =
@@ -69,6 +74,22 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_visual_identity_scoped_app_bar');
   static const visualIdentityBackButton =
       ValueKey('tenant_admin_settings_visual_identity_back_button');
+  static const domainsScopedAppBar =
+      ValueKey('tenant_admin_settings_domains_scoped_app_bar');
+  static const domainsBackButton =
+      ValueKey('tenant_admin_settings_domains_back_button');
+  static const domainsPathField =
+      ValueKey('tenant_admin_settings_domains_path_field');
+  static const domainsAddButton =
+      ValueKey('tenant_admin_settings_domains_add_button');
+  static const domainsLoadMoreButton =
+      ValueKey('tenant_admin_settings_domains_load_more_button');
+  static ValueKey<String> domainsRow(int index) =>
+      ValueKey('tenant_admin_settings_domains_row_$index');
+  static ValueKey<String> domainsStatusChip(int index) =>
+      ValueKey('tenant_admin_settings_domains_status_chip_$index');
+  static ValueKey<String> domainsDeleteButton(int index) =>
+      ValueKey('tenant_admin_settings_domains_delete_button_$index');
   static const technicalIntegrationsScopedAppBar =
       ValueKey('tenant_admin_settings_technical_integrations_scoped_app_bar');
   static const technicalIntegrationsBackButton =

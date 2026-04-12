@@ -56,7 +56,7 @@ class TenantAdminEventsController implements Disposable {
                 : TenantAdminImageIngestionService()) {
     _bindTenantScope();
     _bindRepositoryStreams();
-    _bindArtistSearchScroll();
+    _bindAccountProfilePickerScroll();
   }
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
@@ -73,10 +73,13 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> eventsErrorStreamValue = StreamValue<String?>();
 
-  final StreamValue<String?> statusFilterStreamValue =
-      StreamValue<String?>(defaultValue: null);
-  final StreamValue<bool> archivedFilterStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<DateTime?> specificDateFilterStreamValue =
+      StreamValue<DateTime?>(defaultValue: null);
+  final StreamValue<TenantAdminAccountProfile?> venueFilterStreamValue =
+      StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
+  final StreamValue<TenantAdminAccountProfile?>
+      relatedAccountProfileFilterStreamValue =
+      StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
   final StreamValue<Set<TenantAdminEventTemporalBucket>>
       temporalFilterStreamValue =
       StreamValue<Set<TenantAdminEventTemporalBucket>>(
@@ -116,31 +119,51 @@ class TenantAdminEventsController implements Disposable {
       venueCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminAccountProfile>>
-      artistCandidatesStreamValue =
+      relatedAccountProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminAccountProfile>>
-      artistSearchResultsStreamValue =
+      accountProfilePickerResultsStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
-  final StreamValue<bool> artistSearchLoadingStreamValue =
+  final StreamValue<bool> accountProfilePickerLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> artistSearchPageLoadingStreamValue =
+  final StreamValue<bool> accountProfilePickerPageLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> artistSearchHasMoreStreamValue =
+  final StreamValue<bool> accountProfilePickerHasMoreStreamValue =
       StreamValue<bool>(defaultValue: true);
-  final StreamValue<String> artistSearchErrorStreamValue =
+  final StreamValue<String> accountProfilePickerErrorStreamValue =
       StreamValue<String>(defaultValue: '');
-  final StreamValue<String> artistSearchQueryStreamValue =
+  final StreamValue<String> accountProfilePickerQueryStreamValue =
       StreamValue<String>(defaultValue: '');
   final StreamValue<bool> accountProfileCandidatesLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> accountProfileCandidatesErrorStreamValue =
       StreamValue<String?>();
 
+  StreamValue<List<TenantAdminAccountProfile>>
+      get relatedAccountProfileSearchResultsStreamValue =>
+          accountProfilePickerResultsStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchLoadingStreamValue =>
+      accountProfilePickerLoadingStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchPageLoadingStreamValue =>
+      accountProfilePickerPageLoadingStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchHasMoreStreamValue =>
+      accountProfilePickerHasMoreStreamValue;
+  StreamValue<String> get relatedAccountProfileSearchErrorStreamValue =>
+      accountProfilePickerErrorStreamValue;
+  StreamValue<String> get relatedAccountProfileSearchQueryStreamValue =>
+      accountProfilePickerQueryStreamValue;
+
   final ScrollController eventsScrollController = ScrollController();
-  final ScrollController artistSearchScrollController = ScrollController();
+  final ScrollController accountProfilePickerScrollController =
+      ScrollController();
+  ScrollController get relatedAccountProfileSearchScrollController =>
+      accountProfilePickerScrollController;
 
   final GlobalKey<FormState> eventFormKey = GlobalKey<FormState>();
-  final TextEditingController artistSearchController = TextEditingController();
+  final TextEditingController accountProfilePickerSearchController =
+      TextEditingController();
+  TextEditingController get relatedAccountProfileSearchController =>
+      accountProfilePickerSearchController;
   final TextEditingController eventTitleController = TextEditingController();
   final TextEditingController eventContentController = TextEditingController();
   final TextEditingController eventStartController = TextEditingController();
@@ -168,8 +191,8 @@ class TenantAdminEventsController implements Disposable {
   final TextEditingController eventTypeSlugController = TextEditingController();
   final TextEditingController eventTypeDescriptionController =
       TextEditingController();
-  final StreamValue<TenantAdminPoiVisualMode> eventTypePoiVisualModeStreamValue =
-      StreamValue<TenantAdminPoiVisualMode>(
+  final StreamValue<TenantAdminPoiVisualMode>
+      eventTypePoiVisualModeStreamValue = StreamValue<TenantAdminPoiVisualMode>(
     defaultValue: TenantAdminPoiVisualMode.icon,
   );
   final StreamValue<TenantAdminPoiVisualImageSource>
@@ -198,8 +221,8 @@ class TenantAdminEventsController implements Disposable {
 
   bool _isDisposed = false;
   bool _submitInFlight = false;
-  bool _isFetchingArtistSearchPage = false;
-  bool _hasPendingArtistSearchReload = false;
+  bool _isFetchingAccountProfilePickerPage = false;
+  bool _hasPendingAccountProfilePickerReload = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>?
@@ -207,12 +230,13 @@ class TenantAdminEventsController implements Disposable {
   StreamSubscription<TenantAdminEventsRepoString?>? _eventsErrorSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
-  Timer? _artistSearchDebounce;
-  String? _artistSearchAccountSlug;
-  int _artistSearchCurrentPage = 0;
-  int _artistSearchRequestToken = 0;
+  Timer? _accountProfilePickerDebounce;
+  String? _accountProfilePickerAccountSlug;
+  int _accountProfilePickerCurrentPage = 0;
+  int _accountProfilePickerRequestToken = 0;
+  TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
 
-  static const Duration _artistSearchDebounceDuration =
+  static const Duration _accountProfilePickerDebounceDuration =
       Duration(milliseconds: 300);
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
@@ -288,13 +312,6 @@ class TenantAdminEventsController implements Disposable {
     return _toEventsText(value);
   }
 
-  TenantAdminEventsRepoBool _toEventsBool(bool value) {
-    return TenantAdminEventsRepoBool.fromRaw(
-      value,
-      defaultValue: value,
-    );
-  }
-
   String? _normalizeOptionalText(String? value) {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) {
@@ -323,8 +340,11 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadEvents(
-      status: _toNullableEventsText(statusFilterStreamValue.value),
-      archived: _toEventsBool(archivedFilterStreamValue.value),
+      specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
+      relatedAccountProfileId: _toNullableEventsText(
+        relatedAccountProfileFilterStreamValue.value?.id,
+      ),
       temporalBuckets: temporalFilterStreamValue.value,
     );
   }
@@ -337,23 +357,61 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadNextEventsPage(
-      status: _toNullableEventsText(statusFilterStreamValue.value),
-      archived: _toEventsBool(archivedFilterStreamValue.value),
+      specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
+      relatedAccountProfileId: _toNullableEventsText(
+        relatedAccountProfileFilterStreamValue.value?.id,
+      ),
       temporalBuckets: temporalFilterStreamValue.value,
     );
   }
 
-  void updateStatusFilter(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      statusFilterStreamValue.addValue(null);
+  void selectSpecificDateFilter(DateTime? value) {
+    if (value == null) {
+      specificDateFilterStreamValue.addValue(null);
+      temporalFilterStreamValue.addValue(
+        TenantAdminEventTemporalBucket.defaultSelection,
+      );
       return;
     }
-    statusFilterStreamValue.addValue(normalized);
+
+    specificDateFilterStreamValue.addValue(
+      DateTime(value.year, value.month, value.day),
+    );
+    temporalFilterStreamValue.addValue(
+      Set<TenantAdminEventTemporalBucket>.unmodifiable(
+        TenantAdminEventTemporalBucket.values.toSet(),
+      ),
+    );
   }
 
-  void updateArchivedFilter(bool archivedOnly) {
-    archivedFilterStreamValue.addValue(archivedOnly);
+  void clearSpecificDateFilter() {
+    selectSpecificDateFilter(null);
+  }
+
+  void selectVenueFilter(TenantAdminAccountProfile? profile) {
+    venueFilterStreamValue.addValue(profile);
+  }
+
+  void clearVenueFilter() {
+    venueFilterStreamValue.addValue(null);
+  }
+
+  void selectRelatedAccountProfileFilter(TenantAdminAccountProfile? profile) {
+    relatedAccountProfileFilterStreamValue.addValue(profile);
+  }
+
+  void clearRelatedAccountProfileFilter() {
+    relatedAccountProfileFilterStreamValue.addValue(null);
+  }
+
+  void resetEventFilters() {
+    specificDateFilterStreamValue.addValue(null);
+    venueFilterStreamValue.addValue(null);
+    relatedAccountProfileFilterStreamValue.addValue(null);
+    temporalFilterStreamValue.addValue(
+      TenantAdminEventTemporalBucket.defaultSelection,
+    );
   }
 
   void toggleTemporalFilter(TenantAdminEventTemporalBucket bucket) {
@@ -400,9 +458,9 @@ class TenantAdminEventsController implements Disposable {
       publicationStatus: existingEvent?.publication.status ?? 'draft',
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
-      selectedArtistIds: {
+      selectedRelatedAccountProfileIds: {
         ...?existingEvent?.eventParties
-            .where((party) => party.partyType == 'artist')
+            .where((party) => party.partyType != 'venue')
             .map((party) => party.partyRefId),
       },
       selectedTaxonomyTerms: selectedTaxonomyTerms,
@@ -417,7 +475,9 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
-    _mergeKnownArtistProfiles(existingEvent?.artistProfiles ?? const []);
+    _mergeKnownRelatedAccountProfiles(
+      existingEvent?.relatedAccountProfiles ?? const [],
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -518,22 +578,23 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  void addEventArtist(String artistId) {
+  void addRelatedAccountProfile(String profileId) {
     final current = eventFormStateStreamValue.value;
-    final next = {...current.selectedArtistIds, artistId};
+    final next = {...current.selectedRelatedAccountProfileIds, profileId};
     _replaceEventFormState(
-      current.copyWith(selectedArtistIds: next),
+      current.copyWith(selectedRelatedAccountProfileIds: next),
     );
   }
 
-  void removeEventArtist(String artistId) {
+  void removeRelatedAccountProfile(String profileId) {
     final current = eventFormStateStreamValue.value;
-    if (!current.selectedArtistIds.contains(artistId)) {
+    if (!current.selectedRelatedAccountProfileIds.contains(profileId)) {
       return;
     }
-    final next = {...current.selectedArtistIds}..remove(artistId);
+    final next = {...current.selectedRelatedAccountProfileIds}
+      ..remove(profileId);
     _replaceEventFormState(
-      current.copyWith(selectedArtistIds: next),
+      current.copyWith(selectedRelatedAccountProfileIds: next),
     );
   }
 
@@ -886,48 +947,75 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  Future<void> prepareArtistPicker({
+  Future<void> prepareAccountProfilePicker({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
-    final accountChanged = normalizedAccountSlug != _artistSearchAccountSlug;
-    final hasSearch = artistSearchQueryStreamValue.value.trim().isNotEmpty;
-    final needsInitialLoad =
-        _artistSearchCurrentPage <= 0 && artistSearchResultsStreamValue.value.isEmpty;
+    final typeChanged = candidateType != _accountProfilePickerType;
+    final accountChanged =
+        normalizedAccountSlug != _accountProfilePickerAccountSlug;
+    final hasSearch =
+        accountProfilePickerQueryStreamValue.value.trim().isNotEmpty;
+    final needsInitialLoad = _accountProfilePickerCurrentPage <= 0 &&
+        accountProfilePickerResultsStreamValue.value.isEmpty;
 
-    _artistSearchAccountSlug = normalizedAccountSlug;
-    if (artistSearchController.text.isNotEmpty) {
-      artistSearchController.text = '';
+    _accountProfilePickerType = candidateType;
+    _accountProfilePickerAccountSlug = normalizedAccountSlug;
+    if (accountProfilePickerSearchController.text.isNotEmpty) {
+      accountProfilePickerSearchController.text = '';
     }
-    artistSearchQueryStreamValue.addValue('');
-    artistSearchErrorStreamValue.addValue('');
+    accountProfilePickerQueryStreamValue.addValue('');
+    accountProfilePickerErrorStreamValue.addValue('');
 
-    if (artistSearchScrollController.hasClients) {
-      artistSearchScrollController.jumpTo(0);
+    if (accountProfilePickerScrollController.hasClients) {
+      accountProfilePickerScrollController.jumpTo(0);
     }
 
-    if (accountChanged || hasSearch || needsInitialLoad) {
-      await _reloadArtistSearch(immediate: true);
+    if (typeChanged || accountChanged || hasSearch || needsInitialLoad) {
+      await _reloadAccountProfilePicker(immediate: true);
     }
   }
 
-  void updateArtistSearchQuery(String query) {
-    if (artistSearchQueryStreamValue.value == query) {
+  Future<void> prepareRelatedAccountProfilePicker({
+    String? accountSlug,
+  }) {
+    return prepareAccountProfilePicker(
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+      accountSlug: accountSlug,
+    );
+  }
+
+  void updateAccountProfilePickerSearchQuery(String query) {
+    if (accountProfilePickerQueryStreamValue.value == query) {
       return;
     }
-    artistSearchQueryStreamValue.addValue(query);
-    _scheduleArtistSearchReload(immediate: false);
+    accountProfilePickerQueryStreamValue.addValue(query);
+    _scheduleAccountProfilePickerReload(immediate: false);
   }
 
-  Future<void> retryArtistSearch() async {
-    await _reloadArtistSearch(immediate: true);
+  void updateRelatedAccountProfileSearchQuery(String query) {
+    updateAccountProfilePickerSearchQuery(query);
   }
 
-  Future<void> loadNextArtistSearchPage() async {
-    await _loadArtistSearchPage(
+  Future<void> retryAccountProfilePickerSearch() async {
+    await _reloadAccountProfilePicker(immediate: true);
+  }
+
+  Future<void> retryRelatedAccountProfileSearch() async {
+    await retryAccountProfilePickerSearch();
+  }
+
+  Future<void> loadNextAccountProfilePickerPage() async {
+    await _loadAccountProfilePickerPage(
       isInitial: false,
-      requestToken: _artistSearchRequestToken,
+      requestToken: _accountProfilePickerRequestToken,
     );
+  }
+
+  Future<void> loadNextRelatedAccountProfileSearchPage() async {
+    await loadNextAccountProfilePickerPage();
   }
 
   Future<void> _loadAccountProfileCandidates({
@@ -941,7 +1029,8 @@ class TenantAdminEventsController implements Disposable {
       final results = await Future.wait<Object>([
         _fetchAllPhysicalHostCandidates(accountSlug: normalizedAccountSlug),
         _eventsRepository.loadEventAccountProfileCandidates(
-          candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+          candidateType:
+              TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
           accountSlug: _toNullableEventsText(normalizedAccountSlug),
         ),
       ]);
@@ -951,25 +1040,18 @@ class TenantAdminEventsController implements Disposable {
       }
 
       final venues = results[0] as List<TenantAdminAccountProfile>;
-      final firstArtistPage =
+      final firstRelatedAccountProfilePage =
           results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
-      _artistSearchAccountSlug = normalizedAccountSlug;
-      _artistSearchCurrentPage = 1;
-      artistSearchResultsStreamValue.addValue(
-        List.unmodifiable(firstArtistPage.items),
+      relatedAccountProfileCandidatesStreamValue.addValue(
+        List.unmodifiable(firstRelatedAccountProfilePage.items),
       );
-      artistSearchHasMoreStreamValue.addValue(firstArtistPage.hasMore);
-      artistSearchErrorStreamValue.addValue('');
-      _mergeKnownArtistProfiles(firstArtistPage.items);
     } catch (error) {
       if (_isDisposed) {
         return;
       }
-      artistSearchResultsStreamValue.addValue(const []);
-      artistSearchHasMoreStreamValue.addValue(false);
-      artistSearchErrorStreamValue.addValue(error.toString());
+      relatedAccountProfileCandidatesStreamValue.addValue(const []);
       accountProfileCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
@@ -988,7 +1070,8 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _loadArtistCandidates({
+      _loadAccountProfilePickerCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
     required bool isInitial,
     required String query,
     String? accountSlug,
@@ -996,157 +1079,167 @@ class TenantAdminEventsController implements Disposable {
     final normalizedQuery = query.trim();
     if (isInitial) {
       return _eventsRepository.loadEventAccountProfileCandidates(
-        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        candidateType: candidateType,
         search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
         accountSlug: _toNullableEventsText(accountSlug),
       );
     }
 
     return _eventsRepository.loadNextEventAccountProfileCandidates(
-      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      candidateType: candidateType,
       search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
       accountSlug: _toNullableEventsText(accountSlug),
     );
   }
 
-  void _scheduleArtistSearchReload({
+  void _scheduleAccountProfilePickerReload({
     required bool immediate,
   }) {
-    _artistSearchDebounce?.cancel();
-    final nextRequestToken = _artistSearchRequestToken + 1;
-    _artistSearchRequestToken = nextRequestToken;
+    _accountProfilePickerDebounce?.cancel();
+    final nextRequestToken = _accountProfilePickerRequestToken + 1;
+    _accountProfilePickerRequestToken = nextRequestToken;
     if (immediate) {
       unawaited(
-        _loadArtistSearchPage(
+        _loadAccountProfilePickerPage(
           isInitial: true,
           requestToken: nextRequestToken,
         ),
       );
       return;
     }
-    _artistSearchDebounce = Timer(_artistSearchDebounceDuration, () {
-      unawaited(
-        _loadArtistSearchPage(
-          isInitial: true,
-          requestToken: nextRequestToken,
-        ),
-      );
-    });
+    _accountProfilePickerDebounce = Timer(
+      _accountProfilePickerDebounceDuration,
+      () {
+        unawaited(
+          _loadAccountProfilePickerPage(
+            isInitial: true,
+            requestToken: nextRequestToken,
+          ),
+        );
+      },
+    );
   }
 
-  Future<void> _reloadArtistSearch({
+  Future<void> _reloadAccountProfilePicker({
     required bool immediate,
   }) async {
-    _scheduleArtistSearchReload(immediate: immediate);
+    _scheduleAccountProfilePickerReload(immediate: immediate);
     if (!immediate) {
       return;
     }
 
-    while (_isFetchingArtistSearchPage || artistSearchLoadingStreamValue.value) {
+    while (_isFetchingAccountProfilePickerPage ||
+        accountProfilePickerLoadingStreamValue.value) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
     }
   }
 
-  Future<void> _loadArtistSearchPage({
+  Future<void> _loadAccountProfilePickerPage({
     required bool isInitial,
     required int requestToken,
   }) async {
-    if (_isFetchingArtistSearchPage) {
+    final candidateType = _accountProfilePickerType;
+    if (candidateType == null) {
+      return;
+    }
+    if (_isFetchingAccountProfilePickerPage) {
       if (isInitial) {
-        _hasPendingArtistSearchReload = true;
+        _hasPendingAccountProfilePickerReload = true;
       }
       return;
     }
-    if (!isInitial && !artistSearchHasMoreStreamValue.value) {
+    if (!isInitial && !accountProfilePickerHasMoreStreamValue.value) {
       return;
     }
 
-    _isFetchingArtistSearchPage = true;
+    _isFetchingAccountProfilePickerPage = true;
     if (isInitial) {
-      artistSearchLoadingStreamValue.addValue(true);
-      artistSearchErrorStreamValue.addValue('');
+      accountProfilePickerLoadingStreamValue.addValue(true);
+      accountProfilePickerErrorStreamValue.addValue('');
     } else {
-      artistSearchPageLoadingStreamValue.addValue(true);
+      accountProfilePickerPageLoadingStreamValue.addValue(true);
     }
 
     try {
-      final query = artistSearchQueryStreamValue.value.trim();
-      final pageResult = await _loadArtistCandidates(
-        accountSlug: _artistSearchAccountSlug,
+      final query = accountProfilePickerQueryStreamValue.value.trim();
+      final pageResult = await _loadAccountProfilePickerCandidates(
+        candidateType: candidateType,
+        accountSlug: _accountProfilePickerAccountSlug,
         isInitial: isInitial,
         query: query,
       );
 
-      if (_isDisposed || requestToken != _artistSearchRequestToken) {
+      if (_isDisposed || requestToken != _accountProfilePickerRequestToken) {
         return;
       }
 
       final nextItems = isInitial
           ? pageResult.items
           : _mergeAccountProfiles(
-              artistSearchResultsStreamValue.value,
+              accountProfilePickerResultsStreamValue.value,
               pageResult.items,
             );
 
-      _artistSearchCurrentPage = isInitial ? 1 : _artistSearchCurrentPage + 1;
-      artistSearchResultsStreamValue.addValue(List.unmodifiable(nextItems));
-      artistSearchHasMoreStreamValue.addValue(pageResult.hasMore);
-      artistSearchErrorStreamValue.addValue('');
-      _mergeKnownArtistProfiles(pageResult.items);
+      _accountProfilePickerCurrentPage =
+          isInitial ? 1 : _accountProfilePickerCurrentPage + 1;
+      accountProfilePickerResultsStreamValue
+          .addValue(List.unmodifiable(nextItems));
+      accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
+      accountProfilePickerErrorStreamValue.addValue('');
     } catch (error) {
-      if (_isDisposed || requestToken != _artistSearchRequestToken) {
+      if (_isDisposed || requestToken != _accountProfilePickerRequestToken) {
         return;
       }
       if (isInitial) {
-        artistSearchResultsStreamValue.addValue(const []);
-        artistSearchHasMoreStreamValue.addValue(false);
+        accountProfilePickerResultsStreamValue.addValue(const []);
+        accountProfilePickerHasMoreStreamValue.addValue(false);
       }
-      artistSearchErrorStreamValue.addValue(error.toString());
+      accountProfilePickerErrorStreamValue.addValue(error.toString());
     } finally {
-      _isFetchingArtistSearchPage = false;
-      if (!_isDisposed && requestToken == _artistSearchRequestToken) {
+      _isFetchingAccountProfilePickerPage = false;
+      if (!_isDisposed && requestToken == _accountProfilePickerRequestToken) {
         if (isInitial) {
-          artistSearchLoadingStreamValue.addValue(false);
+          accountProfilePickerLoadingStreamValue.addValue(false);
         } else {
-          artistSearchPageLoadingStreamValue.addValue(false);
+          accountProfilePickerPageLoadingStreamValue.addValue(false);
         }
       }
 
-      if (_hasPendingArtistSearchReload) {
-        _hasPendingArtistSearchReload = false;
+      if (_hasPendingAccountProfilePickerReload) {
+        _hasPendingAccountProfilePickerReload = false;
         unawaited(
-          _loadArtistSearchPage(
+          _loadAccountProfilePickerPage(
             isInitial: true,
-            requestToken: _artistSearchRequestToken,
+            requestToken: _accountProfilePickerRequestToken,
           ),
         );
       }
     }
   }
 
-  void _bindArtistSearchScroll() {
-    artistSearchScrollController.addListener(() {
-      if (_isDisposed || !artistSearchScrollController.hasClients) {
+  void _bindAccountProfilePickerScroll() {
+    accountProfilePickerScrollController.addListener(() {
+      if (_isDisposed || !accountProfilePickerScrollController.hasClients) {
         return;
       }
-      final position = artistSearchScrollController.position;
+      final position = accountProfilePickerScrollController.position;
       if (position.pixels < position.maxScrollExtent - 160) {
         return;
       }
-      unawaited(loadNextArtistSearchPage());
+      unawaited(loadNextAccountProfilePickerPage());
     });
   }
 
-  void _mergeKnownArtistProfiles(
+  void _mergeKnownRelatedAccountProfiles(
     Iterable<TenantAdminAccountProfile> profiles,
   ) {
     if (profiles.isEmpty) {
       return;
     }
-    artistCandidatesStreamValue.addValue(
+    relatedAccountProfileCandidatesStreamValue.addValue(
       List.unmodifiable(
         _mergeAccountProfiles(
-          artistCandidatesStreamValue.value,
+          relatedAccountProfileCandidatesStreamValue.value,
           profiles,
         ),
       ),
@@ -1290,15 +1383,17 @@ class TenantAdminEventsController implements Disposable {
 
   void _resetTenantScopedState() {
     _submitInFlight = false;
-    _artistSearchDebounce?.cancel();
-    _artistSearchAccountSlug = null;
-    _artistSearchCurrentPage = 0;
-    _artistSearchRequestToken = 0;
-    _isFetchingArtistSearchPage = false;
-    _hasPendingArtistSearchReload = false;
+    _accountProfilePickerDebounce?.cancel();
+    _accountProfilePickerAccountSlug = null;
+    _accountProfilePickerCurrentPage = 0;
+    _accountProfilePickerRequestToken = 0;
+    _accountProfilePickerType = null;
+    _isFetchingAccountProfilePickerPage = false;
+    _hasPendingAccountProfilePickerReload = false;
     _eventsRepository.resetEventsState();
-    statusFilterStreamValue.addValue(null);
-    archivedFilterStreamValue.addValue(false);
+    specificDateFilterStreamValue.addValue(null);
+    venueFilterStreamValue.addValue(null);
+    relatedAccountProfileFilterStreamValue.addValue(null);
     temporalFilterStreamValue
         .addValue(TenantAdminEventTemporalBucket.defaultSelection);
     eventDetailStreamValue.addValue(null);
@@ -1310,14 +1405,14 @@ class TenantAdminEventsController implements Disposable {
     taxonomyErrorStreamValue.addValue(null);
     eventTypeCatalogStreamValue.addValue(const []);
     venueCandidatesStreamValue.addValue(const []);
-    artistCandidatesStreamValue.addValue(const []);
-    artistSearchResultsStreamValue.addValue(const []);
-    artistSearchLoadingStreamValue.addValue(false);
-    artistSearchPageLoadingStreamValue.addValue(false);
-    artistSearchHasMoreStreamValue.addValue(true);
-    artistSearchErrorStreamValue.addValue('');
-    artistSearchQueryStreamValue.addValue('');
-    artistSearchController.clear();
+    relatedAccountProfileCandidatesStreamValue.addValue(const []);
+    accountProfilePickerResultsStreamValue.addValue(const []);
+    accountProfilePickerLoadingStreamValue.addValue(false);
+    accountProfilePickerPageLoadingStreamValue.addValue(false);
+    accountProfilePickerHasMoreStreamValue.addValue(true);
+    accountProfilePickerErrorStreamValue.addValue('');
+    accountProfilePickerQueryStreamValue.addValue('');
+    accountProfilePickerSearchController.clear();
     accountProfileCandidatesLoadingStreamValue.addValue(false);
     accountProfileCandidatesErrorStreamValue.addValue(null);
     eventCoverFileStreamValue.addValue(null);
@@ -1403,11 +1498,10 @@ class TenantAdminEventsController implements Disposable {
 
     return TenantAdminPoiVisual.image(
       imageSource: currentEventTypePoiVisualImageSource,
-      imageUrlValue:
-          currentEventTypePoiVisualImageSource ==
-                  TenantAdminPoiVisualImageSource.typeAsset
-              ? _buildOptionalUrlValue(currentEventTypeTypeAssetUrl)
-              : null,
+      imageUrlValue: currentEventTypePoiVisualImageSource ==
+              TenantAdminPoiVisualImageSource.typeAsset
+          ? _buildOptionalUrlValue(currentEventTypeTypeAssetUrl)
+          : null,
     );
   }
 
@@ -1502,9 +1596,10 @@ class TenantAdminEventsController implements Disposable {
     eventTypePoiVisualIconController.text = 'place';
     eventTypePoiVisualColorController.text = '#2563EB';
     eventTypePoiVisualIconColorController.text = '#FFFFFF';
-    final imageSource = visual.imageSource == TenantAdminPoiVisualImageSource.avatar
-        ? TenantAdminPoiVisualImageSource.cover
-        : (visual.imageSource ?? TenantAdminPoiVisualImageSource.cover);
+    final imageSource =
+        visual.imageSource == TenantAdminPoiVisualImageSource.avatar
+            ? TenantAdminPoiVisualImageSource.cover
+            : (visual.imageSource ?? TenantAdminPoiVisualImageSource.cover);
     eventTypePoiVisualImageSourceStreamValue.addValue(imageSource);
     eventTypeTypeAssetUrlStreamValue.addValue(visual.imageUrl ?? '');
   }
@@ -1577,7 +1672,7 @@ class TenantAdminEventsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
-    _artistSearchDebounce?.cancel();
+    _accountProfilePickerDebounce?.cancel();
     unawaited(_tenantScopeSubscription?.cancel());
     unawaited(_hasMoreEventsSubscription?.cancel());
     unawaited(_isEventsPageLoadingSubscription?.cancel());
@@ -1589,8 +1684,9 @@ class TenantAdminEventsController implements Disposable {
     hasMoreEventsStreamValue.dispose();
     isEventsPageLoadingStreamValue.dispose();
     eventsErrorStreamValue.dispose();
-    statusFilterStreamValue.dispose();
-    archivedFilterStreamValue.dispose();
+    specificDateFilterStreamValue.dispose();
+    venueFilterStreamValue.dispose();
+    relatedAccountProfileFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
     eventDetailStreamValue.dispose();
     eventDetailLoadingStreamValue.dispose();
@@ -1604,19 +1700,19 @@ class TenantAdminEventsController implements Disposable {
     taxonomyLoadingStreamValue.dispose();
     taxonomyErrorStreamValue.dispose();
     venueCandidatesStreamValue.dispose();
-    artistCandidatesStreamValue.dispose();
-    artistSearchResultsStreamValue.dispose();
-    artistSearchLoadingStreamValue.dispose();
-    artistSearchPageLoadingStreamValue.dispose();
-    artistSearchHasMoreStreamValue.dispose();
-    artistSearchErrorStreamValue.dispose();
-    artistSearchQueryStreamValue.dispose();
+    relatedAccountProfileCandidatesStreamValue.dispose();
+    accountProfilePickerResultsStreamValue.dispose();
+    accountProfilePickerLoadingStreamValue.dispose();
+    accountProfilePickerPageLoadingStreamValue.dispose();
+    accountProfilePickerHasMoreStreamValue.dispose();
+    accountProfilePickerErrorStreamValue.dispose();
+    accountProfilePickerQueryStreamValue.dispose();
     accountProfileCandidatesLoadingStreamValue.dispose();
     accountProfileCandidatesErrorStreamValue.dispose();
     eventsScrollController.dispose();
-    artistSearchScrollController.dispose();
+    accountProfilePickerScrollController.dispose();
     eventFormStateStreamValue.dispose();
-    artistSearchController.dispose();
+    accountProfilePickerSearchController.dispose();
     eventTitleController.dispose();
     eventContentController.dispose();
     eventStartController.dispose();
@@ -1639,6 +1735,18 @@ class TenantAdminEventsController implements Disposable {
     eventTypeTypeAssetFileStreamValue.dispose();
     eventTypeTypeAssetUrlStreamValue.dispose();
     eventTypeRemoveTypeAssetStreamValue.dispose();
+  }
+
+  String? _specificDateQueryValue() {
+    final value = specificDateFilterStreamValue.value;
+    if (value == null) {
+      return null;
+    }
+
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
   }
 
   @override

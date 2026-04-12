@@ -74,6 +74,13 @@ class TenantAdminShellController implements Disposable {
     isTenantSelectionResolvingStreamValue
         .addValue(shouldResolveBeforeShowingPicker);
 
+    if (isTenantEnvironment) {
+      if (shouldResolveBeforeShowingPicker) {
+        isTenantSelectionResolvingStreamValue.addValue(false);
+      }
+      return;
+    }
+
     unawaited(
       _refreshTenantsFromBackend(
         completeInitialResolution: shouldResolveBeforeShowingPicker,

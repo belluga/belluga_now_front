@@ -1542,9 +1542,57 @@ void main() {
       controller.onDispose();
     });
 
-    test(
-        'renders event from canonical agenda payload when type.id is non-ObjectId',
+    test('does not log refresh failure after controller is disposed mid-fetch',
         () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FailAfterDisposeScheduleRepository();
+      final controller = _buildAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      final messages = <String>[];
+      final originalDebugPrint = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) {
+          messages.add(message);
+        }
+      };
+
+      try {
+        final initFuture = controller.init();
+        await Future<void>.delayed(Duration.zero);
+        controller.onDispose();
+        scheduleRepository.releaseFailure();
+        await initFuture;
+      } finally {
+        debugPrint = originalDebugPrint;
+      }
+
+      expect(
+        messages.where((message) => message.contains('_refresh failed')),
+        isEmpty,
+      );
+      expect(
+        messages.where(
+          (message) =>
+              message.contains('_refresh retry failed after first-page error'),
+        ),
+        isEmpty,
+      );
+    });
+
+    test(
+      'renders event from canonical agenda payload when type.id is non-ObjectId',
+      () async {
       final appData = _buildAppData(
         minKm: 1,
         defaultKm: 5,
@@ -2242,6 +2290,33 @@ class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
   }) async {
     getEventsPageCallCount += 1;
     throw Exception('forced persistent first-page failure');
+  }
+}
+
+class _FailAfterDisposeScheduleRepository extends _FakeScheduleRepository {
+  final Completer<void> _failureGate = Completer<void>();
+
+  void releaseFailure() {
+    if (!_failureGate.isCompleted) {
+      _failureGate.complete();
+    }
+  }
+
+  @override
+  Future<List<EventModel>> _fetchPage({
+    required int page,
+    required int pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    ScheduleRepoBool? liveNowOnly,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+  }) async {
+    getEventsPageCallCount += 1;
+    await _failureGate.future;
+    throw Exception('forced disposed refresh failure');
   }
 }
 

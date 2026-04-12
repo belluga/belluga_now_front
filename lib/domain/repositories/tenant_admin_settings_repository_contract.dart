@@ -1,16 +1,31 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef TenantAdminSettingsRepositoryContractPrimString = String;
-typedef TenantAdminSettingsRepositoryContractPrimInt = int;
-typedef TenantAdminSettingsRepositoryContractPrimBool = bool;
-typedef TenantAdminSettingsRepositoryContractPrimDouble = double;
-typedef TenantAdminSettingsRepositoryContractPrimDateTime = DateTime;
-typedef TenantAdminSettingsRepositoryContractPrimDynamic = dynamic;
-
 abstract class TenantAdminSettingsRepositoryContract {
+  static final Expando<_TenantAdminSettingsDomainsPaginationState>
+      _domainsPaginationStateByRepository =
+      Expando<_TenantAdminSettingsDomainsPaginationState>();
+  static const int _defaultDomainsPageSizeRaw = 15;
+
+  _TenantAdminSettingsDomainsPaginationState get _domainsPaginationState =>
+      _domainsPaginationStateByRepository[this] ??=
+          _TenantAdminSettingsDomainsPaginationState();
+
+  StreamValue<List<TenantAdminDomainEntry>> get domainsStreamValue =>
+      _domainsPaginationState.domainsStreamValue;
+
+  StreamValue<bool> get hasMoreDomainsStreamValue =>
+      _domainsPaginationState.hasMoreDomainsStreamValue;
+
+  StreamValue<bool> get isDomainsPageLoadingStreamValue =>
+      _domainsPaginationState.isDomainsPageLoadingStreamValue;
+
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue;
 
   void clearBrandingSettings();
@@ -27,7 +42,49 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminAppLinksSettings settings,
   });
 
-  Future<TenantAdminSettingsRepositoryContractPrimString> uploadMapFilterImage({
+  Future<void> loadDomains() async {
+    await _waitForDomainsFetch();
+    _resetDomainsPagination();
+    domainsStreamValue.addValue(const <TenantAdminDomainEntry>[]);
+    await _fetchDomainsPage(
+      page: TenantAdminCountValue(1),
+      pageSize: TenantAdminCountValue(_defaultDomainsPageSizeRaw),
+    );
+  }
+
+  Future<void> loadMoreDomains() async {
+    if (_domainsPaginationState.isFetchingDomainsPage.value ||
+        !_domainsPaginationState.hasMoreDomains.value) {
+      return;
+    }
+
+    await _fetchDomainsPage(
+      page: TenantAdminCountValue(
+        _domainsPaginationState.currentDomainsPage.value + 1,
+      ),
+      pageSize: TenantAdminCountValue(_defaultDomainsPageSizeRaw),
+    );
+  }
+
+  void resetDomainsState() {
+    _resetDomainsPagination();
+    domainsStreamValue.addValue(const <TenantAdminDomainEntry>[]);
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminDomainEntry>> fetchDomainsPage({
+    required TenantAdminCountValue page,
+    required TenantAdminCountValue pageSize,
+  });
+
+  Future<TenantAdminDomainEntry> createDomain({
+    required TenantAdminRequiredTextValue path,
+  });
+
+  Future<void> deleteDomain(
+    TenantAdminRequiredTextValue domainId,
+  );
+
+  Future<String> uploadMapFilterImage({
     required TenantAdminLowercaseTokenValue key,
     required TenantAdminMediaUpload upload,
   });
@@ -63,4 +120,84 @@ abstract class TenantAdminSettingsRepositoryContract {
   Future<TenantAdminBrandingSettings> updateBranding({
     required TenantAdminBrandingUpdateInput input,
   });
+
+  Future<void> _waitForDomainsFetch() async {
+    while (_domainsPaginationState.isFetchingDomainsPage.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> _fetchDomainsPage({
+    required TenantAdminCountValue page,
+    required TenantAdminCountValue pageSize,
+  }) async {
+    if (_domainsPaginationState.isFetchingDomainsPage.value) {
+      return;
+    }
+    if (page.value > 1 && !_domainsPaginationState.hasMoreDomains.value) {
+      return;
+    }
+
+    _domainsPaginationState.isFetchingDomainsPage = TenantAdminFlagValue(true);
+    if (page.value > 1) {
+      isDomainsPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final result = await fetchDomainsPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      if (page.value == 1) {
+        _domainsPaginationState.cachedDomains
+          ..clear()
+          ..addAll(result.items);
+      } else {
+        _domainsPaginationState.cachedDomains.addAll(result.items);
+      }
+      _domainsPaginationState.currentDomainsPage = page;
+      _domainsPaginationState.hasMoreDomains = TenantAdminFlagValue(
+        result.hasMore,
+      );
+      hasMoreDomainsStreamValue.addValue(result.hasMore);
+      domainsStreamValue.addValue(
+        List<TenantAdminDomainEntry>.unmodifiable(
+          _domainsPaginationState.cachedDomains,
+        ),
+      );
+    } catch (_) {
+      if (page.value == 1) {
+        domainsStreamValue.addValue(const <TenantAdminDomainEntry>[]);
+      }
+      rethrow;
+    } finally {
+      _domainsPaginationState.isFetchingDomainsPage =
+          TenantAdminFlagValue(false);
+      isDomainsPageLoadingStreamValue.addValue(false);
+    }
+  }
+
+  void _resetDomainsPagination() {
+    _domainsPaginationState.cachedDomains.clear();
+    _domainsPaginationState.currentDomainsPage = TenantAdminCountValue(0);
+    _domainsPaginationState.hasMoreDomains = TenantAdminFlagValue(false);
+    _domainsPaginationState.isFetchingDomainsPage = TenantAdminFlagValue(false);
+    hasMoreDomainsStreamValue.addValue(false);
+    isDomainsPageLoadingStreamValue.addValue(false);
+  }
+}
+
+class _TenantAdminSettingsDomainsPaginationState {
+  final List<TenantAdminDomainEntry> cachedDomains = <TenantAdminDomainEntry>[];
+  final StreamValue<List<TenantAdminDomainEntry>> domainsStreamValue =
+      StreamValue<List<TenantAdminDomainEntry>>(
+    defaultValue: const <TenantAdminDomainEntry>[],
+  );
+  final StreamValue<bool> hasMoreDomainsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isDomainsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  TenantAdminFlagValue isFetchingDomainsPage = TenantAdminFlagValue(false);
+  TenantAdminFlagValue hasMoreDomains = TenantAdminFlagValue(false);
+  TenantAdminCountValue currentDomainsPage = TenantAdminCountValue(0);
 }

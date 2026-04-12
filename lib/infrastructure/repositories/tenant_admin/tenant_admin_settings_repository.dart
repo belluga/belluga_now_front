@@ -2,12 +2,18 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_domains_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_domains_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_response_decoder.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -15,7 +21,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminSettingsRepository
-    implements TenantAdminSettingsRepositoryContract {
+    extends TenantAdminSettingsRepositoryContract {
   TenantAdminSettingsRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
@@ -28,6 +34,10 @@ class TenantAdminSettingsRepository
       const JsonObjectResponseDecoder();
   final RawJsonEnvelopeDecoder _envelopeDecoder =
       const RawJsonEnvelopeDecoder();
+  final TenantAdminDomainsRequestEncoder _domainsRequestEncoder =
+      const TenantAdminDomainsRequestEncoder();
+  final TenantAdminDomainsResponseDecoder _domainsResponseDecoder =
+      const TenantAdminDomainsResponseDecoder();
   final TenantAdminSettingsRequestEncoder _requestEncoder =
       const TenantAdminSettingsRequestEncoder();
   final TenantAdminSettingsResponseDecoder _responseDecoder =
@@ -128,6 +138,65 @@ class TenantAdminSettingsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'update app_links settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminDomainEntry>> fetchDomainsPage({
+    required TenantAdminCountValue page,
+    required TenantAdminCountValue pageSize,
+  }) async {
+    try {
+      final requestUri = _buildTenantDomainsUri().replace(
+        queryParameters: {
+          'page': '${page.value}',
+          'per_page': '${pageSize.value}',
+        },
+      );
+      final response = await _dio.getUri(
+        requestUri,
+        options: Options(headers: _buildHeaders()),
+      );
+      final items = _domainsResponseDecoder.decodeDomainList(response.data);
+      return tenantAdminPagedResultFromRaw(
+        items: items,
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page.value,
+        ),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load domains page');
+    }
+  }
+
+  @override
+  Future<TenantAdminDomainEntry> createDomain({
+    required TenantAdminRequiredTextValue path,
+  }) async {
+    try {
+      final response = await _dio.postUri(
+        _buildTenantDomainsUri(),
+        data: _domainsRequestEncoder.encodeCreate(path: path),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _domainsResponseDecoder.decodeDomainItem(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create domain');
+    }
+  }
+
+  @override
+  Future<void> deleteDomain(
+    TenantAdminRequiredTextValue domainId,
+  ) async {
+    try {
+      await _dio.deleteUri(
+        _buildTenantDomainsUri(domainId: domainId.value),
+        options: Options(headers: _buildHeaders()),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete domain');
     }
   }
 
@@ -434,6 +503,20 @@ class TenantAdminSettingsRepository
   Uri _buildTenantAppDomainsUri() {
     final origin = _resolveTenantOriginUri();
     return origin.replace(path: '/admin/api/v1/appdomains');
+  }
+
+  Uri _buildTenantDomainsUri({
+    String? domainId,
+  }) {
+    final origin = _resolveTenantOriginUri();
+    final encodedDomainId = domainId == null || domainId.trim().isEmpty
+        ? null
+        : Uri.encodeComponent(domainId.trim());
+    final path = switch (encodedDomainId) {
+      null => '/admin/api/v1/domains',
+      final id => '/admin/api/v1/domains/$id',
+    };
+    return origin.replace(path: path);
   }
 
   Uri _resolveTenantOriginUri({String? apiBaseUrl}) {

@@ -173,6 +173,28 @@ void main() {
     );
   });
 
+  test('tenant environment init skips landlord tenant fetch', () {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'tenant',
+        hostname: 'guarappari.belluga.space',
+        domains: ['https://guarappari.belluga.space'],
+      ),
+    );
+    final landlordTenantsRepository = _CountingLandlordTenantsRepository();
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
+      landlordTenantsRepository: landlordTenantsRepository,
+      selectedTenantRepository: _FakeSelectedTenantRepository(),
+    );
+
+    controller.init();
+
+    expect(landlordTenantsRepository.fetchCalls, 0);
+  });
+
   testWidgets(
       'tenant environment without local landlord session shows admin auth gate',
       (tester) async {
@@ -300,6 +322,17 @@ class _FixedLandlordTenantsRepository
 
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async => _tenants;
+}
+
+class _CountingLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  int fetchCalls = 0;
+
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    fetchCalls += 1;
+    return const <LandlordTenantOption>[];
+  }
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
