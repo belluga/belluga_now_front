@@ -15,7 +15,8 @@ void main() {
         'visual': {
           'mode': 'image',
           'image_source': 'type_asset',
-          'image_url': 'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
+          'image_url':
+              'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
         },
       },
     });
@@ -32,7 +33,8 @@ void main() {
     );
   });
 
-  test('prefers artist ids from event_parties when available', () {
+  test('prefers related account profile ids from event_parties when available',
+      () {
     final event = decoder.decodeEventItem({
       'data': {
         'event_id': 'evt-1',
@@ -59,18 +61,72 @@ void main() {
             'permissions': {'can_edit': false},
           },
         ],
-        'artist_ids': ['legacy-artist-id'],
+        'linked_account_profiles': [
+          {
+            'id': 'artist-1',
+            'account_id': 'artist-1',
+            'display_name': 'DJ One',
+            'profile_type': 'artist',
+          },
+          {
+            'id': 'producer-1',
+            'account_id': 'producer-1',
+            'display_name': 'Producer One',
+            'profile_type': 'producer',
+          },
+        ],
       },
     });
 
     expect(
-      event.artistIds.map((entry) => entry.value).toList(growable: false),
-      ['artist-1'],
-    );
-    expect(
-      event.eventParties.map((entry) => entry.partyRefId).toList(growable: false),
+      event.relatedAccountProfileIds
+          .map((entry) => entry.value)
+          .toList(growable: false),
       ['artist-1', 'producer-1'],
     );
+    expect(
+      event.eventParties
+          .map((entry) => entry.partyRefId)
+          .toList(growable: false),
+      ['artist-1', 'producer-1'],
+    );
+    expect(
+      event.relatedAccountProfiles
+          .map((entry) => entry.displayName)
+          .toList(growable: false),
+      ['DJ One', 'Producer One'],
+    );
+  });
+
+  test('does not synthesize related profiles from legacy artists payload', () {
+    final event = decoder.decodeEventItem({
+      'data': {
+        'event_id': 'evt-legacy-artists-only',
+        'slug': 'evento-legacy',
+        'title': 'Evento legado',
+        'content': 'Conteudo',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+          'description': '',
+        },
+        'date_time_start': '2026-04-05T20:00:00+00:00',
+        'publication': {'status': 'draft'},
+        'artists': [
+          {
+            'id': 'artist-legacy-1',
+            'display_name': 'Legacy Artist',
+            'avatar_url': 'https://tenant.test/artist.png',
+            'highlight': false,
+            'genres': ['house'],
+          },
+        ],
+      },
+    });
+
+    expect(event.relatedAccountProfileIds, isEmpty);
+    expect(event.relatedAccountProfiles, isEmpty);
   });
 
   test('decodes legacy event parties summary payload', () {
@@ -122,7 +178,8 @@ void main() {
     expect(event.placeRef!.id, '507f1f77bcf86cd799439011');
   });
 
-  test('rejects structured title payload instead of stringifying object values', () {
+  test('rejects structured title payload instead of stringifying object values',
+      () {
     expect(
       () => decoder.decodeEventItem({
         'data': {

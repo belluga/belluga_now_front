@@ -171,8 +171,7 @@ abstract class TenantAdminEventsRepositoryContract {
     throw UnimplementedError();
   }
 
-  Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() {
+  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() {
     throw UnimplementedError();
   }
 
@@ -274,7 +273,8 @@ abstract class TenantAdminEventsRepositoryContract {
     );
   }
 
-  Future<List<TenantAdminAccountProfile>> fetchAllEventAccountProfileCandidates({
+  Future<List<TenantAdminAccountProfile>>
+      fetchAllEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -411,7 +411,8 @@ abstract class TenantAdminEventsRepositoryContract {
         hasMore: _accountProfileCandidatesPaginationState.hasMore.value,
       );
     }
-    if (page.value > 1 && !_accountProfileCandidatesPaginationState.hasMore.value) {
+    if (page.value > 1 &&
+        !_accountProfileCandidatesPaginationState.hasMore.value) {
       return tenantAdminPagedResultFromRaw(
         items: List<TenantAdminAccountProfile>.unmodifiable(
           _accountProfileCandidatesPaginationState.cachedItems,
@@ -474,7 +475,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventAccountProfileCandidateType candidateType,
   ) {
     final rawValue = switch (candidateType) {
-      TenantAdminEventAccountProfileCandidateType.artist => 20,
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
       TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
     };
 
@@ -653,7 +654,8 @@ mixin TenantAdminEventsPaginationMixin
   }
 
   @override
-  Future<List<TenantAdminAccountProfile>> fetchAllEventAccountProfileCandidates({
+  Future<List<TenantAdminAccountProfile>>
+      fetchAllEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -853,7 +855,7 @@ mixin TenantAdminEventsPaginationMixin
     TenantAdminEventAccountProfileCandidateType candidateType,
   ) {
     final rawValue = switch (candidateType) {
-      TenantAdminEventAccountProfileCandidateType.artist => 20,
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
       TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
     };
 

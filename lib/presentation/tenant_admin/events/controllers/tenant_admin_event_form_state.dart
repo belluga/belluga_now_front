@@ -9,7 +9,7 @@ class TenantAdminEventFormState {
     required this.publicationStatus,
     required this.selectedVenueId,
     required this.selectedTypeSlug,
-    required this.selectedArtistIds,
+    required this.selectedRelatedAccountProfileIds,
     required this.selectedTaxonomyTerms,
     required this.hasHydratedDefaultVenue,
   });
@@ -23,7 +23,7 @@ class TenantAdminEventFormState {
       publicationStatus: 'draft',
       selectedVenueId: null,
       selectedTypeSlug: null,
-      selectedArtistIds: <String>{},
+      selectedRelatedAccountProfileIds: <String>{},
       selectedTaxonomyTerms: <String, Set<String>>{},
       hasHydratedDefaultVenue: false,
     );
@@ -36,7 +36,7 @@ class TenantAdminEventFormState {
   final String publicationStatus;
   final String? selectedVenueId;
   final String? selectedTypeSlug;
-  final Set<String> selectedArtistIds;
+  final Set<String> selectedRelatedAccountProfileIds;
   final Map<String, Set<String>> selectedTaxonomyTerms;
   final bool hasHydratedDefaultVenue;
 
@@ -48,7 +48,7 @@ class TenantAdminEventFormState {
     String? publicationStatus,
     Object? selectedVenueId = _undefined,
     Object? selectedTypeSlug = _undefined,
-    Set<String>? selectedArtistIds,
+    Set<String>? selectedRelatedAccountProfileIds,
     Map<String, Set<String>>? selectedTaxonomyTerms,
     bool? hasHydratedDefaultVenue,
   }) {
@@ -64,7 +64,8 @@ class TenantAdminEventFormState {
       selectedTypeSlug: selectedTypeSlug == _undefined
           ? this.selectedTypeSlug
           : selectedTypeSlug as String?,
-      selectedArtistIds: selectedArtistIds ?? this.selectedArtistIds,
+      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds ??
+          this.selectedRelatedAccountProfileIds,
       selectedTaxonomyTerms:
           selectedTaxonomyTerms ?? this.selectedTaxonomyTerms,
       hasHydratedDefaultVenue:

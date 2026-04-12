@@ -264,7 +264,7 @@ void main() {
   });
 
   testWidgets(
-      'artist picker disables already selected artists on subsequent open',
+      'related account profile picker disables already selected profiles on subsequent open',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -292,18 +292,18 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar artista'),
+      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
       280,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar artista'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Artist A').first);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar artista'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
     await tester.pumpAndSettle();
 
     final disabledTile = tester.widget<ListTile>(
@@ -312,7 +312,8 @@ void main() {
     expect(disabledTile.enabled, isFalse);
   });
 
-  testWidgets('shows explicit empty states when no host/artist candidates',
+  testWidgets(
+      'shows explicit empty states when no host/related profile candidates',
       (tester) async {
     final eventsRepository = _EmptyCandidatesEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -352,7 +353,8 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Use a busca para localizar artistas além da primeira página carregada.'),
+      find.text(
+          'Use a busca para localizar perfis relacionados além da primeira página carregada.'),
       280,
       scrollable: find.byType(Scrollable).first,
     );
@@ -360,17 +362,18 @@ void main() {
 
     expect(
       find.text(
-        'Use a busca para localizar artistas além da primeira página carregada.',
+        'Use a busca para localizar perfis relacionados além da primeira página carregada.',
       ),
       findsOneWidget,
     );
     final addArtistButton = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Adicionar artista'),
+      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
     );
     expect(addArtistButton.onPressed, isNotNull);
   });
 
-  testWidgets('artist picker performs backend search after typing',
+  testWidgets(
+      'related account profile picker performs backend search after typing',
       (tester) async {
     final eventsRepository = _SearchableCandidatesEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -397,19 +400,19 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar artista'),
+      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
       280,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar artista'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
     await tester.pumpAndSettle();
 
     expect(find.text('Artist A'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Buscar artista'),
+      find.widgetWithText(TextField, 'Buscar perfil relacionado'),
       'Zulu',
     );
     await tester.pump(const Duration(milliseconds: 350));
@@ -448,7 +451,8 @@ void main() {
 
     expect(find.byType(TenantAdminRichTextEditor), findsOneWidget);
     expect(find.text('Descrição (opcional)'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Descrição (opcional)'), findsNothing);
+    expect(find.widgetWithText(TextFormField, 'Descrição (opcional)'),
+        findsNothing);
   });
 }
 
@@ -514,8 +518,7 @@ Future<void> _fillRequiredFields(
   await tester.pumpAndSettle();
 }
 
-class _FakeEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   List<TenantAdminEventType> eventTypes = <TenantAdminEventType>[];
   TenantAdminEventDraft? lastCreateDraft;
@@ -605,7 +608,7 @@ class _FakeEventsRepository
             ),
           ),
         ],
-      TenantAdminEventAccountProfileCandidateType.artist => [
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => [
           tenantAdminAccountProfileFromRaw(
             id: 'artist-1',
             accountId: 'acc-artist',
@@ -641,7 +644,8 @@ class _FakeEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -662,7 +666,7 @@ class _FakeEventsRepository
       publication: draft.publication,
       location: draft.location,
       placeRef: draft.placeRef,
-      artistIdValues: draft.artistIds,
+      relatedAccountProfileIdValues: draft.relatedAccountProfileIds,
       taxonomyTerms: draft.taxonomyTerms,
     );
   }
