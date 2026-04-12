@@ -18,7 +18,9 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -32,6 +34,7 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_lo
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_domains_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_local_preferences_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_technical_integrations_screen.dart';
@@ -89,6 +92,25 @@ TenantAdminOptionalTextValue _optionalText(String raw) {
   final value = TenantAdminOptionalTextValue();
   value.parse(raw);
   return value;
+}
+
+TenantAdminDomainStatusValue _domainStatus(String raw) {
+  final value = TenantAdminDomainStatusValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminDomainEntry _domainEntry({
+  required String id,
+  required String path,
+  String status = TenantAdminDomainStatusValue.active,
+}) {
+  return TenantAdminDomainEntry(
+    idValue: _requiredText(id),
+    pathValue: _requiredText(path),
+    typeValue: _requiredText('web'),
+    statusValue: _domainStatus(status),
+  );
 }
 
 TenantAdminResendEmailRecipients _resendRecipients(Iterable<String> values) {
@@ -161,6 +183,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardDomains),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(TenantAdminSettingsKeys.hubActionPreferences),
       findsNothing,
     );
@@ -169,10 +195,18 @@ void main() {
       findsNothing,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionDomains),
+      findsNothing,
+    );
+    expect(
       find.text('Toque para editar preferências e filtros do mapa'),
       findsOneWidget,
     );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
+    expect(
+      find.text('Toque para gerenciar domínios web ativos'),
+      findsOneWidget,
+    );
 
     await tester.scrollUntilVisible(
       find.byKey(TenantAdminSettingsKeys.hubCardTechnicalIntegrations),
@@ -258,6 +292,244 @@ void main() {
     expect(find.text('Tenant Test'), findsOneWidget);
     expect(find.text('guarappari.test'), findsWidgets);
     expect(find.text('project-test'), findsOneWidget);
+  });
+
+  testWidgets('renders domains screen with active-domain actions',
+      (tester) async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://current.example.com'),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDomains: [
+        _domainEntry(id: 'domain-current', path: 'current.example.com'),
+        _domainEntry(id: 'domain-extra', path: 'extra.example.com'),
+      ],
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _FakeTenantScope('current.example.com'),
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsDomainsScreen()),
+    );
+
+    expect(find.byKey(TenantAdminSettingsKeys.domainsScreen), findsOneWidget);
+    expect(
+      find.byKey(TenantAdminSettingsKeys.domainsScopedAppBar),
+      findsOneWidget,
+    );
+    expect(find.text('current.example.com'), findsOneWidget);
+    expect(find.text('extra.example.com'), findsOneWidget);
+    expect(find.text('Ativo'), findsNWidgets(2));
+
+    final currentDeleteButton = tester.widget<OutlinedButton>(
+      find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)),
+    );
+    final extraDeleteButton = tester.widget<OutlinedButton>(
+      find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(1)),
+    );
+
+    expect(currentDeleteButton.onPressed, isNull);
+    expect(extraDeleteButton.onPressed, isNotNull);
+  });
+
+  testWidgets('domains screen adds and deletes active domains through widget actions',
+      (tester) async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://current.example.com'),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDomains: [
+        _domainEntry(id: 'domain-current', path: 'current.example.com'),
+        _domainEntry(id: 'domain-extra', path: 'extra.example.com'),
+      ],
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _FakeTenantScope('current.example.com'),
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsDomainsScreen()),
+    );
+
+    await tester.enterText(
+      find.byKey(TenantAdminSettingsKeys.domainsPathField),
+      'NEW-DOMAIN.EXAMPLE.COM',
+    );
+    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
+    expect(find.text('new-domain.example.com'), findsOneWidget);
+
+    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Remover'));
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.deletedDomainIds, ['domain-created-1']);
+    expect(find.text('new-domain.example.com'), findsNothing);
+  });
+
+  testWidgets('domains screen surfaces duplicate-domain errors through widget flow',
+      (tester) async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://current.example.com'),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      createDomainError: StateError('Another tenant already uses this domain.'),
+      initialDomains: [
+        _domainEntry(id: 'domain-current', path: 'current.example.com'),
+      ],
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _FakeTenantScope('current.example.com'),
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsDomainsScreen()),
+    );
+
+    await tester.enterText(
+      find.byKey(TenantAdminSettingsKeys.domainsPathField),
+      'shared.example.com',
+    );
+    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.createdDomainPaths, ['shared.example.com']);
+    expect(
+      find.textContaining('Another tenant already uses this domain.'),
+      findsOneWidget,
+    );
+    expect(find.text('current.example.com'), findsOneWidget);
+    expect(find.byKey(TenantAdminSettingsKeys.domainsRow(0)), findsOneWidget);
+    expect(find.byKey(TenantAdminSettingsKeys.domainsRow(1)), findsNothing);
+  });
+
+  test('controller paginates and mutates active domains list', () async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://current.example.com'),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDomains: List<TenantAdminDomainEntry>.generate(
+        16,
+        (index) => _domainEntry(
+          id: 'domain-$index',
+          path:
+              index == 0 ? 'current.example.com' : 'domain-$index.example.com',
+        ),
+      ),
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _FakeTenantScope('current.example.com'),
+    );
+    final controller = TenantAdminSettingsController();
+
+    await controller.loadDomains();
+    expect(controller.domainsStreamValue.value, hasLength(15));
+    expect(controller.hasMoreDomainsStreamValue.value, isTrue);
+
+    await controller.loadNextDomainsPage();
+    expect(controller.domainsStreamValue.value, hasLength(16));
+    expect(controller.hasMoreDomainsStreamValue.value, isFalse);
+
+    controller.domainPathController.text = 'NEW-DOMAIN.EXAMPLE.COM';
+    await controller.createDomain();
+    expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
+    expect(
+      controller.domainsStreamValue.value.first.path,
+      'new-domain.example.com',
+    );
+
+    final deletable = controller.domainsStreamValue.value.firstWhere(
+      (domain) => domain.path == 'domain-1.example.com',
+    );
+    await controller.deleteDomain(deletable);
+    expect(settingsRepository.deletedDomainIds, contains(deletable.id));
+    expect(
+      controller.domainsStreamValue.value.any(
+        (domain) => domain.id == deletable.id,
+      ),
+      isFalse,
+    );
+  });
+
+  test('controller preserves duplicate-domain validation errors', () async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://current.example.com'),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      createDomainError: StateError(
+        'Another tenant already uses this domain.',
+      ),
+      initialDomains: [
+        _domainEntry(id: 'domain-current', path: 'current.example.com'),
+      ],
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _FakeTenantScope('current.example.com'),
+    );
+    final controller = TenantAdminSettingsController();
+
+    await controller.loadDomains();
+    controller.domainPathController.text = 'shared.example.com';
+    await controller.createDomain();
+
+    expect(
+      controller.remoteErrorStreamValue.value,
+      contains('Another tenant already uses this domain.'),
+    );
+    expect(settingsRepository.createdDomainPaths, ['shared.example.com']);
+    expect(controller.domainsStreamValue.value, hasLength(1));
+    expect(
+      controller.domainsStreamValue.value.single.path,
+      'current.example.com',
+    );
   });
 
   testWidgets('updates theme mode via segmented control', (tester) async {
@@ -1755,8 +2027,12 @@ Map<String, dynamic> _settingsTestMetaForChild(Widget child) {
 }
 
 String _settingsTestRouteNameForChild(Widget child) {
-  if (_isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(child)) {
+  if (_isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(
+      child)) {
     return 'settings-environment-snapshot-test';
+  }
+  if (_isScaffoldWithBody<TenantAdminSettingsDomainsScreen>(child)) {
+    return 'settings-domains-test';
   }
   if (_isScaffoldWithBody<TenantAdminSettingsLocalPreferencesScreen>(child)) {
     return 'settings-local-preferences-test';
@@ -1776,6 +2052,7 @@ bool _isInternalSettingsTestChild(Widget child) {
   return _isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(
         child,
       ) ||
+      _isScaffoldWithBody<TenantAdminSettingsDomainsScreen>(child) ||
       _isScaffoldWithBody<TenantAdminSettingsLocalPreferencesScreen>(child) ||
       _isScaffoldWithBody<TenantAdminSettingsTechnicalIntegrationsScreen>(
         child,
@@ -1835,12 +2112,14 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _FakeTenantAdminSettingsRepository
-    implements TenantAdminSettingsRepositoryContract {
+    extends TenantAdminSettingsRepositoryContract {
   _FakeTenantAdminSettingsRepository({
     this.throwOnBrandingFetch = false,
+    this.createDomainError,
     String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
     TenantAdminMapUiSettings? initialMapUiSettings,
-  }) : _brandingSettings = TenantAdminBrandingSettings(
+    List<TenantAdminDomainEntry>? initialDomains,
+  })  : _brandingSettings = TenantAdminBrandingSettings(
           tenantName: _requiredText('Tenant Test'),
           brightnessDefault: TenantAdminBrandingBrightness.light,
           primarySeedColor: _hexColor('#009688'),
@@ -1856,6 +2135,14 @@ class _FakeTenantAdminSettingsRepository
           pwaIconUrl: initialPwaIconUrl == null
               ? null
               : _optionalUrl(initialPwaIconUrl),
+        ),
+        _domains = List<TenantAdminDomainEntry>.from(
+          initialDomains ??
+              [
+                _domainEntry(id: 'domain-1', path: 'guarappari.test'),
+                _domainEntry(id: 'domain-2', path: 'legacy.guarappari.test'),
+              ],
+          growable: true,
         ) {
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
@@ -1863,6 +2150,10 @@ class _FakeTenantAdminSettingsRepository
   }
 
   final bool throwOnBrandingFetch;
+  final Object? createDomainError;
+  final List<TenantAdminDomainEntry> _domains;
+  final List<String> createdDomainPaths = <String>[];
+  final List<String> deletedDomainIds = <String>[];
   String? updatedFirebaseProjectId;
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminTelemetryIntegration? lastTelemetryIntegration;
@@ -1944,6 +2235,52 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminAppLinksSettings> fetchAppLinksSettings() async {
     return _appLinksSettings;
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminDomainEntry>> fetchDomainsPage({
+    required TenantAdminCountValue page,
+    required TenantAdminCountValue pageSize,
+  }) async {
+    final safePage = page.value <= 0 ? 1 : page.value;
+    final safePageSize = pageSize.value <= 0 ? 1 : pageSize.value;
+    final start = (safePage - 1) * safePageSize;
+    if (start >= _domains.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminDomainEntry>[],
+        hasMore: false,
+      );
+    }
+    final end = start + safePageSize > _domains.length
+        ? _domains.length
+        : start + safePageSize;
+    return tenantAdminPagedResultFromRaw(
+      items: _domains.sublist(start, end),
+      hasMore: end < _domains.length,
+    );
+  }
+
+  @override
+  Future<TenantAdminDomainEntry> createDomain({
+    required TenantAdminRequiredTextValue path,
+  }) async {
+    final normalizedPath = path.value.trim().toLowerCase();
+    createdDomainPaths.add(normalizedPath);
+    if (createDomainError != null) {
+      throw createDomainError!;
+    }
+    final created = _domainEntry(
+      id: 'domain-created-${createdDomainPaths.length}',
+      path: normalizedPath,
+    );
+    _domains.insert(0, created);
+    return created;
+  }
+
+  @override
+  Future<void> deleteDomain(TenantAdminRequiredTextValue domainId) async {
+    deletedDomainIds.add(domainId.value);
+    _domains.removeWhere((domain) => domain.id == domainId.value);
   }
 
   @override

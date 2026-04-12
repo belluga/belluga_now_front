@@ -56,7 +56,7 @@ class TenantAdminEventsController implements Disposable {
                 : TenantAdminImageIngestionService()) {
     _bindTenantScope();
     _bindRepositoryStreams();
-    _bindRelatedAccountProfileSearchScroll();
+    _bindAccountProfilePickerScroll();
   }
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
@@ -73,10 +73,13 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> eventsErrorStreamValue = StreamValue<String?>();
 
-  final StreamValue<String?> statusFilterStreamValue =
-      StreamValue<String?>(defaultValue: null);
-  final StreamValue<bool> archivedFilterStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<DateTime?> specificDateFilterStreamValue =
+      StreamValue<DateTime?>(defaultValue: null);
+  final StreamValue<TenantAdminAccountProfile?> venueFilterStreamValue =
+      StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
+  final StreamValue<TenantAdminAccountProfile?>
+      relatedAccountProfileFilterStreamValue =
+      StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
   final StreamValue<Set<TenantAdminEventTemporalBucket>>
       temporalFilterStreamValue =
       StreamValue<Set<TenantAdminEventTemporalBucket>>(
@@ -119,30 +122,48 @@ class TenantAdminEventsController implements Disposable {
       relatedAccountProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminAccountProfile>>
-      relatedAccountProfileSearchResultsStreamValue =
+      accountProfilePickerResultsStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
-  final StreamValue<bool> relatedAccountProfileSearchLoadingStreamValue =
+  final StreamValue<bool> accountProfilePickerLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> relatedAccountProfileSearchPageLoadingStreamValue =
+  final StreamValue<bool> accountProfilePickerPageLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> relatedAccountProfileSearchHasMoreStreamValue =
+  final StreamValue<bool> accountProfilePickerHasMoreStreamValue =
       StreamValue<bool>(defaultValue: true);
-  final StreamValue<String> relatedAccountProfileSearchErrorStreamValue =
+  final StreamValue<String> accountProfilePickerErrorStreamValue =
       StreamValue<String>(defaultValue: '');
-  final StreamValue<String> relatedAccountProfileSearchQueryStreamValue =
+  final StreamValue<String> accountProfilePickerQueryStreamValue =
       StreamValue<String>(defaultValue: '');
   final StreamValue<bool> accountProfileCandidatesLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> accountProfileCandidatesErrorStreamValue =
       StreamValue<String?>();
 
+  StreamValue<List<TenantAdminAccountProfile>>
+      get relatedAccountProfileSearchResultsStreamValue =>
+          accountProfilePickerResultsStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchLoadingStreamValue =>
+      accountProfilePickerLoadingStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchPageLoadingStreamValue =>
+      accountProfilePickerPageLoadingStreamValue;
+  StreamValue<bool> get relatedAccountProfileSearchHasMoreStreamValue =>
+      accountProfilePickerHasMoreStreamValue;
+  StreamValue<String> get relatedAccountProfileSearchErrorStreamValue =>
+      accountProfilePickerErrorStreamValue;
+  StreamValue<String> get relatedAccountProfileSearchQueryStreamValue =>
+      accountProfilePickerQueryStreamValue;
+
   final ScrollController eventsScrollController = ScrollController();
-  final ScrollController relatedAccountProfileSearchScrollController =
+  final ScrollController accountProfilePickerScrollController =
       ScrollController();
+  ScrollController get relatedAccountProfileSearchScrollController =>
+      accountProfilePickerScrollController;
 
   final GlobalKey<FormState> eventFormKey = GlobalKey<FormState>();
-  final TextEditingController relatedAccountProfileSearchController =
+  final TextEditingController accountProfilePickerSearchController =
       TextEditingController();
+  TextEditingController get relatedAccountProfileSearchController =>
+      accountProfilePickerSearchController;
   final TextEditingController eventTitleController = TextEditingController();
   final TextEditingController eventContentController = TextEditingController();
   final TextEditingController eventStartController = TextEditingController();
@@ -200,8 +221,8 @@ class TenantAdminEventsController implements Disposable {
 
   bool _isDisposed = false;
   bool _submitInFlight = false;
-  bool _isFetchingRelatedAccountProfileSearchPage = false;
-  bool _hasPendingRelatedAccountProfileSearchReload = false;
+  bool _isFetchingAccountProfilePickerPage = false;
+  bool _hasPendingAccountProfilePickerReload = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>?
@@ -209,12 +230,13 @@ class TenantAdminEventsController implements Disposable {
   StreamSubscription<TenantAdminEventsRepoString?>? _eventsErrorSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
-  Timer? _relatedAccountProfileSearchDebounce;
-  String? _relatedAccountProfileSearchAccountSlug;
-  int _relatedAccountProfileSearchCurrentPage = 0;
-  int _relatedAccountProfileSearchRequestToken = 0;
+  Timer? _accountProfilePickerDebounce;
+  String? _accountProfilePickerAccountSlug;
+  int _accountProfilePickerCurrentPage = 0;
+  int _accountProfilePickerRequestToken = 0;
+  TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
 
-  static const Duration _relatedAccountProfileSearchDebounceDuration =
+  static const Duration _accountProfilePickerDebounceDuration =
       Duration(milliseconds: 300);
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
@@ -290,13 +312,6 @@ class TenantAdminEventsController implements Disposable {
     return _toEventsText(value);
   }
 
-  TenantAdminEventsRepoBool _toEventsBool(bool value) {
-    return TenantAdminEventsRepoBool.fromRaw(
-      value,
-      defaultValue: value,
-    );
-  }
-
   String? _normalizeOptionalText(String? value) {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) {
@@ -325,8 +340,11 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadEvents(
-      status: _toNullableEventsText(statusFilterStreamValue.value),
-      archived: _toEventsBool(archivedFilterStreamValue.value),
+      specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
+      relatedAccountProfileId: _toNullableEventsText(
+        relatedAccountProfileFilterStreamValue.value?.id,
+      ),
       temporalBuckets: temporalFilterStreamValue.value,
     );
   }
@@ -339,23 +357,52 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadNextEventsPage(
-      status: _toNullableEventsText(statusFilterStreamValue.value),
-      archived: _toEventsBool(archivedFilterStreamValue.value),
+      specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
+      relatedAccountProfileId: _toNullableEventsText(
+        relatedAccountProfileFilterStreamValue.value?.id,
+      ),
       temporalBuckets: temporalFilterStreamValue.value,
     );
   }
 
-  void updateStatusFilter(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      statusFilterStreamValue.addValue(null);
+  void selectSpecificDateFilter(DateTime? value) {
+    if (value == null) {
+      specificDateFilterStreamValue.addValue(null);
+      temporalFilterStreamValue.addValue(
+        TenantAdminEventTemporalBucket.defaultSelection,
+      );
       return;
     }
-    statusFilterStreamValue.addValue(normalized);
+
+    specificDateFilterStreamValue.addValue(
+      DateTime(value.year, value.month, value.day),
+    );
+    temporalFilterStreamValue.addValue(
+      Set<TenantAdminEventTemporalBucket>.unmodifiable(
+        TenantAdminEventTemporalBucket.values.toSet(),
+      ),
+    );
   }
 
-  void updateArchivedFilter(bool archivedOnly) {
-    archivedFilterStreamValue.addValue(archivedOnly);
+  void clearSpecificDateFilter() {
+    selectSpecificDateFilter(null);
+  }
+
+  void selectVenueFilter(TenantAdminAccountProfile? profile) {
+    venueFilterStreamValue.addValue(profile);
+  }
+
+  void clearVenueFilter() {
+    venueFilterStreamValue.addValue(null);
+  }
+
+  void selectRelatedAccountProfileFilter(TenantAdminAccountProfile? profile) {
+    relatedAccountProfileFilterStreamValue.addValue(profile);
+  }
+
+  void clearRelatedAccountProfileFilter() {
+    relatedAccountProfileFilterStreamValue.addValue(null);
   }
 
   void toggleTemporalFilter(TenantAdminEventTemporalBucket bucket) {
@@ -891,50 +938,75 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  Future<void> prepareRelatedAccountProfilePicker({
+  Future<void> prepareAccountProfilePicker({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    final typeChanged = candidateType != _accountProfilePickerType;
     final accountChanged =
-        normalizedAccountSlug != _relatedAccountProfileSearchAccountSlug;
+        normalizedAccountSlug != _accountProfilePickerAccountSlug;
     final hasSearch =
-        relatedAccountProfileSearchQueryStreamValue.value.trim().isNotEmpty;
-    final needsInitialLoad = _relatedAccountProfileSearchCurrentPage <= 0 &&
-        relatedAccountProfileSearchResultsStreamValue.value.isEmpty;
+        accountProfilePickerQueryStreamValue.value.trim().isNotEmpty;
+    final needsInitialLoad = _accountProfilePickerCurrentPage <= 0 &&
+        accountProfilePickerResultsStreamValue.value.isEmpty;
 
-    _relatedAccountProfileSearchAccountSlug = normalizedAccountSlug;
-    if (relatedAccountProfileSearchController.text.isNotEmpty) {
-      relatedAccountProfileSearchController.text = '';
+    _accountProfilePickerType = candidateType;
+    _accountProfilePickerAccountSlug = normalizedAccountSlug;
+    if (accountProfilePickerSearchController.text.isNotEmpty) {
+      accountProfilePickerSearchController.text = '';
     }
-    relatedAccountProfileSearchQueryStreamValue.addValue('');
-    relatedAccountProfileSearchErrorStreamValue.addValue('');
+    accountProfilePickerQueryStreamValue.addValue('');
+    accountProfilePickerErrorStreamValue.addValue('');
 
-    if (relatedAccountProfileSearchScrollController.hasClients) {
-      relatedAccountProfileSearchScrollController.jumpTo(0);
+    if (accountProfilePickerScrollController.hasClients) {
+      accountProfilePickerScrollController.jumpTo(0);
     }
 
-    if (accountChanged || hasSearch || needsInitialLoad) {
-      await _reloadRelatedAccountProfileSearch(immediate: true);
+    if (typeChanged || accountChanged || hasSearch || needsInitialLoad) {
+      await _reloadAccountProfilePicker(immediate: true);
     }
+  }
+
+  Future<void> prepareRelatedAccountProfilePicker({
+    String? accountSlug,
+  }) {
+    return prepareAccountProfilePicker(
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+      accountSlug: accountSlug,
+    );
+  }
+
+  void updateAccountProfilePickerSearchQuery(String query) {
+    if (accountProfilePickerQueryStreamValue.value == query) {
+      return;
+    }
+    accountProfilePickerQueryStreamValue.addValue(query);
+    _scheduleAccountProfilePickerReload(immediate: false);
   }
 
   void updateRelatedAccountProfileSearchQuery(String query) {
-    if (relatedAccountProfileSearchQueryStreamValue.value == query) {
-      return;
-    }
-    relatedAccountProfileSearchQueryStreamValue.addValue(query);
-    _scheduleRelatedAccountProfileSearchReload(immediate: false);
+    updateAccountProfilePickerSearchQuery(query);
+  }
+
+  Future<void> retryAccountProfilePickerSearch() async {
+    await _reloadAccountProfilePicker(immediate: true);
   }
 
   Future<void> retryRelatedAccountProfileSearch() async {
-    await _reloadRelatedAccountProfileSearch(immediate: true);
+    await retryAccountProfilePickerSearch();
+  }
+
+  Future<void> loadNextAccountProfilePickerPage() async {
+    await _loadAccountProfilePickerPage(
+      isInitial: false,
+      requestToken: _accountProfilePickerRequestToken,
+    );
   }
 
   Future<void> loadNextRelatedAccountProfileSearchPage() async {
-    await _loadRelatedAccountProfileSearchPage(
-      isInitial: false,
-      requestToken: _relatedAccountProfileSearchRequestToken,
-    );
+    await loadNextAccountProfilePickerPage();
   }
 
   Future<void> _loadAccountProfileCandidates({
@@ -963,22 +1035,14 @@ class TenantAdminEventsController implements Disposable {
           results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
-      _relatedAccountProfileSearchAccountSlug = normalizedAccountSlug;
-      _relatedAccountProfileSearchCurrentPage = 1;
-      relatedAccountProfileSearchResultsStreamValue.addValue(
+      relatedAccountProfileCandidatesStreamValue.addValue(
         List.unmodifiable(firstRelatedAccountProfilePage.items),
       );
-      relatedAccountProfileSearchHasMoreStreamValue
-          .addValue(firstRelatedAccountProfilePage.hasMore);
-      relatedAccountProfileSearchErrorStreamValue.addValue('');
-      _mergeKnownRelatedAccountProfiles(firstRelatedAccountProfilePage.items);
     } catch (error) {
       if (_isDisposed) {
         return;
       }
-      relatedAccountProfileSearchResultsStreamValue.addValue(const []);
-      relatedAccountProfileSearchHasMoreStreamValue.addValue(false);
-      relatedAccountProfileSearchErrorStreamValue.addValue(error.toString());
+      relatedAccountProfileCandidatesStreamValue.addValue(const []);
       accountProfileCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
@@ -997,7 +1061,8 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _loadRelatedAccountProfileCandidates({
+      _loadAccountProfilePickerCandidates({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
     required bool isInitial,
     required String query,
     String? accountSlug,
@@ -1005,41 +1070,39 @@ class TenantAdminEventsController implements Disposable {
     final normalizedQuery = query.trim();
     if (isInitial) {
       return _eventsRepository.loadEventAccountProfileCandidates(
-        candidateType:
-            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        candidateType: candidateType,
         search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
         accountSlug: _toNullableEventsText(accountSlug),
       );
     }
 
     return _eventsRepository.loadNextEventAccountProfileCandidates(
-      candidateType:
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+      candidateType: candidateType,
       search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
       accountSlug: _toNullableEventsText(accountSlug),
     );
   }
 
-  void _scheduleRelatedAccountProfileSearchReload({
+  void _scheduleAccountProfilePickerReload({
     required bool immediate,
   }) {
-    _relatedAccountProfileSearchDebounce?.cancel();
-    final nextRequestToken = _relatedAccountProfileSearchRequestToken + 1;
-    _relatedAccountProfileSearchRequestToken = nextRequestToken;
+    _accountProfilePickerDebounce?.cancel();
+    final nextRequestToken = _accountProfilePickerRequestToken + 1;
+    _accountProfilePickerRequestToken = nextRequestToken;
     if (immediate) {
       unawaited(
-        _loadRelatedAccountProfileSearchPage(
+        _loadAccountProfilePickerPage(
           isInitial: true,
           requestToken: nextRequestToken,
         ),
       );
       return;
     }
-    _relatedAccountProfileSearchDebounce = Timer(
-      _relatedAccountProfileSearchDebounceDuration,
+    _accountProfilePickerDebounce = Timer(
+      _accountProfilePickerDebounceDuration,
       () {
         unawaited(
-          _loadRelatedAccountProfileSearchPage(
+          _loadAccountProfilePickerPage(
             isInitial: true,
             requestToken: nextRequestToken,
           ),
@@ -1048,114 +1111,113 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  Future<void> _reloadRelatedAccountProfileSearch({
+  Future<void> _reloadAccountProfilePicker({
     required bool immediate,
   }) async {
-    _scheduleRelatedAccountProfileSearchReload(immediate: immediate);
+    _scheduleAccountProfilePickerReload(immediate: immediate);
     if (!immediate) {
       return;
     }
 
-    while (_isFetchingRelatedAccountProfileSearchPage ||
-        relatedAccountProfileSearchLoadingStreamValue.value) {
+    while (_isFetchingAccountProfilePickerPage ||
+        accountProfilePickerLoadingStreamValue.value) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
     }
   }
 
-  Future<void> _loadRelatedAccountProfileSearchPage({
+  Future<void> _loadAccountProfilePickerPage({
     required bool isInitial,
     required int requestToken,
   }) async {
-    if (_isFetchingRelatedAccountProfileSearchPage) {
+    final candidateType = _accountProfilePickerType;
+    if (candidateType == null) {
+      return;
+    }
+    if (_isFetchingAccountProfilePickerPage) {
       if (isInitial) {
-        _hasPendingRelatedAccountProfileSearchReload = true;
+        _hasPendingAccountProfilePickerReload = true;
       }
       return;
     }
-    if (!isInitial && !relatedAccountProfileSearchHasMoreStreamValue.value) {
+    if (!isInitial && !accountProfilePickerHasMoreStreamValue.value) {
       return;
     }
 
-    _isFetchingRelatedAccountProfileSearchPage = true;
+    _isFetchingAccountProfilePickerPage = true;
     if (isInitial) {
-      relatedAccountProfileSearchLoadingStreamValue.addValue(true);
-      relatedAccountProfileSearchErrorStreamValue.addValue('');
+      accountProfilePickerLoadingStreamValue.addValue(true);
+      accountProfilePickerErrorStreamValue.addValue('');
     } else {
-      relatedAccountProfileSearchPageLoadingStreamValue.addValue(true);
+      accountProfilePickerPageLoadingStreamValue.addValue(true);
     }
 
     try {
-      final query = relatedAccountProfileSearchQueryStreamValue.value.trim();
-      final pageResult = await _loadRelatedAccountProfileCandidates(
-        accountSlug: _relatedAccountProfileSearchAccountSlug,
+      final query = accountProfilePickerQueryStreamValue.value.trim();
+      final pageResult = await _loadAccountProfilePickerCandidates(
+        candidateType: candidateType,
+        accountSlug: _accountProfilePickerAccountSlug,
         isInitial: isInitial,
         query: query,
       );
 
-      if (_isDisposed ||
-          requestToken != _relatedAccountProfileSearchRequestToken) {
+      if (_isDisposed || requestToken != _accountProfilePickerRequestToken) {
         return;
       }
 
       final nextItems = isInitial
           ? pageResult.items
           : _mergeAccountProfiles(
-              relatedAccountProfileSearchResultsStreamValue.value,
+              accountProfilePickerResultsStreamValue.value,
               pageResult.items,
             );
 
-      _relatedAccountProfileSearchCurrentPage =
-          isInitial ? 1 : _relatedAccountProfileSearchCurrentPage + 1;
-      relatedAccountProfileSearchResultsStreamValue
+      _accountProfilePickerCurrentPage =
+          isInitial ? 1 : _accountProfilePickerCurrentPage + 1;
+      accountProfilePickerResultsStreamValue
           .addValue(List.unmodifiable(nextItems));
-      relatedAccountProfileSearchHasMoreStreamValue
-          .addValue(pageResult.hasMore);
-      relatedAccountProfileSearchErrorStreamValue.addValue('');
-      _mergeKnownRelatedAccountProfiles(pageResult.items);
+      accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
+      accountProfilePickerErrorStreamValue.addValue('');
     } catch (error) {
-      if (_isDisposed ||
-          requestToken != _relatedAccountProfileSearchRequestToken) {
+      if (_isDisposed || requestToken != _accountProfilePickerRequestToken) {
         return;
       }
       if (isInitial) {
-        relatedAccountProfileSearchResultsStreamValue.addValue(const []);
-        relatedAccountProfileSearchHasMoreStreamValue.addValue(false);
+        accountProfilePickerResultsStreamValue.addValue(const []);
+        accountProfilePickerHasMoreStreamValue.addValue(false);
       }
-      relatedAccountProfileSearchErrorStreamValue.addValue(error.toString());
+      accountProfilePickerErrorStreamValue.addValue(error.toString());
     } finally {
-      _isFetchingRelatedAccountProfileSearchPage = false;
-      if (!_isDisposed &&
-          requestToken == _relatedAccountProfileSearchRequestToken) {
+      _isFetchingAccountProfilePickerPage = false;
+      if (!_isDisposed && requestToken == _accountProfilePickerRequestToken) {
         if (isInitial) {
-          relatedAccountProfileSearchLoadingStreamValue.addValue(false);
+          accountProfilePickerLoadingStreamValue.addValue(false);
         } else {
-          relatedAccountProfileSearchPageLoadingStreamValue.addValue(false);
+          accountProfilePickerPageLoadingStreamValue.addValue(false);
         }
       }
 
-      if (_hasPendingRelatedAccountProfileSearchReload) {
-        _hasPendingRelatedAccountProfileSearchReload = false;
+      if (_hasPendingAccountProfilePickerReload) {
+        _hasPendingAccountProfilePickerReload = false;
         unawaited(
-          _loadRelatedAccountProfileSearchPage(
+          _loadAccountProfilePickerPage(
             isInitial: true,
-            requestToken: _relatedAccountProfileSearchRequestToken,
+            requestToken: _accountProfilePickerRequestToken,
           ),
         );
       }
     }
   }
 
-  void _bindRelatedAccountProfileSearchScroll() {
-    relatedAccountProfileSearchScrollController.addListener(() {
-      if (_isDisposed ||
-          !relatedAccountProfileSearchScrollController.hasClients) {
+  void _bindAccountProfilePickerScroll() {
+    accountProfilePickerScrollController.addListener(() {
+      if (_isDisposed || !accountProfilePickerScrollController.hasClients) {
         return;
       }
-      final position = relatedAccountProfileSearchScrollController.position;
+      final position = accountProfilePickerScrollController.position;
       if (position.pixels < position.maxScrollExtent - 160) {
         return;
       }
-      unawaited(loadNextRelatedAccountProfileSearchPage());
+      unawaited(loadNextAccountProfilePickerPage());
     });
   }
 
@@ -1312,15 +1374,17 @@ class TenantAdminEventsController implements Disposable {
 
   void _resetTenantScopedState() {
     _submitInFlight = false;
-    _relatedAccountProfileSearchDebounce?.cancel();
-    _relatedAccountProfileSearchAccountSlug = null;
-    _relatedAccountProfileSearchCurrentPage = 0;
-    _relatedAccountProfileSearchRequestToken = 0;
-    _isFetchingRelatedAccountProfileSearchPage = false;
-    _hasPendingRelatedAccountProfileSearchReload = false;
+    _accountProfilePickerDebounce?.cancel();
+    _accountProfilePickerAccountSlug = null;
+    _accountProfilePickerCurrentPage = 0;
+    _accountProfilePickerRequestToken = 0;
+    _accountProfilePickerType = null;
+    _isFetchingAccountProfilePickerPage = false;
+    _hasPendingAccountProfilePickerReload = false;
     _eventsRepository.resetEventsState();
-    statusFilterStreamValue.addValue(null);
-    archivedFilterStreamValue.addValue(false);
+    specificDateFilterStreamValue.addValue(null);
+    venueFilterStreamValue.addValue(null);
+    relatedAccountProfileFilterStreamValue.addValue(null);
     temporalFilterStreamValue
         .addValue(TenantAdminEventTemporalBucket.defaultSelection);
     eventDetailStreamValue.addValue(null);
@@ -1333,13 +1397,13 @@ class TenantAdminEventsController implements Disposable {
     eventTypeCatalogStreamValue.addValue(const []);
     venueCandidatesStreamValue.addValue(const []);
     relatedAccountProfileCandidatesStreamValue.addValue(const []);
-    relatedAccountProfileSearchResultsStreamValue.addValue(const []);
-    relatedAccountProfileSearchLoadingStreamValue.addValue(false);
-    relatedAccountProfileSearchPageLoadingStreamValue.addValue(false);
-    relatedAccountProfileSearchHasMoreStreamValue.addValue(true);
-    relatedAccountProfileSearchErrorStreamValue.addValue('');
-    relatedAccountProfileSearchQueryStreamValue.addValue('');
-    relatedAccountProfileSearchController.clear();
+    accountProfilePickerResultsStreamValue.addValue(const []);
+    accountProfilePickerLoadingStreamValue.addValue(false);
+    accountProfilePickerPageLoadingStreamValue.addValue(false);
+    accountProfilePickerHasMoreStreamValue.addValue(true);
+    accountProfilePickerErrorStreamValue.addValue('');
+    accountProfilePickerQueryStreamValue.addValue('');
+    accountProfilePickerSearchController.clear();
     accountProfileCandidatesLoadingStreamValue.addValue(false);
     accountProfileCandidatesErrorStreamValue.addValue(null);
     eventCoverFileStreamValue.addValue(null);
@@ -1599,7 +1663,7 @@ class TenantAdminEventsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
-    _relatedAccountProfileSearchDebounce?.cancel();
+    _accountProfilePickerDebounce?.cancel();
     unawaited(_tenantScopeSubscription?.cancel());
     unawaited(_hasMoreEventsSubscription?.cancel());
     unawaited(_isEventsPageLoadingSubscription?.cancel());
@@ -1611,8 +1675,9 @@ class TenantAdminEventsController implements Disposable {
     hasMoreEventsStreamValue.dispose();
     isEventsPageLoadingStreamValue.dispose();
     eventsErrorStreamValue.dispose();
-    statusFilterStreamValue.dispose();
-    archivedFilterStreamValue.dispose();
+    specificDateFilterStreamValue.dispose();
+    venueFilterStreamValue.dispose();
+    relatedAccountProfileFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
     eventDetailStreamValue.dispose();
     eventDetailLoadingStreamValue.dispose();
@@ -1627,18 +1692,18 @@ class TenantAdminEventsController implements Disposable {
     taxonomyErrorStreamValue.dispose();
     venueCandidatesStreamValue.dispose();
     relatedAccountProfileCandidatesStreamValue.dispose();
-    relatedAccountProfileSearchResultsStreamValue.dispose();
-    relatedAccountProfileSearchLoadingStreamValue.dispose();
-    relatedAccountProfileSearchPageLoadingStreamValue.dispose();
-    relatedAccountProfileSearchHasMoreStreamValue.dispose();
-    relatedAccountProfileSearchErrorStreamValue.dispose();
-    relatedAccountProfileSearchQueryStreamValue.dispose();
+    accountProfilePickerResultsStreamValue.dispose();
+    accountProfilePickerLoadingStreamValue.dispose();
+    accountProfilePickerPageLoadingStreamValue.dispose();
+    accountProfilePickerHasMoreStreamValue.dispose();
+    accountProfilePickerErrorStreamValue.dispose();
+    accountProfilePickerQueryStreamValue.dispose();
     accountProfileCandidatesLoadingStreamValue.dispose();
     accountProfileCandidatesErrorStreamValue.dispose();
     eventsScrollController.dispose();
-    relatedAccountProfileSearchScrollController.dispose();
+    accountProfilePickerScrollController.dispose();
     eventFormStateStreamValue.dispose();
-    relatedAccountProfileSearchController.dispose();
+    accountProfilePickerSearchController.dispose();
     eventTitleController.dispose();
     eventContentController.dispose();
     eventStartController.dispose();
@@ -1661,6 +1726,18 @@ class TenantAdminEventsController implements Disposable {
     eventTypeTypeAssetFileStreamValue.dispose();
     eventTypeTypeAssetUrlStreamValue.dispose();
     eventTypeRemoveTypeAssetStreamValue.dispose();
+  }
+
+  String? _specificDateQueryValue() {
+    final value = specificDateFilterStreamValue.value;
+    if (value == null) {
+      return null;
+    }
+
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
   }
 
   @override

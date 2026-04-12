@@ -72,7 +72,8 @@ void main() {
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
   });
 
-  testWidgets('shows canonical event type image upload controls for type_asset visuals',
+  testWidgets(
+      'shows canonical event type image upload controls for type_asset visuals',
       (tester) async {
     final controller = TenantAdminEventsController(
       eventsRepository: _NoopEventsRepository(),
@@ -105,7 +106,8 @@ void main() {
     expect(find.text('Enviar imagem canônica'), findsOneWidget);
   });
 
-  testWidgets('event type image source options exclude avatar and use event cover label',
+  testWidgets(
+      'event type image source options exclude avatar and use event cover label',
       (tester) async {
     final controller = TenantAdminEventsController(
       eventsRepository: _NoopEventsRepository(),
@@ -129,7 +131,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<TenantAdminPoiVisualImageSource>));
+    await tester.tap(
+        find.byType(DropdownButtonFormField<TenantAdminPoiVisualImageSource>));
     await tester.pumpAndSettle();
 
     expect(find.text('Capa do evento'), findsWidgets);
@@ -240,8 +243,7 @@ Widget _buildRoutedTestApp({
   );
 }
 
-class _NoopEventsRepository
-    extends TenantAdminEventsRepositoryContract
+class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
@@ -268,7 +270,10 @@ class _NoopEventsRepository
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -280,7 +285,10 @@ class _NoopEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -318,7 +326,8 @@ class _NoopEventsRepository
   }
 
   @override
-  Future<TenantAdminLegacyEventPartiesSummary> repairLegacyEventParties() async {
+  Future<TenantAdminLegacyEventPartiesSummary>
+      repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),

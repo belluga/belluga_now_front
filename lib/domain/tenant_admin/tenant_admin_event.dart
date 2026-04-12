@@ -32,6 +32,7 @@ class TenantAdminEvent {
     this.location,
     this.placeRef,
     TenantAdminOptionalUrlValue? thumbUrlValue,
+    TenantAdminOptionalTextValue? venueDisplayNameValue,
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
     this.relatedAccountProfiles = const <TenantAdminAccountProfile>[],
     this.eventParties = const <TenantAdminEventParty>[],
@@ -40,6 +41,8 @@ class TenantAdminEvent {
     TenantAdminOptionalDateTimeValue? updatedAtValue,
     TenantAdminOptionalDateTimeValue? deletedAtValue,
   })  : thumbUrlValue = thumbUrlValue ?? TenantAdminOptionalUrlValue(),
+        venueDisplayNameValue =
+            venueDisplayNameValue ?? TenantAdminOptionalTextValue(),
         relatedAccountProfileIdValues =
             List<TenantAdminAccountProfileIdValue>.unmodifiable(
           relatedAccountProfileIdValues ??
@@ -61,6 +64,7 @@ class TenantAdminEvent {
   final TenantAdminEventLocation? location;
   final TenantAdminEventPlaceRef? placeRef;
   final TenantAdminOptionalUrlValue thumbUrlValue;
+  final TenantAdminOptionalTextValue venueDisplayNameValue;
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
@@ -76,6 +80,7 @@ class TenantAdminEvent {
   String get title => titleValue.value;
   String get content => contentValue.value;
   String? get thumbUrl => thumbUrlValue.nullableValue;
+  String? get venueDisplayName => venueDisplayNameValue.nullableValue;
   List<TenantAdminAccountProfileIdValue> get relatedAccountProfileIds =>
       relatedAccountProfileIdValues;
   DateTime? get createdAt => createdAtValue.value;

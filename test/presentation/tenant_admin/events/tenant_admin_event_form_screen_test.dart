@@ -559,7 +559,10 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
@@ -571,7 +574,10 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
     TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
     TenantAdminEventsRepoBool? archived,
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {

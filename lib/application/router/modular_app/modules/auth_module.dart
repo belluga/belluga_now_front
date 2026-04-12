@@ -16,23 +16,17 @@ import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/c
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/remember_password_controller.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/recovery_password_bug/controllers/recovery_password_token_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/auth_login_landlord_controller.dart';
-import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class AuthModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
-    if (!GetIt.I.isRegistered<AuthLoginControllerContract>()) {
-      registerLazySingleton<AuthLoginControllerContract>(
-        () => AuthLoginController(),
-      );
-    }
-
-    if (!GetIt.I.isRegistered<RememberPasswordContract>()) {
-      registerLazySingleton<RememberPasswordContract>(
-        () => RememberPasswordController(),
-      );
-    }
+    registerLazySingleton<AuthLoginControllerContract>(
+      () => AuthLoginController(),
+    );
+    registerLazySingleton<RememberPasswordContract>(
+      () => RememberPasswordController(),
+    );
 
     registerFactory<CreatePasswordControllerContract>(
       () => CreatePasswordController(),
@@ -42,11 +36,9 @@ class AuthModule extends ModuleContract {
       () => AuthRecoveryPasswordController(),
     );
 
-    if (!GetIt.I.isRegistered<AuthLoginLandlordController>()) {
-      registerLazySingleton<AuthLoginLandlordController>(
-        () => AuthLoginLandlordController(),
-      );
-    }
+    registerLazySingleton<AuthLoginLandlordController>(
+      () => AuthLoginLandlordController(),
+    );
   }
 
   @override

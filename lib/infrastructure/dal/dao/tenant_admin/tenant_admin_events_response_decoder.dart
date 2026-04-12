@@ -102,11 +102,14 @@ class TenantAdminEventsResponseDecoder {
     final publicationRow = _asMap(row['publication']);
     final locationRow = _asMap(row['location']);
     final placeRefRow = _asMap(row['place_ref']);
+    final venueRow = _asMap(row['venue']);
     final thumbRow = _asMap(row['thumb']);
     final thumbData = _asMap(thumbRow['data']);
     final thumbUrl = _asString(thumbData['url']) ??
         _asString(thumbRow['url']) ??
         _asString(thumbRow['uri']);
+    final venueDisplayName =
+        _asString(venueRow['display_name']) ?? _asString(venueRow['name']);
 
     final occurrencesRaw = _asList(row['occurrences']);
     final occurrences = occurrencesRaw
@@ -248,6 +251,7 @@ class TenantAdminEventsResponseDecoder {
         location: location,
         placeRef: placeRef,
         thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
+        venueDisplayNameValue: tenantAdminOptionalText(venueDisplayName),
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(
@@ -294,6 +298,7 @@ class TenantAdminEventsResponseDecoder {
       location: location,
       placeRef: placeRef,
       thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
+      venueDisplayNameValue: tenantAdminOptionalText(venueDisplayName),
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         statusValue: tenantAdminRequiredText(

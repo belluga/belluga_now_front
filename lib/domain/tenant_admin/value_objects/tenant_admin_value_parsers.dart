@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_date_time_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_domain_status_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_date_time_value.dart';
@@ -128,6 +129,30 @@ TenantAdminOptionalDateTimeValue tenantAdminOptionalDateTime(Object? raw) {
     return TenantAdminOptionalDateTimeValue(null);
   }
   return TenantAdminOptionalDateTimeValue(parsed);
+}
+
+TenantAdminDomainStatusValue tenantAdminDomainStatus(
+  Object? raw, {
+  Object? deletedAt,
+}) {
+  if (raw is TenantAdminDomainStatusValue) {
+    return raw;
+  }
+
+  final deletedAtValue = tenantAdminOptionalDateTime(deletedAt).value;
+  final normalized = raw?.toString().trim().toLowerCase();
+  final fallback = deletedAtValue == null
+      ? TenantAdminDomainStatusValue.active
+      : TenantAdminDomainStatusValue.deleted;
+
+  final value = TenantAdminDomainStatusValue();
+  value.parse(
+    normalized == TenantAdminDomainStatusValue.active ||
+            normalized == TenantAdminDomainStatusValue.deleted
+        ? normalized
+        : fallback,
+  );
+  return value;
 }
 
 TenantAdminOptionalDoubleValue tenantAdminOptionalDouble(Object? raw) {

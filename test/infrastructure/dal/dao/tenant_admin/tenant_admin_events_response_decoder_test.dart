@@ -47,6 +47,11 @@ void main() {
           'slug': 'show',
           'description': '',
         },
+        'venue': {
+          'id': 'venue-1',
+          'display_name': 'Casa Solar',
+          'profile_type': 'venue',
+        },
         'date_time_start': '2026-04-05T20:00:00+00:00',
         'publication': {'status': 'draft'},
         'event_parties': [
@@ -96,6 +101,7 @@ void main() {
           .toList(growable: false),
       ['DJ One', 'Producer One'],
     );
+    expect(event.venueDisplayName, 'Casa Solar');
   });
 
   test('does not synthesize related profiles from legacy artists payload', () {

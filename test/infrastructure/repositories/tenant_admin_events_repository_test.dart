@@ -310,6 +310,54 @@ void main() {
     expect(request.queryParameters['archived'], 1);
   });
 
+  test('fetchEventsPage serializes specific date as date query parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      specificDate: _repoText('2026-04-10'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['date'], '2026-04-10');
+  });
+
+  test('fetchEventsPage never serializes retired direct search parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      search: _repoText('legacy search'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters.containsKey('search'), isFalse);
+  });
+
   test('fetchEventsPage serializes temporal filter as csv query parameter',
       () async {
     final adapter = _EventsRoutingAdapter();
@@ -335,6 +383,36 @@ void main() {
           request.path.endsWith('/admin/api/v1/events'),
     );
     expect(request.queryParameters['temporal'], 'now,future');
+  });
+
+  test(
+      'fetchEventsPage serializes venue and related account profile filters as dedicated query parameters',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      venueProfileId: _repoText('venue-42'),
+      relatedAccountProfileId: _repoText('profile-77'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['venue_profile_id'], 'venue-42');
+    expect(
+      request.queryParameters['related_account_profile_id'],
+      'profile-77',
+    );
   });
 
   test(
