@@ -39,32 +39,32 @@ class _InitScreenState extends State<InitScreen> {
                     Brightness.dark
                 ? Colors.white
                 : Colors.black;
-        final iconUrl = (scheme.brightness == Brightness.dark
-                ? appData.mainIconDarkUrl
-                : appData.mainIconLightUrl)
+        final logoUrl = (scheme.brightness == Brightness.dark
+                ? appData.mainLogoDarkUrl
+                : appData.mainLogoLightUrl)
             .value
             ?.toString();
-        final logo = iconUrl != null && iconUrl.isNotEmpty
+        final fallbackLogo = Image.asset(
+          'assets/images/logo_horizontal.png',
+          width: 220,
+          height: 96,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Icon(
+            Icons.waves,
+            size: 72,
+            color: onBackgroundColor,
+          ),
+        );
+        final logo = logoUrl != null && logoUrl.isNotEmpty
             ? BellugaNetworkImage(
-                iconUrl,
+                logoUrl,
+                width: 220,
                 height: 96,
                 fit: BoxFit.contain,
-                errorWidget: Icon(
-                  Icons.waves,
-                  size: 72,
-                  color: onBackgroundColor,
-                ),
+                placeholder: fallbackLogo,
+                errorWidget: fallbackLogo,
               )
-            : Image.asset(
-                'assets/images/logo_profile.png',
-                height: 96,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.waves,
-                  size: 72,
-                  color: onBackgroundColor,
-                ),
-              );
+            : fallbackLogo;
 
         return Scaffold(
           key: WidgetKeys.splash.scaffold,
