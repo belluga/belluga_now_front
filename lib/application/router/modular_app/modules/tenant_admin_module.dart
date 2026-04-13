@@ -81,16 +81,12 @@ class TenantAdminModule extends ModuleContract {
   }
 
   void _registerControllersAndServices() {
-    if (!GetIt.I.isRegistered<TenantAdminLandlordLoginController>()) {
-      registerLazySingleton<TenantAdminLandlordLoginController>(
-        () => TenantAdminLandlordLoginController(),
-      );
-    }
-    if (!GetIt.I.isRegistered<TenantAdminShellLoginController>()) {
-      registerLazySingleton<TenantAdminShellLoginController>(
-        () => TenantAdminShellLoginController(),
-      );
-    }
+    registerLazySingleton<TenantAdminLandlordLoginController>(
+      () => TenantAdminLandlordLoginController(),
+    );
+    registerLazySingleton<TenantAdminShellLoginController>(
+      () => TenantAdminShellLoginController(),
+    );
 
     registerLazySingleton<TenantAdminShellController>(
       () => TenantAdminShellController(),
@@ -152,6 +148,9 @@ class TenantAdminModule extends ModuleContract {
           path: '/admin',
           page: TenantAdminShellRoute.page,
           guards: [LandlordRouteGuard()],
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.tenantAdminDashboard,
+          ),
           children: [
             AutoRoute(
               path: '',
@@ -500,6 +499,14 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'settings/visual-identity',
               page: TenantAdminSettingsVisualIdentityRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminSettingsInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
+              ),
+            ),
+            AutoRoute(
+              path: 'settings/domains',
+              page: TenantAdminSettingsDomainsRoute.page,
               meta: canonicalRouteMeta(
                 family: CanonicalRouteFamily.tenantAdminSettingsInternal,
                 chromeMode: RouteChromeMode.scopedSectionAppBar,

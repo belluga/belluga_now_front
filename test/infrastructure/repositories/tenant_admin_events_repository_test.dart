@@ -310,6 +310,54 @@ void main() {
     expect(request.queryParameters['archived'], 1);
   });
 
+  test('fetchEventsPage serializes specific date as date query parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      specificDate: _repoText('2026-04-10'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['date'], '2026-04-10');
+  });
+
+  test('fetchEventsPage never serializes retired direct search parameter',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      search: _repoText('legacy search'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters.containsKey('search'), isFalse);
+  });
+
   test('fetchEventsPage serializes temporal filter as csv query parameter',
       () async {
     final adapter = _EventsRoutingAdapter();
@@ -338,9 +386,39 @@ void main() {
   });
 
   test(
-      'fetchEventsPage decodes summarized event artists without requiring full account profile payload',
+      'fetchEventsPage serializes venue and related account profile filters as dedicated query parameters',
       () async {
-    final adapter = _EventsListWithSummarizedArtistsAdapter();
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      venueProfileId: _repoText('venue-42'),
+      relatedAccountProfileId: _repoText('profile-77'),
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['venue_profile_id'], 'venue-42');
+    expect(
+      request.queryParameters['related_account_profile_id'],
+      'profile-77',
+    );
+  });
+
+  test(
+      'fetchEventsPage decodes summarized related account profiles without requiring full account profile payload',
+      () async {
+    final adapter = _EventsListWithSummarizedRelatedProfilesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -355,12 +433,23 @@ void main() {
 
     expect(result.items, hasLength(1));
     expect(result.items.first.title, 'Summarized Artist Event');
-    expect(result.items.first.artistProfiles, hasLength(1));
-    expect(result.items.first.artistProfiles.first.id, 'artist-summary-1');
-    expect(result.items.first.artistProfiles.first.displayName, 'DJ Summary');
-    expect(result.items.first.artistProfiles.first.profileType, 'artist');
+    expect(result.items.first.relatedAccountProfiles, hasLength(1));
     expect(
-        result.items.first.artistProfiles.first.accountId, 'artist-summary-1');
+      result.items.first.relatedAccountProfiles.first.id,
+      'artist-summary-1',
+    );
+    expect(
+      result.items.first.relatedAccountProfiles.first.displayName,
+      'DJ Summary',
+    );
+    expect(
+      result.items.first.relatedAccountProfiles.first.profileType,
+      'artist',
+    );
+    expect(
+      result.items.first.relatedAccountProfiles.first.accountId,
+      'artist-summary-1',
+    );
   });
 
   test('fetchEventsPage wraps decoder failures with readable repository error',
@@ -526,7 +615,8 @@ void main() {
     );
 
     final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
       page: _repoInt(2),
       pageSize: _repoInt(20),
       search: _repoText('paged'),
@@ -585,7 +675,8 @@ void main() {
         'Bearer account-token');
   });
 
-  test('fetchEventAccountProfileCandidatesPage decodes artist candidate pages',
+  test(
+      'fetchEventAccountProfileCandidatesPage decodes related account profile candidate pages',
       () async {
     final adapter = _AccountProfileCandidatesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -596,7 +687,8 @@ void main() {
     );
 
     final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
       page: _repoInt(1),
       pageSize: _repoInt(20),
       search: _repoText('dj'),
@@ -620,7 +712,8 @@ void main() {
 
     await expectLater(
       () => repository.fetchEventAccountProfileCandidatesPage(
-        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
         page: _repoInt(1),
         pageSize: _repoInt(20),
         search: _repoText('main'),
@@ -654,7 +747,8 @@ void main() {
 
     await expectLater(
       () => repository.fetchEventAccountProfileCandidatesPage(
-        candidateType: TenantAdminEventAccountProfileCandidateType.artist,
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
         page: _repoInt(1),
         pageSize: _repoInt(20),
         search: _repoText('main'),
@@ -809,13 +903,16 @@ void main() {
     expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
     expect(
       formData.fields.any(
-        (entry) => entry.key == 'visual[image_source]' && entry.value == 'type_asset',
+        (entry) =>
+            entry.key == 'visual[image_source]' && entry.value == 'type_asset',
       ),
       isTrue,
     );
     expect(
       formData.fields.any(
-        (entry) => entry.key == 'poi_visual[image_source]' && entry.value == 'type_asset',
+        (entry) =>
+            entry.key == 'poi_visual[image_source]' &&
+            entry.value == 'type_asset',
       ),
       isTrue,
     );
@@ -1059,7 +1156,8 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
   }
 }
 
-class _EventsListWithSummarizedArtistsAdapter implements HttpClientAdapter {
+class _EventsListWithSummarizedRelatedProfilesAdapter
+    implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 
@@ -1091,13 +1189,23 @@ class _EventsListWithSummarizedArtistsAdapter implements HttpClientAdapter {
                   'date_time_start': '2026-03-05T20:00:00Z',
                 }
               ],
-              'artists': [
+              'event_parties': [
+                {
+                  'party_type': 'artist',
+                  'party_ref_id': 'artist-summary-1',
+                  'permissions': {
+                    'can_edit': true,
+                  },
+                }
+              ],
+              'linked_account_profiles': [
                 {
                   'id': 'artist-summary-1',
+                  'account_id': 'artist-summary-1',
                   'display_name': 'DJ Summary',
+                  'profile_type': 'artist',
                   'avatar_url': 'https://example.com/dj-summary.jpg',
-                  'highlight': false,
-                  'genres': ['house'],
+                  'slug': 'dj-summary',
                 }
               ],
             },
@@ -1301,7 +1409,7 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
           'slug': 'main-venue',
         },
       ];
-      final artistRows = <Map<String, dynamic>>[
+      final relatedAccountProfileRows = <Map<String, dynamic>>[
         {
           'id': 'artist-1',
           'account_id': 'account-2',
@@ -1310,7 +1418,8 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
           'slug': 'dj-night',
         },
       ];
-      final pagedArtistRows = List<Map<String, dynamic>>.generate(
+      final pagedRelatedAccountProfileRows =
+          List<Map<String, dynamic>>.generate(
         45,
         (index) => {
           'id': 'artist-page-${index + 1}',
@@ -1341,8 +1450,10 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
           lastPage = requestedPage;
           total = rows.length;
           break;
-        case 'artist':
-          final sourceRows = search == 'paged' ? pagedArtistRows : artistRows;
+        case 'related_account_profile':
+          final sourceRows = search == 'paged'
+              ? pagedRelatedAccountProfileRows
+              : relatedAccountProfileRows;
           final filteredRows = sourceRows
               .where((row) =>
                   search.isEmpty ||

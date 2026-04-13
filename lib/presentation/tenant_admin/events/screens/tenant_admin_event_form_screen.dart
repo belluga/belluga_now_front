@@ -6,11 +6,12 @@ import 'package:belluga_now/application/router/support/tenant_admin_safe_back.da
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -87,9 +88,9 @@ class _TenantAdminEventFormScreenState
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
                                 List<TenantAdminAccountProfile>>(
-                              streamValue:
-                                  _controller.artistCandidatesStreamValue,
-                              builder: (context, artists) {
+                              streamValue: _controller
+                                  .relatedAccountProfileCandidatesStreamValue,
+                              builder: (context, relatedAccountProfiles) {
                                 return StreamValueBuilder<
                                     List<TenantAdminEventType>>(
                                   streamValue:
@@ -189,7 +190,7 @@ class _TenantAdminEventFormScreenState
                                                                             partyCandidatesError ??
                                                                                 '',
                                                                         fallbackMessage:
-                                                                            'Falha ao carregar hosts físicos/artistas.',
+                                                                            'Falha ao carregar hosts físicos e perfis relacionados.',
                                                                         onRetry:
                                                                             () =>
                                                                                 _controller.loadFormDependencies(
@@ -245,8 +246,8 @@ class _TenantAdminEventFormScreenState
                                                                   const SizedBox(
                                                                     height: 16,
                                                                   ),
-                                                                  _buildArtistsSection(
-                                                                    artists,
+                                                                  _buildRelatedAccountProfilesSection(
+                                                                    relatedAccountProfiles,
                                                                     formState:
                                                                         formState,
                                                                   ),
@@ -271,7 +272,7 @@ class _TenantAdminEventFormScreenState
                                                                     onPressed: isSubmitting
                                                                         ? null
                                                                         : () => _handleSubmit(
-                                                                              artists: artists,
+                                                                              relatedAccountProfiles: relatedAccountProfiles,
                                                                               venues: venues,
                                                                               eventTypes: eventTypes,
                                                                               formState: formState,
@@ -368,7 +369,7 @@ class _TenantAdminEventFormScreenState
     return TenantAdminFormSectionCard(
       title: 'Capa do evento',
       description:
-          'Opcional. Se não houver capa, a experiência pública pode usar fallback do artista.',
+          'Opcional. Se não houver capa, a experiência pública pode usar fallback dos perfis relacionados.',
       child: TenantAdminImageUploadField(
         variant: TenantAdminImageUploadVariant.cover,
         preview: _buildCoverPreview(
@@ -722,63 +723,70 @@ class _TenantAdminEventFormScreenState
     );
   }
 
-  Widget _buildArtistsSection(
-    List<TenantAdminAccountProfile> artists, {
+  Widget _buildRelatedAccountProfilesSection(
+    List<TenantAdminAccountProfile> relatedAccountProfiles, {
     required TenantAdminEventFormState formState,
   }) {
-    final selectedArtists = formState.selectedArtistIds
-        .map(
-          (artistId) => artists.firstWhereOrNull(
-            (artist) => artist.id == artistId,
-          ),
-        )
-        .whereType<TenantAdminAccountProfile>()
-        .toList(growable: false);
+    final selectedRelatedAccountProfiles =
+        formState.selectedRelatedAccountProfileIds
+            .map(
+              (profileId) => relatedAccountProfiles.firstWhereOrNull(
+                (profile) => profile.id == profileId,
+              ),
+            )
+            .whereType<TenantAdminAccountProfile>()
+            .toList(growable: false);
 
-    final unknownArtistIds = formState.selectedArtistIds
-        .where(
-          (artistId) => !selectedArtists.any((artist) => artist.id == artistId),
-        )
-        .toList(growable: false);
+    final unknownRelatedAccountProfileIds =
+        formState.selectedRelatedAccountProfileIds
+            .where(
+              (profileId) => !selectedRelatedAccountProfiles.any(
+                (profile) => profile.id == profileId,
+              ),
+            )
+            .toList(growable: false);
 
     return TenantAdminFormSectionCard(
-      title: 'Artistas',
+      title: 'Perfis relacionados',
       description:
-          'Selecione artistas no botão abaixo. Itens já selecionados aparecem desabilitados na lista.',
+          'Selecione os perfis relacionados ao evento. Itens já selecionados aparecem desabilitados na lista.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (selectedArtists.isEmpty && unknownArtistIds.isEmpty)
+          if (selectedRelatedAccountProfiles.isEmpty &&
+              unknownRelatedAccountProfileIds.isEmpty)
             Text(
-              'Nenhum artista selecionado.',
+              'Nenhum perfil relacionado selecionado.',
               style: Theme.of(context).textTheme.bodySmall,
             )
           else ...[
-            ...selectedArtists.map(
-              (artist) => Card(
+            ...selectedRelatedAccountProfiles.map(
+              (profile) => Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: const Icon(Icons.person_outline),
-                  title: Text(artist.displayName),
-                  subtitle: Text(artist.slug ?? artist.id),
+                  title: Text(profile.displayName),
+                  subtitle: Text(profile.slug ?? profile.id),
                   trailing: IconButton(
-                    tooltip: 'Remover artista',
-                    onPressed: () => _controller.removeEventArtist(artist.id),
+                    tooltip: 'Remover perfil relacionado',
+                    onPressed: () =>
+                        _controller.removeRelatedAccountProfile(profile.id),
                     icon: const Icon(Icons.close),
                   ),
                 ),
               ),
             ),
-            ...unknownArtistIds.map(
-              (artistId) => Card(
+            ...unknownRelatedAccountProfileIds.map(
+              (profileId) => Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: const Icon(Icons.person_outline),
-                  title: Text('Artista $artistId'),
+                  title: Text('Perfil relacionado $profileId'),
                   subtitle: const Text('Perfil não disponível na lista atual'),
                   trailing: IconButton(
-                    tooltip: 'Remover artista',
-                    onPressed: () => _controller.removeEventArtist(artistId),
+                    tooltip: 'Remover perfil relacionado',
+                    onPressed: () =>
+                        _controller.removeRelatedAccountProfile(profileId),
                     icon: const Icon(Icons.close),
                   ),
                 ),
@@ -787,16 +795,16 @@ class _TenantAdminEventFormScreenState
           ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => _openArtistPickerSheet(
+            onPressed: () => _openRelatedAccountProfilePickerSheet(
               formState: formState,
             ),
             icon: const Icon(Icons.add),
-            label: const Text('Adicionar artista'),
+            label: const Text('Adicionar perfil'),
           ),
-          if (artists.isEmpty) ...[
+          if (relatedAccountProfiles.isEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'Use a busca para localizar artistas além da primeira página carregada.',
+              'Use a busca para localizar perfis relacionados além da primeira página carregada.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -903,14 +911,18 @@ class _TenantAdminEventFormScreenState
     });
   }
 
-  Future<void> _openArtistPickerSheet({
+  Future<void> _openRelatedAccountProfilePickerSheet({
     required TenantAdminEventFormState formState,
   }) async {
-    unawaited(_controller.prepareArtistPicker(
-      accountSlug: widget.accountSlugForOwnCreate,
-    ));
+    unawaited(
+      _controller.prepareAccountProfilePicker(
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        accountSlug: widget.accountSlugForOwnCreate,
+      ),
+    );
 
-    final selectedArtist =
+    final selectedAccountProfile =
         await showModalBottomSheet<TenantAdminAccountProfile>(
       context: context,
       isScrollControlled: true,
@@ -928,30 +940,32 @@ class _TenantAdminEventFormScreenState
             child: Column(
               children: [
                 TextField(
-                  controller: _controller.artistSearchController,
+                  controller: _controller.accountProfilePickerSearchController,
                   autofocus: true,
                   decoration: const InputDecoration(
-                    labelText: 'Buscar artista',
+                    labelText: 'Buscar perfil relacionado',
                     prefixIcon: Icon(Icons.search),
                   ),
-                  onChanged: _controller.updateArtistSearchQuery,
+                  onChanged: _controller.updateAccountProfilePickerSearchQuery,
                 ),
                 const SizedBox(height: 12),
                 Expanded(
                   child: StreamValueBuilder<String>(
-                    streamValue: _controller.artistSearchErrorStreamValue,
+                    streamValue:
+                        _controller.accountProfilePickerErrorStreamValue,
                     builder: (context, searchError) {
                       return StreamValueBuilder<bool>(
-                        streamValue: _controller.artistSearchLoadingStreamValue,
+                        streamValue:
+                            _controller.accountProfilePickerLoadingStreamValue,
                         builder: (context, isSearchLoading) {
                           return StreamValueBuilder<bool>(
-                            streamValue:
-                                _controller.artistSearchPageLoadingStreamValue,
+                            streamValue: _controller
+                                .accountProfilePickerPageLoadingStreamValue,
                             builder: (context, isSearchPageLoading) {
                               return StreamValueBuilder<
                                   List<TenantAdminAccountProfile>>(
-                                streamValue:
-                                    _controller.artistSearchResultsStreamValue,
+                                streamValue: _controller
+                                    .accountProfilePickerResultsStreamValue,
                                 builder: (context, searchResults) {
                                   if (isSearchLoading &&
                                       searchResults.isEmpty) {
@@ -972,8 +986,8 @@ class _TenantAdminEventFormScreenState
                                           ),
                                           const SizedBox(height: 12),
                                           FilledButton(
-                                            onPressed:
-                                                _controller.retryArtistSearch,
+                                            onPressed: _controller
+                                                .retryAccountProfilePickerSearch,
                                             child:
                                                 const Text('Tentar novamente'),
                                           ),
@@ -985,7 +999,7 @@ class _TenantAdminEventFormScreenState
                                   if (searchResults.isEmpty) {
                                     return const Center(
                                       child: Text(
-                                        'Nenhum artista elegível encontrado.',
+                                        'Nenhum perfil relacionado elegível encontrado.',
                                       ),
                                     );
                                   }
@@ -995,7 +1009,7 @@ class _TenantAdminEventFormScreenState
 
                                   return ListView.separated(
                                     controller: _controller
-                                        .artistSearchScrollController,
+                                        .accountProfilePickerScrollController,
                                     itemCount: itemCount,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: 8),
@@ -1011,20 +1025,19 @@ class _TenantAdminEventFormScreenState
                                         );
                                       }
 
-                                      final artist = searchResults[index];
-                                      final isAlreadySelected =
-                                          formState.selectedArtistIds.contains(
-                                        artist.id,
-                                      );
+                                      final profile = searchResults[index];
+                                      final isAlreadySelected = formState
+                                          .selectedRelatedAccountProfileIds
+                                          .contains(profile.id);
 
                                       return Card(
                                         child: ListTile(
                                           enabled: !isAlreadySelected,
                                           leading:
                                               const Icon(Icons.person_outline),
-                                          title: Text(artist.displayName),
+                                          title: Text(profile.displayName),
                                           subtitle:
-                                              Text(artist.slug ?? artist.id),
+                                              Text(profile.slug ?? profile.id),
                                           trailing: Icon(
                                             isAlreadySelected
                                                 ? Icons.check_circle_outline
@@ -1034,7 +1047,7 @@ class _TenantAdminEventFormScreenState
                                               ? null
                                               : () => context.router.maybePop<
                                                       TenantAdminAccountProfile>(
-                                                  artist),
+                                                  profile),
                                         ),
                                       );
                                     },
@@ -1055,11 +1068,11 @@ class _TenantAdminEventFormScreenState
       },
     );
 
-    if (selectedArtist == null || !mounted) {
+    if (selectedAccountProfile == null || !mounted) {
       return;
     }
 
-    _controller.addEventArtist(selectedArtist.id);
+    _controller.addRelatedAccountProfile(selectedAccountProfile.id);
   }
 
   Future<String?> _promptWebImageUrl({required String title}) async {
@@ -1291,7 +1304,7 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<void> _handleSubmit({
-    required List<TenantAdminAccountProfile> artists,
+    required List<TenantAdminAccountProfile> relatedAccountProfiles,
     required List<TenantAdminAccountProfile> venues,
     required List<TenantAdminEventType> eventTypes,
     required TenantAdminEventFormState formState,
@@ -1360,13 +1373,15 @@ class _TenantAdminEventFormScreenState
     final selectedVenue = venues.firstWhereOrNull(
       (venue) => venue.id == formState.selectedVenueId,
     );
-    final knownArtistProfilesById = <String, TenantAdminAccountProfile>{
-      for (final artist in widget.existingEvent?.artistProfiles ?? const [])
-        artist.id: artist,
-      for (final artist in artists) artist.id: artist,
+    final knownRelatedAccountProfilesById = <String, TenantAdminAccountProfile>{
+      for (final profile
+          in widget.existingEvent?.relatedAccountProfiles ?? const [])
+        profile.id: profile,
+      for (final profile in relatedAccountProfiles) profile.id: profile,
     };
-    final selectedArtistProfiles = formState.selectedArtistIds
-        .map((artistId) => knownArtistProfilesById[artistId])
+    final selectedRelatedAccountProfiles = formState
+        .selectedRelatedAccountProfileIds
+        .map((profileId) => knownRelatedAccountProfilesById[profileId])
         .whereType<TenantAdminAccountProfile>()
         .toList(growable: false);
 
@@ -1437,10 +1452,11 @@ class _TenantAdminEventFormScreenState
         placeRef: placeRef,
         coverUpload: coverUpload,
         removeCoverValue: tenantAdminFlag(removeCover),
-        artistIdValues: formState.selectedArtistIds
-            .map(TenantAdminArtistIdValue.new)
+        relatedAccountProfileIdValues: formState
+            .selectedRelatedAccountProfileIds
+            .map(TenantAdminAccountProfileIdValue.new)
             .toList(growable: false),
-        artistProfiles: selectedArtistProfiles,
+        relatedAccountProfiles: selectedRelatedAccountProfiles,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
           for (final taxonomyTerm in taxonomyTerms) {

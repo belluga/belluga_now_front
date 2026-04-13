@@ -102,6 +102,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     return switch (routeName) {
       TenantAdminSettingsLocalPreferencesRoute.name => 'Preferências',
       TenantAdminSettingsVisualIdentityRoute.name => 'Identidade visual',
+      TenantAdminSettingsDomainsRoute.name => 'Domínios',
       TenantAdminSettingsTechnicalIntegrationsRoute.name =>
         'Integrações técnicas',
       TenantAdminSettingsEnvironmentSnapshotRoute.name =>
@@ -562,7 +563,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   isAdminInternal: isAdminInternal,
                   routeName: currentName,
                 );
-                final routeBackPolicy = buildCanonicalRouteBackPolicyForRouteData(
+                final routeBackPolicy =
+                    buildCanonicalRouteBackPolicyForRouteData(
                   routeData: routeData,
                 );
 

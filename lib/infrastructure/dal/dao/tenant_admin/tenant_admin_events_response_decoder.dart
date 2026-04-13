@@ -7,8 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_artist_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 
@@ -102,11 +102,14 @@ class TenantAdminEventsResponseDecoder {
     final publicationRow = _asMap(row['publication']);
     final locationRow = _asMap(row['location']);
     final placeRefRow = _asMap(row['place_ref']);
+    final venueRow = _asMap(row['venue']);
     final thumbRow = _asMap(row['thumb']);
     final thumbData = _asMap(thumbRow['data']);
     final thumbUrl = _asString(thumbData['url']) ??
         _asString(thumbRow['url']) ??
         _asString(thumbRow['uri']);
+    final venueDisplayName =
+        _asString(venueRow['display_name']) ?? _asString(venueRow['name']);
 
     final occurrencesRaw = _asList(row['occurrences']);
     final occurrences = occurrencesRaw
@@ -134,16 +137,18 @@ class TenantAdminEventsResponseDecoder {
         .toList(growable: false);
 
     final eventPartiesRaw = _asList(row['event_parties']);
-    final artistIds = eventPartiesRaw
+    final relatedAccountProfileIds = eventPartiesRaw
         .map(_asMap)
-        .where((party) => (_asString(party['party_type']) ?? '') == 'artist')
+        .where((party) => (_asString(party['party_type']) ?? '') != 'venue')
         .map((party) => party['party_ref_id'])
         .map(_asString)
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
-        .map(TenantAdminArtistIdValue.new)
+        .map(TenantAdminAccountProfileIdValue.new)
         .toList(growable: false);
-    final artistProfiles = _decodeEventArtistProfiles(row['artists']);
+    final relatedAccountProfiles = _decodeRelatedAccountProfiles(
+      row['linked_account_profiles'],
+    );
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -246,6 +251,7 @@ class TenantAdminEventsResponseDecoder {
         location: location,
         placeRef: placeRef,
         thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
+        venueDisplayNameValue: tenantAdminOptionalText(venueDisplayName),
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(
@@ -254,8 +260,8 @@ class TenantAdminEventsResponseDecoder {
             _parseDate(publicationRow['publish_at']),
           ),
         ),
-        artistIdValues: artistIds,
-        artistProfiles: artistProfiles,
+        relatedAccountProfileIdValues: relatedAccountProfileIds,
+        relatedAccountProfiles: relatedAccountProfiles,
         eventParties: eventParties,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
@@ -292,6 +298,7 @@ class TenantAdminEventsResponseDecoder {
       location: location,
       placeRef: placeRef,
       thumbUrlValue: tenantAdminOptionalUrl(thumbUrl),
+      venueDisplayNameValue: tenantAdminOptionalText(venueDisplayName),
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         statusValue: tenantAdminRequiredText(
@@ -300,8 +307,8 @@ class TenantAdminEventsResponseDecoder {
           _parseDate(publicationRow['publish_at']),
         ),
       ),
-      artistIdValues: artistIds,
-      artistProfiles: artistProfiles,
+      relatedAccountProfileIdValues: relatedAccountProfileIds,
+      relatedAccountProfiles: relatedAccountProfiles,
       eventParties: eventParties,
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();
@@ -333,7 +340,8 @@ class TenantAdminEventsResponseDecoder {
 
   TenantAdminPoiVisual? _decodeEventTypeVisual(Map<String, dynamic> row) {
     final visualRow = _asMap(row['visual']);
-    final fallbackVisualRow = visualRow.isNotEmpty ? visualRow : _asMap(row['poi_visual']);
+    final fallbackVisualRow =
+        visualRow.isNotEmpty ? visualRow : _asMap(row['poi_visual']);
     if (fallbackVisualRow.isEmpty) {
       final icon = _asString(row['icon']);
       final color = _asString(row['color']);
@@ -393,7 +401,8 @@ class TenantAdminEventsResponseDecoder {
 
     return TenantAdminPoiVisual.image(
       imageSource: imageSource,
-      imageUrlValue: tenantAdminOptionalUrl(_asString(fallbackVisualRow['image_url'])),
+      imageUrlValue:
+          tenantAdminOptionalUrl(_asString(fallbackVisualRow['image_url'])),
     );
   }
 
@@ -435,7 +444,7 @@ class TenantAdminEventsResponseDecoder {
     );
   }
 
-  TenantAdminAccountProfile _mapEventArtistProfile(
+  TenantAdminAccountProfile _mapRelatedAccountProfile(
     Map<String, dynamic> row,
   ) {
     final taxonomyTerms = _asList(row['taxonomy_terms'])
@@ -456,7 +465,8 @@ class TenantAdminEventsResponseDecoder {
           _asString(row['account_id']) ?? _asString(row['accountId']) ?? id,
       profileType: _asString(row['profile_type']) ??
           _asString(row['profileType']) ??
-          'artist',
+          _asString(row['party_type']) ??
+          '',
       displayName:
           _asString(row['display_name']) ?? _asString(row['name']) ?? '',
       slug: _asString(row['slug']),
@@ -481,10 +491,10 @@ class TenantAdminEventsResponseDecoder {
         .toList(growable: false);
   }
 
-  List<TenantAdminAccountProfile> _decodeEventArtistProfiles(Object? raw) {
+  List<TenantAdminAccountProfile> _decodeRelatedAccountProfiles(Object? raw) {
     return _asList(raw)
         .whereType<Map>()
-        .map((row) => _mapEventArtistProfile(Map<String, dynamic>.from(row)))
+        .map((row) => _mapRelatedAccountProfile(Map<String, dynamic>.from(row)))
         .toList(growable: false);
   }
 

@@ -108,6 +108,8 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<TenantAdminMapUiSettings>(
     defaultValue: TenantAdminMapUiSettings.empty(),
   );
+  final StreamValue<bool> domainsSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> appLinksSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminAppLinksSettings> appLinksSettingsStreamValue =
@@ -220,6 +222,7 @@ class TenantAdminSettingsController implements Disposable {
       TextEditingController();
   final TextEditingController mapDefaultOriginLabelController =
       TextEditingController();
+  final TextEditingController domainPathController = TextEditingController();
   final TextEditingController appLinksAndroidPackageNameController =
       TextEditingController();
   final TextEditingController appLinksAndroidFingerprintsController =
@@ -246,6 +249,12 @@ class TenantAdminSettingsController implements Disposable {
       _appDataRepository.themeModeStreamValue;
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
       _settingsRepository.brandingSettingsStreamValue;
+  StreamValue<List<TenantAdminDomainEntry>> get domainsStreamValue =>
+      _settingsRepository.domainsStreamValue;
+  StreamValue<bool> get domainsPageLoadingStreamValue =>
+      _settingsRepository.isDomainsPageLoadingStreamValue;
+  StreamValue<bool> get hasMoreDomainsStreamValue =>
+      _settingsRepository.hasMoreDomainsStreamValue;
   List<String> get appLinksCanonicalIosPaths =>
       TenantAdminAppLinksSettings.canonicalIosPaths;
 
@@ -445,6 +454,98 @@ class TenantAdminSettingsController implements Disposable {
     } finally {
       isRemoteLoadingStreamValue.addValue(false);
     }
+  }
+
+  Future<void> loadDomains({bool clearMessages = true}) async {
+    if (isRemoteLoadingStreamValue.value) {
+      return;
+    }
+    isRemoteLoadingStreamValue.addValue(true);
+    if (clearMessages) {
+      clearStatusMessages();
+    } else {
+      remoteErrorStreamValue.addValue(null);
+    }
+    try {
+      await _settingsRepository.loadDomains();
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      isRemoteLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> loadNextDomainsPage() async {
+    if (domainsPageLoadingStreamValue.value ||
+        isRemoteLoadingStreamValue.value ||
+        !hasMoreDomainsStreamValue.value) {
+      return;
+    }
+    remoteErrorStreamValue.addValue(null);
+    try {
+      await _settingsRepository.loadMoreDomains();
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    }
+  }
+
+  Future<void> createDomain() async {
+    final normalizedPath = _normalizeTenantWebDomainPath(
+      domainPathController.text,
+    );
+    if (normalizedPath == null || normalizedPath.isEmpty) {
+      remoteSuccessStreamValue.addValue(null);
+      remoteErrorStreamValue.addValue('Informe um domínio web válido.');
+      return;
+    }
+
+    domainsSubmittingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      await _settingsRepository.createDomain(
+        path: _requiredTextValue(normalizedPath),
+      );
+      domainPathController.clear();
+      await _refreshAppDataSnapshot();
+      await _settingsRepository.loadDomains();
+      _reportSuccess('Domínio adicionado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      domainsSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> deleteDomain(TenantAdminDomainEntry domain) async {
+    if (!canDeleteDomain(domain)) {
+      remoteSuccessStreamValue.addValue(null);
+      remoteErrorStreamValue.addValue(
+        'Acesse outro domínio ativo para remover o domínio atual.',
+      );
+      return;
+    }
+
+    domainsSubmittingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      await _settingsRepository.deleteDomain(_requiredTextValue(domain.id));
+      await _refreshAppDataSnapshot();
+      await _settingsRepository.loadDomains();
+      _reportSuccess('Domínio removido com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      domainsSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  bool isCurrentTenantDomain(TenantAdminDomainEntry domain) {
+    return _domainIdentity(_tenantScope?.selectedTenantDomain) ==
+        _domainIdentity(domain.path);
+  }
+
+  bool canDeleteDomain(TenantAdminDomainEntry domain) {
+    return domain.isActive && !isCurrentTenantDomain(domain);
   }
 
   Future<void> loadMapFilterRuleCatalog({bool force = false}) async {
@@ -1153,6 +1254,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
+    _resetDomainsDraft();
     _resetMapUiDraft();
     _resetAppLinksDraft();
   }
@@ -1816,6 +1918,12 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLabelController.clear();
   }
 
+  void _resetDomainsDraft() {
+    _settingsRepository.resetDomainsState();
+    domainsSubmittingStreamValue.addValue(false);
+    domainPathController.clear();
+  }
+
   Future<void> _refreshAppDataSnapshot() async {
     try {
       await _appDataRepository.init();
@@ -2025,6 +2133,28 @@ class TenantAdminSettingsController implements Disposable {
     remoteSuccessStreamValue.addValue(message);
   }
 
+  String? _normalizeTenantWebDomainPath(String? raw) {
+    return _domainIdentity(raw);
+  }
+
+  String? _domainIdentity(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final parsed = Uri.tryParse(
+      trimmed.contains('://') ? trimmed : 'https://$trimmed',
+    );
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      return trimmed.toLowerCase();
+    }
+    final host = parsed.host.trim().toLowerCase();
+    if (parsed.hasPort) {
+      return '$host:${parsed.port}';
+    }
+    return host;
+  }
+
   String? _normalizeTenantDomain(String? raw) {
     final trimmed = raw?.trim();
     if (trimmed == null || trimmed.isEmpty) {
@@ -2080,6 +2210,7 @@ class TenantAdminSettingsController implements Disposable {
     remoteSuccessStreamValue.dispose();
     mapUiSubmittingStreamValue.dispose();
     mapUiSettingsStreamValue.dispose();
+    domainsSubmittingStreamValue.dispose();
     appLinksSubmittingStreamValue.dispose();
     appLinksSettingsStreamValue.dispose();
     appLinksIosPathsSelectionStreamValue.dispose();
@@ -2127,6 +2258,7 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLatitudeController.dispose();
     mapDefaultOriginLongitudeController.dispose();
     mapDefaultOriginLabelController.dispose();
+    domainPathController.dispose();
     appLinksAndroidPackageNameController.dispose();
     appLinksAndroidFingerprintsController.dispose();
     appLinksIosTeamIdController.dispose();

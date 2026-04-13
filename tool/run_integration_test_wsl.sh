@@ -72,7 +72,11 @@ prepare_device() {
 
 prepare_gradle() {
   if [[ -x "./android/gradlew" ]]; then
-    (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+    if command -v timeout >/dev/null 2>&1; then
+      (cd android && timeout 20s ./gradlew --stop >/dev/null 2>&1) || true
+    else
+      (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+    fi
   fi
 }
 

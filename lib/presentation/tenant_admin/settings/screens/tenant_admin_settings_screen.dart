@@ -35,6 +35,10 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
     context.router.push(const TenantAdminSettingsVisualIdentityRoute());
   }
 
+  void _openDomains() {
+    context.router.push(const TenantAdminSettingsDomainsRoute());
+  }
+
   void _openTechnicalIntegrations([
     TenantAdminSettingsIntegrationSection initialSection =
         TenantAdminSettingsIntegrationSection.firebase,
@@ -222,6 +226,32 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
               ),
             );
           },
+        ),
+        const SizedBox(height: 14),
+        TenantAdminHubCardShell(
+          key: TenantAdminSettingsKeys.hubCardDomains,
+          onTap: _openDomains,
+          title: 'Domínios',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSummaryRow(
+                context,
+                label: 'Principal',
+                value: appData.mainDomainValue.value.host,
+              ),
+              const SizedBox(height: 8),
+              _buildSummaryRow(
+                context,
+                label: 'Ativos',
+                value: '${appData.domains.length}',
+              ),
+              _buildHint(
+                context,
+                'Toque para gerenciar domínios web ativos',
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 14),
         TenantAdminHubCardShell(

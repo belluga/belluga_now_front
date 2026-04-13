@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
@@ -254,6 +255,113 @@ void main() {
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.uri.path, '/admin/api/v1/settings/values');
     expect(adapter.requests.last.uri.path, '/admin/api/v1/appdomains');
+  });
+
+  test('fetchDomainsPage requests page/per_page and decodes active domains',
+      () async {
+    final adapter = _RoutingAdapter(
+      domainsPayload: [
+        {
+          'id': 'domain-1',
+          'path': 'tenant-a.test',
+          'type': 'web',
+          'status': 'active',
+          'created_at': '2026-04-01T10:00:00Z',
+          'updated_at': '2026-04-01T10:00:00Z',
+          'deleted_at': null,
+        },
+        {
+          'id': 'domain-2',
+          'path': 'tenant-b.test',
+          'type': 'web',
+          'status': 'active',
+          'created_at': '2026-03-01T10:00:00Z',
+          'updated_at': '2026-03-01T10:00:00Z',
+          'deleted_at': null,
+        },
+      ],
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.fetchDomainsPage(
+      page: TenantAdminCountValue(1),
+      pageSize: TenantAdminCountValue(1),
+    );
+
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/domains');
+    expect(adapter.requests.single.uri.queryParameters['page'], '1');
+    expect(adapter.requests.single.uri.queryParameters['per_page'], '1');
+    expect(result.items, hasLength(1));
+    expect(result.items.single.path, 'tenant-a.test');
+    expect(result.items.single.status, TenantAdminDomainStatusValue.active);
+    expect(result.hasMore, isTrue);
+  });
+
+  test('createDomain posts payload and decodes created entry', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final created = await repository.createDomain(
+      path: _requiredTextValue('new-tenant.test'),
+    );
+
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/domains');
+    expect(adapter.requests.single.method, 'POST');
+    expect(adapter.requests.single.data, {'path': 'new-tenant.test'});
+    expect(created.path, 'new-tenant.test');
+    expect(created.status, TenantAdminDomainStatusValue.active);
+  });
+
+  test('createDomain preserves backend validation message for duplicates',
+      () async {
+    final adapter = _RoutingAdapter(
+      createDomainValidationMessage:
+          'Another tenant already uses this domain.',
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      () => repository.createDomain(
+        path: _requiredTextValue('duplicate-tenant.test'),
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Another tenant already uses this domain.'),
+        ),
+      ),
+    );
+  });
+
+  test('deleteDomain hits expected endpoint', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.deleteDomain(_requiredTextValue('domain-1'));
+
+    expect(adapter.requests.single.method, 'DELETE');
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/domains/domain-1');
   });
 
   test('updateMapUiSettings patches map_ui namespace payload', () async {
@@ -820,10 +928,12 @@ void main() {
     expect(snapshot.integrations, hasLength(1));
     expect(snapshot.integrations.single.type, 'mixpanel');
     expect(snapshot.integrations.single.token, 'token-a');
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
+    expect(
+        adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
   });
 
-  test('upsertTelemetryIntegration posts telemetry payload to tenant admin endpoint',
+  test(
+      'upsertTelemetryIntegration posts telemetry payload to tenant admin endpoint',
       () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -845,7 +955,8 @@ void main() {
     expect(snapshot.integrations, hasLength(1));
     expect(snapshot.integrations.single.type, 'mixpanel');
     expect(snapshot.integrations.single.token, 'tenant-token');
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
+    expect(
+        adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
     expect(adapter.requests.single.data, isA<Map<String, dynamic>>());
     final payload = Map<String, dynamic>.from(
       adapter.requests.single.data as Map<String, dynamic>,
@@ -1286,6 +1397,8 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.environmentPayloadByHost,
     this.environmentDelayByHost,
     this.settingsValuesPayload,
+    this.createDomainValidationMessage,
+    List<Map<String, dynamic>>? domainsPayload,
     Map<String, dynamic>? appDomainsPayload,
     Map<String, bool>? typedAppDomainPersistedByPlatform,
   })  : _appDomainsPayload = Map<String, dynamic>.from(
@@ -1307,14 +1420,39 @@ class _RoutingAdapter implements HttpClientAdapter {
                     true)
                   'ios': true,
               },
-        );
+        ),
+        _domainsPayload = (domainsPayload ??
+                [
+                  {
+                    'id': 'domain-1',
+                    'path': 'tenant-a.test',
+                    'type': 'web',
+                    'status': 'active',
+                    'created_at': '2026-04-01T10:00:00Z',
+                    'updated_at': '2026-04-01T10:00:00Z',
+                    'deleted_at': null,
+                  },
+                  {
+                    'id': 'domain-2',
+                    'path': 'tenant-old.test',
+                    'type': 'web',
+                    'status': 'deleted',
+                    'created_at': '2026-03-01T10:00:00Z',
+                    'updated_at': '2026-03-01T10:00:00Z',
+                    'deleted_at': '2026-04-02T10:00:00Z',
+                  },
+                ])
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: true);
 
   final Map<String, dynamic>? environmentPayload;
   final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
   final Map<String, Duration>? environmentDelayByHost;
   final Map<String, dynamic>? settingsValuesPayload;
+  final String? createDomainValidationMessage;
   final Map<String, dynamic> _appDomainsPayload;
   final Map<String, bool> _typedAppDomainPersistedByPlatform;
+  final List<Map<String, dynamic>> _domainsPayload;
   final List<RequestOptions> requests = [];
 
   @override
@@ -1328,7 +1466,7 @@ class _RoutingAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
-    final path = options.path;
+    final path = options.uri.path;
     final method = options.method.toUpperCase();
 
     if (path.endsWith('/settings/firebase') && method == 'GET') {
@@ -1446,6 +1584,64 @@ class _RoutingAdapter implements HttpClientAdapter {
           'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
         },
       });
+    }
+
+    if (path.endsWith('/domains') && method == 'GET') {
+      final queryParameters = options.uri.queryParameters;
+      final page = int.tryParse(queryParameters['page']?.toString() ?? '') ?? 1;
+      final perPage = int.tryParse(
+            queryParameters['per_page']?.toString() ?? '',
+          ) ??
+          15;
+      final start = (page - 1) * perPage;
+      final end = start + perPage > _domainsPayload.length
+          ? _domainsPayload.length
+          : start + perPage;
+      final data = start >= _domainsPayload.length
+          ? <Map<String, dynamic>>[]
+          : _domainsPayload.sublist(start, end);
+      final lastPage = _domainsPayload.isEmpty
+          ? 1
+          : ((_domainsPayload.length + perPage - 1) / perPage).ceil();
+      return _jsonResponse({
+        'data': data,
+        'current_page': page,
+        'per_page': perPage,
+        'last_page': lastPage,
+        'total': _domainsPayload.length,
+      });
+    }
+
+    if (path.endsWith('/domains') && method == 'POST') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      if (createDomainValidationMessage != null) {
+        return _jsonResponse(
+          {
+            'message': createDomainValidationMessage,
+            'errors': {
+              'path': [createDomainValidationMessage],
+            },
+          },
+          statusCode: 422,
+        );
+      }
+      final next = <String, dynamic>{
+        'id': 'domain-${_domainsPayload.length + 1}',
+        'path': (request['path'] as String?)?.trim() ?? '',
+        'type': 'web',
+        'status': 'active',
+        'created_at': '2026-04-05T10:00:00Z',
+        'updated_at': '2026-04-05T10:00:00Z',
+        'deleted_at': null,
+      };
+      _domainsPayload.insert(0, next);
+      return _jsonResponse({'data': next});
+    }
+
+    if (path.contains('/domains/') && method == 'DELETE') {
+      final domainId = path.split('/').last;
+      _domainsPayload.removeWhere((entry) => entry['id'] == domainId);
+      return _jsonResponse(const <String, dynamic>{});
     }
 
     if (path.endsWith('/settings/values/map_ui') && method == 'PATCH') {
