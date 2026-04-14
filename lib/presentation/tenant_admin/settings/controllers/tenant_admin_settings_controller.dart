@@ -35,6 +35,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_requi
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_branding_asset_slot.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_favicon_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +54,7 @@ class TenantAdminSettingsController implements Disposable {
     TenantAdminTenantScopeContract? tenantScope,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
+    TenantAdminFaviconIngestionService? faviconIngestionService,
   })  : _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _settingsRepository = settingsRepository ??
@@ -79,7 +81,11 @@ class TenantAdminSettingsController implements Disposable {
         _imageIngestionService = imageIngestionService ??
             (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
                 ? GetIt.I.get<TenantAdminImageIngestionService>()
-                : TenantAdminImageIngestionService()) {
+                : TenantAdminImageIngestionService()),
+        _faviconIngestionService = faviconIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminFaviconIngestionService>()
+                ? GetIt.I.get<TenantAdminFaviconIngestionService>()
+                : TenantAdminFaviconIngestionService()) {
     _bindMaxRadiusStream();
   }
 
@@ -92,6 +98,7 @@ class TenantAdminSettingsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminLocationSelectionContract _locationSelectionService;
   final TenantAdminImageIngestionService _imageIngestionService;
+  final TenantAdminFaviconIngestionService _faviconIngestionService;
 
   static const List<String> telemetryTypes = [
     'mixpanel',
@@ -156,6 +163,8 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<XFile?>();
   final StreamValue<XFile?> brandingPwaIconFileStreamValue =
       StreamValue<XFile?>();
+  final StreamValue<TenantAdminMediaUpload?> brandingFaviconUploadStreamValue =
+      StreamValue<TenantAdminMediaUpload?>();
 
   final StreamValue<String?> brandingLightLogoUrlStreamValue =
       StreamValue<String?>();
@@ -164,6 +173,8 @@ class TenantAdminSettingsController implements Disposable {
   final StreamValue<String?> brandingLightIconUrlStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> brandingDarkIconUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingFaviconUrlStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> brandingPwaIconUrlStreamValue =
       StreamValue<String?>();
@@ -1072,6 +1083,7 @@ class TenantAdminSettingsController implements Disposable {
     required TenantAdminMediaUpload? darkLogoUpload,
     required TenantAdminMediaUpload? lightIconUpload,
     required TenantAdminMediaUpload? darkIconUpload,
+    required TenantAdminMediaUpload? faviconUpload,
     required TenantAdminMediaUpload? pwaIconUpload,
   }) async {
     final input = _buildBrandingUpdateInput(
@@ -1079,6 +1091,7 @@ class TenantAdminSettingsController implements Disposable {
       darkLogoUpload: darkLogoUpload,
       lightIconUpload: lightIconUpload,
       darkIconUpload: darkIconUpload,
+      faviconUpload: faviconUpload,
       pwaIconUpload: pwaIconUpload,
     );
     if (input == null) {
@@ -1109,10 +1122,20 @@ class TenantAdminSettingsController implements Disposable {
     return _imageIngestionService.pickFromDevice(slot: slot);
   }
 
+  Future<TenantAdminMediaUpload?> pickBrandingFaviconFromDevice() {
+    return _faviconIngestionService.pickFromDevice();
+  }
+
   Future<XFile> fetchBrandingImageFromUrlForCrop({
     required String imageUrl,
   }) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<TenantAdminMediaUpload> fetchBrandingFaviconFromUrl({
+    required String faviconUrl,
+  }) {
+    return _faviconIngestionService.fetchFromUrl(faviconUrl: faviconUrl);
   }
 
   Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
@@ -1135,6 +1158,17 @@ class TenantAdminSettingsController implements Disposable {
     required TenantAdminImageSlot slot,
   }) {
     return _imageIngestionService.buildUpload(file, slot: slot);
+  }
+
+  void updateBrandingFaviconUpload(TenantAdminMediaUpload? upload) {
+    brandingFaviconUploadStreamValue.addValue(upload);
+    if (upload != null) {
+      brandingFaviconUrlStreamValue.addValue(null);
+    }
+  }
+
+  void clearBrandingFaviconUpload() {
+    brandingFaviconUploadStreamValue.addValue(null);
   }
 
   void updateTelemetryTrackAll(bool value) {
@@ -1252,6 +1286,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
+    clearBrandingFaviconUpload();
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
     _resetDomainsDraft();
@@ -1268,6 +1303,7 @@ class TenantAdminSettingsController implements Disposable {
     brandingDarkLogoUrlStreamValue.addValue(null);
     brandingLightIconUrlStreamValue.addValue(null);
     brandingDarkIconUrlStreamValue.addValue(null);
+    brandingFaviconUrlStreamValue.addValue(null);
     brandingPwaIconUrlStreamValue.addValue(null);
   }
 
@@ -1498,6 +1534,7 @@ class TenantAdminSettingsController implements Disposable {
     required TenantAdminMediaUpload? darkLogoUpload,
     required TenantAdminMediaUpload? lightIconUpload,
     required TenantAdminMediaUpload? darkIconUpload,
+    required TenantAdminMediaUpload? faviconUpload,
     required TenantAdminMediaUpload? pwaIconUpload,
   }) {
     final tenantName = brandingTenantNameController.text.trim();
@@ -1531,6 +1568,7 @@ class TenantAdminSettingsController implements Disposable {
       darkLogoUpload: darkLogoUpload,
       lightIconUpload: lightIconUpload,
       darkIconUpload: darkIconUpload,
+      faviconUpload: faviconUpload,
       pwaIconUpload: pwaIconUpload,
     );
   }
@@ -1621,6 +1659,12 @@ class TenantAdminSettingsController implements Disposable {
         cacheBuster,
       ),
     );
+    brandingFaviconUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('favicon.ico') ?? settings.faviconUrl,
+        cacheBuster,
+      ),
+    );
     brandingPwaIconUrlStreamValue.addValue(
       _withCacheBust(
         _tenantScopedAssetUrl('icon/icon-512x512.png') ?? settings.pwaIconUrl,
@@ -1633,6 +1677,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
+    clearBrandingFaviconUpload();
   }
 
   void _applyMapUiSettings(TenantAdminMapUiSettings settings) {
@@ -2227,10 +2272,12 @@ class TenantAdminSettingsController implements Disposable {
     brandingLightIconFileStreamValue.dispose();
     brandingDarkIconFileStreamValue.dispose();
     brandingPwaIconFileStreamValue.dispose();
+    brandingFaviconUploadStreamValue.dispose();
     brandingLightLogoUrlStreamValue.dispose();
     brandingDarkLogoUrlStreamValue.dispose();
     brandingLightIconUrlStreamValue.dispose();
     brandingDarkIconUrlStreamValue.dispose();
+    brandingFaviconUrlStreamValue.dispose();
     brandingPwaIconUrlStreamValue.dispose();
     telemetrySnapshotStreamValue.dispose();
     selectedTelemetryTypeStreamValue.dispose();

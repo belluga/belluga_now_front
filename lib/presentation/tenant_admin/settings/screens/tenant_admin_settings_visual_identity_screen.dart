@@ -32,6 +32,7 @@ class _TenantAdminSettingsVisualIdentityScreenState
     TenantAdminBrandingAssetSlot.darkIcon: false,
     TenantAdminBrandingAssetSlot.pwaIcon: false,
   };
+  bool _faviconBusy = false;
 
   @override
   void initState() {
@@ -57,6 +58,14 @@ class _TenantAdminSettingsVisualIdentityScreenState
     _requestRebuild();
   }
 
+  void _setFaviconBusy(bool value) {
+    if (!mounted) {
+      return;
+    }
+    _faviconBusy = value;
+    _requestRebuild();
+  }
+
   TenantAdminImageSlot _toImageSlot(TenantAdminBrandingAssetSlot slot) {
     return switch (slot) {
       TenantAdminBrandingAssetSlot.lightLogo => TenantAdminImageSlot.lightLogo,
@@ -75,6 +84,24 @@ class _TenantAdminSettingsVisualIdentityScreenState
       TenantAdminBrandingAssetSlot.darkIcon => 'Icone escuro',
       TenantAdminBrandingAssetSlot.pwaIcon => 'Icone PWA',
     };
+  }
+
+  Future<void> _pickBrandingFavicon() async {
+    if (_faviconBusy) {
+      return;
+    }
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: 'Selecionar favicon',
+    );
+    if (!mounted || source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickBrandingFaviconFromDevice();
+      return;
+    }
+    await _pickBrandingFaviconFromWeb();
   }
 
   Future<void> _pickBrandingImage({
@@ -201,6 +228,86 @@ class _TenantAdminSettingsVisualIdentityScreenState
     }
   }
 
+  Future<void> _pickBrandingFaviconFromDevice() async {
+    _setFaviconBusy(true);
+    try {
+      final upload = await _controller.pickBrandingFaviconFromDevice();
+      if (upload == null) {
+        return;
+      }
+      _controller.updateBrandingFaviconUpload(upload);
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.remoteErrorStreamValue.addValue(error.message);
+    } catch (_) {
+      _controller.remoteErrorStreamValue.addValue(
+        'Nao foi possivel selecionar o favicon.',
+      );
+    } finally {
+      _setFaviconBusy(false);
+    }
+  }
+
+  Future<void> _pickBrandingFaviconFromWeb() async {
+    _setFaviconBusy(true);
+    try {
+      final currentUrl = _controller.brandingFaviconUrlStreamValue.value ?? '';
+      final initialUrl = _isCanonicalFaviconRoute(currentUrl) ? '' : currentUrl;
+      final result = await showTenantAdminFieldEditSheet(
+        context: context,
+        title: 'URL do favicon',
+        label: 'Arquivo favicon (.ico)',
+        initialValue: initialUrl,
+        confirmLabel: 'Baixar .ico',
+        keyboardType: TextInputType.url,
+        textCapitalization: TextCapitalization.none,
+        autocorrect: false,
+        enableSuggestions: false,
+        validator: (value) {
+          final trimmed = value?.trim() ?? '';
+          if (trimmed.isEmpty) {
+            return 'Informe a URL do favicon.';
+          }
+          final uri = Uri.tryParse(trimmed);
+          if (uri == null ||
+              (uri.scheme != 'http' && uri.scheme != 'https') ||
+              uri.host.trim().isEmpty) {
+            return 'Informe uma URL valida (http/https).';
+          }
+          return null;
+        },
+      );
+      if (!mounted || result == null) {
+        return;
+      }
+      final upload = await _controller.fetchBrandingFaviconFromUrl(
+        faviconUrl: result.value.trim(),
+      );
+      _controller.updateBrandingFaviconUpload(upload);
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.remoteErrorStreamValue.addValue(error.message);
+    } catch (_) {
+      _controller.remoteErrorStreamValue.addValue(
+        'Nao foi possivel processar o favicon informado.',
+      );
+    } finally {
+      _setFaviconBusy(false);
+    }
+  }
+
+  bool _isCanonicalFaviconRoute(String rawUrl) {
+    final normalized = rawUrl.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) {
+      return false;
+    }
+
+    return uri.path.trim() == '/favicon.ico';
+  }
+
   Future<void> _saveBranding() async {
     try {
       final lightLogoUpload = await _controller.buildBrandingUpload(
@@ -223,12 +330,14 @@ class _TenantAdminSettingsVisualIdentityScreenState
         _controller.brandingPwaIconFileStreamValue.value,
         slot: TenantAdminImageSlot.pwaIcon,
       );
+      final faviconUpload = _controller.brandingFaviconUploadStreamValue.value;
 
       await _controller.saveBranding(
         lightLogoUpload: lightLogoUpload,
         darkLogoUpload: darkLogoUpload,
         lightIconUpload: lightIconUpload,
         darkIconUpload: darkIconUpload,
+        faviconUpload: faviconUpload,
         pwaIconUpload: pwaIconUpload,
       );
     } on TenantAdminImageIngestionException catch (error) {
@@ -269,6 +378,10 @@ class _TenantAdminSettingsVisualIdentityScreenState
             onPickImage: _pickBrandingImage,
             onClearLocalSelection: (slot) =>
                 _controller.clearBrandingFile(slot),
+            isFaviconBusy: _faviconBusy,
+            onPickFavicon: _pickBrandingFavicon,
+            onClearFaviconLocalSelection:
+                _controller.clearBrandingFaviconUpload,
             onSave: _saveBranding,
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_branding_favicon_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_branding_image_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_editable_value_row.dart';
@@ -19,6 +20,9 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
     required this.isSlotBusy,
     required this.onPickImage,
     required this.onClearLocalSelection,
+    required this.isFaviconBusy,
+    required this.onPickFavicon,
+    required this.onClearFaviconLocalSelection,
     required this.onSave,
   });
 
@@ -26,6 +30,9 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
   final TenantAdminBrandingBusyResolver isSlotBusy;
   final TenantAdminBrandingPickCallback onPickImage;
   final TenantAdminBrandingClearCallback onClearLocalSelection;
+  final bool isFaviconBusy;
+  final Future<void> Function() onPickFavicon;
+  final VoidCallback onClearFaviconLocalSelection;
   final Future<void> Function() onSave;
 
   Listenable _controllersListenable() {
@@ -82,8 +89,8 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.all(12),
                       child: Text(
-                        'Observacao: o endpoint atual de branding salva tema e logos/icones. '
-                        'A persistencia do nome do tenant depende de endpoint dedicado.',
+                        'Favicon (.ico) controla a aba do navegador. '
+                        'Icone PWA controla o app instalavel.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -190,6 +197,13 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                           isSlotBusy(TenantAdminBrandingAssetSlot.darkIcon),
                       onPick: onPickImage,
                       onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    TenantAdminSettingsBrandingFaviconField(
+                      controller: controller,
+                      isBusy: isSaving || isFaviconBusy,
+                      onPick: onPickFavicon,
+                      onClearLocalSelection: onClearFaviconLocalSelection,
                     ),
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(

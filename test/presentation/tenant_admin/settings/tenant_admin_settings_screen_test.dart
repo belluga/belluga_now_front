@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
@@ -91,6 +92,12 @@ LongitudeValue _lng(double raw) {
 TenantAdminOptionalTextValue _optionalText(String raw) {
   final value = TenantAdminOptionalTextValue();
   value.parse(raw);
+  return value;
+}
+
+TenantAdminBooleanValue _booleanValue(bool raw) {
+  final value = TenantAdminBooleanValue();
+  value.parse(raw.toString());
   return value;
 }
 
@@ -345,7 +352,8 @@ void main() {
     expect(extraDeleteButton.onPressed, isNotNull);
   });
 
-  testWidgets('domains screen adds and deletes active domains through widget actions',
+  testWidgets(
+      'domains screen adds and deletes active domains through widget actions',
       (tester) async {
     final repository = _FakeAppDataRepository(
       _buildAppData(mainDomain: 'https://current.example.com'),
@@ -386,7 +394,8 @@ void main() {
     expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
     expect(find.text('new-domain.example.com'), findsOneWidget);
 
-    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
+    await tester
+        .tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Remover'));
     await tester.pumpAndSettle();
@@ -395,7 +404,8 @@ void main() {
     expect(find.text('new-domain.example.com'), findsNothing);
   });
 
-  testWidgets('domains screen surfaces duplicate-domain errors through widget flow',
+  testWidgets(
+      'domains screen surfaces duplicate-domain errors through widget flow',
       (tester) async {
     final repository = _FakeAppDataRepository(
       _buildAppData(mainDomain: 'https://current.example.com'),
@@ -1652,6 +1662,21 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.brandingSecondaryPickerButton),
       findsOneWidget,
     );
+    expect(find.text('Favicon (.ico)'), findsOneWidget);
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingFaviconPreview),
+      findsOneWidget,
+    );
+    expect(find.text('Fallback ativo pelo icone PWA'), findsOneWidget);
+    expect(find.text('Publicacao atual: /favicon.ico'), findsOneWidget);
+    expect(
+      find.textContaining('Preview atualmente entregue por /favicon.ico'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('essa rota usa fallback do icone PWA'),
+      findsOneWidget,
+    );
 
     await tester.tap(
       find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
@@ -1697,6 +1722,41 @@ void main() {
     expect(
       settingsRepository.lastBrandingInput!.secondarySeedColor,
       '#673AB7',
+    );
+  });
+
+  testWidgets('renders dedicated favicon preview status when ico exists',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialHasDedicatedFavicon: true,
+      initialUsesPwaFaviconFallback: false,
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
+    );
+
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingFaviconPreview),
+      findsOneWidget,
+    );
+    expect(find.text('.ico dedicado salvo'), findsOneWidget);
+    expect(
+      find.text('Preview atualmente publicado em /favicon.ico.'),
+      findsOneWidget,
     );
   });
 
@@ -1802,6 +1862,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1851,6 +1912,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1909,6 +1971,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1929,6 +1992,48 @@ void main() {
 
     controller.onDispose();
     reloadedController.onDispose();
+  });
+
+  test('controller forwards favicon upload and refreshes favicon preview url',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+
+    final faviconUpload = tenantAdminMediaUploadFromRaw(
+      bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+      fileName: 'favicon.ico',
+      mimeType: 'image/x-icon',
+    );
+
+    await controller.saveBranding(
+      lightLogoUpload: null,
+      darkLogoUpload: null,
+      lightIconUpload: null,
+      darkIconUpload: null,
+      faviconUpload: faviconUpload,
+      pwaIconUpload: null,
+    );
+
+    expect(settingsRepository.lastBrandingInput?.faviconUpload, isNotNull);
+    expect(
+      settingsRepository.lastBrandingInput?.faviconUpload?.fileName,
+      'favicon.ico',
+    );
+    expect(
+      controller.brandingFaviconUrlStreamValue.value,
+      allOf(
+        contains('https://guarappari.test/favicon.ico'),
+        contains('v='),
+      ),
+    );
+
+    controller.onDispose();
   });
 
   test(
@@ -2117,6 +2222,8 @@ class _FakeTenantAdminSettingsRepository
     this.throwOnBrandingFetch = false,
     this.createDomainError,
     String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
+    bool initialHasDedicatedFavicon = false,
+    bool initialUsesPwaFaviconFallback = true,
     TenantAdminMapUiSettings? initialMapUiSettings,
     List<TenantAdminDomainEntry>? initialDomains,
   })  : _brandingSettings = TenantAdminBrandingSettings(
@@ -2132,9 +2239,13 @@ class _FakeTenantAdminSettingsRepository
               _optionalUrl('https://guarappari.test/storage/light-icon.png'),
           darkIconUrl:
               _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+          faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
           pwaIconUrl: initialPwaIconUrl == null
               ? null
               : _optionalUrl(initialPwaIconUrl),
+          hasDedicatedFaviconValue: _booleanValue(initialHasDedicatedFavicon),
+          usesPwaFaviconFallbackValue:
+              _booleanValue(initialUsesPwaFaviconFallback),
         ),
         _domains = List<TenantAdminDomainEntry>.from(
           initialDomains ??
@@ -2412,7 +2523,10 @@ class _FakeTenantAdminSettingsRepository
           _optionalUrl('https://guarappari.test/storage/light-icon.png'),
       darkIconUrl:
           _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
       pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
+      hasDedicatedFaviconValue: _booleanValue(input.faviconUpload != null),
+      usesPwaFaviconFallbackValue: _booleanValue(input.faviconUpload == null),
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;

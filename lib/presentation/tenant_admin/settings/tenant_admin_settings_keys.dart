@@ -146,6 +146,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_branding_primary_field');
   static const brandingSecondaryField =
       ValueKey('tenant_admin_settings_branding_secondary_field');
+  static const brandingFaviconPreview =
+      ValueKey('tenant_admin_settings_branding_favicon_preview');
   static const brandingPrimaryPickerButton =
       ValueKey('tenant_admin_settings_branding_primary_picker_button');
   static const brandingSecondaryPickerButton =
