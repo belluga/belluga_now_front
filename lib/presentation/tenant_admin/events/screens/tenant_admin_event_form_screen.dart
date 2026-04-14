@@ -727,71 +727,40 @@ class _TenantAdminEventFormScreenState
     List<TenantAdminAccountProfile> relatedAccountProfiles, {
     required TenantAdminEventFormState formState,
   }) {
-    final selectedRelatedAccountProfiles =
-        formState.selectedRelatedAccountProfileIds
-            .map(
-              (profileId) => relatedAccountProfiles.firstWhereOrNull(
-                (profile) => profile.id == profileId,
-              ),
-            )
-            .whereType<TenantAdminAccountProfile>()
-            .toList(growable: false);
-
-    final unknownRelatedAccountProfileIds =
-        formState.selectedRelatedAccountProfileIds
-            .where(
-              (profileId) => !selectedRelatedAccountProfiles.any(
-                (profile) => profile.id == profileId,
-              ),
-            )
-            .toList(growable: false);
+    final profilesById = <String, TenantAdminAccountProfile>{
+      for (final profile in relatedAccountProfiles) profile.id: profile,
+      for (final profile in widget.existingEvent?.relatedAccountProfiles ?? [])
+        profile.id: profile,
+    };
+    final selectedEntries = formState.selectedRelatedAccountProfileIds
+        .map(
+          (profileId) => MapEntry<String, TenantAdminAccountProfile?>(
+            profileId,
+            profilesById[profileId],
+          ),
+        )
+        .toList(growable: false);
 
     return TenantAdminFormSectionCard(
       title: 'Perfis relacionados',
       description:
-          'Selecione os perfis relacionados ao evento. Itens já selecionados aparecem desabilitados na lista.',
+          'Selecione os perfis relacionados ao evento. A ordem aqui define o fallback da imagem pública do evento.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (selectedRelatedAccountProfiles.isEmpty &&
-              unknownRelatedAccountProfileIds.isEmpty)
+          if (selectedEntries.isEmpty)
             Text(
               'Nenhum perfil relacionado selecionado.',
               style: Theme.of(context).textTheme.bodySmall,
             )
           else ...[
-            ...selectedRelatedAccountProfiles.map(
-              (profile) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(profile.displayName),
-                  subtitle: Text(profile.slug ?? profile.id),
-                  trailing: IconButton(
-                    tooltip: 'Remover perfil relacionado',
-                    onPressed: () =>
-                        _controller.removeRelatedAccountProfile(profile.id),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
+            for (var index = 0; index < selectedEntries.length; index++)
+              _buildRelatedAccountProfileCard(
+                profileId: selectedEntries[index].key,
+                profile: selectedEntries[index].value,
+                index: index,
+                totalCount: selectedEntries.length,
               ),
-            ),
-            ...unknownRelatedAccountProfileIds.map(
-              (profileId) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text('Perfil relacionado $profileId'),
-                  subtitle: const Text('Perfil não disponível na lista atual'),
-                  trailing: IconButton(
-                    tooltip: 'Remover perfil relacionado',
-                    onPressed: () =>
-                        _controller.removeRelatedAccountProfile(profileId),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              ),
-            ),
           ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -809,6 +778,84 @@ class _TenantAdminEventFormScreenState
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildRelatedAccountProfileCard({
+    required String profileId,
+    required TenantAdminAccountProfile? profile,
+    required int index,
+    required int totalCount,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(Icons.person_outline),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile?.displayName ?? 'Perfil relacionado $profileId',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        profile == null
+                            ? 'Perfil não disponível na lista atual'
+                            : (profile.slug ?? profile.id),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: 'Mover para cima',
+                  onPressed: index <= 0
+                      ? null
+                      : () => _controller.reorderRelatedAccountProfile(
+                            profileId: profileId,
+                            newIndex: index - 1,
+                          ),
+                  icon: const Icon(Icons.arrow_upward),
+                ),
+                IconButton(
+                  tooltip: 'Mover para baixo',
+                  onPressed: index >= totalCount - 1
+                      ? null
+                      : () => _controller.reorderRelatedAccountProfile(
+                            profileId: profileId,
+                            newIndex: index + 1,
+                          ),
+                  icon: const Icon(Icons.arrow_downward),
+                ),
+                IconButton(
+                  tooltip: 'Remover perfil relacionado',
+                  onPressed: () =>
+                      _controller.removeRelatedAccountProfile(profileId),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -458,11 +458,11 @@ class TenantAdminEventsController implements Disposable {
       publicationStatus: existingEvent?.publication.status ?? 'draft',
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
-      selectedRelatedAccountProfileIds: {
+      selectedRelatedAccountProfileIds: [
         ...?existingEvent?.eventParties
             .where((party) => party.partyType != 'venue')
             .map((party) => party.partyRefId),
-      },
+      ],
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
@@ -580,7 +580,13 @@ class TenantAdminEventsController implements Disposable {
 
   void addRelatedAccountProfile(String profileId) {
     final current = eventFormStateStreamValue.value;
-    final next = {...current.selectedRelatedAccountProfileIds, profileId};
+    if (current.selectedRelatedAccountProfileIds.contains(profileId)) {
+      return;
+    }
+    final next = <String>[
+      ...current.selectedRelatedAccountProfileIds,
+      profileId,
+    ];
     _replaceEventFormState(
       current.copyWith(selectedRelatedAccountProfileIds: next),
     );
@@ -591,8 +597,33 @@ class TenantAdminEventsController implements Disposable {
     if (!current.selectedRelatedAccountProfileIds.contains(profileId)) {
       return;
     }
-    final next = {...current.selectedRelatedAccountProfileIds}
-      ..remove(profileId);
+    final next = current.selectedRelatedAccountProfileIds
+        .where((candidateId) => candidateId != profileId)
+        .toList(growable: false);
+    _replaceEventFormState(
+      current.copyWith(selectedRelatedAccountProfileIds: next),
+    );
+  }
+
+  void reorderRelatedAccountProfile({
+    required String profileId,
+    required int newIndex,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final currentIndex =
+        current.selectedRelatedAccountProfileIds.indexOf(profileId);
+    if (currentIndex < 0) {
+      return;
+    }
+
+    final next = current.selectedRelatedAccountProfileIds.toList();
+    final normalizedNewIndex = newIndex.clamp(0, next.length - 1).toInt();
+    if (normalizedNewIndex == currentIndex) {
+      return;
+    }
+
+    next.removeAt(currentIndex);
+    next.insert(normalizedNewIndex, profileId);
     _replaceEventFormState(
       current.copyWith(selectedRelatedAccountProfileIds: next),
     );
