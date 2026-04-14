@@ -792,6 +792,12 @@ void main() {
           'primary_seed_color': '#112233',
           'secondary_seed_color': '#445566',
         },
+        'branding_assets': {
+          'favicon': {
+            'has_dedicated_asset': true,
+            'uses_pwa_fallback': false,
+          },
+        },
         'logo_settings': {
           'pwa_icon': {
             'icon512_uri': 'https://tenant-a.test/storage/pwa-icon.png',
@@ -866,6 +872,8 @@ void main() {
     expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
     expect(updated.faviconUrl, contains('tenant-a.test/favicon.ico'));
     expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
+    expect(updated.hasDedicatedFavicon, isTrue);
+    expect(updated.usesPwaFaviconFallback, isFalse);
     expect(
       repository.brandingSettingsStreamValue.value?.primarySeedColor,
       '#112233',

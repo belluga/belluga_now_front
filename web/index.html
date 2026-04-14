@@ -11,10 +11,27 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="belluga_learning">
-  <link id="apple-touch-icon" rel="apple-touch-icon" href="icon/icon-192x192.png">
-  <link id="favicon" rel="icon" type="image/png" href="favicon.png">
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="/icon/icon-192x192.png">
+  <link id="favicon" rel="icon" href="/favicon.ico">
   <title>Belluga Boilerplate</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
+  <script>
+    (() => {
+      const faviconLink = document.getElementById('favicon');
+      if (!(faviconLink instanceof HTMLLinkElement)) {
+        return;
+      }
+
+      const href = faviconLink.getAttribute('href');
+      if (!href) {
+        return;
+      }
+
+      const url = new URL(href, window.location.origin);
+      url.searchParams.set('v', Date.now().toString());
+      faviconLink.setAttribute('href', `${url.pathname}${url.search}`);
+    })();
+  </script>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 
   <!-- DELPHI_INJECT__LANDLORD_HOST__ -->

@@ -251,11 +251,12 @@ class _TenantAdminSettingsVisualIdentityScreenState
     _setFaviconBusy(true);
     try {
       final currentUrl = _controller.brandingFaviconUrlStreamValue.value ?? '';
+      final initialUrl = _isCanonicalFaviconRoute(currentUrl) ? '' : currentUrl;
       final result = await showTenantAdminFieldEditSheet(
         context: context,
         title: 'URL do favicon',
-        label: 'Favicon (.ico)',
-        initialValue: currentUrl,
+        label: 'Arquivo favicon (.ico)',
+        initialValue: initialUrl,
         confirmLabel: 'Baixar .ico',
         keyboardType: TextInputType.url,
         textCapitalization: TextCapitalization.none,
@@ -291,6 +292,20 @@ class _TenantAdminSettingsVisualIdentityScreenState
     } finally {
       _setFaviconBusy(false);
     }
+  }
+
+  bool _isCanonicalFaviconRoute(String rawUrl) {
+    final normalized = rawUrl.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) {
+      return false;
+    }
+
+    return uri.path.trim() == '/favicon.ico';
   }
 
   Future<void> _saveBranding() async {
