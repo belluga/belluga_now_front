@@ -109,10 +109,15 @@ class VenueEventResume {
       return eventCover;
     }
 
-    for (final artist in event.artists) {
-      final artistCover = artist.avatarUri;
-      if (artistCover != null) {
-        return artistCover;
+    for (final profile in event.linkedAccountProfiles) {
+      final relatedCover = profile.coverUrl?.trim();
+      if (relatedCover != null && relatedCover.isNotEmpty) {
+        return Uri.parse(relatedCover);
+      }
+
+      final relatedAvatar = profile.avatarUrl?.trim();
+      if (relatedAvatar != null && relatedAvatar.isNotEmpty) {
+        return Uri.parse(relatedAvatar);
       }
     }
 

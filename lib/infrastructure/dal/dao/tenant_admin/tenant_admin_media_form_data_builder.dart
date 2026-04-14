@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
@@ -7,10 +9,14 @@ class TenantAdminMediaFormDataBuilder {
 
   FormData buildMultipartPayload({
     required Object payload,
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
     if (payload case final Map<String, dynamic> mapPayload) {
       return FormData.fromMap(
-        _normalizeMultipartMap(mapPayload),
+        _normalizeMultipartMap(
+          mapPayload,
+          preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+        ),
         ListFormat.multiCompatible,
       );
     }
@@ -23,7 +29,11 @@ class TenantAdminMediaFormDataBuilder {
             'Failed to build multipart payload: payload keys must be strings.',
           );
         }
-        normalizedPayload[key] = _normalizeMultipartValue(entry.value);
+        normalizedPayload[key] = _normalizeMultipartValue(
+          entry.value,
+          preserveExplicitEmptyArray:
+              preserveExplicitEmptyArrayKeys.contains(key),
+        );
       }
       return FormData.fromMap(normalizedPayload, ListFormat.multiCompatible);
     }
@@ -36,13 +46,17 @@ class TenantAdminMediaFormDataBuilder {
     required Map<String, dynamic> payload,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
     if (avatarUpload == null && coverUpload == null) {
       return null;
     }
 
     final formData = FormData.fromMap(
-      _normalizeMultipartMap(payload),
+      _normalizeMultipartMap(
+        payload,
+        preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+      ),
       ListFormat.multiCompatible,
     );
     if (avatarUpload != null) {
@@ -75,13 +89,17 @@ class TenantAdminMediaFormDataBuilder {
   FormData? buildTypeAssetPayload({
     required Map<String, dynamic> payload,
     TenantAdminMediaUpload? typeAssetUpload,
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
     if (typeAssetUpload == null) {
       return null;
     }
 
     final formData = FormData.fromMap(
-      _normalizeMultipartMap(payload),
+      _normalizeMultipartMap(
+        payload,
+        preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+      ),
       ListFormat.multiCompatible,
     );
     formData.files.add(
@@ -117,13 +135,26 @@ class TenantAdminMediaFormDataBuilder {
     return null;
   }
 
-  Map<String, dynamic> _normalizeMultipartMap(Map<String, dynamic> payload) {
+  Map<String, dynamic> _normalizeMultipartMap(
+    Map<String, dynamic> payload, {
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
+  }) {
     return payload.map(
-      (key, value) => MapEntry(key, _normalizeMultipartValue(value)),
+      (key, value) => MapEntry(
+        key,
+        _normalizeMultipartValue(
+          value,
+          preserveExplicitEmptyArray:
+              preserveExplicitEmptyArrayKeys.contains(key),
+        ),
+      ),
     );
   }
 
-  dynamic _normalizeMultipartValue(Object? value) {
+  dynamic _normalizeMultipartValue(
+    Object? value, {
+    bool preserveExplicitEmptyArray = false,
+  }) {
     if (value is bool) {
       return value ? 1 : 0;
     }
@@ -144,6 +175,9 @@ class TenantAdminMediaFormDataBuilder {
       return normalized;
     }
     if (value is List) {
+      if (preserveExplicitEmptyArray && value.isEmpty) {
+        return jsonEncode(const <Object>[]);
+      }
       return value.map(_normalizeMultipartValue).toList(growable: false);
     }
     return value;

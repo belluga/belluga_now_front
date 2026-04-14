@@ -35,7 +35,9 @@ final class InviteFromEventFactory {
       settingsDefaultImageValue: fallbackImageValue,
     ).toString();
     final locationLabel = event.location.value;
-    final hostName = event.primaryLinkedArtist?.displayName ??
+    final hostName = (event.linkedAccountProfiles.isNotEmpty
+            ? event.linkedAccountProfiles.first.displayName
+            : null) ??
         event.venue?.displayName ??
         'Belluga Now';
     final description = stripHtml(event.content.value ?? '').trim();

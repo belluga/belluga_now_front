@@ -236,6 +236,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
+        preserveExplicitEmptyArrayKeys: const ['event_parties'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final requestPayload = hasMultipart
@@ -243,6 +244,7 @@ class TenantAdminEventsRepository
               payload: payload,
               uploadPayload: uploadPayload,
               removeCover: draft.removeCover,
+              preserveExplicitEmptyArrayKeys: const ['event_parties'],
             )
           : payload;
       final response = await _dio.post(
@@ -269,6 +271,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
+        preserveExplicitEmptyArrayKeys: const ['event_parties'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final requestPayload = hasMultipart
@@ -276,6 +279,7 @@ class TenantAdminEventsRepository
               payload: payload,
               uploadPayload: uploadPayload,
               removeCover: draft.removeCover,
+              preserveExplicitEmptyArrayKeys: const ['event_parties'],
             )
           : payload;
       final response = await _dio.post(
@@ -302,6 +306,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
+        preserveExplicitEmptyArrayKeys: const ['event_parties'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final response = hasMultipart
@@ -312,6 +317,7 @@ class TenantAdminEventsRepository
                 uploadPayload: uploadPayload,
                 removeCover: draft.removeCover,
                 includePatchMethodOverride: true,
+                preserveExplicitEmptyArrayKeys: const ['event_parties'],
               ),
               options: Options(
                 headers: _buildLandlordHeaders(),
@@ -618,9 +624,13 @@ class TenantAdminEventsRepository
     required FormData? uploadPayload,
     required bool removeCover,
     bool includePatchMethodOverride = false,
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
     final formData = uploadPayload ??
-        _mediaFormDataBuilder.buildMultipartPayload(payload: payload);
+        _mediaFormDataBuilder.buildMultipartPayload(
+          payload: payload,
+          preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+        );
     if (removeCover) {
       formData.fields.add(const MapEntry('remove_cover', '1'));
     }
