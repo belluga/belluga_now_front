@@ -345,7 +345,8 @@ void main() {
     expect(extraDeleteButton.onPressed, isNotNull);
   });
 
-  testWidgets('domains screen adds and deletes active domains through widget actions',
+  testWidgets(
+      'domains screen adds and deletes active domains through widget actions',
       (tester) async {
     final repository = _FakeAppDataRepository(
       _buildAppData(mainDomain: 'https://current.example.com'),
@@ -386,7 +387,8 @@ void main() {
     expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
     expect(find.text('new-domain.example.com'), findsOneWidget);
 
-    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
+    await tester
+        .tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Remover'));
     await tester.pumpAndSettle();
@@ -395,7 +397,8 @@ void main() {
     expect(find.text('new-domain.example.com'), findsNothing);
   });
 
-  testWidgets('domains screen surfaces duplicate-domain errors through widget flow',
+  testWidgets(
+      'domains screen surfaces duplicate-domain errors through widget flow',
       (tester) async {
     final repository = _FakeAppDataRepository(
       _buildAppData(mainDomain: 'https://current.example.com'),
@@ -1652,6 +1655,7 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.brandingSecondaryPickerButton),
       findsOneWidget,
     );
+    expect(find.text('Favicon (.ico)'), findsOneWidget);
 
     await tester.tap(
       find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
@@ -1802,6 +1806,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1851,6 +1856,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1909,6 +1915,7 @@ void main() {
       darkLogoUpload: null,
       lightIconUpload: null,
       darkIconUpload: null,
+      faviconUpload: null,
       pwaIconUpload: null,
     );
 
@@ -1929,6 +1936,48 @@ void main() {
 
     controller.onDispose();
     reloadedController.onDispose();
+  });
+
+  test('controller forwards favicon upload and refreshes favicon preview url',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+
+    final faviconUpload = tenantAdminMediaUploadFromRaw(
+      bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+      fileName: 'favicon.ico',
+      mimeType: 'image/x-icon',
+    );
+
+    await controller.saveBranding(
+      lightLogoUpload: null,
+      darkLogoUpload: null,
+      lightIconUpload: null,
+      darkIconUpload: null,
+      faviconUpload: faviconUpload,
+      pwaIconUpload: null,
+    );
+
+    expect(settingsRepository.lastBrandingInput?.faviconUpload, isNotNull);
+    expect(
+      settingsRepository.lastBrandingInput?.faviconUpload?.fileName,
+      'favicon.ico',
+    );
+    expect(
+      controller.brandingFaviconUrlStreamValue.value,
+      allOf(
+        contains('https://guarappari.test/favicon.ico'),
+        contains('v='),
+      ),
+    );
+
+    controller.onDispose();
   });
 
   test(
@@ -2132,6 +2181,7 @@ class _FakeTenantAdminSettingsRepository
               _optionalUrl('https://guarappari.test/storage/light-icon.png'),
           darkIconUrl:
               _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+          faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
           pwaIconUrl: initialPwaIconUrl == null
               ? null
               : _optionalUrl(initialPwaIconUrl),
@@ -2412,6 +2462,7 @@ class _FakeTenantAdminSettingsRepository
           _optionalUrl('https://guarappari.test/storage/light-icon.png'),
       darkIconUrl:
           _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
       pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);

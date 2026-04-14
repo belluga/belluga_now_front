@@ -325,8 +325,7 @@ void main() {
   test('createDomain preserves backend validation message for duplicates',
       () async {
     final adapter = _RoutingAdapter(
-      createDomainValidationMessage:
-          'Another tenant already uses this domain.',
+      createDomainValidationMessage: 'Another tenant already uses this domain.',
     );
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
@@ -818,6 +817,11 @@ void main() {
           fileName: 'light_logo.png',
           mimeType: 'image/png',
         ),
+        faviconUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+          fileName: 'favicon.ico',
+          mimeType: 'image/x-icon',
+        ),
       ),
     );
 
@@ -833,6 +837,12 @@ void main() {
 
     final formData = requestData as FormData;
     expect(
+      formData.fields.any(
+        (item) => item.key == 'name' && item.value == 'Guarappari',
+      ),
+      isTrue,
+    );
+    expect(
       formData.fields.any((item) =>
           item.key == 'theme_data_settings[brightness_default]' &&
           item.value == 'dark'),
@@ -844,10 +854,17 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      formData.files.any(
+        (entry) => entry.key == 'logo_settings[favicon_uri]',
+      ),
+      isTrue,
+    );
     expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
     expect(updated.primarySeedColor, '#112233');
     expect(updated.secondarySeedColor, '#445566');
     expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
+    expect(updated.faviconUrl, contains('tenant-a.test/favicon.ico'));
     expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
     expect(
       repository.brandingSettingsStreamValue.value?.primarySeedColor,
@@ -881,6 +898,11 @@ void main() {
             bytes: Uint8List.fromList([1, 2, 3]),
             fileName: 'light_logo.png',
             mimeType: 'image/png',
+          ),
+          faviconUpload: tenantAdminMediaUploadFromRaw(
+            bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+            fileName: 'favicon.ico',
+            mimeType: 'image/x-icon',
           ),
           pwaIconUpload: tenantAdminMediaUploadFromRaw(
             bytes: Uint8List.fromList([4, 5, 6]),
