@@ -1,15 +1,13 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_genre_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -40,11 +38,12 @@ void main() {
           thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
             ..parse(ThumbTypes.image.name),
         ),
-        artists: [
-          _buildArtist(
-            id: 'artist-1',
-            name: 'Artist One',
-            avatarUrl: 'https://cdn.test/artist-cover.png',
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-1',
+            displayName: 'Profile One',
+            profileType: 'artist',
+            coverUrl: 'https://cdn.test/profile-cover.png',
           ),
         ],
         venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
@@ -60,13 +59,22 @@ void main() {
       expect(resolved.toString(), 'https://cdn.test/event-cover.png');
     });
 
-    test('applies fallback chain artist -> host -> settings -> local', () {
-      final artistEvent = _buildEvent(
-        artists: [
-          _buildArtist(
-            id: 'artist-1',
-            name: 'Artist One',
-            avatarUrl: 'https://cdn.test/artist-cover.png',
+    test(
+        'applies fallback chain related accounts by order -> venue -> settings -> local',
+        () {
+      final orderedRelatedEvent = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-1',
+            displayName: 'Profile One',
+            profileType: 'producer',
+            avatarUrl: 'https://cdn.test/profile-one-avatar.png',
+          ),
+          _buildLinkedProfile(
+            id: 'profile-2',
+            displayName: 'Profile Two',
+            profileType: 'band',
+            coverUrl: 'https://cdn.test/profile-two-cover.png',
           ),
         ],
       );
@@ -75,8 +83,8 @@ void main() {
       );
       final settingsEvent = _buildEvent();
 
-      final artistResolved =
-          VenueEventResume.resolvePreferredImageUri(artistEvent);
+      final relatedResolved =
+          VenueEventResume.resolvePreferredImageUri(orderedRelatedEvent);
       final hostResolved = VenueEventResume.resolvePreferredImageUri(hostEvent);
       final settingsResolved = VenueEventResume.resolvePreferredImageUri(
         settingsEvent,
@@ -87,10 +95,60 @@ void main() {
       final localResolved =
           VenueEventResume.resolvePreferredImageUri(settingsEvent);
 
-      expect(artistResolved.toString(), 'https://cdn.test/artist-cover.png');
+      expect(
+        relatedResolved.toString(),
+        'https://cdn.test/profile-one-avatar.png',
+      );
       expect(hostResolved.toString(), 'https://cdn.test/host-cover.png');
       expect(settingsResolved.toString(), 'https://cdn.test/settings.png');
       expect(localResolved.toString(), 'asset://event-placeholder');
+    });
+
+    test('ignores venue entries inside related account ordering', () {
+      final event = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Venue Mirror',
+            profileType: 'venue',
+            partyType: 'venue',
+            coverUrl: 'https://cdn.test/linked-venue-cover.png',
+          ),
+          _buildLinkedProfile(
+            id: 'profile-artist',
+            displayName: 'Profile Artist',
+            profileType: 'artist',
+            avatarUrl: 'https://cdn.test/profile-artist-avatar.png',
+          ),
+        ],
+        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+      );
+
+      final resolved = VenueEventResume.resolvePreferredImageUri(event);
+
+      expect(
+        resolved.toString(),
+        'https://cdn.test/profile-artist-avatar.png',
+      );
+    });
+
+    test('uses venue fallback after skipping venue entries in related accounts', () {
+      final event = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Venue Mirror',
+            profileType: 'venue',
+            partyType: 'venue',
+            coverUrl: 'https://cdn.test/linked-venue-cover.png',
+          ),
+        ],
+        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+      );
+
+      final resolved = VenueEventResume.resolvePreferredImageUri(event);
+
+      expect(resolved.toString(), 'https://cdn.test/host-cover.png');
     });
   });
 
@@ -113,6 +171,7 @@ void main() {
 EventModel _buildEvent({
   ThumbModel? thumb,
   List<ArtistResume> artists = const [],
+  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
   PartnerResume? venue,
 }) {
   return eventModelFromRaw(
@@ -135,6 +194,7 @@ EventModel _buildEvent({
     dateTimeStart: DateTimeValue()..parse('2026-03-21T10:00:00Z'),
     dateTimeEnd: null,
     artists: artists,
+    linkedAccountProfiles: linkedAccountProfiles,
     coordinate: null,
     tags: const [],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
@@ -142,22 +202,34 @@ EventModel _buildEvent({
   );
 }
 
-ArtistResume _buildArtist({
+EventLinkedAccountProfile _buildLinkedProfile({
   required String id,
-  required String name,
+  required String displayName,
+  required String profileType,
+  String? partyType,
   String? avatarUrl,
+  String? coverUrl,
 }) {
-  final avatarValue = ArtistAvatarValue();
-  final normalizedAvatarUrl = avatarUrl?.trim();
-  if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-    avatarValue.parse(normalizedAvatarUrl);
-  }
-  return ArtistResume(
-    idValue: ArtistIdValue()..parse(id),
-    nameValue: ArtistNameValue()..parse(name),
-    avatarValue: avatarValue,
-    isHighlightValue: ArtistIsHighlightValue()..parse('false'),
-    genreValues: const <ArtistGenreValue>[],
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    slugValue: SlugValue()..parse('$id-slug'),
+    avatarUrlValue: avatarUrl == null
+        ? null
+        : (ThumbUriValue(
+            defaultValue: Uri.parse(avatarUrl),
+            isRequired: true,
+          )..parse(avatarUrl)),
+    coverUrlValue: coverUrl == null
+        ? null
+        : (ThumbUriValue(
+            defaultValue: Uri.parse(coverUrl),
+            isRequired: true,
+          )..parse(coverUrl)),
+    partyTypeValue: partyType == null
+        ? null
+        : EventLinkedAccountProfileTextValue(partyType),
   );
 }
 

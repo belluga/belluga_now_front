@@ -23,7 +23,7 @@ class TenantAdminEventFormState {
       publicationStatus: 'draft',
       selectedVenueId: null,
       selectedTypeSlug: null,
-      selectedRelatedAccountProfileIds: <String>{},
+      selectedRelatedAccountProfileIds: <String>[],
       selectedTaxonomyTerms: <String, Set<String>>{},
       hasHydratedDefaultVenue: false,
     );
@@ -36,7 +36,7 @@ class TenantAdminEventFormState {
   final String publicationStatus;
   final String? selectedVenueId;
   final String? selectedTypeSlug;
-  final Set<String> selectedRelatedAccountProfileIds;
+  final List<String> selectedRelatedAccountProfileIds;
   final Map<String, Set<String>> selectedTaxonomyTerms;
   final bool hasHydratedDefaultVenue;
 
@@ -48,7 +48,7 @@ class TenantAdminEventFormState {
     String? publicationStatus,
     Object? selectedVenueId = _undefined,
     Object? selectedTypeSlug = _undefined,
-    Set<String>? selectedRelatedAccountProfileIds,
+    List<String>? selectedRelatedAccountProfileIds,
     Map<String, Set<String>>? selectedTaxonomyTerms,
     bool? hasHydratedDefaultVenue,
   }) {

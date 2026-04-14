@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:dio/dio.dart';
@@ -260,6 +261,71 @@ void main() {
     final formData = request.data as FormData;
     expect(formData.fields, contains(const MapEntry('remove_cover', '1')));
     expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+  });
+
+  test(
+      'updateEvent remove_cover multipart path preserves explicit empty event_parties clear intent',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEvent(
+      eventId: _repoText('evt-1'),
+      draft: _buildDraft(removeCover: true),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'event_parties' && entry.value == '[]',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'remove_cover' && entry.value == '1',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == '_method' && entry.value == 'PATCH',
+      ),
+      isTrue,
+    );
+  });
+
+  test('updateEvent sends empty event_parties when clearing related accounts',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEvent(
+      eventId: _repoText('evt-1'),
+      draft: _buildDraft(),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'PATCH');
+    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+    expect(request.data, isA<Map<String, dynamic>>());
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload.containsKey('event_parties'), isTrue);
+    expect(payload['event_parties'], isEmpty);
   });
 
   test('fetchEventsPage propagates 404 as repository error', () async {
@@ -927,6 +993,7 @@ TenantAdminEventDraft _buildDraft({
   TenantAdminEventPlaceRef? placeRef,
   TenantAdminMediaUpload? coverUpload,
   bool removeCover = false,
+  List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
 }) {
   return TenantAdminEventDraft(
     titleValue: tenantAdminRequiredText('My event'),
@@ -948,6 +1015,7 @@ TenantAdminEventDraft _buildDraft({
     coverUpload: coverUpload,
     removeCoverValue: tenantAdminFlag(removeCover),
     taxonomyTerms: taxonomyTerms,
+    relatedAccountProfileIdValues: relatedAccountProfileIdValues,
   );
 }
 
