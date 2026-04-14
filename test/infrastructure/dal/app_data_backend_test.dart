@@ -80,6 +80,23 @@ void main() {
     expect(adapter.seenRequestWithAppDomain, isTrue);
     expect(adapter.seenRequestWithoutAppDomain, isTrue);
   });
+
+  test(
+      'fetch keeps main_domain as effective origin when domains omit the implicit subdomain host',
+      () async {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://guarappari.belluga.space',
+      ),
+    )..httpClientAdapter = _MultiDomainEnvironmentAdapter();
+
+    final backend = AppDataBackend(dio: dio);
+    final dto = await backend.fetch();
+
+    expect(dto.type, 'tenant');
+    expect(dto.mainDomain, 'https://guarappari.belluga.space');
+    expect(dto.domains, ['guarapari.com.br']);
+  });
 }
 
 class _StringEnvironmentAdapter implements HttpClientAdapter {
@@ -227,6 +244,45 @@ class _UnknownAppDomainFallbackAdapter implements HttpClientAdapter {
       'main_domain': 'https://guarappari.belluga.space',
       'landlord_domain': 'https://belluga.space',
       'domains': <String>['guarappari.belluga.space'],
+      'app_domains': <String>['com.guarappari.app'],
+      'theme_data_settings': <String, Object?>{
+        'brightness_default': 'dark',
+        'primary_seed_color': '#A36CE3',
+      },
+      'profile_types': const <Object>[],
+      'telemetry': <String, Object?>{
+        'trackers': const <Object>[],
+      },
+    };
+
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>['application/json'],
+      },
+    );
+  }
+}
+
+class _MultiDomainEnvironmentAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final payload = <String, Object?>{
+      'type': 'tenant',
+      'tenant_id': 'tenant-id',
+      'name': 'Guarappari',
+      'subdomain': 'guarappari',
+      'main_domain': 'https://guarappari.belluga.space',
+      'landlord_domain': 'https://belluga.space',
+      'domains': <String>['guarapari.com.br'],
       'app_domains': <String>['com.guarappari.app'],
       'theme_data_settings': <String, Object?>{
         'brightness_default': 'dark',

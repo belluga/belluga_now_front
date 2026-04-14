@@ -4,16 +4,14 @@ import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_val
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/artist/artist_resume.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
-import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
@@ -22,6 +20,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
@@ -83,22 +82,24 @@ void main() {
   });
 
   testWidgets(
-      'wraps immersive event detail with image palette theme when thumb is missing but artist avatar exists',
+      'wraps immersive event detail with image palette theme when thumb is missing but related account image exists',
       (tester) async {
     final route = const ImmersiveEventDetailRoutePage(
       eventSlug: 'show-immersive',
     );
     final event = _buildEvent(
-      artists: [
-        ArtistResume(
-          idValue: ArtistIdValue()..parse('507f1f77bcf86cd799439099'),
-          nameValue: ArtistNameValue()..parse('Ananda Torres'),
-          avatarValue: ArtistAvatarValue(
+      linkedAccountProfiles: [
+        EventLinkedAccountProfile(
+          idValue: EventLinkedAccountProfileTextValue(
+            '507f1f77bcf86cd799439099',
+          ),
+          displayNameValue: EventLinkedAccountProfileTextValue('Ananda Torres'),
+          profileTypeValue: AccountProfileTypeValue('artist'),
+          slugValue: SlugValue()..parse('ananda-torres'),
+          avatarUrlValue: ThumbUriValue(
             defaultValue: Uri.parse('https://example.com/ananda.png'),
             isRequired: true,
           )..parse('https://example.com/ananda.png'),
-          isHighlightValue: ArtistIsHighlightValue()..parse('false'),
-          genreValues: const [],
         ),
       ],
     );
@@ -159,6 +160,7 @@ void main() {
 EventModel _buildEvent({
   String? thumbUrl,
   List<ArtistResume> artists = const [],
+  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
   PartnerResume? venue,
 }) {
   return eventModelFromRaw(
@@ -189,6 +191,7 @@ EventModel _buildEvent({
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: artists,
+    linkedAccountProfiles: linkedAccountProfiles,
     coordinate: null,
     tags: const <String>['show'],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),

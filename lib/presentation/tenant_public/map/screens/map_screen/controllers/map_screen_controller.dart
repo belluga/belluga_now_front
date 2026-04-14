@@ -1263,7 +1263,7 @@ class MapScreenController implements Disposable {
 
   CityPoiModel _mergeEventIntoPoi(CityPoiModel poi, EventModel event) {
     final coverImageUrl = _resolveEventCoverImageUrl(event);
-    final markerImageUrl = _resolveEventMarkerImageUrl(event, coverImageUrl);
+    final markerImageUrl = _resolveEventMarkerImageUrl(coverImageUrl);
     final descriptionExcerpt = _resolveEventDescriptionExcerpt(event);
     final linkedProfiles = _resolveEventLinkedProfiles(event);
     final mergedVisual = markerImageUrl == null
@@ -1329,36 +1329,11 @@ class MapScreenController implements Disposable {
     final canonicalEventImageUrl = _normalizeExternalImageUrl(
       eventImageUri.toString(),
     );
-    if (canonicalEventImageUrl != null) {
-      return canonicalEventImageUrl;
-    }
-
-    final linkedArtistAvatar = _normalizeExternalImageUrl(
-      event.primaryLinkedArtist?.avatarUrl,
-    );
-    if (linkedArtistAvatar != null) {
-      return linkedArtistAvatar;
-    }
-
-    return _normalizeExternalImageUrl(event.primaryLinkedArtist?.coverUrl);
+    return canonicalEventImageUrl;
   }
 
-  String? _resolveEventMarkerImageUrl(
-    EventModel event,
-    String? coverImageUrl,
-  ) {
-    final linkedArtistAvatar = _normalizeExternalImageUrl(
-      event.primaryLinkedArtist?.avatarUrl,
-    );
-    if (linkedArtistAvatar != null) {
-      return linkedArtistAvatar;
-    }
-
-    final leadingArtistAvatar = event.artists
-        .map((artist) =>
-            _normalizeExternalImageUrl(artist.avatarUri?.toString()))
-        .firstWhere((candidate) => candidate != null, orElse: () => null);
-    return leadingArtistAvatar ?? coverImageUrl;
+  String? _resolveEventMarkerImageUrl(String? coverImageUrl) {
+    return coverImageUrl;
   }
 
   String? _resolveEventDescriptionExcerpt(EventModel event) {

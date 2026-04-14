@@ -907,8 +907,8 @@ EventModel _buildEventDetailModel({
   required String slug,
   String title = 'Evento Longo',
   String? thumbUrl,
-  String? linkedArtistAvatarUrl,
-  String? linkedArtistCoverUrl,
+  String? linkedAccountProfileAvatarUrl,
+  String? linkedAccountProfileCoverUrl,
 }) {
   final dto = EventDTO.fromJson({
     'id': '507f1f77bcf86cd799439099',
@@ -938,8 +938,8 @@ EventModel _buildEventDetailModel({
         'profile_type': 'artist',
         'party_type': 'artist',
         'slug': 'ananda-torres',
-        'avatar_url': linkedArtistAvatarUrl,
-        'cover_url': linkedArtistCoverUrl,
+        'avatar_url': linkedAccountProfileAvatarUrl,
+        'cover_url': linkedAccountProfileCoverUrl,
       },
     ],
   });
@@ -2515,8 +2515,8 @@ void main() {
     });
 
     test(
-        'deck poi selection hydrates canonical event cover while preserving artist avatar marker',
-        () async {
+      'deck poi selection hydrates event imagery from the canonical cover fallback chain',
+      () async {
       final localScheduleRepository = _FakeScheduleRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
@@ -2548,8 +2548,10 @@ void main() {
           _buildEventDetailModel(
         slug: 'evento-longo',
         thumbUrl: 'https://tenant.test/media/event-cover.png',
-        linkedArtistAvatarUrl: 'https://tenant.test/media/ananda-avatar.png',
-        linkedArtistCoverUrl: 'https://tenant.test/media/ananda-cover.png',
+        linkedAccountProfileAvatarUrl:
+            'https://tenant.test/media/ananda-avatar.png',
+        linkedAccountProfileCoverUrl:
+            'https://tenant.test/media/ananda-cover.png',
       );
 
       await localController.loadPois(PoiQuery());
@@ -2562,7 +2564,7 @@ void main() {
       expect(localController.selectedPoiStreamValue.value?.id, 'poi-event');
       expect(
         localController.selectedPoiStreamValue.value?.visual?.imageUri,
-        'https://tenant.test/media/ananda-avatar.png',
+        'https://tenant.test/media/event-cover.png',
       );
       expect(
         localController.selectedPoiStreamValue.value?.coverImageUri,

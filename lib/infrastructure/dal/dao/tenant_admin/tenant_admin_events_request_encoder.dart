@@ -94,40 +94,15 @@ class TenantAdminEventsRequestEncoder {
           .toList(growable: false);
     }
 
-    if (draft.relatedAccountProfileIds.isNotEmpty) {
-      final profilesById = {
-        for (final profile in draft.relatedAccountProfiles) profile.id: profile,
+    payload['event_parties'] =
+        draft.relatedAccountProfileIds.map((profileId) {
+      return <String, dynamic>{
+        'party_ref_id': profileId.value,
+        'permissions': <String, dynamic>{
+          'can_edit': true,
+        },
       };
-      payload['event_parties'] =
-          draft.relatedAccountProfileIds.map((profileId) {
-        final profile = profilesById[profileId.value];
-        if (profile == null) {
-          throw FormatException(
-            'Missing account profile metadata for event party ${profileId.value}.',
-          );
-        }
-        return <String, dynamic>{
-          'party_type': profile.profileType,
-          'party_ref_id': profileId.value,
-          'permissions': <String, dynamic>{
-            'can_edit': true,
-          },
-          'metadata': <String, dynamic>{
-            'display_name': profile.displayName,
-            'slug': profile.slug,
-            'profile_type': profile.profileType,
-            'avatar_url': profile.avatarUrl,
-            'cover_url': profile.coverUrl,
-            'taxonomy_terms': profile.taxonomyTerms
-                .map((term) => <String, dynamic>{
-                      'type': term.type,
-                      'value': term.value,
-                    })
-                .toList(growable: false),
-          },
-        };
-      }).toList(growable: false);
-    }
+    }).toList(growable: false);
 
     final normalizedCoverUrl = draft.coverUrl?.trim();
     if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {

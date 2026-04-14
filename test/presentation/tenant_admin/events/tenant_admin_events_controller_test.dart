@@ -116,6 +116,40 @@ void main() {
     );
   });
 
+  test('related account profile selection preserves order and supports reorder',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.initEventForm();
+    controller.addRelatedAccountProfile('artist-1');
+    controller.addRelatedAccountProfile('producer-1');
+    controller.addRelatedAccountProfile('band-1');
+
+    controller.reorderRelatedAccountProfile(
+      profileId: 'band-1',
+      newIndex: 1,
+    );
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
+      ['artist-1', 'band-1', 'producer-1'],
+    );
+
+    controller.removeRelatedAccountProfile('band-1');
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
+      ['artist-1', 'producer-1'],
+    );
+  });
+
   test(
       'selectSpecificDateFilter expands temporal buckets and clearing restores defaults',
       () {
