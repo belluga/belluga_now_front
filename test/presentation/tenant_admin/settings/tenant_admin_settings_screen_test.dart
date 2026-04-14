@@ -2036,6 +2036,40 @@ void main() {
     controller.onDispose();
   });
 
+  test('controller restores remote favicon preview after clearing local upload',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+
+    final initialPreviewUrl = controller.brandingFaviconUrlStreamValue.value;
+    expect(initialPreviewUrl, isNotNull);
+
+    final faviconUpload = tenantAdminMediaUploadFromRaw(
+      bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+      fileName: 'favicon.ico',
+      mimeType: 'image/x-icon',
+    );
+
+    controller.updateBrandingFaviconUpload(faviconUpload);
+    expect(controller.brandingFaviconUrlStreamValue.value, isNull);
+
+    controller.clearBrandingFaviconUpload();
+
+    expect(controller.brandingFaviconUploadStreamValue.value, isNull);
+    expect(
+      controller.brandingFaviconUrlStreamValue.value,
+      initialPreviewUrl,
+    );
+
+    controller.onDispose();
+  });
+
   test(
       'controller keeps branding draft empty and reports error when branding fetch fails',
       () async {

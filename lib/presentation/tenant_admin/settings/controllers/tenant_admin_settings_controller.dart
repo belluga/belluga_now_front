@@ -252,6 +252,7 @@ class TenantAdminSettingsController implements Disposable {
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
   TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings.empty();
   bool _localPreferencesFlowBound = false;
+  String? _loadedBrandingFaviconPreviewUrl;
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
 
@@ -1167,8 +1168,11 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
-  void clearBrandingFaviconUpload() {
+  void clearBrandingFaviconUpload({bool restoreRemotePreview = true}) {
     brandingFaviconUploadStreamValue.addValue(null);
+    if (restoreRemotePreview) {
+      brandingFaviconUrlStreamValue.addValue(_loadedBrandingFaviconPreviewUrl);
+    }
   }
 
   void updateTelemetryTrackAll(bool value) {
@@ -1286,7 +1290,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
-    clearBrandingFaviconUpload();
+    clearBrandingFaviconUpload(restoreRemotePreview: false);
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
     _resetDomainsDraft();
@@ -1303,6 +1307,7 @@ class TenantAdminSettingsController implements Disposable {
     brandingDarkLogoUrlStreamValue.addValue(null);
     brandingLightIconUrlStreamValue.addValue(null);
     brandingDarkIconUrlStreamValue.addValue(null);
+    _loadedBrandingFaviconPreviewUrl = null;
     brandingFaviconUrlStreamValue.addValue(null);
     brandingPwaIconUrlStreamValue.addValue(null);
   }
@@ -1629,6 +1634,10 @@ class TenantAdminSettingsController implements Disposable {
 
   void _applyBrandingSettings(TenantAdminBrandingSettings settings) {
     final cacheBuster = DateTime.now().millisecondsSinceEpoch.toString();
+    final faviconPreviewUrl = _withCacheBust(
+      _tenantScopedAssetUrl('favicon.ico') ?? settings.faviconUrl,
+      cacheBuster,
+    );
     if (settings.tenantName.trim().isNotEmpty) {
       brandingTenantNameController.text = settings.tenantName.trim();
     }
@@ -1659,12 +1668,8 @@ class TenantAdminSettingsController implements Disposable {
         cacheBuster,
       ),
     );
-    brandingFaviconUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('favicon.ico') ?? settings.faviconUrl,
-        cacheBuster,
-      ),
-    );
+    _loadedBrandingFaviconPreviewUrl = faviconPreviewUrl;
+    brandingFaviconUrlStreamValue.addValue(faviconPreviewUrl);
     brandingPwaIconUrlStreamValue.addValue(
       _withCacheBust(
         _tenantScopedAssetUrl('icon/icon-512x512.png') ?? settings.pwaIconUrl,
@@ -1677,7 +1682,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
-    clearBrandingFaviconUpload();
+    clearBrandingFaviconUpload(restoreRemotePreview: false);
   }
 
   void _applyMapUiSettings(TenantAdminMapUiSettings settings) {
