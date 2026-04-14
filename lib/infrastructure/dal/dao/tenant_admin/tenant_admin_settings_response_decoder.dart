@@ -190,6 +190,14 @@ class TenantAdminSettingsResponseDecoder {
     final brightnessDefault = _parseBrandingBrightness(
       themeSettings['brightness_default'],
     );
+    final brandingAssetsRaw = payload['branding_assets'];
+    final brandingAssets = brandingAssetsRaw is Map
+        ? Map<String, dynamic>.from(brandingAssetsRaw)
+        : const <String, dynamic>{};
+    final faviconAssetRaw = brandingAssets['favicon'];
+    final faviconAsset = faviconAssetRaw is Map
+        ? Map<String, dynamic>.from(faviconAssetRaw)
+        : const <String, dynamic>{};
 
     return TenantAdminBrandingSettings(
       tenantName: _requiredTextValue(tenantName),
@@ -213,6 +221,12 @@ class TenantAdminSettingsResponseDecoder {
         }
         return _optionalUrlValue(pwaIcon);
       })(),
+      hasDedicatedFaviconValue: _booleanValue(_parseBool(
+        faviconAsset['has_dedicated_asset'],
+      )),
+      usesPwaFaviconFallbackValue: _booleanValue(_parseBool(
+        faviconAsset['uses_pwa_fallback'],
+      )),
     );
   }
 
