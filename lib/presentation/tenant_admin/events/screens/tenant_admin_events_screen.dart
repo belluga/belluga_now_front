@@ -1284,127 +1284,132 @@ class _TenantAdminEventCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final cardRadius = BorderRadius.circular(26);
+    final cardOpacity = event.publication.status == 'published' ? 1.0 : 0.6;
 
-    return Material(
-      color: colorScheme.surfaceContainerLow,
-      borderRadius: cardRadius,
-      child: InkWell(
+    return Opacity(
+      key: ValueKey<String>('tenant-admin-event-card-opacity-${event.eventId}'),
+      opacity: cardOpacity,
+      child: Material(
+        color: colorScheme.surfaceContainerLow,
         borderRadius: cardRadius,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Stack(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TenantAdminEventThumb(imageUrl: event.thumbUrl),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 52),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            metaLabel,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            event.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              height: 1,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _TenantAdminMetaPill(label: event.type.name),
-                              _TenantAdminMetaPill(label: publicationLabel),
-                              if (event.deletedAt != null)
-                                const _TenantAdminMetaPill(label: 'Arquivado'),
-                            ],
-                          ),
-                          if (event.slug.trim().isNotEmpty) ...[
-                            const SizedBox(height: 8),
+        child: InkWell(
+          borderRadius: cardRadius,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Stack(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TenantAdminEventThumb(imageUrl: event.thumbUrl),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 52),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              event.slug,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                              metaLabel,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
-                          ],
-                          if (event.relatedAccountProfiles.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: event.relatedAccountProfiles
-                                  .map(
-                                    (profile) => _TenantAdminProfileChip(
-                                      profile: profile,
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          _TenantAdminInfoRow(
-                            icon: Icons.place_outlined,
-                            text: venueLabel,
-                          ),
-                          if (updatedLabel != '-') ...[
                             const SizedBox(height: 6),
-                            _TenantAdminInfoRow(
-                              icon: Icons.history_outlined,
-                              text: 'Atualizado $updatedLabel',
+                            Text(
+                              event.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
                             ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _TenantAdminMetaPill(label: event.type.name),
+                                _TenantAdminMetaPill(label: publicationLabel),
+                                if (event.deletedAt != null)
+                                  const _TenantAdminMetaPill(label: 'Arquivado'),
+                              ],
+                            ),
+                            if (event.slug.trim().isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                event.slug,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            if (event.relatedAccountProfiles.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: event.relatedAccountProfiles
+                                    .map(
+                                      (profile) => _TenantAdminProfileChip(
+                                        profile: profile,
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            _TenantAdminInfoRow(
+                              icon: Icons.place_outlined,
+                              text: venueLabel,
+                            ),
+                            if (updatedLabel != '-') ...[
+                              const SizedBox(height: 6),
+                              _TenantAdminInfoRow(
+                                icon: Icons.history_outlined,
+                                text: 'Atualizado $updatedLabel',
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: PopupMenuButton<String>(
-                  key: ValueKey<String>(
-                    'tenant-admin-event-menu-${event.eventId}',
-                  ),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      onEdit();
-                      return;
-                    }
-                    if (value == 'delete') {
-                      onDelete();
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem<String>(
-                      value: 'edit',
-                      child: Text('Editar'),
-                    ),
-                    PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Text('Remover'),
                     ),
                   ],
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: PopupMenuButton<String>(
+                    key: ValueKey<String>(
+                      'tenant-admin-event-menu-${event.eventId}',
+                    ),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                        return;
+                      }
+                      if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Text('Editar'),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Text('Remover'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

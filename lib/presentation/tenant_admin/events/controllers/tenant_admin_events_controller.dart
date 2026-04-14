@@ -475,8 +475,10 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
-    _mergeKnownRelatedAccountProfiles(
-      existingEvent?.relatedAccountProfiles ?? const [],
+    relatedAccountProfileCandidatesStreamValue.addValue(
+      List.unmodifiable(
+        existingEvent?.relatedAccountProfiles ?? const [],
+      ),
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
@@ -578,10 +580,16 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  void addRelatedAccountProfile(String profileId) {
+  void addRelatedAccountProfile(
+    String profileId, {
+    TenantAdminAccountProfile? profile,
+  }) {
     final current = eventFormStateStreamValue.value;
     if (current.selectedRelatedAccountProfileIds.contains(profileId)) {
       return;
+    }
+    if (profile != null) {
+      _mergeKnownRelatedAccountProfiles([profile]);
     }
     final next = <String>[
       ...current.selectedRelatedAccountProfileIds,
@@ -1076,13 +1084,17 @@ class TenantAdminEventsController implements Disposable {
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
       relatedAccountProfileCandidatesStreamValue.addValue(
-        List.unmodifiable(firstRelatedAccountProfilePage.items),
+        List.unmodifiable(
+          _mergeAccountProfiles(
+            relatedAccountProfileCandidatesStreamValue.value,
+            firstRelatedAccountProfilePage.items,
+          ),
+        ),
       );
     } catch (error) {
       if (_isDisposed) {
         return;
       }
-      relatedAccountProfileCandidatesStreamValue.addValue(const []);
       accountProfileCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {

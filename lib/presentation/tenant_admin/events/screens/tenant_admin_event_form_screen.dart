@@ -1055,6 +1055,9 @@ class _TenantAdminEventFormScreenState
                                       (isSearchPageLoading ? 1 : 0);
 
                                   return ListView.separated(
+                                    key: const ValueKey<String>(
+                                      'tenant-admin-related-account-profile-picker-list',
+                                    ),
                                     controller: _controller
                                         .accountProfilePickerScrollController,
                                     itemCount: itemCount,
@@ -1119,7 +1122,10 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
-    _controller.addRelatedAccountProfile(selectedAccountProfile.id);
+    _controller.addRelatedAccountProfile(
+      selectedAccountProfile.id,
+      profile: selectedAccountProfile,
+    );
   }
 
   Future<String?> _promptWebImageUrl({required String title}) async {
