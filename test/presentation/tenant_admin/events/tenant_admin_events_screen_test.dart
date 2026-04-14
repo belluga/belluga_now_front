@@ -345,6 +345,34 @@ void main() {
     expect(controller.eventsErrorStreamValue.value, isNull);
   });
 
+  testWidgets('non-published admin cards render faded at sixty percent',
+      (tester) async {
+    final repository = _FilterableEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository: _ScreenLandlordAuthRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    final publishedOpacity = tester.widget<Opacity>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-event-card-opacity-evt-filtered'),
+      ),
+    );
+    final draftOpacity = tester.widget<Opacity>(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-event-card-opacity-evt-other'),
+      ),
+    );
+
+    expect(publishedOpacity.opacity, 1.0);
+    expect(draftOpacity.opacity, 0.6);
+  });
+
   testWidgets('legacy check dialog shows counts and repair result', (
     tester,
   ) async {

@@ -423,6 +423,258 @@ void main() {
     expect(eventsRepository.recordedSearchTerms, contains('Zulu'));
   });
 
+  testWidgets(
+      'adding a searched related account profile keeps its summary visible on the form',
+      (tester) async {
+    final eventsRepository = _SearchableCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439100'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Buscar perfil relacionado'),
+      'Zulu',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'Zulu Artist'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+  });
+
+  testWidgets(
+      'adding a later-page related account profile keeps its summary visible on the form',
+      (tester) async {
+    final eventsRepository = _PagedRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439100'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Legacy Artist Page 2 021'), findsNothing);
+
+    await tester.dragUntilVisible(
+      find.text('Legacy Artist Page 2 021'),
+      find.byKey(
+        const ValueKey<String>('tenant-admin-related-account-profile-picker-list'),
+      ),
+      const Offset(0, -280),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'Legacy Artist Page 2 021'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Legacy Artist Page 2 021'), findsOneWidget);
+    expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+  });
+
+  testWidgets(
+      'editing preserves selected related account profile summaries after candidate preload completes',
+      (tester) async {
+    final eventsRepository = _DelayedRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439101'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    final preservedProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-zulu',
+      accountId: 'acc-zulu',
+      profileType: 'artist',
+      displayName: 'Zulu Artist',
+      slug: 'zulu-artist',
+    );
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-edit-1'),
+      slugValue: tenantAdminRequiredText('event-edit-1'),
+      titleValue: tenantAdminRequiredText('Evento em edição'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439101'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      relatedAccountProfiles: [preservedProfile],
+      eventParties: [
+        TenantAdminEventParty(
+          partyTypeValue: tenantAdminRequiredText('artist'),
+          partyRefIdValue: tenantAdminRequiredText('artist-zulu'),
+          canEditValue: tenantAdminFlag(false),
+        ),
+      ],
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+
+    await tester.pump(eventsRepository.delay);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+  });
+
+  testWidgets(
+      'candidate preload failure keeps selected related account profile summaries visible',
+      (tester) async {
+    final eventsRepository = _FailingRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439102'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    final preservedProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-zulu',
+      accountId: 'acc-zulu',
+      profileType: 'artist',
+      displayName: 'Zulu Artist',
+      slug: 'zulu-artist',
+    );
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-edit-2'),
+      slugValue: tenantAdminRequiredText('event-edit-2'),
+      titleValue: tenantAdminRequiredText('Evento em edição'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439102'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      relatedAccountProfiles: [preservedProfile],
+      eventParties: [
+        TenantAdminEventParty(
+          partyTypeValue: tenantAdminRequiredText('artist'),
+          partyRefIdValue: tenantAdminRequiredText('artist-zulu'),
+          canEditValue: tenantAdminFlag(false),
+        ),
+      ],
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+  });
+
   testWidgets('uses rich text editor for event description content',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -864,6 +1116,105 @@ class _SearchableCandidatesEventsRepository extends _FakeEventsRepository {
     return tenantAdminPagedResultFromRaw(
       items: items,
       hasMore: false,
+    );
+  }
+}
+
+class _PagedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      return super.fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        accountSlug: accountSlug,
+      );
+    }
+
+    final firstPageItems = List<TenantAdminAccountProfile>.generate(
+      20,
+      (index) => tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-1-${index + 1}',
+        accountId: 'acc-page-1-${index + 1}',
+        profileType: 'artist',
+        displayName: 'Legacy Artist Page 1 ${(index + 1).toString().padLeft(3, '0')}',
+      ),
+      growable: false,
+    );
+    final pageTwoItems = <TenantAdminAccountProfile>[
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-2-021',
+        accountId: 'acc-page-2-021',
+        profileType: 'artist',
+        displayName: 'Legacy Artist Page 2 021',
+      ),
+    ];
+
+    return tenantAdminPagedResultFromRaw(
+      items: page.value == 1 ? firstPageItems : pageTwoItems,
+      hasMore: page.value == 1,
+    );
+  }
+}
+
+class _DelayedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
+  final Duration delay = const Duration(milliseconds: 200);
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
+      await Future<void>.delayed(delay);
+    }
+
+    return super.fetchEventAccountProfileCandidatesPage(
+      candidateType: candidateType,
+      page: page,
+      pageSize: pageSize,
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+}
+
+class _FailingRelatedCandidatesEventsRepository extends _FakeEventsRepository {
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
+      throw Exception('candidate preload failed');
+    }
+
+    return super.fetchEventAccountProfileCandidatesPage(
+      candidateType: candidateType,
+      page: page,
+      pageSize: pageSize,
+      search: search,
+      accountSlug: accountSlug,
     );
   }
 }
