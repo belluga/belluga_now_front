@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -110,6 +111,10 @@ class VenueEventResume {
     }
 
     for (final profile in event.linkedAccountProfiles) {
+      if (_isVenueRelatedProfile(profile)) {
+        continue;
+      }
+
       final relatedCover = profile.coverUrl?.trim();
       if (relatedCover != null && relatedCover.isNotEmpty) {
         return Uri.parse(relatedCover);
@@ -132,6 +137,16 @@ class VenueEventResume {
     }
 
     return _localPlaceholderUri;
+  }
+
+  static bool _isVenueRelatedProfile(EventLinkedAccountProfile profile) {
+    final partyType = profile.partyType?.trim().toLowerCase();
+    if (partyType == 'venue') {
+      return true;
+    }
+
+    final profileType = profile.profileType.trim().toLowerCase();
+    return profileType == 'venue';
   }
 
   factory VenueEventResume.fromScheduleEvent(

@@ -103,6 +103,53 @@ void main() {
       expect(settingsResolved.toString(), 'https://cdn.test/settings.png');
       expect(localResolved.toString(), 'asset://event-placeholder');
     });
+
+    test('ignores venue entries inside related account ordering', () {
+      final event = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Venue Mirror',
+            profileType: 'venue',
+            partyType: 'venue',
+            coverUrl: 'https://cdn.test/linked-venue-cover.png',
+          ),
+          _buildLinkedProfile(
+            id: 'profile-artist',
+            displayName: 'Profile Artist',
+            profileType: 'artist',
+            avatarUrl: 'https://cdn.test/profile-artist-avatar.png',
+          ),
+        ],
+        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+      );
+
+      final resolved = VenueEventResume.resolvePreferredImageUri(event);
+
+      expect(
+        resolved.toString(),
+        'https://cdn.test/profile-artist-avatar.png',
+      );
+    });
+
+    test('uses venue fallback after skipping venue entries in related accounts', () {
+      final event = _buildEvent(
+        linkedAccountProfiles: [
+          _buildLinkedProfile(
+            id: 'profile-venue',
+            displayName: 'Venue Mirror',
+            profileType: 'venue',
+            partyType: 'venue',
+            coverUrl: 'https://cdn.test/linked-venue-cover.png',
+          ),
+        ],
+        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+      );
+
+      final resolved = VenueEventResume.resolvePreferredImageUri(event);
+
+      expect(resolved.toString(), 'https://cdn.test/host-cover.png');
+    });
   });
 
   test('fromScheduleEvent preserves event type label and venue title', () {
@@ -159,6 +206,7 @@ EventLinkedAccountProfile _buildLinkedProfile({
   required String id,
   required String displayName,
   required String profileType,
+  String? partyType,
   String? avatarUrl,
   String? coverUrl,
 }) {
@@ -179,6 +227,9 @@ EventLinkedAccountProfile _buildLinkedProfile({
             defaultValue: Uri.parse(coverUrl),
             isRequired: true,
           )..parse(coverUrl)),
+    partyTypeValue: partyType == null
+        ? null
+        : EventLinkedAccountProfileTextValue(partyType),
   );
 }
 
