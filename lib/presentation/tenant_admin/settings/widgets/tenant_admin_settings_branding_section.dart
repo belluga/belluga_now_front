@@ -39,6 +39,8 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
     return Listenable.merge(
       [
         controller.brandingTenantNameController,
+        controller.brandingPublicWebDefaultTitleController,
+        controller.brandingPublicWebDefaultDescriptionController,
         controller.brandingPrimarySeedColorController,
         controller.brandingSecondarySeedColorController,
       ],
@@ -90,7 +92,10 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       child: Text(
                         'Favicon (.ico) controla a aba do navegador. '
-                        'Icone PWA controla o app instalavel.',
+                        'Icone PWA controla o app instalavel. '
+                        'Titulo, descricao e imagem de compartilhamento '
+                        'alimentam o fallback tenant-aware do shell publico '
+                        'quando a rota nao possui metadata propria.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -102,6 +107,35 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                       label: 'Nome do tenant',
                       value: controller.brandingTenantNameController.text,
                       onEdit: isSaving ? null : () => _editTenantName(context),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      key: TenantAdminSettingsKeys.brandingPublicMetadataTitleField,
+                      controller:
+                          controller.brandingPublicWebDefaultTitleController,
+                      enabled: !isSaving,
+                      maxLength: 255,
+                      decoration: const InputDecoration(
+                        labelText: 'Titulo fallback publico',
+                        helperText:
+                            'Usado em home e rotas publicas sem metadata propria.',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      key: TenantAdminSettingsKeys
+                          .brandingPublicMetadataDescriptionField,
+                      controller: controller
+                          .brandingPublicWebDefaultDescriptionController,
+                      enabled: !isSaving,
+                      minLines: 3,
+                      maxLines: 4,
+                      maxLength: 1000,
+                      decoration: const InputDecoration(
+                        labelText: 'Descricao fallback publica',
+                        helperText:
+                            'Evento, parceiro e static continuam sobrescrevendo essa descricao quando tiverem conteudo proprio.',
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -157,6 +191,18 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                           'tenant_admin_branding_secondary_color_picker_button',
                       pickerButtonKey:
                           TenantAdminSettingsKeys.brandingSecondaryPickerButton,
+                    ),
+                    const SizedBox(height: 12),
+                    TenantAdminSettingsBrandingImageField(
+                      title: 'Imagem de compartilhamento',
+                      slot: TenantAdminBrandingAssetSlot.publicWebDefaultImage,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(
+                            TenantAdminBrandingAssetSlot.publicWebDefaultImage,
+                          ),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
                     ),
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(

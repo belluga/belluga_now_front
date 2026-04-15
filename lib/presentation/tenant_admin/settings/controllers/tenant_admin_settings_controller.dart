@@ -163,6 +163,8 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<XFile?>();
   final StreamValue<XFile?> brandingPwaIconFileStreamValue =
       StreamValue<XFile?>();
+  final StreamValue<XFile?> brandingPublicWebDefaultImageFileStreamValue =
+      StreamValue<XFile?>();
   final StreamValue<TenantAdminMediaUpload?> brandingFaviconUploadStreamValue =
       StreamValue<TenantAdminMediaUpload?>();
 
@@ -177,6 +179,8 @@ class TenantAdminSettingsController implements Disposable {
   final StreamValue<String?> brandingFaviconUrlStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> brandingPwaIconUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingPublicWebDefaultImageUrlStreamValue =
       StreamValue<String?>();
 
   final StreamValue<TenantAdminTelemetrySettingsSnapshot>
@@ -223,6 +227,10 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController telemetryUrlController = TextEditingController();
   final TextEditingController brandingTenantNameController =
       TextEditingController();
+  final TextEditingController brandingPublicWebDefaultTitleController =
+      TextEditingController();
+  final TextEditingController brandingPublicWebDefaultDescriptionController =
+      TextEditingController();
   final TextEditingController brandingPrimarySeedColorController =
       TextEditingController();
   final TextEditingController brandingSecondarySeedColorController =
@@ -253,6 +261,9 @@ class TenantAdminSettingsController implements Disposable {
   TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings.empty();
   bool _localPreferencesFlowBound = false;
   String? _loadedBrandingFaviconPreviewUrl;
+  final Map<TenantAdminBrandingAssetSlot, String?>
+      _loadedBrandingAssetPreviewUrls =
+      <TenantAdminBrandingAssetSlot, String?>{};
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
 
@@ -1050,6 +1061,8 @@ class TenantAdminSettingsController implements Disposable {
         brandingLightIconFileStreamValue,
       TenantAdminBrandingAssetSlot.darkIcon => brandingDarkIconFileStreamValue,
       TenantAdminBrandingAssetSlot.pwaIcon => brandingPwaIconFileStreamValue,
+      TenantAdminBrandingAssetSlot.publicWebDefaultImage =>
+        brandingPublicWebDefaultImageFileStreamValue,
     };
   }
 
@@ -1062,6 +1075,8 @@ class TenantAdminSettingsController implements Disposable {
       TenantAdminBrandingAssetSlot.lightIcon => brandingLightIconUrlStreamValue,
       TenantAdminBrandingAssetSlot.darkIcon => brandingDarkIconUrlStreamValue,
       TenantAdminBrandingAssetSlot.pwaIcon => brandingPwaIconUrlStreamValue,
+      TenantAdminBrandingAssetSlot.publicWebDefaultImage =>
+        brandingPublicWebDefaultImageUrlStreamValue,
     };
   }
 
@@ -1077,6 +1092,7 @@ class TenantAdminSettingsController implements Disposable {
 
   void clearBrandingFile(TenantAdminBrandingAssetSlot slot) {
     brandingFileStream(slot).addValue(null);
+    brandingUrlStream(slot).addValue(_loadedBrandingAssetPreviewUrls[slot]);
   }
 
   Future<void> saveBranding({
@@ -1086,6 +1102,7 @@ class TenantAdminSettingsController implements Disposable {
     required TenantAdminMediaUpload? darkIconUpload,
     required TenantAdminMediaUpload? faviconUpload,
     required TenantAdminMediaUpload? pwaIconUpload,
+    required TenantAdminMediaUpload? publicWebDefaultImageUpload,
   }) async {
     final input = _buildBrandingUpdateInput(
       lightLogoUpload: lightLogoUpload,
@@ -1094,6 +1111,7 @@ class TenantAdminSettingsController implements Disposable {
       darkIconUpload: darkIconUpload,
       faviconUpload: faviconUpload,
       pwaIconUpload: pwaIconUpload,
+      publicWebDefaultImageUpload: publicWebDefaultImageUpload,
     );
     if (input == null) {
       return;
@@ -1290,6 +1308,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.publicWebDefaultImage);
     clearBrandingFaviconUpload(restoreRemotePreview: false);
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
@@ -1300,9 +1319,12 @@ class TenantAdminSettingsController implements Disposable {
 
   void _clearBrandingDraftForRemoteLoad() {
     brandingTenantNameController.clear();
+    brandingPublicWebDefaultTitleController.clear();
+    brandingPublicWebDefaultDescriptionController.clear();
     brandingPrimarySeedColorController.clear();
     brandingSecondarySeedColorController.clear();
     brandingBrightnessStreamValue.addValue(TenantAdminBrandingBrightness.light);
+    _loadedBrandingAssetPreviewUrls.clear();
     brandingLightLogoUrlStreamValue.addValue(null);
     brandingDarkLogoUrlStreamValue.addValue(null);
     brandingLightIconUrlStreamValue.addValue(null);
@@ -1310,6 +1332,7 @@ class TenantAdminSettingsController implements Disposable {
     _loadedBrandingFaviconPreviewUrl = null;
     brandingFaviconUrlStreamValue.addValue(null);
     brandingPwaIconUrlStreamValue.addValue(null);
+    brandingPublicWebDefaultImageUrlStreamValue.addValue(null);
   }
 
   void _resetAppLinksDraft() {
@@ -1541,6 +1564,7 @@ class TenantAdminSettingsController implements Disposable {
     required TenantAdminMediaUpload? darkIconUpload,
     required TenantAdminMediaUpload? faviconUpload,
     required TenantAdminMediaUpload? pwaIconUpload,
+    required TenantAdminMediaUpload? publicWebDefaultImageUpload,
   }) {
     final tenantName = brandingTenantNameController.text.trim();
     if (tenantName.isEmpty) {
@@ -1575,6 +1599,12 @@ class TenantAdminSettingsController implements Disposable {
       darkIconUpload: darkIconUpload,
       faviconUpload: faviconUpload,
       pwaIconUpload: pwaIconUpload,
+      publicWebDefaultTitle:
+          _optionalTextValue(brandingPublicWebDefaultTitleController.text),
+      publicWebDefaultDescription: _optionalTextValue(
+        brandingPublicWebDefaultDescriptionController.text,
+      ),
+      publicWebDefaultImageUpload: publicWebDefaultImageUpload,
     );
   }
 
@@ -1638,50 +1668,69 @@ class TenantAdminSettingsController implements Disposable {
       _tenantScopedAssetUrl('favicon.ico') ?? settings.faviconUrl,
       cacheBuster,
     );
+    final lightLogoUrl = _withCacheBust(
+      _tenantScopedAssetUrl('logo-light.png') ?? settings.lightLogoUrl,
+      cacheBuster,
+    );
+    final darkLogoUrl = _withCacheBust(
+      _tenantScopedAssetUrl('logo-dark.png') ?? settings.darkLogoUrl,
+      cacheBuster,
+    );
+    final lightIconUrl = _withCacheBust(
+      _tenantScopedAssetUrl('icon-light.png') ?? settings.lightIconUrl,
+      cacheBuster,
+    );
+    final darkIconUrl = _withCacheBust(
+      _tenantScopedAssetUrl('icon-dark.png') ?? settings.darkIconUrl,
+      cacheBuster,
+    );
+    final pwaIconUrl = _withCacheBust(
+      _tenantScopedAssetUrl('icon/icon-512x512.png') ?? settings.pwaIconUrl,
+      cacheBuster,
+    );
+    final publicWebDefaultImageUrl = _withCacheBust(
+      settings.publicWebDefaultImageUrl,
+      cacheBuster,
+    );
     if (settings.tenantName.trim().isNotEmpty) {
       brandingTenantNameController.text = settings.tenantName.trim();
     }
+    brandingPublicWebDefaultTitleController.text =
+        settings.publicWebDefaultTitle ?? '';
+    brandingPublicWebDefaultDescriptionController.text =
+        settings.publicWebDefaultDescription ?? '';
     brandingBrightnessStreamValue.addValue(settings.brightnessDefault);
     brandingPrimarySeedColorController.text = settings.primarySeedColor;
     brandingSecondarySeedColorController.text = settings.secondarySeedColor;
-    brandingLightLogoUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('logo-light.png') ?? settings.lightLogoUrl,
-        cacheBuster,
-      ),
-    );
-    brandingDarkLogoUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('logo-dark.png') ?? settings.darkLogoUrl,
-        cacheBuster,
-      ),
-    );
-    brandingLightIconUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('icon-light.png') ?? settings.lightIconUrl,
-        cacheBuster,
-      ),
-    );
-    brandingDarkIconUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('icon-dark.png') ?? settings.darkIconUrl,
-        cacheBuster,
-      ),
-    );
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.lightLogo] =
+        lightLogoUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.darkLogo] =
+        darkLogoUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.lightIcon] =
+        lightIconUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.darkIcon] =
+        darkIconUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.pwaIcon] =
+        pwaIconUrl;
+    _loadedBrandingAssetPreviewUrls[
+            TenantAdminBrandingAssetSlot.publicWebDefaultImage] =
+        publicWebDefaultImageUrl;
+    brandingLightLogoUrlStreamValue.addValue(lightLogoUrl);
+    brandingDarkLogoUrlStreamValue.addValue(darkLogoUrl);
+    brandingLightIconUrlStreamValue.addValue(lightIconUrl);
+    brandingDarkIconUrlStreamValue.addValue(darkIconUrl);
     _loadedBrandingFaviconPreviewUrl = faviconPreviewUrl;
     brandingFaviconUrlStreamValue.addValue(faviconPreviewUrl);
-    brandingPwaIconUrlStreamValue.addValue(
-      _withCacheBust(
-        _tenantScopedAssetUrl('icon/icon-512x512.png') ?? settings.pwaIconUrl,
-        cacheBuster,
-      ),
-    );
+    brandingPwaIconUrlStreamValue.addValue(pwaIconUrl);
+    brandingPublicWebDefaultImageUrlStreamValue
+        .addValue(publicWebDefaultImageUrl);
 
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.publicWebDefaultImage);
     clearBrandingFaviconUpload(restoreRemotePreview: false);
   }
 
@@ -2277,6 +2326,7 @@ class TenantAdminSettingsController implements Disposable {
     brandingLightIconFileStreamValue.dispose();
     brandingDarkIconFileStreamValue.dispose();
     brandingPwaIconFileStreamValue.dispose();
+    brandingPublicWebDefaultImageFileStreamValue.dispose();
     brandingFaviconUploadStreamValue.dispose();
     brandingLightLogoUrlStreamValue.dispose();
     brandingDarkLogoUrlStreamValue.dispose();
@@ -2284,6 +2334,7 @@ class TenantAdminSettingsController implements Disposable {
     brandingDarkIconUrlStreamValue.dispose();
     brandingFaviconUrlStreamValue.dispose();
     brandingPwaIconUrlStreamValue.dispose();
+    brandingPublicWebDefaultImageUrlStreamValue.dispose();
     telemetrySnapshotStreamValue.dispose();
     selectedTelemetryTypeStreamValue.dispose();
     telemetryTrackAllStreamValue.dispose();
@@ -2305,6 +2356,8 @@ class TenantAdminSettingsController implements Disposable {
     telemetryTokenController.dispose();
     telemetryUrlController.dispose();
     brandingTenantNameController.dispose();
+    brandingPublicWebDefaultTitleController.dispose();
+    brandingPublicWebDefaultDescriptionController.dispose();
     brandingPrimarySeedColorController.dispose();
     brandingSecondarySeedColorController.dispose();
     mapDefaultOriginLatitudeController.dispose();

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -107,6 +108,8 @@ class _TenantAdminImageCropSheetState
           TenantAdminImageSlot.lightIcon => 1.0,
           TenantAdminImageSlot.darkIcon => 1.0,
           TenantAdminImageSlot.pwaIcon => 1.0,
+          TenantAdminImageSlot.publicWebDefaultImage =>
+            tenantAdminPublicWebDefaultImageAspectRatio,
           TenantAdminImageSlot.mapFilter => 1.0,
           TenantAdminImageSlot.typeVisual => 1.0,
           TenantAdminImageSlot.avatar => 1.0,
@@ -120,6 +123,8 @@ class _TenantAdminImageCropSheetState
         TenantAdminImageSlot.lightIcon => 'Recortar icone claro',
         TenantAdminImageSlot.darkIcon => 'Recortar icone escuro',
         TenantAdminImageSlot.pwaIcon => 'Recortar icone PWA',
+        TenantAdminImageSlot.publicWebDefaultImage =>
+          'Recortar imagem de compartilhamento',
         TenantAdminImageSlot.mapFilter => 'Recortar imagem do filtro',
         TenantAdminImageSlot.typeVisual => 'Recortar imagem canônica do tipo',
       };

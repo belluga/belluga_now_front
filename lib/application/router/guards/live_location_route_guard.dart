@@ -29,6 +29,7 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
       LocationPermissionRoute(
         initialState: blocker,
         allowContinueWithoutLocation: false,
+        popRouteAfterResult: true,
         onResult: (result) {
           if (didResolveGate) {
             return;

@@ -35,6 +35,7 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
       LocationPermissionRoute(
         initialState: blocker,
         allowContinueWithoutLocation: true,
+        popRouteAfterResult: true,
         onResult: (result) {
           if (didResolveGate) {
             return;

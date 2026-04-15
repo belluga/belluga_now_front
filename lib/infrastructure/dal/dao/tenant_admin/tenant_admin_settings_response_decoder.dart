@@ -198,6 +198,10 @@ class TenantAdminSettingsResponseDecoder {
     final faviconAsset = faviconAssetRaw is Map
         ? Map<String, dynamic>.from(faviconAssetRaw)
         : const <String, dynamic>{};
+    final publicWebMetadataRaw = payload['public_web_metadata'];
+    final publicWebMetadata = publicWebMetadataRaw is Map
+        ? Map<String, dynamic>.from(publicWebMetadataRaw)
+        : const <String, dynamic>{};
 
     return TenantAdminBrandingSettings(
       tenantName: _requiredTextValue(tenantName),
@@ -220,6 +224,40 @@ class TenantAdminSettingsResponseDecoder {
           return null;
         }
         return _optionalUrlValue(pwaIcon);
+      })(),
+      publicWebDefaultTitle: (() {
+        final rawTitle = _normalizeOptionalText(
+          publicWebMetadata['default_title'],
+        );
+        if (rawTitle == null || rawTitle.isEmpty) {
+          return null;
+        }
+        return _optionalTextValue(rawTitle);
+      })(),
+      publicWebDefaultDescription: (() {
+        final rawDescription = _normalizeOptionalText(
+          publicWebMetadata['default_description'],
+        );
+        if (rawDescription == null || rawDescription.isEmpty) {
+          return null;
+        }
+        return _optionalTextValue(rawDescription);
+      })(),
+      publicWebDefaultImageUrl: (() {
+        final rawImage = _normalizeOptionalText(
+          publicWebMetadata['default_image'],
+        );
+        if (rawImage == null || rawImage.isEmpty) {
+          return null;
+        }
+        final resolvedImage = _resolveAssetUrl(
+          rawImage,
+          tenantOrigin: tenantOrigin,
+        );
+        if (resolvedImage == null || resolvedImage.isEmpty) {
+          return null;
+        }
+        return _optionalUrlValue(resolvedImage);
       })(),
       hasDedicatedFaviconValue: _booleanValue(_parseBool(
         faviconAsset['has_dedicated_asset'],

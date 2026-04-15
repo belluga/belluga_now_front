@@ -6,6 +6,7 @@ enum TenantAdminImageSlot {
   lightIcon,
   darkIcon,
   pwaIcon,
+  publicWebDefaultImage,
   mapFilter,
   typeVisual,
 }
