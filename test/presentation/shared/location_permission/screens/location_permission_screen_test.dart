@@ -244,7 +244,8 @@ void main() {
     expect(router.replaceAllCalls, 0);
   });
 
-  testWidgets('back button returns cancelled result when onResult is present',
+  testWidgets(
+      'back button returns cancelled result without closing when callback owns navigation',
       (tester) async {
     final controller = LocationPermissionController(isWeb: false);
     final router = _RecordingStackRouter();
@@ -267,6 +268,33 @@ void main() {
 
     expect(capturedResult, LocationPermissionGateResult.cancelled);
     expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 0);
+  });
+
+  testWidgets('back button pops the route when guarded flow requests dismissal',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter()..canPopValue = true;
+    LocationPermissionGateResult? capturedResult;
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+          popRouteAfterResult: true,
+          onResult: (result) => capturedResult = result,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(capturedResult, LocationPermissionGateResult.cancelled);
+    expect(router.popCalls, 1);
     expect(router.replaceAllCalls, 0);
   });
 }

@@ -49,6 +49,7 @@ Future<void> _openTenantPublicMapEntryFlow(
     LocationPermissionRoute(
       initialState: blocker,
       allowContinueWithoutLocation: true,
+      popRouteAfterResult: false,
       onResult: (result) {
         if (didResolvePermissionRoute) {
           return;

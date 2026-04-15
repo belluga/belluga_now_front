@@ -31,6 +31,7 @@ class _TenantAdminSettingsVisualIdentityScreenState
     TenantAdminBrandingAssetSlot.lightIcon: false,
     TenantAdminBrandingAssetSlot.darkIcon: false,
     TenantAdminBrandingAssetSlot.pwaIcon: false,
+    TenantAdminBrandingAssetSlot.publicWebDefaultImage: false,
   };
   bool _faviconBusy = false;
 
@@ -73,6 +74,8 @@ class _TenantAdminSettingsVisualIdentityScreenState
       TenantAdminBrandingAssetSlot.lightIcon => TenantAdminImageSlot.lightIcon,
       TenantAdminBrandingAssetSlot.darkIcon => TenantAdminImageSlot.darkIcon,
       TenantAdminBrandingAssetSlot.pwaIcon => TenantAdminImageSlot.pwaIcon,
+      TenantAdminBrandingAssetSlot.publicWebDefaultImage =>
+        TenantAdminImageSlot.publicWebDefaultImage,
     };
   }
 
@@ -83,6 +86,8 @@ class _TenantAdminSettingsVisualIdentityScreenState
       TenantAdminBrandingAssetSlot.lightIcon => 'Icone claro',
       TenantAdminBrandingAssetSlot.darkIcon => 'Icone escuro',
       TenantAdminBrandingAssetSlot.pwaIcon => 'Icone PWA',
+      TenantAdminBrandingAssetSlot.publicWebDefaultImage =>
+        'Imagem de compartilhamento',
     };
   }
 
@@ -330,6 +335,10 @@ class _TenantAdminSettingsVisualIdentityScreenState
         _controller.brandingPwaIconFileStreamValue.value,
         slot: TenantAdminImageSlot.pwaIcon,
       );
+      final publicWebDefaultImageUpload = await _controller.buildBrandingUpload(
+        _controller.brandingPublicWebDefaultImageFileStreamValue.value,
+        slot: TenantAdminImageSlot.publicWebDefaultImage,
+      );
       final faviconUpload = _controller.brandingFaviconUploadStreamValue.value;
 
       await _controller.saveBranding(
@@ -339,6 +348,7 @@ class _TenantAdminSettingsVisualIdentityScreenState
         darkIconUpload: darkIconUpload,
         faviconUpload: faviconUpload,
         pwaIconUpload: pwaIconUpload,
+        publicWebDefaultImageUpload: publicWebDefaultImageUpload,
       );
     } on TenantAdminImageIngestionException catch (error) {
       _controller.remoteErrorStreamValue.addValue(error.message);

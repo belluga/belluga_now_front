@@ -4,4 +4,5 @@ enum TenantAdminBrandingAssetSlot {
   lightIcon,
   darkIcon,
   pwaIcon,
+  publicWebDefaultImage,
 }

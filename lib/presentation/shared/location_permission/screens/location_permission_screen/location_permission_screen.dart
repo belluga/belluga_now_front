@@ -17,11 +17,13 @@ class LocationPermissionScreen extends StatefulWidget {
     this.initialState,
     this.allowContinueWithoutLocation = true,
     this.onResult,
+    this.popRouteAfterResult = false,
   });
 
   final LocationPermissionState? initialState;
   final bool allowContinueWithoutLocation;
   final ValueChanged<LocationPermissionGateResult>? onResult;
+  final bool popRouteAfterResult;
 
   @override
   State<LocationPermissionScreen> createState() =>
@@ -257,7 +259,9 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     final onResult = widget.onResult;
     if (onResult != null) {
       onResult(result);
-      return;
+      if (!widget.popRouteAfterResult) {
+        return;
+      }
     }
 
     final router = context.router;

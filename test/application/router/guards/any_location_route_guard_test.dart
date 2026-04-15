@@ -67,6 +67,7 @@ void main() {
     final args = captured.args;
     expect(args?.allowContinueWithoutLocation, isTrue);
     expect(args?.initialState, LocationPermissionState.denied);
+    expect(args?.popRouteAfterResult, isTrue);
 
     args?.onResult?.call(LocationPermissionGateResult.granted);
 
@@ -99,6 +100,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult
         ?.call(LocationPermissionGateResult.continueWithoutLocation);
 
@@ -126,6 +128,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
 
     expect(resolver.nextCalls, [false]);
@@ -148,6 +151,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     await Future<void>.microtask(() {});
 
@@ -173,6 +177,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     await Future<void>.microtask(() {});
 
@@ -197,6 +202,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     await Future<void>.microtask(() {});

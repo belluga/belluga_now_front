@@ -1662,6 +1662,16 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.brandingSecondaryPickerButton),
       findsOneWidget,
     );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingPublicMetadataTitleField),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        TenantAdminSettingsKeys.brandingPublicMetadataDescriptionField,
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Favicon (.ico)'), findsOneWidget);
     expect(
       find.byKey(TenantAdminSettingsKeys.brandingFaviconPreview),
@@ -1678,9 +1688,17 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
+    final primaryPickerButton = find.byKey(
+      TenantAdminSettingsKeys.brandingPrimaryPickerButton,
     );
+    await tester.scrollUntilVisible(
+      primaryPickerButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(primaryPickerButton);
     await tester.pumpAndSettle();
 
     final pickerDialog = find.byType(AlertDialog);
@@ -1697,6 +1715,18 @@ void main() {
 
     expect(find.text('Aplicar cor'), findsOneWidget);
     await tester.tap(find.text('Aplicar cor'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(TenantAdminSettingsKeys.brandingPublicMetadataTitleField),
+      'Guarappari Home',
+    );
+    await tester.enterText(
+      find.byKey(
+        TenantAdminSettingsKeys.brandingPublicMetadataDescriptionField,
+      ),
+      'Fallback institucional da home.',
+    );
     await tester.pumpAndSettle();
 
     final saveBrandingButton = find.byKey(
@@ -1722,6 +1752,14 @@ void main() {
     expect(
       settingsRepository.lastBrandingInput!.secondarySeedColor,
       '#673AB7',
+    );
+    expect(
+      settingsRepository.lastBrandingInput!.publicWebDefaultTitle,
+      'Guarappari Home',
+    );
+    expect(
+      settingsRepository.lastBrandingInput!.publicWebDefaultDescription,
+      'Fallback institucional da home.',
     );
   });
 
@@ -1782,9 +1820,17 @@ void main() {
       const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
     );
 
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
+    final primaryPickerButton = find.byKey(
+      TenantAdminSettingsKeys.brandingPrimaryPickerButton,
     );
+    await tester.scrollUntilVisible(
+      primaryPickerButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(primaryPickerButton);
     await tester.pumpAndSettle();
 
     final pickerDialog = find.byType(AlertDialog);
@@ -1864,6 +1910,7 @@ void main() {
       darkIconUpload: null,
       faviconUpload: null,
       pwaIconUpload: null,
+      publicWebDefaultImageUpload: null,
     );
 
     final savedUpload = settingsRepository.lastBrandingInput?.lightLogoUpload;
@@ -1914,6 +1961,7 @@ void main() {
       darkIconUpload: null,
       faviconUpload: null,
       pwaIconUpload: null,
+      publicWebDefaultImageUpload: null,
     );
 
     expect(
@@ -1973,6 +2021,7 @@ void main() {
       darkIconUpload: null,
       faviconUpload: null,
       pwaIconUpload: null,
+      publicWebDefaultImageUpload: null,
     );
 
     final reloadedController = TenantAdminSettingsController(
@@ -2018,6 +2067,7 @@ void main() {
       darkIconUpload: null,
       faviconUpload: faviconUpload,
       pwaIconUpload: null,
+      publicWebDefaultImageUpload: null,
     );
 
     expect(settingsRepository.lastBrandingInput?.faviconUpload, isNotNull);
@@ -2265,6 +2315,11 @@ class _FakeTenantAdminSettingsRepository
           brightnessDefault: TenantAdminBrandingBrightness.light,
           primarySeedColor: _hexColor('#009688'),
           secondarySeedColor: _hexColor('#673AB7'),
+          publicWebDefaultTitle: _optionalText('Tenant Home'),
+          publicWebDefaultDescription:
+              _optionalText('Fallback institucional inicial.'),
+          publicWebDefaultImageUrl:
+              _optionalUrl('https://guarappari.test/storage/public-web.jpg'),
           lightLogoUrl:
               _optionalUrl('https://guarappari.test/storage/light-logo.png'),
           darkLogoUrl:
@@ -2549,6 +2604,14 @@ class _FakeTenantAdminSettingsRepository
       brightnessDefault: input.brightnessDefault,
       primarySeedColor: _hexColor(input.primarySeedColor),
       secondarySeedColor: _hexColor(input.secondarySeedColor),
+      publicWebDefaultTitle: _optionalText(input.publicWebDefaultTitle ?? ''),
+      publicWebDefaultDescription:
+          _optionalText(input.publicWebDefaultDescription ?? ''),
+      publicWebDefaultImageUrl: _optionalUrl(
+        input.publicWebDefaultImageUpload == null
+            ? 'https://guarappari.test/storage/public-web.jpg'
+            : 'https://guarappari.test/storage/public-web-updated.jpg',
+      ),
       lightLogoUrl:
           _optionalUrl('https://guarappari.test/storage/light-logo.png'),
       darkLogoUrl:
