@@ -423,6 +423,10 @@ class TenantAdminSettingsRepository
             input.brightnessDefault.rawValue,
         'theme_data_settings[primary_seed_color]': input.primarySeedColor,
         'theme_data_settings[secondary_seed_color]': input.secondarySeedColor,
+        'public_web_metadata[default_title]':
+            input.publicWebDefaultTitle?.trim() ?? '',
+        'public_web_metadata[default_description]':
+            input.publicWebDefaultDescription?.trim() ?? '',
       });
 
       _appendUpload(
@@ -454,6 +458,11 @@ class TenantAdminSettingsRepository
         payload,
         fieldName: 'logo_settings[pwa_icon]',
         upload: input.pwaIconUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'public_web_metadata[default_image]',
+        upload: input.publicWebDefaultImageUpload,
       );
 
       final response = await _dio.post(

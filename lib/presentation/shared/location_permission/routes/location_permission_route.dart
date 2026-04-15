@@ -13,11 +13,13 @@ class LocationPermissionRoutePage extends StatelessWidget {
     this.initialState,
     this.allowContinueWithoutLocation = true,
     this.onResult,
+    this.popRouteAfterResult = false,
   });
 
   final LocationPermissionState? initialState;
   final bool allowContinueWithoutLocation;
   final ValueChanged<LocationPermissionGateResult>? onResult;
+  final bool popRouteAfterResult;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +28,7 @@ class LocationPermissionRoutePage extends StatelessWidget {
         initialState: initialState,
         allowContinueWithoutLocation: allowContinueWithoutLocation,
         onResult: onResult,
+        popRouteAfterResult: popRouteAfterResult,
       ),
     );
   }

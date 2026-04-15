@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_exception.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_slot.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
@@ -328,6 +329,14 @@ class TenantAdminImageIngestionService {
           maxHeight: 1024,
           mimeType: 'image/png',
           fileExtension: 'png',
+        ),
+      TenantAdminImageSlot.publicWebDefaultImage =>
+        const _TenantAdminImageSlotSpec(
+          aspectRatio: tenantAdminPublicWebDefaultImageAspectRatio,
+          maxWidth: tenantAdminPublicWebDefaultImageWidth,
+          maxHeight: tenantAdminPublicWebDefaultImageHeight,
+          mimeType: 'image/jpeg',
+          fileExtension: 'jpg',
         ),
     };
   }

@@ -39,6 +39,7 @@ void main() {
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
     expect(captured.args?.allowContinueWithoutLocation, isFalse);
+    expect(captured.args?.popRouteAfterResult, isTrue);
 
     captured.args?.onResult?.call(LocationPermissionGateResult.granted);
     expect(resolver.nextCalls, [true]);
@@ -57,6 +58,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
 
     expect(resolver.nextCalls, [false]);
@@ -75,6 +77,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     await Future<void>.microtask(() {});
 
@@ -96,6 +99,7 @@ void main() {
     await guard.onNavigation(resolver, router);
 
     final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    expect(captured.args?.popRouteAfterResult, isTrue);
     captured.args?.onResult?.call(LocationPermissionGateResult.cancelled);
     await Future<void>.microtask(() {});
 

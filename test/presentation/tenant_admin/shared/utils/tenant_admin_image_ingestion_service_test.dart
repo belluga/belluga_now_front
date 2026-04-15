@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -68,6 +69,40 @@ void main() {
     expect((ratio - (16 / 9)).abs(), lessThan(0.02));
     expect(decoded.width, lessThanOrEqualTo(1920));
     expect(decoded.height, lessThanOrEqualTo(1080));
+  });
+
+  test(
+      'prepareXFile normalizes public web default image to canonical OG dimensions',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source = await _writeImage(
+      width: 1200,
+      height: 1800,
+      name: 'public_web_default_source.png',
+    );
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.publicWebDefaultImage,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect(
+      (ratio - tenantAdminPublicWebDefaultImageAspectRatio).abs(),
+      lessThan(0.02),
+    );
+    expect(
+      decoded.width,
+      lessThanOrEqualTo(tenantAdminPublicWebDefaultImageWidth),
+    );
+    expect(
+      decoded.height,
+      lessThanOrEqualTo(tenantAdminPublicWebDefaultImageHeight),
+    );
+    expect(output.mimeType, 'image/jpeg');
   });
 
   test('prepareXFile rejects source larger than 15MB before decode', () async {
