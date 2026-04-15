@@ -297,6 +297,35 @@ void main() {
     expect(router.popCalls, 1);
     expect(router.replaceAllCalls, 0);
   });
+
+  testWidgets(
+      'granted result stays owned by guarded callback even when boundary dismissal is enabled',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter();
+    LocationPermissionGateResult? capturedResult;
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+          popRouteAfterResult: true,
+          onResult: (result) => capturedResult = result,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    controller.resultStreamValue.addValue(true);
+    await tester.pump();
+    await tester.pump();
+
+    expect(capturedResult, LocationPermissionGateResult.granted);
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 0);
+  });
 }
 
 Widget _buildWidget({

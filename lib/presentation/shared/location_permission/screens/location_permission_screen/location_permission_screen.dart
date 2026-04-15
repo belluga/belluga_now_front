@@ -259,7 +259,10 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     final onResult = widget.onResult;
     if (onResult != null) {
       onResult(result);
-      if (!widget.popRouteAfterResult) {
+      final shouldDismissBoundaryRoute =
+          widget.popRouteAfterResult &&
+          result == LocationPermissionGateResult.cancelled;
+      if (!shouldDismissBoundaryRoute) {
         return;
       }
     }
