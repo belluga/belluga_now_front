@@ -8,6 +8,69 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   testWidgets(
+    'expanded radius action shows place icon with distance label',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: AgendaAppBar(controller: controller),
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsOneWidget);
+      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
+      expect(find.text('Até 5 km'), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('agenda-radius-compact')),
+          findsNothing);
+    },
+  );
+
+  testWidgets(
+    'compact radius action shows place icon with standalone 50 km badge',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController()
+        ..isRadiusActionCompactStreamValue.addValue(true)
+        ..radiusMetersStreamValue.addValue(50000);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: AgendaAppBar(controller: controller),
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const ValueKey<String>('agenda-radius-compact')),
+          findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact-badge')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
+      expect(find.text('50 km'), findsOneWidget);
+      expect(find.text('Até 5 km'), findsNothing);
+      expect(find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsNothing);
+    },
+  );
+
+  testWidgets(
     'radius slider updates local value on change and commits on change end',
     (tester) async {
       final controller = _FakeAgendaAppBarController();
@@ -29,7 +92,8 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byIcon(Icons.radar));
+      await tester
+          .tap(find.byKey(const ValueKey<String>('agenda-radius-expanded')));
       await tester.pumpAndSettle();
 
       final slider = tester.widget<Slider>(find.byType(Slider));
@@ -85,7 +149,8 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byIcon(Icons.radar));
+      await tester
+          .tap(find.byKey(const ValueKey<String>('agenda-radius-expanded')));
       await tester.pumpAndSettle();
 
       expect(find.text('Distância Máxima'), findsOneWidget);
@@ -164,7 +229,8 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byIcon(Icons.radar));
+      await tester
+          .tap(find.byKey(const ValueKey<String>('agenda-radius-expanded')));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -200,6 +266,9 @@ class _FakeAgendaAppBarController implements AgendaAppBarController {
       StreamValue<double>(defaultValue: 5000);
   @override
   final StreamValue<bool> isRadiusRefreshLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final StreamValue<bool> isRadiusActionCompactStreamValue =
       StreamValue<bool>(defaultValue: false);
 
   @override

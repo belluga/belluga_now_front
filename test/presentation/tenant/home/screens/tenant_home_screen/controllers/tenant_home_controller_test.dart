@@ -87,7 +87,8 @@ void main() {
     );
   });
 
-  test('keeps ongoing events when explicit end date is in the future', () async {
+  test('keeps ongoing events when explicit end date is in the future',
+      () async {
     final now = DateTime.now();
     const ongoingId = '507f1f77bcf86cd799439013';
     final ongoingLongEvent = buildVenueEventResume(
@@ -163,6 +164,54 @@ void main() {
       controller.homeLocationStatusStreamValue.value?.dialogMessage,
       'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
     );
+  });
+
+  testWidgets(
+      'home controller compacts radius action from owned screen scroll controller',
+      (tester) async {
+    await controller.init();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CustomScrollView(
+            controller: controller.scrollController,
+            slivers: [
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 240, child: Text('header')),
+              ),
+              SliverList.builder(
+                itemCount: 40,
+                itemBuilder: (context, index) {
+                  return SizedBox(
+                    height: 72,
+                    child: Text('row $index'),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isFalse);
+
+    controller.scrollController.jumpTo(120);
+    await tester.pump();
+
+    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isTrue);
+
+    controller.scrollController.jumpTo(10);
+    await tester.pump();
+
+    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isTrue);
+
+    controller.scrollController.jumpTo(0);
+    await tester.pump();
+
+    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isFalse);
   });
 }
 

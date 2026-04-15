@@ -56,6 +56,8 @@ class EventSearchScreenController
   final LocationOriginServiceContract _locationOriginService;
 
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _radiusCompactEnterOffset = 24.0;
+  static const double _radiusCompactExitOffset = 8.0;
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -79,6 +81,8 @@ class EventSearchScreenController
   late StreamValue<double> radiusMetersStreamValue;
   @override
   late StreamValue<bool> isRadiusRefreshLoadingStreamValue;
+  @override
+  late StreamValue<bool> isRadiusActionCompactStreamValue;
   late StreamValue<double> _maxRadiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -155,6 +159,7 @@ class EventSearchScreenController
     radiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     isRadiusRefreshLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+    isRadiusActionCompactStreamValue = StreamValue<bool>(defaultValue: false);
     _maxRadiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     _isScrollListenerAttached = false;
@@ -190,6 +195,11 @@ class EventSearchScreenController
     if (_isScrollListenerAttached) return;
     _isScrollListenerAttached = true;
     scrollController.addListener(() {
+      if (scrollController.hasClients) {
+        _updateRadiusActionCompactState(
+          scrollController.position.pixels,
+        );
+      }
       if (!_hasMore ||
           _isFetching ||
           isInitialLoadingStreamValue.value ||
@@ -203,6 +213,17 @@ class EventSearchScreenController
         loadNextPage();
       }
     });
+  }
+
+  void _updateRadiusActionCompactState(double pixels) {
+    final current = isRadiusActionCompactStreamValue.value;
+    final shouldCompact = current
+        ? pixels > _radiusCompactExitOffset
+        : pixels > _radiusCompactEnterOffset;
+    if (shouldCompact == current) {
+      return;
+    }
+    _ifAlive(() => isRadiusActionCompactStreamValue.addValue(shouldCompact));
   }
 
   Future<void> _refresh({bool warmUpIfPossible = true}) async {
@@ -721,6 +742,7 @@ class EventSearchScreenController
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
+    isRadiusActionCompactStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();

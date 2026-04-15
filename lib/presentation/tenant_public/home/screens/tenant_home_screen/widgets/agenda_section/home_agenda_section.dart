@@ -1,8 +1,7 @@
 export 'home_agenda_section_slots.dart';
 
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_slots.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -11,12 +10,12 @@ class HomeAgendaSection extends StatefulWidget {
   const HomeAgendaSection({
     super.key,
     required this.builder,
-    this.controller,
+    this.scrollController,
   });
 
   final Widget Function(BuildContext context, HomeAgendaSectionSlots slots)
       builder;
-  final TenantHomeAgendaController? controller;
+  final ScrollController? scrollController;
 
   @override
   State<HomeAgendaSection> createState() => _HomeAgendaSectionState();
@@ -24,7 +23,7 @@ class HomeAgendaSection extends StatefulWidget {
 
 class _HomeAgendaSectionState extends State<HomeAgendaSection> {
   late final TenantHomeAgendaController _controller =
-      widget.controller ?? GetIt.I.get<TenantHomeAgendaController>();
+      GetIt.I.get<TenantHomeAgendaController>();
 
   @override
   void initState() {
@@ -37,54 +36,17 @@ class _HomeAgendaSectionState extends State<HomeAgendaSection> {
   }
 
   @override
+  void dispose() {
+    _controller.onDispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return widget.builder(
-      context,
-      HomeAgendaSectionSlots(
-        header: SliverPersistentHeader(
-          pinned: true,
-          delegate: _PinnedHeaderDelegate(
-            minHeight: kToolbarHeight,
-            maxHeight: kToolbarHeight,
-            child: HomeAgendaAppBar(controller: _controller),
-          ),
-        ),
-        body: HomeAgendaBody(controller: _controller),
-      ),
+    return HomeAgendaSectionView(
+      controller: _controller,
+      builder: widget.builder,
+      scrollController: widget.scrollController,
     );
-  }
-}
-
-class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _PinnedHeaderDelegate({
-    required this.minHeight,
-    required this.maxHeight,
-    required this.child,
-  });
-
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox.expand(child: child);
-  }
-
-  @override
-  bool shouldRebuild(covariant _PinnedHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight ||
-        minHeight != oldDelegate.minHeight ||
-        child != oldDelegate.child;
   }
 }

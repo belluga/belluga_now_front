@@ -29,8 +29,20 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
+import 'package:belluga_now/domain/thumb/thumb_model.dart';
+import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
@@ -38,6 +50,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
+import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   setUp(() async {
@@ -249,6 +264,51 @@ void main() {
       expect(router.canPopCallCount, 1);
       expect(router.popCallCount, 1);
       expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'radius action compacts after scrolling events list and expands again at top',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = [
+          List<EventModel>.generate(
+            12,
+            (index) => _buildScheduleEvent(
+              id: '507f1f77bcf86cd7994390${(10 + index).toString().padLeft(2, '0')}',
+              title: 'Evento $index',
+              slug: 'evento-$index',
+              startAt: DateTime.utc(2026, 4, 15 + (index ~/ 3), 18, 0),
+            ),
+          ),
+        ];
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+      final router = _RecordingStackRouter();
+
+      await _pumpEventSearchScreen(
+        tester,
+        controller: controller,
+        router: router,
+      );
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 800));
+      await tester.pumpAndSettle();
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
     },
   );
 }
@@ -504,6 +564,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   double? lastOriginLat;
   double? lastOriginLng;
   bool failOnPageFetch = false;
+  List<List<EventModel>> eventSearchPages = const <List<EventModel>>[];
 
   final List<StreamController<EventDeltaModel>> _streamControllers = [];
 
@@ -584,7 +645,11 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     if (failOnPageFetch) {
       throw Exception('forced first-page failure');
     }
-    return const <EventModel>[];
+    final pageIndex = page - 1;
+    if (pageIndex < 0 || pageIndex >= eventSearchPages.length) {
+      return const <EventModel>[];
+    }
+    return eventSearchPages[pageIndex];
   }
 
   @override
@@ -701,6 +766,45 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       onDelta(delta);
     });
   }
+}
+
+EventModel _buildScheduleEvent({
+  required String id,
+  required String title,
+  required String slug,
+  required DateTime startAt,
+}) {
+  return eventModelFromRaw(
+    id: MongoIDValue()..parse(id),
+    slugValue: SlugValue()..parse(slug),
+    type: EventTypeModel(
+      id: EventTypeIdValue()..parse('concert'),
+      name: TitleValue(minLenght: 1)..parse('Show'),
+      slug: SlugValue()..parse('show'),
+      description: DescriptionValue(minLenght: 1)..parse('Show'),
+      icon: SlugValue()..parse('music'),
+      color: ColorValue(defaultValue: const Color(0xFF1D3557))
+        ..parse('#1D3557'),
+    ),
+    title: TitleValue(minLenght: 1)..parse(title),
+    content: HTMLContentValue()..parse('<p>$title</p>'),
+    location: DescriptionValue(minLenght: 1)..parse('Praia do Morro'),
+    venue: null,
+    thumb: ThumbModel(
+      thumbUri: ThumbUriValue(
+        defaultValue: Uri.parse('https://cdn.test/$slug.jpg'),
+      )..parse('https://cdn.test/$slug.jpg'),
+      thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
+        ..parse(ThumbTypes.image.name),
+    ),
+    dateTimeStart: DateTimeValue()..parse(startAt.toIso8601String()),
+    dateTimeEnd: null,
+    artists: const [],
+    coordinate: null,
+    tags: const <String>[],
+    isConfirmedValue: EventIsConfirmedValue()..parse('false'),
+    totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
+  );
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {

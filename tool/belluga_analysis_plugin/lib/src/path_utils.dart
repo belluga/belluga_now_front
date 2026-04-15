@@ -162,6 +162,35 @@ bool isPresentationControllerFilePath(String path) {
       _containsSegment(normalized, '/controllers/');
 }
 
+bool isPresentationWidgetControllerFilePath(String path) {
+  final normalized = normalizePath(path);
+  return isPresentationControllerFilePath(normalized) &&
+      _containsSegment(normalized, '/widgets/');
+}
+
+String? widgetControllerOwnerRootPath(String path) {
+  final normalized = normalizePath(path);
+  if (!isPresentationWidgetControllerFilePath(normalized)) {
+    return null;
+  }
+
+  const controllersMarker = '/controllers/';
+  final markerIndex = normalized.lastIndexOf(controllersMarker);
+  if (markerIndex == -1) {
+    return null;
+  }
+
+  return normalized.substring(0, markerIndex);
+}
+
+bool isPathWithinRoot(String path, String rootPath) {
+  final normalizedPath = normalizePath(path).replaceAll(RegExp(r'/+$'), '');
+  final normalizedRoot = normalizePath(rootPath).replaceAll(RegExp(r'/+$'), '');
+
+  return normalizedPath == normalizedRoot ||
+      normalizedPath.startsWith('$normalizedRoot/');
+}
+
 bool isModularModuleFilePath(String path) {
   return _containsSegment(path, '/lib/application/router/modular_app/modules/');
 }

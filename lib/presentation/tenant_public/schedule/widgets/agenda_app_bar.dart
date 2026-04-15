@@ -101,36 +101,69 @@ class AgendaAppBar extends StatelessWidget {
                       return StreamValueBuilder<double>(
                         streamValue: controller.radiusMetersStreamValue,
                         builder: (context, radiusMeters) {
-                          return IconButton(
-                            tooltip: isRadiusLoading
-                                ? 'Atualizando raio...'
-                                : 'Raio ${_formatRadiusLabel(radiusMeters)}',
-                            onPressed: isRadiusLoading
-                                ? null
-                                : () => _showRadiusSelector(
-                                      context,
-                                      radiusMeters,
-                                      controller.minRadiusMeters,
-                                      maxRadiusMeters,
-                                      actions.radiusSheetPresentation,
-                                    ),
-                            icon: isRadiusLoading
-                                ? SizedBox.square(
-                                    key: const ValueKey<String>(
-                                      'agenda-radius-loading',
-                                    ),
-                                    dimension: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        colorScheme.onSurfaceVariant,
+                          return StreamValueBuilder<bool>(
+                            streamValue:
+                                controller.isRadiusActionCompactStreamValue,
+                            builder: (context, isCompact) {
+                              final onPressed = isRadiusLoading
+                                  ? null
+                                  : () => _showRadiusSelector(
+                                        context,
+                                        radiusMeters,
+                                        controller.minRadiusMeters,
+                                        maxRadiusMeters,
+                                        actions.radiusSheetPresentation,
+                                      );
+                              final tooltip = isRadiusLoading
+                                  ? 'Atualizando raio...'
+                                  : 'Raio ${_formatRadiusLabel(radiusMeters)}';
+
+                              return AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, animation) {
+                                  final slideAnimation = Tween<Offset>(
+                                    begin: const Offset(0.08, 0),
+                                    end: Offset.zero,
+                                  ).animate(animation);
+                                  final scaleAnimation = Tween<double>(
+                                    begin: 0.92,
+                                    end: 1,
+                                  ).animate(animation);
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: slideAnimation,
+                                      child: ScaleTransition(
+                                        scale: scaleAnimation,
+                                        child: SizeTransition(
+                                          sizeFactor: animation,
+                                          axis: Axis.horizontal,
+                                          axisAlignment: 1,
+                                          child: child,
+                                        ),
                                       ),
                                     ),
-                                  )
-                                : Icon(
-                                    Icons.radar,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
+                                  );
+                                },
+                                child: isCompact
+                                    ? _buildCompactRadiusAction(
+                                        context: context,
+                                        radiusMeters: radiusMeters,
+                                        tooltip: tooltip,
+                                        onPressed: onPressed,
+                                        isLoading: isRadiusLoading,
+                                      )
+                                    : _buildExpandedRadiusAction(
+                                        context: context,
+                                        radiusMeters: radiusMeters,
+                                        tooltip: tooltip,
+                                        onPressed: onPressed,
+                                        isLoading: isRadiusLoading,
+                                      ),
+                              );
+                            },
                           );
                         },
                       );
@@ -210,6 +243,145 @@ class AgendaAppBar extends StatelessWidget {
     final icon = isSelected ? Icons.history : Icons.history_outlined;
 
     return Icon(icon, color: color, size: 22);
+  }
+
+  Widget _buildExpandedRadiusAction({
+    required BuildContext context,
+    required double radiusMeters,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    required bool isLoading,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Padding(
+        key: const ValueKey<String>('agenda-radius-expanded'),
+        padding: const EdgeInsetsDirectional.only(end: 4),
+        child: Tooltip(
+          message: tooltip,
+          child: FilledButton.tonalIcon(
+            onPressed: onPressed,
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(0, 40),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 10, 8),
+            ),
+            icon: isLoading
+                ? SizedBox.square(
+                    key: const ValueKey<String>('agenda-radius-loading'),
+                    dimension: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.place_outlined, size: 18),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Até ${_formatRadiusLabel(radiusMeters)}'),
+                const SizedBox(width: 2),
+                const Icon(Icons.expand_more_rounded, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactRadiusAction({
+    required BuildContext context,
+    required double radiusMeters,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    required bool isLoading,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Padding(
+        key: const ValueKey<String>('agenda-radius-compact'),
+        padding: const EdgeInsetsDirectional.only(end: 4),
+        child: Tooltip(
+          message: tooltip,
+          child: IconButton(
+            key: const ValueKey<String>('agenda-radius-compact-button'),
+            onPressed: onPressed,
+            style: IconButton.styleFrom(
+              foregroundColor: colorScheme.onSurfaceVariant,
+              backgroundColor: Colors.transparent,
+              overlayColor:
+                  colorScheme.onSurfaceVariant.withValues(alpha: 0.08),
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(58, 44),
+              padding: EdgeInsets.zero,
+            ),
+            icon: SizedBox(
+              width: 58,
+              height: 40,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.topCenter,
+                children: [
+                  Positioned(
+                    top: 0,
+                    child: isLoading
+                        ? SizedBox.square(
+                            key:
+                                const ValueKey<String>('agenda-radius-loading'),
+                            dimension: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : const Icon(Icons.place_outlined, size: 20),
+                  ),
+                  if (!isLoading)
+                    Positioned(
+                      top: 16,
+                      child: Container(
+                        key: const ValueKey<String>(
+                            'agenda-radius-compact-badge'),
+                        constraints: const BoxConstraints(minWidth: 42),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _formatRadiusLabel(radiusMeters),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontSize: 10,
+                            height: 1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   static String _formatRadiusLabel(double meters) {
@@ -425,7 +597,7 @@ class AgendaAppBar extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.radar,
+                          Icons.place_outlined,
                           color: colorScheme.onPrimaryContainer,
                         ),
                       ),
