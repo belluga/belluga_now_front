@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_brightness.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
@@ -16,6 +17,9 @@ class TenantAdminBrandingSettings {
     TenantAdminOptionalUrlValue? darkIconUrl,
     TenantAdminOptionalUrlValue? faviconUrl,
     TenantAdminOptionalUrlValue? pwaIconUrl,
+    TenantAdminOptionalTextValue? publicWebDefaultTitle,
+    TenantAdminOptionalTextValue? publicWebDefaultDescription,
+    TenantAdminOptionalUrlValue? publicWebDefaultImageUrl,
     TenantAdminBooleanValue? hasDedicatedFaviconValue,
     TenantAdminBooleanValue? usesPwaFaviconFallbackValue,
   })  : tenantNameValue = tenantName,
@@ -27,6 +31,9 @@ class TenantAdminBrandingSettings {
         darkIconUrlValue = darkIconUrl,
         faviconUrlValue = faviconUrl,
         pwaIconUrlValue = pwaIconUrl,
+        publicWebDefaultTitleValue = publicWebDefaultTitle,
+        publicWebDefaultDescriptionValue = publicWebDefaultDescription,
+        publicWebDefaultImageUrlValue = publicWebDefaultImageUrl,
         hasDedicatedFaviconValue =
             hasDedicatedFaviconValue ?? _defaultFalseBooleanValue(),
         usesPwaFaviconFallbackValue =
@@ -42,6 +49,9 @@ class TenantAdminBrandingSettings {
   final TenantAdminOptionalUrlValue? darkIconUrlValue;
   final TenantAdminOptionalUrlValue? faviconUrlValue;
   final TenantAdminOptionalUrlValue? pwaIconUrlValue;
+  final TenantAdminOptionalTextValue? publicWebDefaultTitleValue;
+  final TenantAdminOptionalTextValue? publicWebDefaultDescriptionValue;
+  final TenantAdminOptionalUrlValue? publicWebDefaultImageUrlValue;
   final TenantAdminBooleanValue hasDedicatedFaviconValue;
   final TenantAdminBooleanValue usesPwaFaviconFallbackValue;
 
@@ -54,6 +64,11 @@ class TenantAdminBrandingSettings {
   String? get darkIconUrl => darkIconUrlValue?.nullableValue;
   String? get faviconUrl => faviconUrlValue?.nullableValue;
   String? get pwaIconUrl => pwaIconUrlValue?.nullableValue;
+  String? get publicWebDefaultTitle => publicWebDefaultTitleValue?.nullableValue;
+  String? get publicWebDefaultDescription =>
+      publicWebDefaultDescriptionValue?.nullableValue;
+  String? get publicWebDefaultImageUrl =>
+      publicWebDefaultImageUrlValue?.nullableValue;
   bool get hasDedicatedFavicon => hasDedicatedFaviconValue.value;
   bool get usesPwaFaviconFallback => usesPwaFaviconFallbackValue.value;
 

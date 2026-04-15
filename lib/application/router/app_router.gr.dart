@@ -744,6 +744,7 @@ class LocationPermissionRoute
     _i69.LocationPermissionState? initialState,
     bool allowContinueWithoutLocation = true,
     _i66.ValueChanged<_i70.LocationPermissionGateResult>? onResult,
+    bool popRouteAfterResult = false,
     List<_i65.PageRouteInfo>? children,
   }) : super(
           LocationPermissionRoute.name,
@@ -752,6 +753,7 @@ class LocationPermissionRoute
             initialState: initialState,
             allowContinueWithoutLocation: allowContinueWithoutLocation,
             onResult: onResult,
+            popRouteAfterResult: popRouteAfterResult,
           ),
           initialChildren: children,
         );
@@ -769,6 +771,7 @@ class LocationPermissionRoute
         initialState: args.initialState,
         allowContinueWithoutLocation: args.allowContinueWithoutLocation,
         onResult: args.onResult,
+        popRouteAfterResult: args.popRouteAfterResult,
       );
     },
   );
@@ -780,6 +783,7 @@ class LocationPermissionRouteArgs {
     this.initialState,
     this.allowContinueWithoutLocation = true,
     this.onResult,
+    this.popRouteAfterResult = false,
   });
 
   final _i66.Key? key;
@@ -790,9 +794,11 @@ class LocationPermissionRouteArgs {
 
   final _i66.ValueChanged<_i70.LocationPermissionGateResult>? onResult;
 
+  final bool popRouteAfterResult;
+
   @override
   String toString() {
-    return 'LocationPermissionRouteArgs{key: $key, initialState: $initialState, allowContinueWithoutLocation: $allowContinueWithoutLocation, onResult: $onResult}';
+    return 'LocationPermissionRouteArgs{key: $key, initialState: $initialState, allowContinueWithoutLocation: $allowContinueWithoutLocation, onResult: $onResult, popRouteAfterResult: $popRouteAfterResult}';
   }
 
   @override
@@ -802,7 +808,8 @@ class LocationPermissionRouteArgs {
     return key == other.key &&
         initialState == other.initialState &&
         allowContinueWithoutLocation == other.allowContinueWithoutLocation &&
-        onResult == other.onResult;
+        onResult == other.onResult &&
+        popRouteAfterResult == other.popRouteAfterResult;
   }
 
   @override
@@ -810,7 +817,8 @@ class LocationPermissionRouteArgs {
       key.hashCode ^
       initialState.hashCode ^
       allowContinueWithoutLocation.hashCode ^
-      onResult.hashCode;
+      onResult.hashCode ^
+      popRouteAfterResult.hashCode;
 }
 
 /// generated route for

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
@@ -110,6 +111,62 @@ void main() {
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
     expect(crop.withCircleUi, isFalse);
     expect(find.text('Recortar capa'), findsOneWidget);
+    expect(find.text('Usar'), findsOneWidget);
+  });
+
+  testWidgets('crop sheet uses canonical OG ratio for public web image',
+      (tester) async {
+    final bytes = _createPngBytes(width: 1200, height: 1800);
+    final file = XFile.fromData(
+      bytes,
+      name: 'public_web_default.png',
+      mimeType: 'image/png',
+    );
+    final service = _FakeIngestionService(bytes);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Builder(
+        builder: (context) {
+          return Scaffold(
+            body: Center(
+              child: FilledButton(
+                onPressed: () {
+                  showTenantAdminImageCropSheet(
+                    context: context,
+                    sourceFile: file,
+                    slot: TenantAdminImageSlot.publicWebDefaultImage,
+                    readBytesForCrop: service.readBytesForCrop,
+                    prepareCroppedFile: (croppedData, slot) =>
+                        service.prepareBytesAsXFile(
+                      croppedData,
+                      slot: slot,
+                      applyAspectCrop: false,
+                    ),
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Recortar imagem de compartilhamento'), findsOneWidget);
+    await _pumpUntilFound(tester, find.byType(Crop));
+
+    expect(tester.takeException(), isNull);
+    final crop = tester.widget<Crop>(find.byType(Crop));
+    expect(
+      crop.aspectRatio,
+      closeTo(tenantAdminPublicWebDefaultImageAspectRatio, 0.0001),
+    );
+    expect(crop.withCircleUi, isFalse);
     expect(find.text('Usar'), findsOneWidget);
   });
 }

@@ -798,6 +798,11 @@ void main() {
             'uses_pwa_fallback': false,
           },
         },
+        'public_web_metadata': {
+          'default_title': 'Guarappari Home',
+          'default_description': 'Fallback institucional da home.',
+          'default_image': 'https://tenant-a.test/storage/public-web-updated.jpg',
+        },
         'logo_settings': {
           'pwa_icon': {
             'icon512_uri': 'https://tenant-a.test/storage/pwa-icon.png',
@@ -827,6 +832,14 @@ void main() {
           bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
           fileName: 'favicon.ico',
           mimeType: 'image/x-icon',
+        ),
+        publicWebDefaultTitle: _optionalTextValue('Guarappari Home'),
+        publicWebDefaultDescription:
+            _optionalTextValue('Fallback institucional da home.'),
+        publicWebDefaultImageUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([1, 2, 3, 4]),
+          fileName: 'public_web.jpg',
+          mimeType: 'image/jpeg',
         ),
       ),
     );
@@ -866,9 +879,37 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      formData.fields.any(
+        (item) =>
+            item.key == 'public_web_metadata[default_title]' &&
+            item.value == 'Guarappari Home',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (item) =>
+            item.key == 'public_web_metadata[default_description]' &&
+            item.value == 'Fallback institucional da home.',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.files.any(
+        (entry) => entry.key == 'public_web_metadata[default_image]',
+      ),
+      isTrue,
+    );
     expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
     expect(updated.primarySeedColor, '#112233');
     expect(updated.secondarySeedColor, '#445566');
+    expect(updated.publicWebDefaultTitle, 'Guarappari Home');
+    expect(updated.publicWebDefaultDescription, 'Fallback institucional da home.');
+    expect(
+      updated.publicWebDefaultImageUrl,
+      'https://tenant-a.test/storage/public-web-updated.jpg',
+    );
     expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
     expect(updated.faviconUrl, contains('tenant-a.test/favicon.ico'));
     expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
@@ -1088,6 +1129,49 @@ void main() {
     expect(
       repository.brandingSettingsStreamValue.value?.pwaIconUrl,
       'http://tenant-a.test:8081/storage/pwa-icon-512.png',
+    );
+  });
+
+  test(
+      'fetchBrandingSettings maps public web metadata fields from environment payload',
+      () async {
+    final adapter = _RoutingAdapter(
+      environmentPayload: {
+        'type': 'tenant',
+        'tenant_id': 'tenant-a',
+        'name': 'Guarappari Admin',
+        'theme_data_settings': {
+          'brightness_default': 'light',
+          'primary_seed_color': '#a36ce3',
+          'secondary_seed_color': '#03dac6',
+        },
+        'public_web_metadata': {
+          'default_title': 'Guarappari Home',
+          'default_description': 'Fallback institucional da home.',
+          'default_image': '/storage/public-web.jpg',
+        },
+      },
+    );
+    final scope = _FixedTenantScopeForOriginRead(
+      selectedTenantDomainValue: 'tenant-a.test',
+      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final branding = await repository.fetchBrandingSettings();
+
+    expect(branding.publicWebDefaultTitle, 'Guarappari Home');
+    expect(
+      branding.publicWebDefaultDescription,
+      'Fallback institucional da home.',
+    );
+    expect(
+      branding.publicWebDefaultImageUrl,
+      'http://tenant-a.test:8081/storage/public-web.jpg',
     );
   });
 

@@ -1,4 +1,5 @@
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,6 +37,8 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
         TenantAdminBrandingAssetSlot.lightIcon => 1.0,
         TenantAdminBrandingAssetSlot.darkIcon => 1.0,
         TenantAdminBrandingAssetSlot.pwaIcon => 1.0,
+        TenantAdminBrandingAssetSlot.publicWebDefaultImage =>
+          tenantAdminPublicWebDefaultImageAspectRatio,
       };
 
   @override
