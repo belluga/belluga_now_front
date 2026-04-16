@@ -22,6 +22,8 @@ class HomeAgendaSectionView extends StatefulWidget {
 }
 
 class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
+  static const int _coordinatedScrollSyncWarmupFrames = 8;
+
   ScrollController? _attachedScrollController;
 
   @override
@@ -49,6 +51,10 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     _attachedScrollController = controller;
     controller?.addListener(_handleCoordinatedScrollChanged);
     _syncCoordinatedScrollState();
+    _scheduleCoordinatedScrollStateSync(
+      controller,
+      remainingFrames: _coordinatedScrollSyncWarmupFrames,
+    );
   }
 
   void _detachScrollController(ScrollController? controller) {
@@ -60,6 +66,30 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
 
   void _handleCoordinatedScrollChanged() {
     _syncCoordinatedScrollState();
+  }
+
+  void _scheduleCoordinatedScrollStateSync(
+    ScrollController? controller, {
+    required int remainingFrames,
+  }) {
+    if (controller == null || remainingFrames <= 0) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_attachedScrollController, controller)) {
+        return;
+      }
+      _syncCoordinatedScrollState();
+      // External controllers can attach or restore offset a few frames after
+      // the widget subscribes, without emitting a scroll delta.
+      if (!controller.hasClients || controller.offset == 0.0) {
+        WidgetsBinding.instance.scheduleFrame();
+        _scheduleCoordinatedScrollStateSync(
+          controller,
+          remainingFrames: remainingFrames - 1,
+        );
+      }
+    });
   }
 
   void _syncCoordinatedScrollState() {

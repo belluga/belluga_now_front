@@ -11,6 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AgendaAppBar extends StatelessWidget {
+  static const double _compactRadiusActionWidth = 72;
+  static const double _expandedRadiusActionWidth = 156;
+
   AgendaAppBar({
     super.key,
     required this.controller,
@@ -231,7 +234,9 @@ class AgendaAppBar extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
-              width: isCompact ? 72 : 124,
+              width: isCompact
+                  ? _compactRadiusActionWidth
+                  : _expandedRadiusActionWidth,
               height: isCompact ? 48 : 40,
               decoration: BoxDecoration(
                 color: isCompact
@@ -278,7 +283,7 @@ class AgendaAppBar extends StatelessWidget {
   }) {
     return SizedBox(
       key: const ValueKey<String>('agenda-radius-expanded'),
-      width: 124,
+      width: _expandedRadiusActionWidth,
       height: 40,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 10, 8),
@@ -334,7 +339,7 @@ class AgendaAppBar extends StatelessWidget {
   }) {
     return SizedBox(
       key: const ValueKey<String>('agenda-radius-compact'),
-      width: 72,
+      width: _compactRadiusActionWidth,
       height: 48,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
