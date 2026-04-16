@@ -118,50 +118,13 @@ class AgendaAppBar extends StatelessWidget {
                                   ? 'Atualizando raio...'
                                   : 'Raio ${_formatRadiusLabel(radiusMeters)}';
 
-                              return AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 220),
-                                switchInCurve: Curves.easeOutCubic,
-                                switchOutCurve: Curves.easeInCubic,
-                                transitionBuilder: (child, animation) {
-                                  final slideAnimation = Tween<Offset>(
-                                    begin: const Offset(0.08, 0),
-                                    end: Offset.zero,
-                                  ).animate(animation);
-                                  final scaleAnimation = Tween<double>(
-                                    begin: 0.92,
-                                    end: 1,
-                                  ).animate(animation);
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: SlideTransition(
-                                      position: slideAnimation,
-                                      child: ScaleTransition(
-                                        scale: scaleAnimation,
-                                        child: SizeTransition(
-                                          sizeFactor: animation,
-                                          axis: Axis.horizontal,
-                                          axisAlignment: 1,
-                                          child: child,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: isCompact
-                                    ? _buildCompactRadiusAction(
-                                        context: context,
-                                        radiusMeters: radiusMeters,
-                                        tooltip: tooltip,
-                                        onPressed: onPressed,
-                                        isLoading: isRadiusLoading,
-                                      )
-                                    : _buildExpandedRadiusAction(
-                                        context: context,
-                                        radiusMeters: radiusMeters,
-                                        tooltip: tooltip,
-                                        onPressed: onPressed,
-                                        isLoading: isRadiusLoading,
-                                      ),
+                              return _buildRadiusAction(
+                                context: context,
+                                radiusMeters: radiusMeters,
+                                tooltip: tooltip,
+                                onPressed: onPressed,
+                                isLoading: isRadiusLoading,
+                                isCompact: isCompact,
                               );
                             },
                           );
@@ -245,49 +208,61 @@ class AgendaAppBar extends StatelessWidget {
     return Icon(icon, color: color, size: 22);
   }
 
-  Widget _buildExpandedRadiusAction({
+  Widget _buildRadiusAction({
     required BuildContext context,
     required double radiusMeters,
     required String tooltip,
     required VoidCallback? onPressed,
     required bool isLoading,
+    required bool isCompact,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Center(
+    return Align(
+      alignment: Alignment.centerRight,
       child: Padding(
-        key: const ValueKey<String>('agenda-radius-expanded'),
         padding: const EdgeInsetsDirectional.only(end: 4),
         child: Tooltip(
           message: tooltip,
-          child: FilledButton.tonalIcon(
-            onPressed: onPressed,
-            style: FilledButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const Size(0, 40),
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 10, 8),
-            ),
-            icon: isLoading
-                ? SizedBox.square(
-                    key: const ValueKey<String>('agenda-radius-loading'),
-                    dimension: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  )
-                : const Icon(Icons.place_outlined, size: 18),
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Até ${_formatRadiusLabel(radiusMeters)}'),
-                const SizedBox(width: 2),
-                const Icon(Icons.expand_more_rounded, size: 18),
-              ],
+          child: Semantics(
+            button: true,
+            enabled: onPressed != null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              width: isCompact ? 72 : 124,
+              height: isCompact ? 48 : 40,
+              decoration: BoxDecoration(
+                color: isCompact
+                    ? Colors.transparent
+                    : colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                shape: const StadiumBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: isCompact
+                      ? const ValueKey<String>('agenda-radius-compact-button')
+                      : null,
+                  onTap: onPressed,
+                  child: isCompact
+                      ? _buildCompactRadiusActionContent(
+                          theme: theme,
+                          colorScheme: colorScheme,
+                          radiusMeters: radiusMeters,
+                          isLoading: isLoading,
+                        )
+                      : _buildExpandedRadiusActionContent(
+                          theme: theme,
+                          colorScheme: colorScheme,
+                          radiusMeters: radiusMeters,
+                          isLoading: isLoading,
+                        ),
+                ),
+              ),
             ),
           ),
         ),
@@ -295,91 +270,121 @@ class AgendaAppBar extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactRadiusAction({
-    required BuildContext context,
+  Widget _buildExpandedRadiusActionContent({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
     required double radiusMeters,
-    required String tooltip,
-    required VoidCallback? onPressed,
     required bool isLoading,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Center(
+    return SizedBox(
+      key: const ValueKey<String>('agenda-radius-expanded'),
+      width: 124,
+      height: 40,
       child: Padding(
-        key: const ValueKey<String>('agenda-radius-compact'),
-        padding: const EdgeInsetsDirectional.only(end: 4),
-        child: Tooltip(
-          message: tooltip,
-          child: IconButton(
-            key: const ValueKey<String>('agenda-radius-compact-button'),
-            onPressed: onPressed,
-            style: IconButton.styleFrom(
-              foregroundColor: colorScheme.onSurfaceVariant,
-              backgroundColor: Colors.transparent,
-              overlayColor:
-                  colorScheme.onSurfaceVariant.withValues(alpha: 0.08),
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const Size(58, 44),
-              padding: EdgeInsets.zero,
-            ),
-            icon: SizedBox(
-              width: 58,
-              height: 40,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.topCenter,
-                children: [
-                  Positioned(
-                    top: 0,
-                    child: isLoading
-                        ? SizedBox.square(
-                            key:
-                                const ValueKey<String>('agenda-radius-loading'),
-                            dimension: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          )
-                        : const Icon(Icons.place_outlined, size: 20),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 10, 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading)
+              SizedBox.square(
+                key: const ValueKey<String>('agenda-radius-loading'),
+                dimension: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    colorScheme.onSecondaryContainer,
                   ),
-                  if (!isLoading)
-                    Positioned(
-                      top: 16,
-                      child: Container(
-                        key: const ValueKey<String>(
-                            'agenda-radius-compact-badge'),
-                        constraints: const BoxConstraints(minWidth: 42),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _formatRadiusLabel(radiusMeters),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontSize: 10,
-                            height: 1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
+              )
+            else
+              Icon(
+                Icons.place_outlined,
+                size: 18,
+                color: colorScheme.onSecondaryContainer,
+              ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Até ${_formatRadiusLabel(radiusMeters)}',
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 18,
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompactRadiusActionContent({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required double radiusMeters,
+    required bool isLoading,
+  }) {
+    return SizedBox(
+      key: const ValueKey<String>('agenda-radius-compact'),
+      width: 72,
+      height: 48,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isLoading)
+            SizedBox.square(
+              key: const ValueKey<String>('agenda-radius-loading'),
+              dimension: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            Icon(
+              Icons.place_outlined,
+              size: 22,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          if (!isLoading) ...[
+            const SizedBox(height: 2),
+            Container(
+              key: const ValueKey<String>('agenda-radius-compact-badge'),
+              constraints: const BoxConstraints(minWidth: 46),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _formatRadiusLabel(radiusMeters),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontSize: 10,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

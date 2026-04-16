@@ -24,12 +24,18 @@ void main() {
         ),
       );
 
-      expect(find.byKey(const ValueKey<String>('agenda-radius-expanded')),
-          findsOneWidget);
-      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
+      final expandedAction =
+          find.byKey(const ValueKey<String>('agenda-radius-expanded'));
+
+      expect(expandedAction, findsOneWidget);
+      expect(
+        find.descendant(
+          of: expandedAction,
+          matching: find.byIcon(Icons.place_outlined),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Até 5 km'), findsOneWidget);
-      expect(find.byKey(const ValueKey<String>('agenda-radius-compact')),
-          findsNothing);
     },
   );
 
@@ -62,11 +68,34 @@ void main() {
         find.byKey(const ValueKey<String>('agenda-radius-compact-badge')),
         findsOneWidget,
       );
-      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
+      final compactAction =
+          find.byKey(const ValueKey<String>('agenda-radius-compact'));
+      expect(
+        find.descendant(
+          of: compactAction,
+          matching: find.byIcon(Icons.place_outlined),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('50 km'), findsOneWidget);
       expect(find.text('Até 5 km'), findsNothing);
-      expect(find.byKey(const ValueKey<String>('agenda-radius-expanded')),
-          findsNothing);
+
+      final buttonRect = tester.getRect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact-button')),
+      );
+      final iconRect = tester.getRect(
+        find.descendant(
+          of: compactAction,
+          matching: find.byIcon(Icons.place_outlined),
+        ),
+      );
+      final badgeRect = tester.getRect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact-badge')),
+      );
+
+      expect(buttonRect.width, greaterThanOrEqualTo(68));
+      expect(badgeRect.center.dy, greaterThan(iconRect.center.dy));
+      expect(badgeRect.width, greaterThanOrEqualTo(46));
     },
   );
 
