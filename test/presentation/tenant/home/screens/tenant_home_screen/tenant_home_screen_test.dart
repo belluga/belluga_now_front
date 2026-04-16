@@ -51,19 +51,12 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
   MockSpec<AppData>(),
 ])
 class _TestTenantHomeController extends MockTenantHomeController {
-  _TestTenantHomeController(this._appData)
-      : _homeAgendaRadiusActionCompactStreamValue =
-            StreamValue<bool>(defaultValue: false);
+  _TestTenantHomeController(this._appData);
 
   final AppData _appData;
-  final StreamValue<bool> _homeAgendaRadiusActionCompactStreamValue;
 
   @override
   AppData get appData => _appData;
-
-  @override
-  StreamValue<bool> get homeAgendaRadiusActionCompactStreamValue =>
-      _homeAgendaRadiusActionCompactStreamValue;
 }
 
 class _TestFavoritesSectionController extends MockFavoritesSectionController {

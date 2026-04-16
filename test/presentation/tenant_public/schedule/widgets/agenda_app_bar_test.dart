@@ -100,6 +100,40 @@ void main() {
   );
 
   testWidgets(
+    'compact radius action opens selector sheet when tapped',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController()
+        ..isRadiusActionCompactStreamValue.addValue(true)
+        ..radiusMetersStreamValue.addValue(50000);
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: AgendaAppBar(controller: controller),
+              ),
+              body: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('agenda-radius-compact-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Slider), findsOneWidget);
+      expect(find.text('50 km'), findsWidgets);
+    },
+  );
+
+  testWidgets(
     'radius slider updates local value on change and commits on change end',
     (tester) async {
       final controller = _FakeAgendaAppBarController();

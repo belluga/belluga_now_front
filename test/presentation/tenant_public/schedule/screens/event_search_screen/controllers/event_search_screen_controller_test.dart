@@ -268,7 +268,7 @@ void main() {
   );
 
   testWidgets(
-    'radius action compacts after scrolling events list and expands again at top',
+    'radius action compacts on first scroll movement and expands again at top',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository()
         ..eventSearchPages = [
@@ -300,15 +300,59 @@ void main() {
 
       expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
 
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
-      await tester.pumpAndSettle();
+      controller.scrollController.jumpTo(1);
+      await tester.pump();
 
       expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
 
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 800));
-      await tester.pumpAndSettle();
+      controller.scrollController.jumpTo(0);
+      await tester.pump();
 
       expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+    },
+  );
+
+  testWidgets(
+    'radius compact state syncs from existing scroll offset after listener attaches',
+    (tester) async {
+      final controller = _buildEventSearchController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView.builder(
+              controller: controller.scrollController,
+              itemCount: 40,
+              itemBuilder: (context, index) {
+                return SizedBox(
+                  height: 72,
+                  child: Text('row $index'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      controller.scrollController.jumpTo(80);
+      await tester.pump();
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      await controller.init();
+      await tester.pump();
+      await tester.pump();
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
     },
   );
 }

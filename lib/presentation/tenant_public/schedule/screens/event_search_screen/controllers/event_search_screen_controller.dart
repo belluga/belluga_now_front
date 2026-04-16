@@ -56,8 +56,7 @@ class EventSearchScreenController
   final LocationOriginServiceContract _locationOriginService;
 
   static const double _fallbackRadiusMeters = 50000.0;
-  static const double _radiusCompactEnterOffset = 24.0;
-  static const double _radiusCompactExitOffset = 8.0;
+  static const double _radiusCompactScrollEpsilon = 0.5;
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -194,33 +193,51 @@ class EventSearchScreenController
   void _attachScrollListener() {
     if (_isScrollListenerAttached) return;
     _isScrollListenerAttached = true;
-    scrollController.addListener(() {
-      if (scrollController.hasClients) {
-        _updateRadiusActionCompactState(
-          scrollController.position.pixels,
-        );
-      }
-      if (!_hasMore ||
-          _isFetching ||
-          isInitialLoadingStreamValue.value ||
-          !hasMoreStreamValue.value) {
+    scrollController.addListener(_handleScrollChanged);
+    _syncRadiusActionCompactStateWithCurrentOffset();
+  }
+
+  void _handleScrollChanged() {
+    _syncRadiusActionCompactStateWithCurrentOffset();
+    if (!scrollController.hasClients ||
+        !_hasMore ||
+        _isFetching ||
+        isInitialLoadingStreamValue.value ||
+        !hasMoreStreamValue.value) {
+      return;
+    }
+
+    final position = scrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      loadNextPage();
+    }
+  }
+
+  void _syncRadiusActionCompactStateWithCurrentOffset() {
+    if (scrollController.hasClients) {
+      _updateRadiusActionCompactState(scrollController.position.pixels);
+      return;
+    }
+
+    final attachedScrollController = scrollController;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed ||
+          !identical(scrollController, attachedScrollController)) {
         return;
       }
-
-      final position = scrollController.position;
-      const threshold = 320.0;
-      if (position.pixels + threshold >= position.maxScrollExtent) {
-        loadNextPage();
+      if (!attachedScrollController.hasClients) {
+        return;
       }
+      _updateRadiusActionCompactState(
+        attachedScrollController.position.pixels,
+      );
     });
   }
 
   void _updateRadiusActionCompactState(double pixels) {
-    final current = isRadiusActionCompactStreamValue.value;
-    final shouldCompact = current
-        ? pixels > _radiusCompactExitOffset
-        : pixels > _radiusCompactEnterOffset;
-    if (shouldCompact == current) {
+    final shouldCompact = pixels > _radiusCompactScrollEpsilon;
+    if (shouldCompact == isRadiusActionCompactStreamValue.value) {
       return;
     }
     _ifAlive(() => isRadiusActionCompactStreamValue.addValue(shouldCompact));

@@ -29,8 +29,6 @@ class TenantHomeController implements Disposable {
             GetIt.I.get<LocationOriginServiceContract>();
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
-  static const double _agendaRadiusCompactEnterOffset = 24.0;
-  static const double _agendaRadiusCompactExitOffset = 8.0;
 
   final UserEventsRepositoryContract _userEventsRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -42,8 +40,6 @@ class TenantHomeController implements Disposable {
       StreamValue<HomeLocationStatusState?>(defaultValue: null);
   final StreamValue<List<VenueEventResume>> myEventsFilteredStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: const []);
-  final StreamValue<bool> homeAgendaRadiusActionCompactStreamValue =
-      StreamValue<bool>(defaultValue: false);
 
   ScrollController get scrollController => _scrollController;
 
@@ -60,7 +56,6 @@ class TenantHomeController implements Disposable {
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-    _scrollController.addListener(_handleHomeScroll);
 
     try {
       await _userEventsRepository.refreshConfirmedEventIds();
@@ -90,23 +85,6 @@ class TenantHomeController implements Disposable {
         _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
       unawaited(loadMyEvents());
     });
-  }
-
-  void _handleHomeScroll() {
-    final pixels =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
-    _updateHomeAgendaRadiusCompactState(pixels);
-  }
-
-  void _updateHomeAgendaRadiusCompactState(double pixels) {
-    final current = homeAgendaRadiusActionCompactStreamValue.value;
-    final shouldCompact = current
-        ? pixels > _agendaRadiusCompactExitOffset
-        : pixels > _agendaRadiusCompactEnterOffset;
-    if (shouldCompact == current) {
-      return;
-    }
-    homeAgendaRadiusActionCompactStreamValue.addValue(shouldCompact);
   }
 
   void _updateMyEvents(List<VenueEventResume> events) {
@@ -200,10 +178,8 @@ class TenantHomeController implements Disposable {
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
     _homeLocationStatusSubscription?.cancel();
-    _scrollController.removeListener(_handleHomeScroll);
     _scrollController.dispose();
     homeLocationStatusStreamValue.dispose();
     myEventsFilteredStreamValue.dispose();
-    homeAgendaRadiusActionCompactStreamValue.dispose();
   }
 }

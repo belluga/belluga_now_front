@@ -165,54 +165,6 @@ void main() {
       'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
     );
   });
-
-  testWidgets(
-      'home controller compacts radius action from owned screen scroll controller',
-      (tester) async {
-    await controller.init();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: CustomScrollView(
-            controller: controller.scrollController,
-            slivers: [
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 240, child: Text('header')),
-              ),
-              SliverList.builder(
-                itemCount: 40,
-                itemBuilder: (context, index) {
-                  return SizedBox(
-                    height: 72,
-                    child: Text('row $index'),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isFalse);
-
-    controller.scrollController.jumpTo(120);
-    await tester.pump();
-
-    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isTrue);
-
-    controller.scrollController.jumpTo(10);
-    await tester.pump();
-
-    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isTrue);
-
-    controller.scrollController.jumpTo(0);
-    await tester.pump();
-
-    expect(controller.homeAgendaRadiusActionCompactStreamValue.value, isFalse);
-  });
 }
 
 TenantHomeController _buildTenantHomeController({
