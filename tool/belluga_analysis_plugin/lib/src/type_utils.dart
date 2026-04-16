@@ -63,12 +63,69 @@ String? firstTypeArgumentName(TypeArgumentList? typeArguments) {
   return normalizeTypeName(args.first.toSource());
 }
 
+String? sourcePathOfTypeArgument(TypeArgumentList? typeArguments) {
+  final args = typeArguments?.arguments;
+  if (args == null || args.isEmpty) {
+    return null;
+  }
+
+  final firstArgument = args.first;
+  if (firstArgument is! NamedType) {
+    return null;
+  }
+
+  return sourcePathOfNamedType(firstArgument);
+}
+
 String dartTypeName(DartType? type) {
   if (type == null) {
     return '';
   }
 
   return normalizeTypeName(type.getDisplayString());
+}
+
+String? sourcePathOfTypeAnnotation(TypeAnnotation? type) {
+  if (type is! NamedType) {
+    return null;
+  }
+
+  return sourcePathOfNamedType(type);
+}
+
+String? sourcePathOfNamedType(NamedType type) {
+  final element = type.element;
+  if (element != null) {
+    final source =
+        element.firstFragment.libraryFragment?.source ??
+        element.library?.firstFragment.source;
+    if (source != null) {
+      return normalizePath(source.fullName);
+    }
+  }
+
+  return sourcePathOfDartType(type.type);
+}
+
+String? sourcePathOfDartType(DartType? type) {
+  if (type == null) {
+    return null;
+  }
+
+  if (type is FunctionType) {
+    return sourcePathOfDartType(type.returnType);
+  }
+
+  final alias = type.alias;
+  if (alias != null) {
+    return sourcePathOfDartType(alias.element.aliasedType);
+  }
+
+  if (type is InterfaceType) {
+    return normalizePath(type.element.library.firstFragment.source.fullName);
+  }
+
+  return null;
 }
 
 bool isControllerTypeName(String? typeName) {

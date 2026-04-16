@@ -14,16 +14,18 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class HomeModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
-    registerLazySingleton<TenantHomeAgendaController>(
-      () => TenantHomeAgendaController(),
-    );
-
     registerLazySingleton<TenantHomeController>(
       () => TenantHomeController(),
     );
-
-    registerLazySingleton(FavoritesSectionController.new);
-    registerLazySingleton(InvitesBannerBuilderController.new);
+    registerFactory<TenantHomeAgendaController>(
+      () => TenantHomeAgendaController(),
+    );
+    registerFactory<FavoritesSectionController>(
+      () => FavoritesSectionController(),
+    );
+    registerFactory<InvitesBannerBuilderController>(
+      () => InvitesBannerBuilderController(),
+    );
   }
 
   @override

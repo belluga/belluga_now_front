@@ -14,7 +14,7 @@ import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -144,6 +144,7 @@ void main() {
       ),
       appDataRepository: _FakeAppDataRepository(),
     );
+    await controller.init();
 
     final router = _RecordingStackRouter();
 
@@ -153,7 +154,7 @@ void main() {
         stateHash: 0,
         child: MaterialApp(
           home: Scaffold(
-            body: FavoritesSectionBuilder(controller: controller),
+            body: FavoritesSectionView(controller: controller),
           ),
         ),
       ),

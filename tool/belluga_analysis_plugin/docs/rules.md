@@ -130,6 +130,16 @@ Controllers must not accept `StreamValue` as a method/helper parameter. Passing 
 3. If a small helper is still needed, pass a closure (`VoidCallback`) or create a semantic setter bound to the owned field rather than accepting `StreamValue`.
 4. Delegated repository/service `StreamValue` remains read-only in controllers; changing canonical shared state must still go through repository APIs.
 
+## `controller_controller_dependency_forbidden`
+
+### Rule intent
+Controllers must not inject or resolve other presentation controllers. Controller-to-controller relay hides ownership, couples lifecycles, and bypasses repository contracts for shared state.
+
+### Remediation playbook
+1. Replace controller-to-controller relay with repository contracts when the state is shared or persisted.
+2. Keep helper state local without DI/resolving another controller when the helper is truly widget- or controller-private.
+3. Remove `GetIt.get<OtherController>()` and controller-typed constructor dependencies from controller files.
+
 ## `controller_repository_pagination_arguments_forbidden`
 
 ### Rule intent
@@ -180,3 +190,76 @@ Controller-owned `StreamValue` fields must be disposed in `onDispose()` or `disp
 ### Remediation playbook
 1. For each owned `StreamValue` field, add `<field>.dispose()` in `onDispose()`/`dispose()`.
 2. Keep delegated stream disposal forbidden (see previous rule).
+
+## `module_scoped_controller_dispose_forbidden`
+
+### Rule intent
+UI must not manually dispose controllers whose lifecycle is owned above the widget subtree.
+
+### Remediation playbook
+1. If the controller is module-scoped or screen-scoped, remove manual `dispose()` / `onDispose()` calls from UI and rely on the owning scope teardown.
+2. If the controller is a widget-local controller under `widgets/**/controllers/**`, the owning widget subtree may dispose it locally.
+3. If disposal intent is unclear, fix ownership first instead of suppressing the warning.
+
+## `screen_descendant_widget_controller_resolution_forbidden`
+
+### Rule intent
+Screens or parent widgets must not resolve a descendant widget controller outside the owning widget subtree.
+
+### Remediation playbook
+1. Let the owning widget subtree resolve its own widget controller.
+2. If a parent/screen truly needs that state, promote the state instead of resolving the descendant widget controller upward.
+3. Keep same-feature screen-controller resolution separate; this rule only targets leaked widget-controller boundaries.
+
+## `widget_controller_singleton_registration_forbidden`
+
+### Rule intent
+Widget controllers must not be registered with singleton lifecycle when that registration leaks them above the widget subtree.
+
+### Remediation playbook
+1. Prefer widget-scoped or `registerFactory` lifecycle for widget controllers.
+2. Do not register widget controllers through singleton module/global helpers by default.
+3. If an exception is truly required, freeze it canonically first instead of normalizing singleton registration as the default pattern.
+
+## Pending Governance Candidates (Documented, Not Yet Enforced)
+
+These items are frozen as architecture policy candidates from the Home/Agenda controller-boundary review. They are not analyzer-enforced yet; treat them as mandatory code-review guidance until explicit rule implementations land.
+
+## `shared_setting_repository_ownership_required`
+
+### Intended policy
+Shared or persisted UI settings must be repository-owned streams, not controller-owned relay state.
+
+### Why it exists
+A controller can own screen-local state, but once the same setting is reused across controllers/surfaces or persists to user settings, repository ownership is required for one-source-of-truth semantics.
+
+### Canonical remediation
+1. Create or reuse a repository-backed settings contract.
+2. Publish the setting as a repository-owned stream/value surface.
+3. Remove controller-to-controller relay and let each controller consume the repository directly.
+
+## `scroll_reaction_same_source_required`
+
+### Intended policy
+Compact state, pagination, reset-to-top, and other scroll-derived behavior must observe the same scroll source that moves the rendered content.
+
+### Why it exists
+Outer `NestedScrollView` or proxy controller ownership can look correct structurally while still missing the real moving list, producing false-clean tests and broken runtime behavior.
+
+### Canonical remediation
+1. Identify the scroll source whose offset actually changes when the user scrolls the rendered list/content.
+2. Bind the reactive behavior to that exact source.
+3. Remove competing/duplicate scroll owners for the same behavior.
+
+## `borrowed_ui_controller_ownership_required`
+
+### Intended policy
+Borrowed UI controllers (`ScrollController`, `TextEditingController`, `FocusNode`, and similar types) remain owned by the caller.
+
+### Why it exists
+Passing a UI controller into a widget/controller is a dependency handoff, not an ownership transfer. Disposal or shadowing in the callee creates lifecycle bugs and competing signals.
+
+### Canonical remediation
+1. The caller creates and disposes the borrowed controller.
+2. The callee uses the borrowed controller without disposing it.
+3. Do not create a competing controller for the same behavior while a borrowed controller is present.

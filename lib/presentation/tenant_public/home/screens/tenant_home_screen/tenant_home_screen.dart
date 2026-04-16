@@ -26,7 +26,8 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  final TenantHomeController _controller = GetIt.I.get<TenantHomeController>();
+  late final TenantHomeController _controller =
+      GetIt.I.get<TenantHomeController>();
 
   @override
   void initState() {
@@ -44,56 +45,61 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         body: SafeArea(
           top: false,
           child: HomeAgendaSection(
-            builder: (context, slots) {
-              return NestedScrollView(
-                controller: _controller.scrollController,
-                headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  StreamValueBuilder<HomeLocationStatusState?>(
-                    streamValue: _controller.homeLocationStatusStreamValue,
-                    onNullWidget: _buildHomeAppBar(null),
-                    builder: (context, status) => _buildHomeAppBar(status),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SectionHeader(
-                            title: 'Seus Favoritos',
-                          ),
-                          const FavoritesSectionBuilder(),
-                          InvitesBannerBuilder(
-                            margin: const EdgeInsets.only(top: 12),
-                            onPressed: () {
-                              context.router.push(const InviteFlowRoute());
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          StreamValueBuilder(
-                            streamValue:
-                                _controller.myEventsFilteredStreamValue,
-                            builder: (context, events) {
-                              return HomeMyEventsCarousel(
-                                events: events,
-                                onSeeAll: _openConfirmedAgenda,
-                                distanceLabelProvider:
-                                    _controller.distanceLabelForMyEvent,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  slots.header,
-                ],
-                body: slots.body,
-              );
-            },
+            builder: _buildAgendaContent,
+            scrollController: _controller.scrollController,
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAgendaContent(
+    BuildContext context,
+    HomeAgendaSectionSlots slots,
+  ) {
+    return NestedScrollView(
+      controller: _controller.scrollController,
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        StreamValueBuilder<HomeLocationStatusState?>(
+          streamValue: _controller.homeLocationStatusStreamValue,
+          onNullWidget: _buildHomeAppBar(null),
+          builder: (context, status) => _buildHomeAppBar(status),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'Seus Favoritos',
+                ),
+                const FavoritesSectionBuilder(),
+                InvitesBannerBuilder(
+                  margin: const EdgeInsets.only(top: 12),
+                  onPressed: () {
+                    context.router.push(const InviteFlowRoute());
+                  },
+                ),
+                const SizedBox(height: 12),
+                StreamValueBuilder(
+                  streamValue: _controller.myEventsFilteredStreamValue,
+                  builder: (context, events) {
+                    return HomeMyEventsCarousel(
+                      events: events,
+                      onSeeAll: _openConfirmedAgenda,
+                      distanceLabelProvider:
+                          _controller.distanceLabelForMyEvent,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        slots.header,
+      ],
+      body: slots.body,
     );
   }
 

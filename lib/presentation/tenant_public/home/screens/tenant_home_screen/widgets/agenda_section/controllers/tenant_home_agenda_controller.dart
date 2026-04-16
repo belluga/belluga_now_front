@@ -75,6 +75,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final Duration _radiusRefreshDebounce;
 
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _radiusCompactScrollEpsilon = 0.5;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
   static const Duration _preservedFirstPageEmptyRetryDelay =
@@ -110,6 +111,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final isRadiusRefreshLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  @override
+  final isRadiusActionCompactStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<double> _maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
@@ -125,6 +129,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   StreamSubscription? _userLocationSubscription;
   StreamSubscription? _radiusSubscription;
   Timer? _radiusRefreshDebounceTimer;
+  bool _outerScrollCompactHint = false;
+  bool _innerScrollCompactHint = false;
   bool _isFetching = false;
   bool _isRefreshing = false;
   bool _hasMore = true;
@@ -158,6 +164,43 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void _ifAlive(VoidCallback writer) {
     if (_isDisposed) return;
     writer();
+  }
+
+  void setRadiusActionCompactState(bool isCompact) {
+    _outerScrollCompactHint = isCompact;
+    _innerScrollCompactHint = isCompact;
+    _publishRadiusActionCompactState();
+  }
+
+  void updateRadiusActionCompactStateFromOuterScroll(double pixels) {
+    _outerScrollCompactHint = _resolveRadiusActionCompactHint(
+      current: _outerScrollCompactHint,
+      pixels: pixels,
+    );
+    _publishRadiusActionCompactState();
+  }
+
+  void updateRadiusActionCompactStateFromScroll(double pixels) {
+    _innerScrollCompactHint = _resolveRadiusActionCompactHint(
+      current: _innerScrollCompactHint,
+      pixels: pixels,
+    );
+    _publishRadiusActionCompactState();
+  }
+
+  bool _resolveRadiusActionCompactHint({
+    required bool current,
+    required double pixels,
+  }) {
+    return pixels > _radiusCompactScrollEpsilon;
+  }
+
+  void _publishRadiusActionCompactState() {
+    final shouldCompact = _outerScrollCompactHint || _innerScrollCompactHint;
+    if (isRadiusActionCompactStreamValue.value == shouldCompact) {
+      return;
+    }
+    _ifAlive(() => isRadiusActionCompactStreamValue.addValue(shouldCompact));
   }
 
   ScheduleRepoBool _toScheduleBool(bool value) {
@@ -258,7 +301,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       final stopwatch = Stopwatch()..start();
       if (shouldShowInitialLoading) {
-        _ifAlive(() => initialLoadingLabelStreamValue.addValue('Localizando...'));
+        _ifAlive(
+            () => initialLoadingLabelStreamValue.addValue('Localizando...'));
         await _resolveEffectiveOrigin(
           warmUpIfPossible: shouldShowInitialLoading,
         );
@@ -905,6 +949,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
+    isRadiusActionCompactStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();
