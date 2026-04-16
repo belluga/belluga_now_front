@@ -7,16 +7,16 @@ import '../type_utils.dart';
 
 class ModuleScopedControllerDisposeForbiddenRule extends DartLintRule {
   ModuleScopedControllerDisposeForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'module_scoped_controller_dispose_forbidden',
-            problemMessage:
-                'Widgets/screens must not dispose module-scoped controllers.',
-            correctionMessage:
-                'Treatments: remove manual dispose/onDispose on feature controllers in UI; rely on ModuleScope teardown.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.WARNING,
+          name: 'module_scoped_controller_dispose_forbidden',
+          problemMessage:
+              'Widgets/screens must not dispose module-scoped controllers.',
+          correctionMessage:
+              'Treatments: remove manual dispose/onDispose on feature controllers in UI; rely on ModuleScope teardown.',
+        ),
+      );
 
   @override
   void run(
@@ -37,14 +37,25 @@ class ModuleScopedControllerDisposeForbiddenRule extends DartLintRule {
 
       final target = node.realTarget;
       final targetSource = target?.toSource() ?? '';
-      final targetTypeName = dartTypeName(target?.staticType);
+      final targetType = target?.staticType;
+      final targetTypeName = dartTypeName(targetType);
+      final controllerSourcePath = sourcePathOfDartType(targetType);
 
       if (isUiControllerTypeName(targetTypeName)) {
         return;
       }
 
+      if (_isOwnedWidgetControllerDispose(
+        currentPath: path,
+        controllerSourcePath: controllerSourcePath,
+      )) {
+        return;
+      }
+
       final controllerByType = isControllerTypeName(targetTypeName);
-      final controllerByName = targetSource.toLowerCase().contains('controller');
+      final controllerByName = targetSource.toLowerCase().contains(
+        'controller',
+      );
 
       if (!controllerByType && !controllerByName) {
         return;
@@ -52,5 +63,22 @@ class ModuleScopedControllerDisposeForbiddenRule extends DartLintRule {
 
       reporter.atNode(node.methodName, code);
     });
+  }
+
+  bool _isOwnedWidgetControllerDispose({
+    required String currentPath,
+    required String? controllerSourcePath,
+  }) {
+    if (controllerSourcePath == null ||
+        !isPresentationWidgetControllerFilePath(controllerSourcePath)) {
+      return false;
+    }
+
+    final ownerRoot = widgetControllerOwnerRootPath(controllerSourcePath);
+    if (ownerRoot == null) {
+      return false;
+    }
+
+    return isPathWithinRoot(currentPath, ownerRoot);
   }
 }

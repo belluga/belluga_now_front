@@ -22,8 +22,10 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
@@ -39,10 +41,13 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart'
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -217,6 +222,56 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'logs radius change telemetry only when the effective home radius changes',
+      () async {
+        final appData = _buildAppData(
+          minKm: 2,
+          defaultKm: 7,
+          maxKm: 15,
+        );
+        final telemetryRepository = _FakeTelemetryRepository();
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(appData),
+          telemetryRepository: telemetryRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(telemetryRepository.events, isEmpty);
+
+        controller.setRadiusMeters(4000);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(telemetryRepository.events, hasLength(1));
+        expect(telemetryRepository.events.single.event,
+            EventTrackerEvents.selectItem);
+        expect(telemetryRepository.events.single.eventName,
+            'agenda_radius_changed');
+        expect(telemetryRepository.events.single.properties, <String, dynamic>{
+          'surface': 'home',
+          'previous_radius_meters': 7000,
+          'selected_radius_meters': 4000,
+        });
+
+        controller.setRadiusMeters(4000);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          telemetryRepository.events,
+          hasLength(1),
+          reason: 'No-op re-selection must not emit a second tracking event.',
+        );
+
+        controller.onDispose();
+      },
+    );
 
     test(
       'persists selected radius preference without collapsing tenant max bound',
@@ -700,7 +755,8 @@ void main() {
           ),
         );
 
-        await tester.tap(find.byIcon(Icons.radar));
+        await tester
+            .tap(find.byKey(const ValueKey<String>('agenda-radius-expanded')));
         await tester.pumpAndSettle();
 
         expect(find.text('Distância Máxima'), findsOneWidget);
@@ -752,12 +808,12 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.radar), findsOneWidget);
+      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
 
       controller.isRadiusRefreshLoadingStreamValue.addValue(true);
       await tester.pump();
 
-      expect(find.byIcon(Icons.radar), findsNothing);
+      expect(find.byIcon(Icons.place_outlined), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       controller.onDispose();
@@ -1591,8 +1647,8 @@ void main() {
     });
 
     test(
-      'renders event from canonical agenda payload when type.id is non-ObjectId',
-      () async {
+        'renders event from canonical agenda payload when type.id is non-ObjectId',
+        () async {
       final appData = _buildAppData(
         minKm: 1,
         defaultKm: 5,
@@ -1707,6 +1763,225 @@ void main() {
       controller.onDispose();
     });
 
+    test('home agenda compact-state setter publishes only real changes', () {
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        ),
+      );
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      controller.setRadiusActionCompactState(true);
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+      controller.setRadiusActionCompactState(true);
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+      controller.setRadiusActionCompactState(false);
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      controller.onDispose();
+    });
+
+    test('home agenda compact state follows first non-zero scroll offset', () {
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        ),
+      );
+
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      controller.updateRadiusActionCompactStateFromScroll(1);
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+      controller.updateRadiusActionCompactStateFromScroll(0.6);
+      expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+      controller.updateRadiusActionCompactStateFromScroll(0);
+      expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+      controller.onDispose();
+    });
+
+    testWidgets(
+      'home shell scroll compacts radius action before inner list scroll starts',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final shellScrollController = ScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(shellScrollController.dispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: shellScrollController,
+                builder: (context, slots) {
+                  return NestedScrollView(
+                    controller: shellScrollController,
+                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 240),
+                      ),
+                      slots.header as SliverPersistentHeader,
+                    ],
+                    body: slots.body,
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsOneWidget,
+        );
+        expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+
+        await tester.drag(find.byType(ListView), const Offset(0, -80));
+        await tester.pumpAndSettle();
+
+        expect(
+          shellScrollController.offset,
+          greaterThan(0),
+        );
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-compact')),
+          findsOneWidget,
+        );
+        expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
+
+        await tester.fling(find.byType(ListView), const Offset(0, 400), 2000);
+        await tester.pumpAndSettle();
+
+        expect(shellScrollController.offset, 0);
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsOneWidget,
+        );
+        expect(controller.isRadiusActionCompactStreamValue.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'home nested inner agenda scroll keeps radius action compact and restores at top',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final shellScrollController = ScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(shellScrollController.dispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: shellScrollController,
+                builder: (context, slots) {
+                  return NestedScrollView(
+                    controller: shellScrollController,
+                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                      slots.header as SliverPersistentHeader,
+                    ],
+                    body: slots.body,
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsOneWidget,
+        );
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isFalse,
+        );
+
+        await tester.drag(find.byType(ListView), const Offset(0, -900));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-compact')),
+          findsOneWidget,
+        );
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isTrue,
+        );
+
+        await tester.fling(find.byType(ListView), const Offset(0, 1400), 4000);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+          findsOneWidget,
+        );
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isFalse,
+        );
+      },
+    );
+
     testWidgets('home agenda body shows phased initial loading labels',
         (tester) async {
       final appData = _buildAppData(
@@ -1741,7 +2016,141 @@ void main() {
 
       controller.onDispose();
     });
+
+    testWidgets(
+      'home agenda section re-syncs compact state after outer controller attaches',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final outerScrollController = _DeferredAttachScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(outerScrollController.dispose);
+
+        await controller.init();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          outerScrollController.attachWithOffset(48);
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: outerScrollController,
+                builder: (context, slots) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda section re-syncs compact state when outer controller restores offset late without scroll notification',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final outerScrollController = _DeferredAttachScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(outerScrollController.dispose);
+
+        await controller.init();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              outerScrollController.setAttachedState(
+                hasClients: true,
+                offset: 48,
+              );
+            });
+          });
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: outerScrollController,
+                builder: (context, slots) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isTrue,
+        );
+      },
+    );
   });
+}
+
+class _DeferredAttachScrollController extends ScrollController {
+  bool _hasAttachedClients = false;
+  double _attachedOffset = 0;
+
+  @override
+  bool get hasClients => _hasAttachedClients;
+
+  @override
+  double get offset => _attachedOffset;
+
+  void attachWithOffset(double offset) {
+    _hasAttachedClients = true;
+    _attachedOffset = offset;
+    notifyListeners();
+  }
+
+  void setAttachedState({
+    required bool hasClients,
+    required double offset,
+    bool notify = false,
+  }) {
+    _hasAttachedClients = hasClients;
+    _attachedOffset = offset;
+    if (notify) {
+      notifyListeners();
+    }
+  }
 }
 
 TenantHomeAgendaController _buildAgendaController({
@@ -1751,6 +2160,7 @@ TenantHomeAgendaController _buildAgendaController({
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
   AuthRepositoryContract? authRepository,
+  TelemetryRepositoryContract? telemetryRepository,
   bool? isWebRuntime,
   Duration? locationWarmUpTimeout,
   Duration? locationPermissionTimeout,
@@ -1763,6 +2173,7 @@ TenantHomeAgendaController _buildAgendaController({
     userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
     authRepository: authRepository,
+    telemetryRepository: telemetryRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
       userLocationRepository: userLocationRepository,
@@ -2507,6 +2918,87 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
   }
 }
 
+class _ScrollableAgendaBackend implements ScheduleBackendContract {
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      _eventDto(index: 0);
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (page > 1) {
+      return EventPageDTO(events: const [], hasMore: false);
+    }
+
+    return EventPageDTO(
+      events: List<EventDTO>.generate(
+        14,
+        (index) => _eventDto(index: index),
+      ),
+      hasMore: false,
+    );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _eventDto({required int index}) {
+    final day = (index % 14) + 1;
+    final hour = 18 + (index % 4);
+
+    return EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd7994398${index.toString().padLeft(2, '0')}',
+      'occurrence_id':
+          '507f1f77bcf86cd7994399${index.toString().padLeft(2, '0')}',
+      'slug': 'evento-scroll-$index',
+      'title': 'Evento Scroll $index',
+      'content': 'Conteudo $index',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start':
+          '2026-03-${day.toString().padLeft(2, '0')}T${hour.toString().padLeft(2, '0')}:00:00+00:00',
+      'artists': const [],
+      'tags': const ['music'],
+    });
+  }
+}
+
 class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
   int fetchEventsPageCallCount = 0;
 
@@ -2915,6 +3407,70 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
+}
+
+class _LoggedEvent {
+  _LoggedEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_LoggedEvent> events = [];
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    events.add(
+      _LoggedEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
+    return telemetryRepoBool(true);
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async =>
+      null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async =>
+      telemetryRepoBool(true);
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {

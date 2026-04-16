@@ -1,6 +1,7 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_controller_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_direct_navigation_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_write_forbidden_rule.dart';
@@ -35,6 +36,7 @@ import 'package:belluga_analysis_plugin/src/rules/route_page_must_live_in_routes
 import 'package:belluga_analysis_plugin/src/rules/route_path_param_requires_resolver_route_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/route_required_non_url_args_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/screen_controller_resolution_pattern_required_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/screen_descendant_widget_controller_resolution_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/service_json_parsing_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/tenant_canonical_domain_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/timezone_service_direct_datetime_conversion_forbidden_rule.dart';
@@ -50,6 +52,7 @@ import 'package:belluga_analysis_plugin/src/rules/ui_navigator_usage_forbidden_r
 import 'package:belluga_analysis_plugin/src/rules/ui_controller_ownership_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/ui_streamvalue_ownership_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/ui_streamvalue_builder_null_check_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/widget_controller_singleton_registration_forbidden_rule.dart';
 
 final plugin = BellugaAnalysisPlugin();
 
@@ -106,6 +109,7 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(
       ControllerBuildContextDependencyForbiddenRule(),
     );
+    registry.registerWarningRule(ControllerControllerDependencyForbiddenRule());
     registry.registerWarningRule(ControllerDirectNavigationForbiddenRule());
     registry.registerWarningRule(
       ControllerRepositoryAsyncModelFetchForbiddenRule(),
@@ -132,9 +136,15 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(
       ScreenControllerResolutionPatternRequiredRule(),
     );
+    registry.registerWarningRule(
+      ScreenDescendantWidgetControllerResolutionForbiddenRule(),
+    );
     registry.registerWarningRule(UiRouteParamHydrationForbiddenRule());
     registry.registerWarningRule(MultiPublicClassFileWarningRule());
     registry.registerWarningRule(MultiWidgetFileWarningRule());
+    registry.registerWarningRule(
+      WidgetControllerSingletonRegistrationForbiddenRule(),
+    );
     registry.registerWarningRule(TenantCanonicalDomainRequiredRule());
     registry.registerWarningRule(
       TimezoneServiceDirectDateTimeConversionForbiddenRule(),

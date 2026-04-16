@@ -6,9 +6,11 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -18,6 +20,7 @@ import 'package:belluga_now/domain/services/location_origin_service_contract.dar
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -31,6 +34,7 @@ class EventSearchScreenController
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
+    TelemetryRepositoryContract? telemetryRepository,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
@@ -43,6 +47,10 @@ class EventSearchScreenController
                 : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _telemetryRepository = telemetryRepository ??
+            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+                ? GetIt.I.get<TelemetryRepositoryContract>()
+                : null),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>() {
     _initializeStateHolders();
@@ -53,9 +61,14 @@ class EventSearchScreenController
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final TelemetryRepositoryContract? _telemetryRepository;
   final LocationOriginServiceContract _locationOriginService;
 
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _radiusTelemetryChangeEpsilon = 0.001;
+  static const double _radiusCompactScrollEpsilon = 0.5;
+  static const String _radiusChangedEventName = 'agenda_radius_changed';
+  static const String _radiusChangedSurface = 'agenda';
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -79,6 +92,8 @@ class EventSearchScreenController
   late StreamValue<double> radiusMetersStreamValue;
   @override
   late StreamValue<bool> isRadiusRefreshLoadingStreamValue;
+  @override
+  late StreamValue<bool> isRadiusActionCompactStreamValue;
   late StreamValue<double> _maxRadiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -155,6 +170,7 @@ class EventSearchScreenController
     radiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     isRadiusRefreshLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+    isRadiusActionCompactStreamValue = StreamValue<bool>(defaultValue: false);
     _maxRadiusMetersStreamValue =
         StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     _isScrollListenerAttached = false;
@@ -189,20 +205,54 @@ class EventSearchScreenController
   void _attachScrollListener() {
     if (_isScrollListenerAttached) return;
     _isScrollListenerAttached = true;
-    scrollController.addListener(() {
-      if (!_hasMore ||
-          _isFetching ||
-          isInitialLoadingStreamValue.value ||
-          !hasMoreStreamValue.value) {
+    scrollController.addListener(_handleScrollChanged);
+    _syncRadiusActionCompactStateWithCurrentOffset();
+  }
+
+  void _handleScrollChanged() {
+    _syncRadiusActionCompactStateWithCurrentOffset();
+    if (!scrollController.hasClients ||
+        !_hasMore ||
+        _isFetching ||
+        isInitialLoadingStreamValue.value ||
+        !hasMoreStreamValue.value) {
+      return;
+    }
+
+    final position = scrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      loadNextPage();
+    }
+  }
+
+  void _syncRadiusActionCompactStateWithCurrentOffset() {
+    if (scrollController.hasClients) {
+      _updateRadiusActionCompactState(scrollController.position.pixels);
+      return;
+    }
+
+    final attachedScrollController = scrollController;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed ||
+          !identical(scrollController, attachedScrollController)) {
         return;
       }
-
-      final position = scrollController.position;
-      const threshold = 320.0;
-      if (position.pixels + threshold >= position.maxScrollExtent) {
-        loadNextPage();
+      if (!attachedScrollController.hasClients) {
+        return;
       }
+      _updateRadiusActionCompactState(
+        attachedScrollController.position.pixels,
+      );
     });
+  }
+
+  void _updateRadiusActionCompactState(double pixels) {
+    final shouldCompact = pixels > _radiusCompactScrollEpsilon;
+    if (shouldCompact == isRadiusActionCompactStreamValue.value) {
+      return;
+    }
+    _ifAlive(() => isRadiusActionCompactStreamValue.addValue(shouldCompact));
   }
 
   Future<void> _refresh({bool warmUpIfPossible = true}) async {
@@ -371,10 +421,48 @@ class EventSearchScreenController
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    _ifAlive(
-        () => radiusMetersStreamValue.addValue(_clampRadiusMeters(meters)));
+    final previousRadius = radiusMetersStreamValue.value;
+    final clampedRadius = _clampRadiusMeters(meters);
+    _ifAlive(() => radiusMetersStreamValue.addValue(clampedRadius));
+    if (_didRadiusChangeEffectively(
+      previousRadius: previousRadius,
+      nextRadius: clampedRadius,
+    )) {
+      unawaited(
+        _logRadiusChangedTelemetry(
+          previousRadiusMeters: previousRadius,
+          selectedRadiusMeters: clampedRadius,
+        ),
+      );
+    }
     unawaited(_refresh());
     _restartEventStream();
+  }
+
+  bool _didRadiusChangeEffectively({
+    required double previousRadius,
+    required double nextRadius,
+  }) {
+    return (nextRadius - previousRadius).abs() > _radiusTelemetryChangeEpsilon;
+  }
+
+  Future<void> _logRadiusChangedTelemetry({
+    required double previousRadiusMeters,
+    required double selectedRadiusMeters,
+  }) async {
+    final telemetryRepository = _telemetryRepository;
+    if (telemetryRepository == null) {
+      return;
+    }
+    await telemetryRepository.logEvent(
+      EventTrackerEvents.selectItem,
+      eventName: telemetryRepoString(_radiusChangedEventName),
+      properties: telemetryRepoMap(<String, dynamic>{
+        'surface': _radiusChangedSurface,
+        'previous_radius_meters': previousRadiusMeters.round(),
+        'selected_radius_meters': selectedRadiusMeters.round(),
+      }),
+    );
   }
 
   void setInitialSearchQuery(String? query) {
@@ -721,6 +809,7 @@ class EventSearchScreenController
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
+    isRadiusActionCompactStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();

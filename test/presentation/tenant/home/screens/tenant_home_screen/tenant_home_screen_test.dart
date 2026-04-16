@@ -74,10 +74,13 @@ class _TestFavoritesSectionController extends MockFavoritesSectionController {
 class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   _TestTenantHomeAgendaController()
       : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
+        _isRadiusActionCompactStreamValue =
+            StreamValue<bool>(defaultValue: false),
         _isRadiusRefreshLoadingStreamValue =
             StreamValue<bool>(defaultValue: false);
 
   final StreamValue<UserContract?> _authUserStreamValue;
+  final StreamValue<bool> _isRadiusActionCompactStreamValue;
   final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
 
   @override
@@ -86,6 +89,18 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   @override
   StreamValue<bool> get isRadiusRefreshLoadingStreamValue =>
       _isRadiusRefreshLoadingStreamValue;
+
+  @override
+  StreamValue<bool> get isRadiusActionCompactStreamValue =>
+      _isRadiusActionCompactStreamValue;
+
+  @override
+  void setRadiusActionCompactState(bool isCompact) {
+    if (_isRadiusActionCompactStreamValue.value == isCompact) {
+      return;
+    }
+    _isRadiusActionCompactStreamValue.addValue(isCompact);
+  }
 
   @override
   bool get shouldShowInviteFilterAction => true;
@@ -361,7 +376,9 @@ void main() {
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(mockRouter),
+    );
     await tester.pump();
 
     // Verify AppBar
@@ -387,6 +404,44 @@ void main() {
     );
   });
 
+  testWidgets(
+      'tenant home agenda header compacts radius action from agenda controller stream',
+      (tester) async {
+    final mockRouter = MockStackRouter();
+    _stubMockRouterRoot(mockRouter);
+    mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(mockRouter),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('agenda-radius-compact')),
+      findsNothing,
+    );
+
+    mockAgendaController.setRadiusActionCompactState(true);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('agenda-radius-compact')),
+      findsOneWidget,
+    );
+
+    mockAgendaController.setRadiusActionCompactState(false);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('taps My Events card and pushes detail route', (tester) async {
     final now = DateTime.now();
     final event = buildVenueEventResume(
@@ -405,7 +460,9 @@ void main() {
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(mockRouter),
+    );
 
     await tester.pump();
 
@@ -443,7 +500,9 @@ void main() {
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(mockRouter),
+    );
     await tester.pump();
 
     expect(find.text('Voce tem 1 convites pendentes'), findsOneWidget);
@@ -465,7 +524,9 @@ void main() {
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.maybePop()).thenAnswer((_) async => true);
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(mockRouter),
+    );
     await tester.pump();
 
     await tester.tap(find.text('Usando localização fixa.'));
@@ -480,7 +541,9 @@ void main() {
       (tester) async {
     final router = _RecordingBackRouter(canPopResult: false);
 
-    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpWidget(
+      _buildRoutedTenantHomeApp(router),
+    );
     await tester.pumpAndSettle();
 
     testScrollController.jumpTo(120);

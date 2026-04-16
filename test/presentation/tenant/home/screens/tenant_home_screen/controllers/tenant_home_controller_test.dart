@@ -87,7 +87,8 @@ void main() {
     );
   });
 
-  test('keeps ongoing events when explicit end date is in the future', () async {
+  test('keeps ongoing events when explicit end date is in the future',
+      () async {
     final now = DateTime.now();
     const ongoingId = '507f1f77bcf86cd799439013';
     final ongoingLongEvent = buildVenueEventResume(

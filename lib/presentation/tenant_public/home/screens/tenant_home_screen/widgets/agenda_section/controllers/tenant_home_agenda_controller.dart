@@ -6,7 +6,9 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -21,6 +23,7 @@ import 'package:belluga_now/infrastructure/services/location_origin_resolution_r
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -35,6 +38,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
     LocationOriginServiceContract? locationOriginService,
+    TelemetryRepositoryContract? telemetryRepository,
     bool isWebRuntime = kIsWeb,
     Duration locationWarmUpTimeout = const Duration(seconds: 4),
     Duration locationPermissionTimeout = const Duration(seconds: 8),
@@ -57,6 +61,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
                 : null),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>(),
+        _telemetryRepository = telemetryRepository ??
+            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+                ? GetIt.I.get<TelemetryRepositoryContract>()
+                : null),
         _isWebRuntime = isWebRuntime,
         _locationWarmUpTimeout = locationWarmUpTimeout,
         _locationPermissionTimeout = locationPermissionTimeout,
@@ -69,12 +77,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final TelemetryRepositoryContract? _telemetryRepository;
   final bool _isWebRuntime;
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
   final Duration _radiusRefreshDebounce;
 
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _radiusTelemetryChangeEpsilon = 0.001;
+  static const double _radiusCompactScrollEpsilon = 0.5;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
   static const Duration _preservedFirstPageEmptyRetryDelay =
@@ -82,6 +93,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
       'Buscando eventos perto de você...';
+  static const String _radiusChangedEventName = 'agenda_radius_changed';
+  static const String _radiusChangedSurface = 'home';
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -110,6 +123,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final isRadiusRefreshLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  @override
+  final isRadiusActionCompactStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<double> _maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
@@ -125,6 +141,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   StreamSubscription? _userLocationSubscription;
   StreamSubscription? _radiusSubscription;
   Timer? _radiusRefreshDebounceTimer;
+  bool _outerScrollCompactHint = false;
+  bool _innerScrollCompactHint = false;
   bool _isFetching = false;
   bool _isRefreshing = false;
   bool _hasMore = true;
@@ -158,6 +176,43 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void _ifAlive(VoidCallback writer) {
     if (_isDisposed) return;
     writer();
+  }
+
+  void setRadiusActionCompactState(bool isCompact) {
+    _outerScrollCompactHint = isCompact;
+    _innerScrollCompactHint = isCompact;
+    _publishRadiusActionCompactState();
+  }
+
+  void updateRadiusActionCompactStateFromOuterScroll(double pixels) {
+    _outerScrollCompactHint = _resolveRadiusActionCompactHint(
+      current: _outerScrollCompactHint,
+      pixels: pixels,
+    );
+    _publishRadiusActionCompactState();
+  }
+
+  void updateRadiusActionCompactStateFromScroll(double pixels) {
+    _innerScrollCompactHint = _resolveRadiusActionCompactHint(
+      current: _innerScrollCompactHint,
+      pixels: pixels,
+    );
+    _publishRadiusActionCompactState();
+  }
+
+  bool _resolveRadiusActionCompactHint({
+    required bool current,
+    required double pixels,
+  }) {
+    return pixels > _radiusCompactScrollEpsilon;
+  }
+
+  void _publishRadiusActionCompactState() {
+    final shouldCompact = _outerScrollCompactHint || _innerScrollCompactHint;
+    if (isRadiusActionCompactStreamValue.value == shouldCompact) {
+      return;
+    }
+    _ifAlive(() => isRadiusActionCompactStreamValue.addValue(shouldCompact));
   }
 
   ScheduleRepoBool _toScheduleBool(bool value) {
@@ -258,7 +313,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     try {
       final stopwatch = Stopwatch()..start();
       if (shouldShowInitialLoading) {
-        _ifAlive(() => initialLoadingLabelStreamValue.addValue('Localizando...'));
+        _ifAlive(
+            () => initialLoadingLabelStreamValue.addValue('Localizando...'));
         await _resolveEffectiveOrigin(
           warmUpIfPossible: shouldShowInitialLoading,
         );
@@ -481,10 +537,48 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
     final clamped = _clampRadiusMeters(meters);
+    final previousRadius = radiusMetersStreamValue.value;
     _pendingPersistedRadiusEchoMeters = clamped;
     _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
+    if (_didRadiusChangeEffectively(
+      previousRadius: previousRadius,
+      nextRadius: clamped,
+    )) {
+      unawaited(
+        _logRadiusChangedTelemetry(
+          previousRadiusMeters: previousRadius,
+          selectedRadiusMeters: clamped,
+        ),
+      );
+    }
     unawaited(_persistSelectedRadiusPreference(clamped));
     _scheduleRadiusRefresh();
+  }
+
+  bool _didRadiusChangeEffectively({
+    required double previousRadius,
+    required double nextRadius,
+  }) {
+    return (nextRadius - previousRadius).abs() > _radiusTelemetryChangeEpsilon;
+  }
+
+  Future<void> _logRadiusChangedTelemetry({
+    required double previousRadiusMeters,
+    required double selectedRadiusMeters,
+  }) async {
+    final telemetryRepository = _telemetryRepository;
+    if (telemetryRepository == null) {
+      return;
+    }
+    await telemetryRepository.logEvent(
+      EventTrackerEvents.selectItem,
+      eventName: telemetryRepoString(_radiusChangedEventName),
+      properties: telemetryRepoMap(<String, dynamic>{
+        'surface': _radiusChangedSurface,
+        'previous_radius_meters': previousRadiusMeters.round(),
+        'selected_radius_meters': selectedRadiusMeters.round(),
+      }),
+    );
   }
 
   void setInitialSearchQuery(String? query) {
@@ -905,6 +999,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
+    isRadiusActionCompactStreamValue.dispose();
     _maxRadiusMetersStreamValue.dispose();
     focusNode.dispose();
     searchController.dispose();
