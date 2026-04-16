@@ -23,8 +23,10 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
@@ -44,8 +46,10 @@ import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -268,6 +272,50 @@ void main() {
   );
 
   testWidgets(
+    'logs radius change telemetry only when the effective agenda radius changes',
+    (tester) async {
+      final telemetryRepository = _FakeTelemetryRepository();
+      final controller = _buildEventSearchController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        telemetryRepository: telemetryRepository,
+      );
+
+      await controller.init();
+
+      expect(telemetryRepository.events, isEmpty);
+
+      controller.setRadiusMeters(7000);
+      await tester.pump();
+
+      expect(telemetryRepository.events, hasLength(1));
+      expect(telemetryRepository.events.single.event,
+          EventTrackerEvents.selectItem);
+      expect(
+          telemetryRepository.events.single.eventName, 'agenda_radius_changed');
+      expect(telemetryRepository.events.single.properties, <String, dynamic>{
+        'surface': 'agenda',
+        'previous_radius_meters': 5000,
+        'selected_radius_meters': 7000,
+      });
+
+      controller.setRadiusMeters(7000);
+      await tester.pump();
+
+      expect(
+        telemetryRepository.events,
+        hasLength(1),
+        reason: 'No-op re-selection must not emit a second tracking event.',
+      );
+
+      controller.onDispose();
+    },
+  );
+
+  testWidgets(
     'radius action compacts on first scroll movement and expands again at top',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository()
@@ -398,6 +446,7 @@ EventSearchScreenController _buildEventSearchController({
   required InvitesRepositoryContract invitesRepository,
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
+  TelemetryRepositoryContract? telemetryRepository,
 }) {
   return EventSearchScreenController(
     scheduleRepository: scheduleRepository,
@@ -405,6 +454,7 @@ EventSearchScreenController _buildEventSearchController({
     invitesRepository: invitesRepository,
     userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
+    telemetryRepository: telemetryRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
       userLocationRepository: userLocationRepository,
@@ -548,6 +598,70 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 
   @override
   PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
+}
+
+class _LoggedEvent {
+  _LoggedEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_LoggedEvent> events = [];
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    events.add(
+      _LoggedEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
+    return telemetryRepoBool(true);
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async =>
+      null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async =>
+      telemetryRepoBool(true);
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {

@@ -6,7 +6,9 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -21,6 +23,7 @@ import 'package:belluga_now/infrastructure/services/location_origin_resolution_r
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -35,6 +38,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
     LocationOriginServiceContract? locationOriginService,
+    TelemetryRepositoryContract? telemetryRepository,
     bool isWebRuntime = kIsWeb,
     Duration locationWarmUpTimeout = const Duration(seconds: 4),
     Duration locationPermissionTimeout = const Duration(seconds: 8),
@@ -57,6 +61,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
                 : null),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>(),
+        _telemetryRepository = telemetryRepository ??
+            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+                ? GetIt.I.get<TelemetryRepositoryContract>()
+                : null),
         _isWebRuntime = isWebRuntime,
         _locationWarmUpTimeout = locationWarmUpTimeout,
         _locationPermissionTimeout = locationPermissionTimeout,
@@ -69,12 +77,14 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final TelemetryRepositoryContract? _telemetryRepository;
   final bool _isWebRuntime;
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
   final Duration _radiusRefreshDebounce;
 
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _radiusTelemetryChangeEpsilon = 0.001;
   static const double _radiusCompactScrollEpsilon = 0.5;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
@@ -83,6 +93,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
       'Buscando eventos perto de você...';
+  static const String _radiusChangedEventName = 'agenda_radius_changed';
+  static const String _radiusChangedSurface = 'home';
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -525,10 +537,48 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
     final clamped = _clampRadiusMeters(meters);
+    final previousRadius = radiusMetersStreamValue.value;
     _pendingPersistedRadiusEchoMeters = clamped;
     _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
+    if (_didRadiusChangeEffectively(
+      previousRadius: previousRadius,
+      nextRadius: clamped,
+    )) {
+      unawaited(
+        _logRadiusChangedTelemetry(
+          previousRadiusMeters: previousRadius,
+          selectedRadiusMeters: clamped,
+        ),
+      );
+    }
     unawaited(_persistSelectedRadiusPreference(clamped));
     _scheduleRadiusRefresh();
+  }
+
+  bool _didRadiusChangeEffectively({
+    required double previousRadius,
+    required double nextRadius,
+  }) {
+    return (nextRadius - previousRadius).abs() > _radiusTelemetryChangeEpsilon;
+  }
+
+  Future<void> _logRadiusChangedTelemetry({
+    required double previousRadiusMeters,
+    required double selectedRadiusMeters,
+  }) async {
+    final telemetryRepository = _telemetryRepository;
+    if (telemetryRepository == null) {
+      return;
+    }
+    await telemetryRepository.logEvent(
+      EventTrackerEvents.selectItem,
+      eventName: telemetryRepoString(_radiusChangedEventName),
+      properties: telemetryRepoMap(<String, dynamic>{
+        'surface': _radiusChangedSurface,
+        'previous_radius_meters': previousRadiusMeters.round(),
+        'selected_radius_meters': selectedRadiusMeters.round(),
+      }),
+    );
   }
 
   void setInitialSearchQuery(String? query) {
