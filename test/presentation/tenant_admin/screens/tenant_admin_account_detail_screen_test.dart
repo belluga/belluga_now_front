@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
@@ -160,6 +162,28 @@ void main() {
     expect(find.text('Inconsistência de dados'), findsOneWidget);
     expect(find.textContaining('Conta sem perfil detectada.'), findsOneWidget);
     expect(find.text('Criar Perfil'), findsNothing);
+  });
+
+  test('loadAccountDetail invalidates stale async work after dispose', () async {
+    final accountsRepository = _DelayedFetchAccountsRepository();
+    final profilesRepository = _FakeAccountProfilesRepository(withProfile: true);
+    final controller = TenantAdminAccountDetailController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+    );
+
+    final loadFuture = controller.loadAccountDetail('yuri-dias');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(accountsRepository.fetchAccountBySlugCalls, 1);
+    expect(accountsRepository.watchLoadedAccountCalls, 0);
+
+    controller.onDispose();
+    accountsRepository.completeFetch();
+
+    await loadFuture;
+
+    expect(accountsRepository.watchLoadedAccountCalls, 0);
   });
 }
 
@@ -438,6 +462,49 @@ class _FakeAccountsRepository
     accountsStreamValue.addValue(
       List<TenantAdminAccount>.unmodifiable(_accountsById.values),
     );
+  }
+}
+
+class _DelayedFetchAccountsRepository extends _FakeAccountsRepository {
+  final Completer<TenantAdminAccount> _fetchCompleter =
+      Completer<TenantAdminAccount>();
+
+  int watchLoadedAccountCalls = 0;
+
+  @override
+  Future<TenantAdminAccount> fetchAccountBySlug(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
+    fetchAccountBySlugCalls += 1;
+    lastFetchedSlug = accountSlug.value;
+    return _fetchCompleter.future;
+  }
+
+  @override
+  TenantAdminLoadedAccountWatch watchLoadedAccount({
+    TenantAdminAccountsRepositoryContractPrimString? accountId,
+    TenantAdminAccountsRepositoryContractPrimString? accountSlug,
+  }) {
+    watchLoadedAccountCalls += 1;
+    return super.watchLoadedAccount(
+      accountId: accountId,
+      accountSlug: accountSlug,
+    );
+  }
+
+  void completeFetch() {
+    if (_fetchCompleter.isCompleted) {
+      return;
+    }
+    final account = tenantAdminAccountFromRaw(
+      id: 'acc-1',
+      name: 'Conta base',
+      slug: 'yuri-dias',
+      document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
+      ownershipState: TenantAdminOwnershipState.tenantOwned,
+    );
+    _seedAccount(account);
+    _fetchCompleter.complete(account);
   }
 }
 

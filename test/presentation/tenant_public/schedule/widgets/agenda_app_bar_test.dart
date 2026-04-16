@@ -8,9 +8,10 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   testWidgets(
-    'expanded radius action shows place icon with distance label',
+    'expanded radius action grows to show the full 800 km label',
     (tester) async {
-      final controller = _FakeAgendaAppBarController();
+      final controller = _FakeAgendaAppBarController()
+        ..radiusMetersStreamValue.addValue(800000);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -35,7 +36,10 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Até 5 km'), findsOneWidget);
+      expect(find.text('Até 800 km'), findsOneWidget);
+
+      final expandedRect = tester.getRect(expandedAction);
+      expect(expandedRect.width, greaterThan(124));
     },
   );
 
