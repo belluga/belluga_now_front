@@ -1,0 +1,3 @@
+class HomeFeatureController {
+  const HomeFeatureController();
+}

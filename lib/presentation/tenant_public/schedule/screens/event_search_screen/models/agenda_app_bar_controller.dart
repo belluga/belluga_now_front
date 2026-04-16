@@ -12,6 +12,7 @@ abstract class AgendaAppBarController {
   StreamValue<double> get maxRadiusMetersStreamValue;
   StreamValue<double> get radiusMetersStreamValue;
   StreamValue<bool> get isRadiusRefreshLoadingStreamValue;
+  StreamValue<bool> get isRadiusActionCompactStreamValue;
   void setRadiusMeters(double meters);
   StreamValue<InviteFilter> get inviteFilterStreamValue;
   void cycleInviteFilter();

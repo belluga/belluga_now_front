@@ -181,6 +181,14 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     ScrollNotification notification,
     TenantHomeAgendaController controller,
   ) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+
+    controller.updateRadiusActionCompactStateFromScroll(
+      notification.metrics.pixels,
+    );
+
     final isUserDriven = switch (notification) {
       ScrollUpdateNotification update => update.dragDetails != null,
       ScrollEndNotification _ => true,
@@ -194,7 +202,6 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
         controller.isInitialLoadingStreamValue.value;
     final hasMore = controller.hasMoreStreamValue.value;
     if (isLoading || !hasMore) return false;
-    if (notification.metrics.axis != Axis.vertical) return false;
     if (notification.metrics.pixels <= 0) return false;
     if (notification.metrics.extentAfter < 320) {
       if (_agendaLoadScheduled) return false;

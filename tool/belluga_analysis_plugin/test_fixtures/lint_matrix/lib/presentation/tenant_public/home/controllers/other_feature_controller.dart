@@ -1,0 +1,3 @@
+class OtherFeatureController {
+  const OtherFeatureController();
+}
