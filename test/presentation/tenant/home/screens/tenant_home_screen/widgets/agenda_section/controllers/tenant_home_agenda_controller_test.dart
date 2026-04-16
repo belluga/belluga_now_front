@@ -22,8 +22,10 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
@@ -39,11 +41,13 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart'
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -218,6 +222,56 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'logs radius change telemetry only when the effective home radius changes',
+      () async {
+        final appData = _buildAppData(
+          minKm: 2,
+          defaultKm: 7,
+          maxKm: 15,
+        );
+        final telemetryRepository = _FakeTelemetryRepository();
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(appData),
+          telemetryRepository: telemetryRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(telemetryRepository.events, isEmpty);
+
+        controller.setRadiusMeters(4000);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(telemetryRepository.events, hasLength(1));
+        expect(telemetryRepository.events.single.event,
+            EventTrackerEvents.selectItem);
+        expect(telemetryRepository.events.single.eventName,
+            'agenda_radius_changed');
+        expect(telemetryRepository.events.single.properties, <String, dynamic>{
+          'surface': 'home',
+          'previous_radius_meters': 7000,
+          'selected_radius_meters': 4000,
+        });
+
+        controller.setRadiusMeters(4000);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          telemetryRepository.events,
+          hasLength(1),
+          reason: 'No-op re-selection must not emit a second tracking event.',
+        );
+
+        controller.onDispose();
+      },
+    );
 
     test(
       'persists selected radius preference without collapsing tenant max bound',
@@ -2106,6 +2160,7 @@ TenantHomeAgendaController _buildAgendaController({
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
   AuthRepositoryContract? authRepository,
+  TelemetryRepositoryContract? telemetryRepository,
   bool? isWebRuntime,
   Duration? locationWarmUpTimeout,
   Duration? locationPermissionTimeout,
@@ -2118,6 +2173,7 @@ TenantHomeAgendaController _buildAgendaController({
     userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
     authRepository: authRepository,
+    telemetryRepository: telemetryRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
       userLocationRepository: userLocationRepository,
@@ -3351,6 +3407,70 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
+}
+
+class _LoggedEvent {
+  _LoggedEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_LoggedEvent> events = [];
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    events.add(
+      _LoggedEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
+    return telemetryRepoBool(true);
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async =>
+      null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async =>
+      telemetryRepoBool(true);
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
