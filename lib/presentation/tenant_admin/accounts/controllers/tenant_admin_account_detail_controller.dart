@@ -42,7 +42,6 @@ class TenantAdminAccountDetailController implements Disposable {
       StreamValue<bool>(defaultValue: false);
 
   bool _isDisposed = false;
-  int _accountDetailLoadVersion = 0;
   StreamSubscription<TenantAdminAccount?>? _accountWatchSubscription;
   TenantAdminLoadedAccountWatch? _accountWatch;
   String? _watchedAccountId;
@@ -88,35 +87,28 @@ class TenantAdminAccountDetailController implements Disposable {
   }
 
   Future<void> loadAccountDetail(String accountSlug) async {
-    final requestVersion = ++_accountDetailLoadVersion;
     accountDetailLoadingStreamValue.addValue(true);
     accountDetailErrorStreamValue.addValue(null);
     try {
       await loadProfileTypes();
-      if (!_isActiveAccountDetailLoad(requestVersion)) {
-        return;
-      }
       final account = await resolveAccountBySlug(accountSlug);
-      if (!_isActiveAccountDetailLoad(requestVersion)) {
-        return;
-      }
       _bindAccountWatch(
         accountId: account.id,
         accountSlug: account.slug,
       );
       final profile = await fetchProfileForAccount(account.id);
-      if (!_isActiveAccountDetailLoad(requestVersion)) {
+      if (_isDisposed) {
         return;
       }
       accountProfileStreamValue.addValue(profile);
       accountDetailErrorStreamValue.addValue(null);
     } catch (error) {
-      if (!_isActiveAccountDetailLoad(requestVersion)) {
+      if (_isDisposed) {
         return;
       }
       accountDetailErrorStreamValue.addValue(error.toString());
     } finally {
-      if (_isActiveAccountDetailLoad(requestVersion)) {
+      if (!_isDisposed) {
         accountDetailLoadingStreamValue.addValue(false);
       }
     }
@@ -219,7 +211,6 @@ class TenantAdminAccountDetailController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    _accountDetailLoadVersion += 1;
     _clearAccountWatch();
     _watchedAccountId = null;
     _watchedAccountSlug = null;
@@ -281,14 +272,9 @@ class TenantAdminAccountDetailController implements Disposable {
     _accountWatch = null;
   }
 
-  bool _isActiveAccountDetailLoad(int requestVersion) {
-    return !_isDisposed && _accountDetailLoadVersion == requestVersion;
-  }
-
   @override
   void onDispose() {
     _isDisposed = true;
-    _accountDetailLoadVersion += 1;
     _clearAccountWatch();
     _accountDetailStreamValue.dispose();
     accountProfileStreamValue.dispose();
