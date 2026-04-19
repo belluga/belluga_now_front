@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart';
 import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
@@ -40,6 +42,11 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     _quillController = _buildQuillController(widget.controller.text);
     widget.controller.addListener(_handleExternalHtmlChange);
     _bindDocumentChanges();
+    if (_syncHtmlControllerFromDocument()) {
+      _replaceQuillController(
+        _buildQuillController(widget.controller.text),
+      );
+    }
   }
 
   @override
@@ -53,6 +60,11 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     _replaceQuillController(
       _buildQuillController(widget.controller.text),
     );
+    if (_syncHtmlControllerFromDocument()) {
+      _replaceQuillController(
+        _buildQuillController(widget.controller.text),
+      );
+    }
   }
 
   @override
@@ -66,9 +78,15 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
 
   void _bindDocumentChanges() {
     _documentChangesSubscription?.cancel();
-    _documentChangesSubscription =
-        _quillController.document.changes.listen((_) {
-      _syncHtmlControllerFromDocument();
+    _documentChangesSubscription = _quillController.document.changes.listen((
+      _,
+    ) {
+      if (_syncHtmlControllerFromDocument()) {
+        _rebuildCanonicalDocument(
+          selectionOffset: _quillController.selection.baseOffset,
+        );
+        _syncHtmlControllerFromDocument();
+      }
     });
   }
 
@@ -91,8 +109,8 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return;
     }
     final targetHtml = widget.controller.text;
-    final currentHtml = _deltaToHtml(_quillController);
-    if (_normalizeHtml(targetHtml) == _normalizeHtml(currentHtml)) {
+    if (_normalizeHtml(targetHtml) ==
+        _normalizeHtml(_deltaToHtml(_quillController))) {
       return;
     }
     _syncingFromHtmlController = true;
@@ -102,16 +120,20 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         fallbackSelectionOffset: _quillController.selection.baseOffset,
       ),
     );
+    _rebuildCanonicalDocument(
+      selectionOffset: _quillController.selection.baseOffset,
+    );
     _syncingFromHtmlController = false;
+    _syncHtmlControllerFromDocument();
   }
 
-  void _syncHtmlControllerFromDocument() {
+  bool _syncHtmlControllerFromDocument() {
     if (_syncingFromHtmlController) {
-      return;
+      return false;
     }
     final html = _deltaToHtml(_quillController);
     if (_normalizeHtml(widget.controller.text) == _normalizeHtml(html)) {
-      return;
+      return false;
     }
     _syncingToHtmlController = true;
     widget.controller.value = widget.controller.value.copyWith(
@@ -120,6 +142,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       composing: TextRange.empty,
     );
     _syncingToHtmlController = false;
+    return true;
   }
 
   QuillController _buildQuillController(
@@ -144,11 +167,15 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return Document()..insert(0, '\n');
     }
     try {
-      final delta = HtmlToDelta().convert(trimmed);
+      final delta = HtmlToDelta().convert(_sanitizeMarkup(trimmed));
       if (delta.isEmpty) {
         return Document()..insert(0, '\n');
       }
-      return Document.fromDelta(delta);
+      final canonicalDelta = _canonicalizeDelta(delta);
+      if (_deltaJson(delta) == _deltaJson(canonicalDelta)) {
+        return Document.fromDelta(delta);
+      }
+      return Document.fromDelta(canonicalDelta);
     } catch (error) {
       debugPrint(
         '[TenantAdminRichTextEditor] Failed to parse HTML into delta: $error',
@@ -161,15 +188,108 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     if (controller.document.toPlainText().trim().isEmpty) {
       return '';
     }
+    final canonicalDelta = _canonicalizeDelta(controller.document.toDelta());
     final converter = QuillDeltaToHtmlConverter(
-      controller.document.toDelta().toJson(),
+      canonicalDelta.toJson(),
       ConverterOptions.forEmail(),
     );
     final html = converter.convert().trim();
     if (_isBlankHtml(html)) {
       return '';
     }
-    return html;
+    return _sanitizeMarkup(html);
+  }
+
+  void _rebuildCanonicalDocument({int? selectionOffset}) {
+    final currentDelta = _quillController.document.toDelta();
+    final canonicalDelta = _canonicalizeDelta(currentDelta);
+    if (_deltaJson(currentDelta) == _deltaJson(canonicalDelta)) {
+      return;
+    }
+
+    final canonicalDocument = canonicalDelta.isEmpty
+        ? (Document()..insert(0, '\n'))
+        : Document.fromDelta(canonicalDelta);
+    final requestedOffset =
+        selectionOffset ?? _quillController.selection.baseOffset;
+    final safeOffset = _clampSelectionOffset(
+      requestedOffset,
+      maxOffset: canonicalDocument.length - 1,
+    );
+
+    _replaceQuillController(
+      QuillController(
+        document: canonicalDocument,
+        selection: TextSelection.collapsed(offset: safeOffset),
+      ),
+    );
+  }
+
+  Delta _canonicalizeDelta(Delta delta) {
+    final canonical = Delta();
+    for (final op in delta.toJson()) {
+      final insert = op['insert'];
+      if (insert is! String) {
+        continue;
+      }
+      final attributes = _canonicalizeAttributes(
+        op['attributes'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(op['attributes'] as Map)
+            : null,
+        insert,
+      );
+      canonical.insert(insert, attributes);
+    }
+
+    return canonical;
+  }
+
+  Map<String, dynamic>? _canonicalizeAttributes(
+    Map<String, dynamic>? attributes,
+    String insert,
+  ) {
+    if (attributes == null || attributes.isEmpty) {
+      return null;
+    }
+
+    final canonical = <String, dynamic>{};
+    if (insert == '\n') {
+      final header = _normalizeHeader(attributes['header']);
+      if (header != null) {
+        canonical['header'] = header;
+      }
+
+      final list = attributes['list'];
+      if (list == 'ordered' || list == 'bullet') {
+        canonical['list'] = list;
+      }
+
+      if (attributes['blockquote'] == true) {
+        canonical['blockquote'] = true;
+      }
+
+      return canonical.isEmpty ? null : canonical;
+    }
+
+    if (attributes['bold'] == true) {
+      canonical['bold'] = true;
+    }
+    if (attributes['italic'] == true) {
+      canonical['italic'] = true;
+    }
+    if (attributes['strike'] == true) {
+      canonical['strike'] = true;
+    }
+
+    return canonical.isEmpty ? null : canonical;
+  }
+
+  num? _normalizeHeader(dynamic value) {
+    final parsed = value is num ? value.toInt() : int.tryParse('$value');
+    if (parsed == null || parsed < 1 || parsed > 6) {
+      return null;
+    }
+    return parsed;
   }
 
   int _clampSelectionOffset(
@@ -197,9 +317,70 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     return compact.isEmpty;
   }
 
+  String _sanitizeMarkup(String html) {
+    if (!RegExp(r'<[^>]+>').hasMatch(html)) {
+      return html;
+    }
+
+    var sanitized = html
+        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), '')
+        .replaceAll(
+          RegExp(r'<script\b[^>]*>[\s\S]*?<\/script>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(
+          RegExp(r'<style\b[^>]*>[\s\S]*?<\/style>', caseSensitive: false),
+          '',
+        );
+
+    sanitized = sanitized.replaceAllMapped(
+      RegExp(r'</?([a-zA-Z0-9]+)(?:\s[^>]*)?>'),
+      (match) {
+        final rawTag = match.group(1)?.toLowerCase() ?? '';
+        final isClosing = match.group(0)?.startsWith('</') ?? false;
+
+        if (rawTag == 'br') {
+          return '<br />';
+        }
+
+        if (!_allowedTags.contains(rawTag)) {
+          return '';
+        }
+
+        if (isClosing) {
+          return '</$rawTag>';
+        }
+
+        return '<$rawTag>';
+      },
+    );
+
+    return sanitized;
+  }
+
+  String _deltaJson(Delta delta) => jsonEncode(delta.toJson());
+
   String _normalizeHtml(String html) {
     return html.trim();
   }
+
+  static const Set<String> _allowedTags = {
+    'blockquote',
+    'br',
+    'em',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'li',
+    'ol',
+    'p',
+    's',
+    'strong',
+    'ul',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +419,8 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     showFontFamily: false,
                     showFontSize: false,
                     showSmallButton: false,
-                    showStrikeThrough: false,
+                    showUnderLineButton: false,
+                    showStrikeThrough: true,
                     showInlineCode: false,
                     showColorButton: false,
                     showBackgroundColorButton: false,
@@ -251,6 +433,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     showCodeBlock: false,
                     showQuote: true,
                     showIndent: false,
+                    showLink: false,
                     showSearchButton: false,
                     showSubscript: false,
                     showSuperscript: false,
