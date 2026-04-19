@@ -66,12 +66,20 @@ class EventInfoSection extends StatelessWidget {
       return '';
     }
 
-    final canonicalHtml = _sanitizeHtml(trimmed);
-    if (canonicalHtml.isEmpty || _isBlankHtml(canonicalHtml)) {
-      return '';
+    try {
+      final canonicalHtml = _sanitizeHtml(trimmed);
+      if (canonicalHtml.isEmpty || _isBlankHtml(canonicalHtml)) {
+        return '';
+      }
+      return canonicalHtml;
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[EventInfoSection] Failed to canonicalize html: $error\n$stackTrace',
+      );
+      final fallback =
+          _wrapPlainText(InviteFromEventFactory.stripHtml(trimmed));
+      return _isBlankHtml(fallback) ? '' : fallback;
     }
-
-    return canonicalHtml;
   }
 
   bool _isBlankHtml(String html) {
