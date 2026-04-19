@@ -579,7 +579,7 @@ void main() {
                   ),
                 ],
                 contentHtml:
-                    '<p><strong>Evento</strong> aleatório <em>longe</em></p>',
+                    '<p><strong>Evento 🎉</strong> <u>aleatório</u> <a href="https://example.com">longe</a> <s>riscado</s></p>',
               ),
             ),
           ),
@@ -595,6 +595,11 @@ void main() {
     expect(find.text('Sobre'), findsWidgets);
     expect(find.text('Como Chegar'), findsNWidgets(2));
     expect(find.byType(Html), findsOneWidget);
+    final htmlWidget = tester.widget<Html>(find.byType(Html));
+    expect(htmlWidget.data, contains('<s>riscado</s>'));
+    expect(htmlWidget.data, isNot(contains('<u>')));
+    expect(htmlWidget.data, isNot(contains('<a')));
+    expect(htmlWidget.data, contains('🎉'));
     expect(find.text('Show tipo'), findsOneWidget);
     expect(find.text('Ananda Torres'), findsWidgets);
     expect(find.textContaining('Carvoeiro'), findsWidgets);
@@ -1146,7 +1151,7 @@ EventModel _buildEvent({
     ),
     title: TitleValue()..parse('Evento de Teste'),
     content: HTMLContentValue()
-      ..parse(contentHtml ?? 'Descricao longa do evento para teste.'),
+      ..set(contentHtml ?? 'Descricao longa do evento para teste.'),
     location: DescriptionValue()..parse('Local muito legal para teste.'),
     venue: venue,
     thumb: ThumbModel(

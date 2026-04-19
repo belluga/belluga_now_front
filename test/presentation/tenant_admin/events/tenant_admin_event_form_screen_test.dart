@@ -18,6 +18,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -516,7 +517,8 @@ void main() {
     await tester.dragUntilVisible(
       find.text('Legacy Artist Page 2 021'),
       find.byKey(
-        const ValueKey<String>('tenant-admin-related-account-profile-picker-list'),
+        const ValueKey<String>(
+            'tenant-admin-related-account-profile-picker-list'),
       ),
       const Offset(0, -280),
     );
@@ -705,6 +707,80 @@ void main() {
     expect(find.text('Descrição (opcional)'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Descrição (opcional)'),
         findsNothing);
+  });
+
+  testWidgets(
+      'normalizes description content to the approved HTML subset before submit',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439017'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(
+      tester,
+      controller: controller,
+      includeDescription: false,
+    );
+
+    controller.eventContentController.text =
+        '<p><strong>Olá 🎉</strong> <u>mundo</u> <a href="https://example.com">link</a> <s>riscado</s></p>';
+    await tester.pumpAndSettle();
+
+    final expected = '<p><strong>Olá 🎉</strong> mundo link <s>riscado</s></p>';
+    expect(controller.eventContentController.text, expected);
+    expect(controller.eventContentController.text, isNot(contains('<u>')));
+    expect(controller.eventContentController.text, isNot(contains('<a')));
+    expect(controller.eventContentController.text, contains('🎉'));
+
+    final quillEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+    expect(
+      quillEditor.controller.document.toDelta().toJson(),
+      equals([
+        {
+          'insert': 'Olá 🎉',
+          'attributes': {'bold': true},
+        },
+        {'insert': ' mundo link '},
+        {
+          'insert': 'riscado',
+          'attributes': {'strike': true},
+        },
+        {'insert': '\n'},
+      ]),
+    );
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final draft = eventsRepository.lastCreateDraft;
+    expect(draft, isNotNull);
+    expect(draft!.content, expected);
   });
 }
 
@@ -1147,7 +1223,8 @@ class _PagedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
         id: 'artist-page-1-${index + 1}',
         accountId: 'acc-page-1-${index + 1}',
         profileType: 'artist',
-        displayName: 'Legacy Artist Page 1 ${(index + 1).toString().padLeft(3, '0')}',
+        displayName:
+            'Legacy Artist Page 1 ${(index + 1).toString().padLeft(3, '0')}',
       ),
       growable: false,
     );
