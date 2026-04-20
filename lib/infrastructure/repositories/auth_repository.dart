@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
@@ -323,7 +324,20 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     }
 
     final repository = GetIt.I.get<ProximityPreferencesRepositoryContract>();
-    await repository.syncAfterIdentityReady();
+    unawaited(_runBestEffortProximityPreferencesSync(repository));
+  }
+
+  Future<void> _runBestEffortProximityPreferencesSync(
+    ProximityPreferencesRepositoryContract repository,
+  ) async {
+    try {
+      await repository.syncAfterIdentityReady();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AuthRepository._syncProximityPreferencesIfAvailable failed: '
+        '$error\n$stackTrace',
+      );
+    }
   }
 
   Future<void> _mergeTelemetryIdentity(String? previousUserId) async {

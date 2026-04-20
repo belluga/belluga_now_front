@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
@@ -150,8 +151,35 @@ void main() {
     expect(proximityRepository.syncCount, 1);
   });
 
-  test(
-      'init keeps proximity preferences local-first after anonymous bootstrap',
+  test('init keeps auth ready when proximity sync fails', () async {
+    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-user-mode',
+      userIdToReturn: 'user-user-mode',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      syncError: Exception('sync failed'),
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(repository.userToken, 'stored-token');
+    expect(repository.isAuthorized, isTrue);
+    expect(proximityRepository.syncCount, 1);
+  });
+
+  test('init keeps proximity preferences local-first after anonymous bootstrap',
       () async {
     final authBackend = _FakeAuthBackend(
       tokenToReturn: 'identity-token-anonymous',
@@ -200,6 +228,37 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
     expect(proximityRepository.syncCount, 0);
+  });
+
+  test('login keeps auth success when proximity sync fails', () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'login-token',
+      userIdToReturn: 'login-user',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      syncError: Exception('sync failed'),
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.loginWithEmailPassword(
+      authRepoString('user@example.com'),
+      authRepoString('password'),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.loginCount, 1);
+    expect(repository.userToken, 'login-token');
+    expect(repository.isAuthorized, isTrue);
+    expect(proximityRepository.syncCount, 1);
   });
 
   test('init retries issuing identity token on transient failures', () async {
@@ -355,11 +414,17 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 
 class _FakeProximityPreferencesRepository
     extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({this.syncError});
+
   int syncCount = 0;
+  final Object? syncError;
 
   @override
   Future<void> syncAfterIdentityReady() async {
     syncCount += 1;
+    if (syncError != null) {
+      throw syncError!;
+    }
   }
 }
 
@@ -372,6 +437,7 @@ class _FakeAuthBackend extends AuthBackendContract {
   final String tokenToReturn;
   final String userIdToReturn;
   int issueCount = 0;
+  int loginCount = 0;
 
   @override
   Future<AnonymousIdentityResponse> issueAnonymousIdentity({
@@ -393,8 +459,21 @@ class _FakeAuthBackend extends AuthBackendContract {
   Future<(UserDto, String)> loginWithEmailPassword(
     String email,
     String password,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    loginCount += 1;
+    return (
+      UserDto(
+        id: '507f1f77bcf86cd799439011',
+        profile: UserProfileDto(
+          name: 'Test User',
+          email: email,
+          birthday: '',
+          pictureUrl: null,
+        ),
+        customData: const {},
+      ),
+      tokenToReturn,
+    );
   }
 
   @override
