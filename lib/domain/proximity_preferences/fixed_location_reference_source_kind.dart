@@ -1,0 +1,4 @@
+enum FixedLocationReferenceSourceKind {
+  manualCoordinate,
+  entityReference,
+}

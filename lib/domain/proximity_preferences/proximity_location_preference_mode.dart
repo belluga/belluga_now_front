@@ -1,0 +1,4 @@
+enum ProximityLocationPreferenceMode {
+  liveDeviceLocation,
+  fixedReference,
+}

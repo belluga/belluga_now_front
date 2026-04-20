@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
@@ -25,11 +26,21 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileScreenController _controller =
       GetIt.I.get<ProfileScreenController>();
+  StreamSubscription<String?>? _originPreferenceFeedbackSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller.loadAvatarPath();
+    _originPreferenceFeedbackSubscription = _controller
+        .originPreferenceFeedbackStreamValue.stream
+        .listen(_handleOriginPreferenceFeedback);
+  }
+
+  @override
+  void dispose() {
+    _originPreferenceFeedbackSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -204,6 +215,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   );
                                 },
                               ),
+                              StreamValueBuilder<String>(
+                                streamValue:
+                                    _controller.activeOriginSummaryStreamValue,
+                                builder: (context, originSummary) {
+                                  return ListTile(
+                                    key: const Key(
+                                      'profileOriginPreferenceTile',
+                                    ),
+                                    leading: const Icon(Icons.place_outlined),
+                                    title: const Text('Minha localização'),
+                                    subtitle: Text(originSummary),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _openOriginEditor(context),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -252,9 +279,150 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _openOriginEditor(BuildContext context) async {
+    final theme = Theme.of(context);
+    var useFixedOrigin = _controller.isUsingFixedOriginStreamValue.value;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                16 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Minha localização',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment<bool>(
+                            value: false,
+                            icon: Icon(Icons.my_location_outlined),
+                            label: Text('Atual'),
+                          ),
+                          ButtonSegment<bool>(
+                            value: true,
+                            icon: Icon(Icons.place_outlined),
+                            label: Text('Fixa'),
+                          ),
+                        ],
+                        selected: {useFixedOrigin},
+                        onSelectionChanged: (selection) {
+                          if (selection.isEmpty) {
+                            return;
+                          }
+                          setModalState(() {
+                            useFixedOrigin = selection.first;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      if (useFixedOrigin) ...[
+                        TextFormField(
+                          key: const Key('profileFixedOriginLatitudeField'),
+                          controller: _controller.fixedOriginLatitudeController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Latitude',
+                            hintText: 'Ex: -20.673600',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('profileFixedOriginLongitudeField'),
+                          controller:
+                              _controller.fixedOriginLongitudeController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Longitude',
+                            hintText: 'Ex: -40.497600',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('profileFixedOriginLabelField'),
+                          controller: _controller.fixedOriginLabelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Rótulo (opcional)',
+                            hintText: 'Ex: Hotel Base',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ] else
+                        Text(
+                          'Use a sua localização atual como origem padrão das distâncias no Home.',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton(
+                          key: const Key('profileSaveOriginPreferenceButton'),
+                          onPressed: () {
+                            final error = _controller.saveOriginPreference(
+                              useFixedOrigin: useFixedOrigin,
+                            );
+                            if (!context.mounted) {
+                              return;
+                            }
+                            if (error != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error)),
+                              );
+                              return;
+                            }
+                            sheetContext.router.pop();
+                          },
+                          child: const Text('Salvar origem'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _logout() async {
     await _controller.logout();
     _navigateToHome();
+  }
+
+  void _handleOriginPreferenceFeedback(String? message) {
+    if (!mounted || message == null || message.isEmpty) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _navigateToHome() {

@@ -183,6 +183,24 @@ class AppDataRepository implements AppDataRepositoryContract {
     );
   }
 
+  @override
+  Future<void> useUserLiveLocationOrigin() {
+    return setLocationOriginSettings(
+      LocationOriginSettings.userLiveLocation(),
+    );
+  }
+
+  @override
+  Future<void> useUserFixedLocationOrigin({
+    required CityCoordinate fixedLocationReference,
+  }) {
+    return setLocationOriginSettings(
+      LocationOriginSettings.userFixedLocation(
+        fixedLocationReference: fixedLocationReference,
+      ),
+    );
+  }
+
   Future<double?> _loadMaxRadiusMeters() async {
     final stored = await _storage.read(key: _maxRadiusStorageKey);
     if (stored == null || stored.trim().isEmpty) return null;
