@@ -13,10 +13,8 @@ class PartnerEventView {
     this.venueIdValue,
     this.venueTitleValue,
     this.imageUriValue,
-    List<PartnerSupportedEntityView>? artists,
-  }) : artists = List<PartnerSupportedEntityView>.unmodifiable(
-          artists ?? const <PartnerSupportedEntityView>[],
-        );
+    required this.linkedAccountProfiles,
+  });
 
   final MongoIDValue eventIdValue;
   final MongoIDValue occurrenceIdValue;
@@ -29,7 +27,7 @@ class PartnerEventView {
   final MongoIDValue? venueIdValue;
   final PartnerProjectionOptionalTextValue? venueTitleValue;
   final ThumbUriValue? imageUriValue;
-  final List<PartnerSupportedEntityView> artists;
+  final List<PartnerSupportedEntityView> linkedAccountProfiles;
 
   String get eventId => eventIdValue.value;
   String get occurrenceId => occurrenceIdValue.value;
@@ -43,6 +41,7 @@ class PartnerEventView {
     }
     return value;
   }
+
   DateTime get startDateTime {
     final date = startDateTimeValue.value;
     if (date == null) {
@@ -77,10 +76,16 @@ class PartnerEventView {
   }
 
   Uri? get imageUri => imageUriValue?.value;
-  PartnerSupportedEntityView? get primaryArtist =>
-      artists.isEmpty ? null : artists.first;
-  String get artistNamesLabel => artists
-      .map((artist) => artist.title.trim())
+  List<PartnerSupportedEntityView> get counterpartProfiles =>
+      List<PartnerSupportedEntityView>.unmodifiable(
+        linkedAccountProfiles.where(
+          (profile) => profile.title.trim().isNotEmpty,
+        ),
+      );
+  PartnerSupportedEntityView? get primaryCounterpart =>
+      counterpartProfiles.isEmpty ? null : counterpartProfiles.first;
+  String get counterpartNamesLabel => counterpartProfiles
+      .map((profile) => profile.title.trim())
       .where((t) => t.isNotEmpty)
       .join(', ');
 }

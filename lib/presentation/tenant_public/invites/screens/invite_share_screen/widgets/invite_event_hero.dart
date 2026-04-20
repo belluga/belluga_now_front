@@ -37,7 +37,7 @@ class InviteEventHero extends StatelessWidget {
           ..parse(invite.locationValue.value.isNotEmpty
               ? invite.locationValue.value
               : 'Local a definir'),
-        artists: const [],
+        linkedAccountProfiles: const [],
         tagValues: tagValues,
       )),
     );

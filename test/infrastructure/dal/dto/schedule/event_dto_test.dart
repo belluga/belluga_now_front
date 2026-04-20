@@ -33,11 +33,12 @@ void main() {
       'longitude': -40.1,
       'date_time_start': '2026-03-03T20:00:00+00:00',
       'date_time_end': '2026-03-03T22:00:00+00:00',
-      'artists': [
+      'linked_account_profiles': [
         {
           'id': 'artist-1',
           'display_name': 'The Band',
           'slug': 'the-band',
+          'profile_type': 'artist',
         },
       ],
       'tags': ['music'],
@@ -49,7 +50,7 @@ void main() {
     expect(dto.location, 'Arena Central');
     expect(dto.dateTimeStart, '2026-03-03T20:00:00+00:00');
     expect(dto.dateTimeEnd, '2026-03-03T22:00:00+00:00');
-    expect(dto.artists, hasLength(1));
+    expect(dto.linkedAccountProfiles, hasLength(1));
     expect(dto.type.id, 'type-1');
   });
 
@@ -67,7 +68,7 @@ void main() {
       'content': '',
       'location': 'Remote',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
     });
 
     expect(dto.id, 'occ-42');
@@ -95,7 +96,7 @@ void main() {
         },
       },
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
     });
 
     expect(dto.latitude, closeTo(-20.671339, 0.000001));
@@ -144,7 +145,7 @@ void main() {
       'thumb': null,
       'date_time_start': '2026-03-29T01:00:00+00:00',
       'date_time_end': null,
-      'artists': [
+      'linked_account_profiles': [
         {
           'id': '69949486be6cd999250a2507',
           'display_name': 'Ananda Torres',
@@ -169,13 +170,13 @@ void main() {
     expect(dto.location, 'Carvoeiro');
     expect(dto.latitude, closeTo(-20.673704, 0.000001));
     expect(dto.longitude, closeTo(-40.498859, 0.000001));
-    expect(dto.artists, hasLength(1));
+    expect(dto.linkedAccountProfiles, hasLength(1));
     expect(domain.slug, 'karaoke');
     expect(domain.title.value, 'Karaokê');
     expect(domain.location.value, 'Carvoeiro');
     expect(domain.coordinate, isNotNull);
     expect(
-      domain.artists.first.displayName,
+      domain.linkedAccountProfiles.first.displayName,
       'Ananda Torres',
     );
   });
@@ -195,7 +196,6 @@ void main() {
       'content': 'Descricao',
       'location': 'Carvoeiro',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
       'linked_account_profiles': [
         {
           'id': 'artist-1',
@@ -241,14 +241,6 @@ void main() {
         'display_name': 'Carvoeiro',
         'slug': 'carvoeiro',
       },
-      'artists': [
-        {
-          'id': 'artist-1',
-          'display_name': 'Ananda Torres',
-          'slug': 'ananda-torres',
-          'profile_type': 'artist',
-        },
-      ],
       'linked_account_profiles': const [],
     });
 
@@ -271,7 +263,6 @@ void main() {
       'content': 'Descricao',
       'location': 'Carvoeiro',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
       'linked_account_profiles': [
         {
           'id': 'artist-1',
@@ -288,7 +279,8 @@ void main() {
     expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
   });
 
-  test('throws when linked account profile slug is missing after enrichment', () {
+  test('throws when linked account profile slug is missing after enrichment',
+      () {
     expect(
       () => EventDTO.fromJson({
         'event_id': '69a77aa3680219d56909081b',
@@ -303,7 +295,6 @@ void main() {
         'content': 'Descricao',
         'location': 'Carvoeiro',
         'date_time_start': '2026-03-03T10:00:00+00:00',
-        'artists': const [],
         'linked_account_profiles': [
           {
             'id': 'artist-1',

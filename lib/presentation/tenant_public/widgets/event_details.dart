@@ -53,10 +53,10 @@ class EventDetails extends StatelessWidget {
                   color: baseColor.withValues(alpha: 0.9),
                 ),
                 const SizedBox(height: 6),
-                if (event.hasArtists)
+                if (event.hasCounterparts)
                   EventInfoRow(
                     icon: Icons.music_note_outlined,
-                    label: event.artistNamesLabel,
+                    label: event.counterpartNamesLabel,
                     color: baseColor.withValues(alpha: 0.9),
                   )
                 else

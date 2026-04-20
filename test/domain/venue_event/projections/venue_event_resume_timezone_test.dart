@@ -36,6 +36,7 @@ void main() {
       'artists': const [
         {
           'id': '507f1f77bcf86cd799439012',
+          'slug': 'artista-1',
           'display_name': 'Artista 1',
           'avatar_url': null,
           'highlight': true,
