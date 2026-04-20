@@ -36,6 +36,7 @@ void main() {
           'artists': [
             {
               'id': '69949486be6cd999250a2507',
+              'slug': 'ananda-torres',
               'display_name': 'Ananda Torres',
               'avatar_url':
                   'https://guarappari.belluga.space/account-profiles/69949486be6cd999250a2507/avatar?v=1771359996',
