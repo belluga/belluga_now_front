@@ -114,6 +114,11 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     final params = options!.queryParameters;
+    expect(
+      params.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     expect(params['search'], 'Sola');
     expect(params.containsKey('origin_lat'), isFalse);
     expect(params.containsKey('origin_lng'), isFalse);
@@ -145,6 +150,11 @@ void main() {
     );
 
     expect(authRepository.initCallCount, 1);
+    expect(
+      adapter.lastOptions?.queryParameters.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
   });
@@ -173,6 +183,11 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     expect(options!.queryParameters['live_now_only'], 1);
+    expect(
+      options.queryParameters.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     expect(options.queryParameters.containsKey('past_only'), isFalse);
   });
 }

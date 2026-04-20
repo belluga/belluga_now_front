@@ -935,6 +935,55 @@ void main() {
     });
   });
 
+  test('createEventTypeWithVisual uses multipart when type_asset upload exists',
+      () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEventTypeWithVisual(
+      name: _repoText('Festival'),
+      slug: _repoText('festival'),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([7, 8, 9]),
+        fileName: 'festival-type.png',
+        mimeType: 'image/png',
+      ),
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'POST' &&
+          candidate.path.endsWith('/admin/api/v1/event_types'),
+    );
+
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'visual[image_source]' && entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'poi_visual[image_source]' &&
+            entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+  });
+
   test('updateEventTypeWithVisual uses multipart when type_asset upload exists',
       () async {
     final adapter = _EventTypeMutationsAdapter();

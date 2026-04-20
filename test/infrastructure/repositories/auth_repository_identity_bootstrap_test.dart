@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
@@ -26,6 +28,7 @@ import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +84,29 @@ void main() {
     expect(stored, isNull);
   });
 
+  test('init skips identity bootstrap in landlord admin mode on tenant host',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-admin-mode',
+      userIdToReturn: 'user-admin-mode',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 0);
+    expect(repository.userToken, '');
+    final stored = await AuthRepository.storage.read(key: 'user_token');
+    expect(stored, isNull);
+  });
+
   test('init skips identity token when stored token exists', () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
     final authBackend = _FakeAuthBackend(
@@ -97,6 +123,83 @@ void main() {
 
     expect(repository.userToken, 'stored-token');
     expect(authBackend.issueCount, 0);
+  });
+
+  test('init syncs proximity preferences in user mode when available',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-user-mode',
+      userIdToReturn: 'user-user-mode',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(proximityRepository.syncCount, 1);
+  });
+
+  test(
+      'init keeps proximity preferences local-first after anonymous bootstrap',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-anonymous',
+      userIdToReturn: 'user-anonymous',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(repository.userToken, 'identity-token-anonymous');
+    expect(proximityRepository.syncCount, 0);
+  });
+
+  test(
+      'init skips proximity preferences sync in landlord admin mode on tenant host',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-admin-sync',
+      userIdToReturn: 'user-admin-sync',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(proximityRepository.syncCount, 0);
   });
 
   test('init retries issuing identity token on transient failures', () async {
@@ -222,6 +325,42 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     int pageSize = 10,
   }) =>
       throw UnimplementedError();
+}
+
+class _FakeAdminModeRepository implements AdminModeRepositoryContract {
+  _FakeAdminModeRepository(this._mode)
+      : _modeStreamValue = StreamValue<AdminMode>(defaultValue: _mode);
+
+  final AdminMode _mode;
+  final StreamValue<AdminMode> _modeStreamValue;
+
+  @override
+  StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
+
+  @override
+  AdminMode get mode => _mode;
+
+  @override
+  bool get isLandlordMode => _mode == AdminMode.landlord;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> setLandlordMode() async {}
+
+  @override
+  Future<void> setUserMode() async {}
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  int syncCount = 0;
+
+  @override
+  Future<void> syncAfterIdentityReady() async {
+    syncCount += 1;
+  }
 }
 
 class _FakeAuthBackend extends AuthBackendContract {

@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
@@ -79,7 +80,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     await _getUserIdFromLocalStorage();
     await autoLogin();
     await _ensureIdentityToken();
-    await _syncProximityPreferencesIfAvailable();
+    if (isAuthorized) {
+      await _syncProximityPreferencesIfAvailable();
+    }
   }
 
   @override
@@ -277,7 +280,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (userToken.isNotEmpty) {
       return;
     }
-    if (_isLandlordScope()) {
+    if (_isLandlordScope() || _isLandlordAdminModeActive()) {
       return;
     }
     final deviceId = await getDeviceId();
@@ -312,6 +315,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _syncProximityPreferencesIfAvailable() async {
+    if (_isLandlordAdminModeActive()) {
+      return;
+    }
     if (!GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()) {
       return;
     }
@@ -375,6 +381,14 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     }
 
     return requestHost == landlordHost;
+  }
+
+  bool _isLandlordAdminModeActive() {
+    if (!GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      return false;
+    }
+
+    return GetIt.I.get<AdminModeRepositoryContract>().isLandlordMode;
   }
 
   AppData? _tryGetAppData() {

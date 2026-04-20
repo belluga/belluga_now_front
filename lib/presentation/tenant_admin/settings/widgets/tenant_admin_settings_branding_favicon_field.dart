@@ -13,12 +13,14 @@ class TenantAdminSettingsBrandingFaviconField extends StatelessWidget {
     required this.isBusy,
     required this.onPick,
     required this.onClearLocalSelection,
+    this.selectSemanticsLabel = 'Selecionar favicon',
   });
 
   final TenantAdminSettingsController controller;
   final bool isBusy;
   final Future<void> Function() onPick;
   final VoidCallback onClearLocalSelection;
+  final String selectSemanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -130,10 +132,14 @@ class TenantAdminSettingsBrandingFaviconField extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        OutlinedButton.icon(
-                          onPressed: isBusy ? null : onPick,
-                          icon: const Icon(Icons.upload_file_outlined),
-                          label: const Text('Selecionar'),
+                        Semantics(
+                          button: true,
+                          label: selectSemanticsLabel,
+                          child: OutlinedButton.icon(
+                            onPressed: isBusy ? null : onPick,
+                            icon: const Icon(Icons.upload_file_outlined),
+                            label: const Text('Selecionar'),
+                          ),
                         ),
                         if (localUpload case final _?)
                           TextButton.icon(

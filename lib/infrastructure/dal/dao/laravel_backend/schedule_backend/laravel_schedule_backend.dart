@@ -84,9 +84,10 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   }) async {
     final params = <String, dynamic>{
       'page': page,
-      'page_size': pageSize,
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
+    // Public agenda pagination defaults are API-owned. The client only drives
+    // the page cursor and filter semantics so transport does not pin page size.
     if (liveNowOnly) {
       params['live_now_only'] = 1;
     } else {
