@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -15,7 +16,8 @@ typedef AppDataRepositoryContractPrimDateTime = DateTime;
 typedef AppDataRepositoryContractPrimDynamic = dynamic;
 
 abstract class AppDataRepositoryContract {
-  final StreamValue<LocationOriginSettings?> _locationOriginSettingsStreamValue =
+  final StreamValue<LocationOriginSettings?>
+      _locationOriginSettingsStreamValue =
       StreamValue<LocationOriginSettings?>(defaultValue: null);
 
   AppData get appData;
@@ -40,5 +42,21 @@ abstract class AppDataRepositoryContract {
     LocationOriginSettings settings,
   ) async {
     _locationOriginSettingsStreamValue.addValue(settings);
+  }
+
+  Future<void> useUserLiveLocationOrigin() async {
+    await setLocationOriginSettings(
+      LocationOriginSettings.userLiveLocation(),
+    );
+  }
+
+  Future<void> useUserFixedLocationOrigin({
+    required CityCoordinate fixedLocationReference,
+  }) async {
+    await setLocationOriginSettings(
+      LocationOriginSettings.userFixedLocation(
+        fixedLocationReference: fixedLocationReference,
+      ),
+    );
   }
 }

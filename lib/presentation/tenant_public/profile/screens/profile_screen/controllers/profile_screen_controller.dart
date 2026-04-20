@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
@@ -17,22 +22,30 @@ class ProfileScreenController implements Disposable {
   ProfileScreenController({
     AuthRepositoryContract? authRepository,
     AppDataRepositoryContract? appDataRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     ProfileAvatarStorageContract? avatarStorage,
   })  : _authRepository =
             authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+                : null),
         _avatarStorage =
             avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>() {
     _bindUserStream();
     _bindMaxRadiusStream();
+    _bindProximityPreferenceStream();
   }
 
   final AuthRepositoryContract _authRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   final ProfileAvatarStorageContract _avatarStorage;
   StreamSubscription<UserContract?>? _userSubscription;
   StreamSubscription<DistanceInMetersValue>? _maxRadiusSubscription;
+  StreamSubscription<ProximityPreference?>? _proximityPreferenceSubscription;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -40,12 +53,24 @@ class ProfileScreenController implements Disposable {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController editFieldController = TextEditingController();
   final TextEditingController radiusKmController = TextEditingController();
+  final TextEditingController fixedOriginLatitudeController =
+      TextEditingController();
+  final TextEditingController fixedOriginLongitudeController =
+      TextEditingController();
+  final TextEditingController fixedOriginLabelController =
+      TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
   final StreamValue<int> formVersionStreamValue =
       StreamValue<int>(defaultValue: 0);
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
+  final StreamValue<bool> isUsingFixedOriginStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String> activeOriginSummaryStreamValue =
+      StreamValue<String>(defaultValue: 'Localização atual');
+  final StreamValue<String?> originPreferenceFeedbackStreamValue =
+      StreamValue<String?>(defaultValue: null);
 
   String? _syncedUserId;
   String _initialName = '';
@@ -91,7 +116,8 @@ class ProfileScreenController implements Disposable {
 
   void _bindMaxRadiusStream() {
     _maxRadiusSubscription?.cancel();
-    maxRadiusMetersStreamValue.addValue(_appDataRepository.maxRadiusMeters.value);
+    maxRadiusMetersStreamValue
+        .addValue(_appDataRepository.maxRadiusMeters.value);
     _maxRadiusSubscription =
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
       maxRadiusMetersStreamValue.addValue(value.value);
@@ -126,7 +152,158 @@ class ProfileScreenController implements Disposable {
   }
 
   Future<void> setMaxRadiusMeters(double meters) =>
+      _proximityPreferencesRepository?.updateMaxDistanceMeters(
+        _distanceInMetersValue(meters),
+      ) ??
       _appDataRepository.setMaxRadiusMeters(_distanceInMetersValue(meters));
+
+  void _bindProximityPreferenceStream() {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      _applyProximityPreference(null);
+      return;
+    }
+
+    _proximityPreferenceSubscription?.cancel();
+    _proximityPreferenceSubscription =
+        repository.proximityPreferenceStreamValue.stream.listen(
+      _applyProximityPreference,
+    );
+    _applyProximityPreference(repository.proximityPreference);
+  }
+
+  void _applyProximityPreference(ProximityPreference? preference) {
+    final effectivePreference = preference ??
+        ProximityPreference(
+          maxDistanceMetersValue: _appDataRepository.maxRadiusMeters,
+          locationPreference:
+              const ProximityLocationPreference.liveDeviceLocation(),
+        );
+
+    final fixedReference =
+        effectivePreference.locationPreference.fixedReference;
+    isUsingFixedOriginStreamValue.addValue(
+      effectivePreference.locationPreference.usesFixedReference,
+    );
+    activeOriginSummaryStreamValue.addValue(
+      _buildOriginSummary(effectivePreference),
+    );
+
+    if (fixedReference != null) {
+      fixedOriginLatitudeController.text =
+          fixedReference.coordinate.latitude.toStringAsFixed(6);
+      fixedOriginLongitudeController.text =
+          fixedReference.coordinate.longitude.toStringAsFixed(6);
+      fixedOriginLabelController.text = fixedReference.label ?? '';
+    } else {
+      fixedOriginLatitudeController.clear();
+      fixedOriginLongitudeController.clear();
+      fixedOriginLabelController.clear();
+    }
+  }
+
+  String? saveOriginPreference({
+    required bool useFixedOrigin,
+  }) {
+    if (!useFixedOrigin) {
+      originPreferenceFeedbackStreamValue.addValue(null);
+      unawaited(
+        _persistOriginPreference(() async {
+          final repository = _proximityPreferencesRepository;
+          if (repository != null) {
+            await repository.setLiveDeviceLocation();
+            return;
+          }
+          await _appDataRepository.useUserLiveLocationOrigin();
+        }),
+      );
+      return null;
+    }
+
+    final validationError = _validateFixedOriginFields();
+    if (validationError != null) {
+      return validationError;
+    }
+
+    final fixedReference = _buildFixedReference();
+    originPreferenceFeedbackStreamValue.addValue(null);
+    unawaited(
+      _persistOriginPreference(() async {
+        final repository = _proximityPreferencesRepository;
+        if (repository != null) {
+          await repository.setFixedReference(
+            fixedReference: fixedReference,
+          );
+          return;
+        }
+        await _appDataRepository.useUserFixedLocationOrigin(
+          fixedLocationReference: fixedReference.coordinate,
+        );
+      }),
+    );
+    return null;
+  }
+
+  String? _validateFixedOriginFields() {
+    final latitude = double.tryParse(fixedOriginLatitudeController.text.trim());
+    if (latitude == null || latitude < -90 || latitude > 90) {
+      return 'Latitude inválida.';
+    }
+
+    final longitude =
+        double.tryParse(fixedOriginLongitudeController.text.trim());
+    if (longitude == null || longitude < -180 || longitude > 180) {
+      return 'Longitude inválida.';
+    }
+
+    return null;
+  }
+
+  FixedLocationReference _buildFixedReference() {
+    final latitude = double.parse(fixedOriginLatitudeController.text.trim());
+    final longitude = double.parse(fixedOriginLongitudeController.text.trim());
+
+    return FixedLocationReference(
+      sourceKind: FixedLocationReferenceSourceKind.manualCoordinate,
+      coordinate: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse(latitude.toString()),
+        longitudeValue: LongitudeValue()..parse(longitude.toString()),
+      ),
+      labelValue: _optionalTextValue(fixedOriginLabelController.text),
+    );
+  }
+
+  Future<void> _persistOriginPreference(
+    Future<void> Function() persist,
+  ) async {
+    try {
+      await persist();
+    } catch (_) {
+      originPreferenceFeedbackStreamValue.addValue(
+        'Nao foi possivel salvar a localizacao selecionada.',
+      );
+    }
+  }
+
+  ProximityPreferenceOptionalTextValue? _optionalTextValue(String raw) {
+    final value = ProximityPreferenceOptionalTextValue.fromRaw(raw);
+    return value.nullableValue == null ? null : value;
+  }
+
+  String _buildOriginSummary(ProximityPreference preference) {
+    final fixedReference = preference.locationPreference.fixedReference;
+    if (fixedReference == null) {
+      return 'Localização atual';
+    }
+
+    final label = fixedReference.label?.trim();
+    if (label != null && label.isNotEmpty) {
+      return label;
+    }
+
+    return 'Lat ${fixedReference.coordinate.latitude.toStringAsFixed(6)}'
+        ' · Lng ${fixedReference.coordinate.longitude.toStringAsFixed(6)}';
+  }
 
   Future<void> requestAvatarUpdate() async {
     debugPrint('[Profile] Avatar update requested');
@@ -186,14 +363,21 @@ class ProfileScreenController implements Disposable {
   void onDispose() {
     _userSubscription?.cancel();
     _maxRadiusSubscription?.cancel();
+    _proximityPreferenceSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
     emailController.dispose();
     phoneController.dispose();
     editFieldController.dispose();
     radiusKmController.dispose();
+    fixedOriginLatitudeController.dispose();
+    fixedOriginLongitudeController.dispose();
+    fixedOriginLabelController.dispose();
     localAvatarPathStreamValue.dispose();
     formVersionStreamValue.dispose();
     maxRadiusMetersStreamValue.dispose();
+    isUsingFixedOriginStreamValue.dispose();
+    activeOriginSummaryStreamValue.dispose();
+    originPreferenceFeedbackStreamValue.dispose();
   }
 }

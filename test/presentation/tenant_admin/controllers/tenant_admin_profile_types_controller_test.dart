@@ -28,7 +28,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -59,8 +59,9 @@ class _FakeAccountProfilesRepository
     final created = tenantAdminProfileTypeDefinitionFromRaw(
       type: type.value,
       label: label.value,
-      allowedTaxonomies:
-          allowedTaxonomies.map((entry) => entry.value).toList(growable: false),
+      allowedTaxonomies: allowedTaxonomies
+          .map((entry) => entry.value)
+          .toList(growable: false),
       capabilities: capabilities,
     );
     _types = [..._types, created];
@@ -78,11 +79,13 @@ class _FakeAccountProfilesRepository
     final updated = tenantAdminProfileTypeDefinitionFromRaw(
       type: newType?.value ?? type.value,
       label: label?.value ?? 'Updated',
-      allowedTaxonomies: allowedTaxonomies
+      allowedTaxonomies:
+          allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           <String>[],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -94,18 +97,21 @@ class _FakeAccountProfilesRepository
             hasEvents: TenantAdminFlagValue(false),
           ),
     );
-    _types = _types.map((entry) {
-      if (entry.type == type.value) {
-        return updated;
-      }
-      return entry;
-    }).toList(growable: false);
+    _types = _types
+        .map((entry) {
+          if (entry.type == type.value) {
+            return updated;
+          }
+          return entry;
+        })
+        .toList(growable: false);
     return updated;
   }
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {
+    TenantAdminAccountProfilesRepoString type,
+  ) async {
     deleteCalls += 1;
     _types = _types.where((entry) => entry.type != type.value).toList();
   }
@@ -113,8 +119,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -178,7 +183,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -194,11 +200,12 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfilesRepoInt>
-      fetchProfileTypeMapPoiProjectionImpact({
+  fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
   }) async {
     lastProjectionImpactType = type.value;
@@ -238,7 +245,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -267,7 +274,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -336,8 +343,9 @@ void main() {
       ),
     );
     final repository = _FakeAccountProfilesRepository(types);
-    final controller =
-        TenantAdminProfileTypesController(repository: repository);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
 
     await controller.loadTypes();
     expect(controller.typesStreamValue.value?.length, 20);
@@ -354,8 +362,9 @@ void main() {
 
   test('createType reloads registry list', () async {
     final repository = _FakeAccountProfilesRepository([]);
-    final controller =
-        TenantAdminProfileTypesController(repository: repository);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
 
     await controller.createType(
       type: 'venue',
@@ -394,8 +403,9 @@ void main() {
         ),
       ),
     ]);
-    final controller =
-        TenantAdminProfileTypesController(repository: repository);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
 
     await controller.loadTypes();
     expect(controller.typesStreamValue.value?.length, 1);
@@ -457,40 +467,42 @@ void main() {
     expect(controller.typesStreamValue.value?.first.type, 'venue');
   });
 
-  test('loads available taxonomies filtered by account_profile target',
-      () async {
-    final repository = _FakeAccountProfilesRepository([]);
-    final taxonomiesRepository = _FakeTaxonomiesRepository([
-      tenantAdminTaxonomyDefinitionFromRaw(
-        id: '1',
-        slug: 'music_genre',
-        name: 'Music Genre',
-        appliesTo: ['account_profile'],
-        icon: null,
-        color: null,
-      ),
-      tenantAdminTaxonomyDefinitionFromRaw(
-        id: '2',
-        slug: 'event_type',
-        name: 'Event Type',
-        appliesTo: ['event'],
-        icon: null,
-        color: null,
-      ),
-    ]);
-    final controller = TenantAdminProfileTypesController(
-      repository: repository,
-      taxonomiesRepository: taxonomiesRepository,
-    );
+  test(
+    'loads available taxonomies filtered by account_profile target',
+    () async {
+      final repository = _FakeAccountProfilesRepository([]);
+      final taxonomiesRepository = _FakeTaxonomiesRepository([
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: '1',
+          slug: 'music_genre',
+          name: 'Music Genre',
+          appliesTo: ['account_profile'],
+          icon: null,
+          color: null,
+        ),
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: '2',
+          slug: 'event_type',
+          name: 'Event Type',
+          appliesTo: ['event'],
+          icon: null,
+          color: null,
+        ),
+      ]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
 
-    await controller.loadAvailableTaxonomies();
+      await controller.loadAvailableTaxonomies();
 
-    expect(controller.availableTaxonomiesStreamValue.value.length, 1);
-    expect(
-      controller.availableTaxonomiesStreamValue.value.first.slug,
-      'music_genre',
-    );
-  });
+      expect(controller.availableTaxonomiesStreamValue.value.length, 1);
+      expect(
+        controller.availableTaxonomiesStreamValue.value.first.slug,
+        'music_genre',
+      );
+    },
+  );
 
   test('ignores non-listed taxonomy slug when toggling selection', () async {
     final repository = _FakeAccountProfilesRepository([]);
@@ -516,61 +528,91 @@ void main() {
     expect(controller.selectedAllowedTaxonomies, ['music_genre']);
   });
 
-  test('submitUpdateType keeps detail stream aligned with saved values',
-      () async {
-    final repository = _FakeAccountProfilesRepository([
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'artist',
-        label: 'Artist',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(false),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+  test(
+    'disables reference location capability when poi is turned off',
+    () async {
+      final repository = _FakeAccountProfilesRepository([]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
+
+      controller.updateCapabilities(
+        isPoiEnabled: true,
+        isReferenceLocationEnabled: true,
+      );
+      expect(controller.currentCapabilities.isReferenceLocationEnabled, isTrue);
+
+      controller.updateCapabilities(isPoiEnabled: false);
+
+      expect(controller.currentCapabilities.isPoiEnabled, isFalse);
+      expect(
+        controller.currentCapabilities.isReferenceLocationEnabled,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'submitUpdateType keeps detail stream aligned with saved values',
+    () async {
+      final repository = _FakeAccountProfilesRepository([
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(false),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
         ),
-      ),
-    ]);
-    final controller =
-        TenantAdminProfileTypesController(repository: repository);
+      ]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
 
-    controller.initDetailType(tenantAdminProfileTypeDefinitionFromRaw(
-      type: 'artist',
-      label: 'Artist',
-      allowedTaxonomies: [],
-      capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: TenantAdminFlagValue(false),
-        isPoiEnabled: TenantAdminFlagValue(false),
-        hasBio: TenantAdminFlagValue(false),
-        hasContent: TenantAdminFlagValue(false),
-        hasTaxonomies: TenantAdminFlagValue(false),
-        hasAvatar: TenantAdminFlagValue(false),
-        hasCover: TenantAdminFlagValue(false),
-        hasEvents: TenantAdminFlagValue(false),
-      ),
-    ));
+      controller.initDetailType(
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(false),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
+        ),
+      );
 
-    await controller.submitUpdateType(
-      type: 'artist',
-      newType: 'artist-pro',
-      label: 'Artist Pro',
-    );
+      await controller.submitUpdateType(
+        type: 'artist',
+        newType: 'artist-pro',
+        label: 'Artist Pro',
+      );
 
-    final detail = controller.detailTypeStreamValue.value;
-    expect(detail, isNotNull);
-    expect(detail!.type, 'artist-pro');
-    expect(detail.label, 'Artist Pro');
-  });
+      final detail = controller.detailTypeStreamValue.value;
+      expect(detail, isNotNull);
+      expect(detail!.type, 'artist-pro');
+      expect(detail.label, 'Artist Pro');
+    },
+  );
 
   test('previewDisableProjectionCount delegates to repository', () async {
     final repository = _FakeAccountProfilesRepository([]);
     repository.projectionImpactCount = 67;
-    final controller =
-        TenantAdminProfileTypesController(repository: repository);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
 
     final count = await controller.previewDisableProjectionCount('venue');
 
@@ -581,8 +623,9 @@ void main() {
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
   _FakeTenantScope(String initialDomain)
-      : _selectedTenantDomainStreamValue =
-            StreamValue<String?>(defaultValue: initialDomain);
+    : _selectedTenantDomainStreamValue = StreamValue<String?>(
+        defaultValue: initialDomain,
+      );
 
   final StreamValue<String?> _selectedTenantDomainStreamValue;
 
@@ -604,9 +647,11 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }

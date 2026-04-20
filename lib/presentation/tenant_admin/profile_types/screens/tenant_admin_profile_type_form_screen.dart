@@ -21,10 +21,7 @@ import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminProfileTypeFormScreen extends StatefulWidget {
-  const TenantAdminProfileTypeFormScreen({
-    super.key,
-    this.definition,
-  });
+  const TenantAdminProfileTypeFormScreen({super.key, this.definition});
 
   final TenantAdminProfileTypeDefinition? definition;
 
@@ -35,8 +32,8 @@ class TenantAdminProfileTypeFormScreen extends StatefulWidget {
 
 class _TenantAdminProfileTypeFormScreenState
     extends State<TenantAdminProfileTypeFormScreen> {
-  final TenantAdminProfileTypesController _controller =
-      GetIt.I.get<TenantAdminProfileTypesController>();
+  final TenantAdminProfileTypesController _controller = GetIt.I
+      .get<TenantAdminProfileTypesController>();
 
   bool get _isEdit => widget.definition != null;
 
@@ -68,12 +65,12 @@ class _TenantAdminProfileTypeFormScreenState
     if (_controller.typeController.text == generated) {
       return;
     }
-    _controller.typeController.value =
-        _controller.typeController.value.copyWith(
-      text: generated,
-      selection: TextSelection.collapsed(offset: generated.length),
-      composing: TextRange.empty,
-    );
+    _controller.typeController.value = _controller.typeController.value
+        .copyWith(
+          text: generated,
+          selection: TextSelection.collapsed(offset: generated.length),
+          composing: TextRange.empty,
+        );
   }
 
   Future<void> _save() async {
@@ -97,10 +94,12 @@ class _TenantAdminProfileTypeFormScreenState
       return;
     }
 
-    final requiresTypeAsset = visual.mode == TenantAdminPoiVisualMode.image &&
+    final requiresTypeAsset =
+        visual.mode == TenantAdminPoiVisualMode.image &&
         visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
-    final typeAssetUpload =
-        requiresTypeAsset ? await _controller.buildTypeAssetUpload() : null;
+    final typeAssetUpload = requiresTypeAsset
+        ? await _controller.buildTypeAssetUpload()
+        : null;
     if (requiresTypeAsset &&
         typeAssetUpload == null &&
         _controller.currentTypeAssetUrl == null) {
@@ -199,8 +198,9 @@ class _TenantAdminProfileTypeFormScreenState
                           children: [
                             TextFormField(
                               controller: _controller.labelController,
-                              decoration:
-                                  const InputDecoration(labelText: 'Label'),
+                              decoration: const InputDecoration(
+                                labelText: 'Label',
+                              ),
                               keyboardType: TextInputType.name,
                               textCapitalization: TextCapitalization.words,
                               onChanged: (_) => _syncSlugFromLabel(),
@@ -253,8 +253,7 @@ class _TenantAdminProfileTypeFormScreenState
                         title: 'Capacidades',
                         description:
                             'Ative os recursos que o perfil deve disponibilizar.',
-                        child: StreamValueBuilder<
-                            TenantAdminProfileTypeCapabilities>(
+                        child: StreamValueBuilder<TenantAdminProfileTypeCapabilities>(
                           streamValue: _controller.capabilitiesStreamValue,
                           builder: (context, capabilities) {
                             return Column(
@@ -263,10 +262,8 @@ class _TenantAdminProfileTypeFormScreenState
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Favoritavel'),
                                   value: capabilities.isFavoritable,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    isFavoritable: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(isFavoritable: value),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -275,10 +272,27 @@ class _TenantAdminProfileTypeFormScreenState
                                     'Requer localizacao no perfil',
                                   ),
                                   value: capabilities.isPoiEnabled,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    isPoiEnabled: value,
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(isPoiEnabled: value),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Referencia fixa habilitada',
                                   ),
+                                  subtitle: Text(
+                                    capabilities.isPoiEnabled
+                                        ? 'Permite usar perfis deste tipo como referencia fixa do usuario.'
+                                        : 'Requer POI habilitado.',
+                                  ),
+                                  value:
+                                      capabilities.isReferenceLocationEnabled,
+                                  onChanged: capabilities.isPoiEnabled
+                                      ? (value) =>
+                                            _controller.updateCapabilities(
+                                              isReferenceLocationEnabled: value,
+                                            )
+                                      : null,
                                 ),
                                 const SizedBox(height: 12),
                                 _buildPoiVisualEditor(context),
@@ -290,10 +304,8 @@ class _TenantAdminProfileTypeFormScreenState
                                     'Exibe campo de descricao no perfil',
                                   ),
                                   value: capabilities.hasBio,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasBio: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasBio: value),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -302,28 +314,22 @@ class _TenantAdminProfileTypeFormScreenState
                                     'Exibe campo de conteudo estendido no perfil',
                                   ),
                                   value: capabilities.hasContent,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasContent: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasContent: value),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Avatar habilitado'),
                                   value: capabilities.hasAvatar,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasAvatar: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasAvatar: value),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Capa habilitada'),
                                   value: capabilities.hasCover,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasCover: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasCover: value),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -332,10 +338,8 @@ class _TenantAdminProfileTypeFormScreenState
                                     'Mostra "Proximos Eventos"',
                                   ),
                                   value: capabilities.hasEvents,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasEvents: value,
-                                  ),
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasEvents: value),
                                 ),
                               ],
                             );
@@ -373,15 +377,11 @@ class _TenantAdminProfileTypeFormScreenState
             const SizedBox(height: 8),
             DropdownButtonFormField<TenantAdminPoiVisualMode>(
               initialValue: mode,
-              decoration: const InputDecoration(
-                labelText: 'Modo visual',
-              ),
+              decoration: const InputDecoration(labelText: 'Modo visual'),
               items: TenantAdminPoiVisualMode.values
                   .map(
-                    (item) => DropdownMenuItem(
-                      value: item,
-                      child: Text(item.label),
-                    ),
+                    (item) =>
+                        DropdownMenuItem(value: item, child: Text(item.label)),
                   )
                   .toList(growable: false),
               onChanged: (value) {
@@ -499,8 +499,9 @@ class _TenantAdminProfileTypeFormScreenState
                                     label: Text(
                                       '${taxonomy.name} (${taxonomy.slug})',
                                     ),
-                                    selected:
-                                        selectedSet.contains(taxonomy.slug),
+                                    selected: selectedSet.contains(
+                                      taxonomy.slug,
+                                    ),
                                     onSelected: (_) => _controller
                                         .toggleAllowedTaxonomy(taxonomy.slug),
                                   ),
@@ -534,10 +535,12 @@ class _TenantAdminProfileTypeFormScreenState
                 final hasExistingUrl =
                     !isMarkedForRemoval && trimmedUrl.isNotEmpty;
                 final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
-                final canRemove = selectedFile != null ||
+                final canRemove =
+                    selectedFile != null ||
                     hasExistingUrl ||
                     isMarkedForRemoval;
-                final selectedLabel = selectedFile?.name ??
+                final selectedLabel =
+                    selectedFile?.name ??
                     (isMarkedForRemoval
                         ? 'Imagem canônica será removida ao salvar.'
                         : normalizedUrl ?? 'Nenhuma imagem selecionada');
@@ -554,8 +557,9 @@ class _TenantAdminProfileTypeFormScreenState
                   addLabel: 'Enviar imagem canônica',
                   sourceSheetTitle: 'Adicionar imagem canônica do tipo',
                   urlPromptTitle: 'URL da imagem canônica do tipo',
-                  removeLabel:
-                      isMarkedForRemoval ? 'Desfazer remoção' : 'Remover',
+                  removeLabel: isMarkedForRemoval
+                      ? 'Desfazer remoção'
+                      : 'Remover',
                   busy: false,
                   canRemove: canRemove,
                   onRemove: _controller.clearTypeAssetSelection,
@@ -597,10 +601,7 @@ class _TenantAdminProfileTypeFormScreenState
     }
 
     if (isMarkedForRemoval) {
-      return _buildTypeAssetPlaceholder(
-        context,
-        icon: Icons.delete_outline,
-      );
+      return _buildTypeAssetPlaceholder(context, icon: Icons.delete_outline);
     }
 
     if (existingUrl != null && existingUrl.isNotEmpty) {
@@ -613,10 +614,7 @@ class _TenantAdminProfileTypeFormScreenState
       );
     }
 
-    return _buildTypeAssetPlaceholder(
-      context,
-      icon: Icons.photo_outlined,
-    );
+    return _buildTypeAssetPlaceholder(context, icon: Icons.photo_outlined);
   }
 
   Widget _buildTypeAssetPlaceholder(
@@ -637,9 +635,9 @@ class _TenantAdminProfileTypeFormScreenState
   void _handleSuccessMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearSuccessMessage();
       performTenantAdminCurrentRouteBack(context);
     });
@@ -648,9 +646,9 @@ class _TenantAdminProfileTypeFormScreenState
   void _handleErrorMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearActionErrorMessage();
     });
   }

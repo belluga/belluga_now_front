@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'dart:convert';
@@ -78,6 +81,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     await _getUserIdFromLocalStorage();
     await autoLogin();
     await _ensureIdentityToken();
+    if (isAuthorized) {
+      await _syncProximityPreferencesIfAvailable();
+    }
   }
 
   @override
@@ -275,7 +281,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (userToken.isNotEmpty) {
       return;
     }
-    if (_isLandlordScope()) {
+    if (_isLandlordScope() || _isLandlordAdminModeActive()) {
       return;
     }
     final deviceId = await getDeviceId();
@@ -306,6 +312,32 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     userStreamValue.addValue(user);
     await _mergeTelemetryIdentity(previousUserId);
     await _setUserId(overrideUserId ?? user.uuidValue.value);
+    await _syncProximityPreferencesIfAvailable();
+  }
+
+  Future<void> _syncProximityPreferencesIfAvailable() async {
+    if (_isLandlordAdminModeActive()) {
+      return;
+    }
+    if (!GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()) {
+      return;
+    }
+
+    final repository = GetIt.I.get<ProximityPreferencesRepositoryContract>();
+    unawaited(_runBestEffortProximityPreferencesSync(repository));
+  }
+
+  Future<void> _runBestEffortProximityPreferencesSync(
+    ProximityPreferencesRepositoryContract repository,
+  ) async {
+    try {
+      await repository.syncAfterIdentityReady();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AuthRepository._syncProximityPreferencesIfAvailable failed: '
+        '$error\n$stackTrace',
+      );
+    }
   }
 
   Future<void> _mergeTelemetryIdentity(String? previousUserId) async {
@@ -363,6 +395,14 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     }
 
     return requestHost == landlordHost;
+  }
+
+  bool _isLandlordAdminModeActive() {
+    if (!GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      return false;
+    }
+
+    return GetIt.I.get<AdminModeRepositoryContract>().isLandlordMode;
   }
 
   AppData? _tryGetAppData() {

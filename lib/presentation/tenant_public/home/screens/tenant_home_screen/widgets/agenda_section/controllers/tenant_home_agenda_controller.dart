@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -37,6 +38,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     LocationOriginServiceContract? locationOriginService,
     TelemetryRepositoryContract? telemetryRepository,
     bool isWebRuntime = kIsWeb,
@@ -59,6 +61,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+                : null),
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>(),
         _telemetryRepository = telemetryRepository ??
@@ -76,6 +82,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   final LocationOriginServiceContract _locationOriginService;
   final TelemetryRepositoryContract? _telemetryRepository;
   final bool _isWebRuntime;
@@ -766,7 +773,12 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       defaultValue: meters,
     )..parse(meters.toString());
     try {
-      await _appDataRepository.setMaxRadiusMeters(value);
+      final repository = _proximityPreferencesRepository;
+      if (repository != null) {
+        await repository.updateMaxDistanceMeters(value);
+      } else {
+        await _appDataRepository.setMaxRadiusMeters(value);
+      }
     } catch (_) {
       if ((_pendingPersistedRadiusEchoMeters ?? -1) == meters) {
         _pendingPersistedRadiusEchoMeters = null;

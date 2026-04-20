@@ -26,6 +26,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
@@ -57,6 +58,7 @@ import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/proximity_preferences_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
@@ -328,6 +330,9 @@ class ModuleSettings extends ModuleSettingsContract {
       () => InvitesRepository(),
     );
     await _registerAppDataRepository();
+    _registerIfAbsent<ProximityPreferencesRepositoryContract>(
+      () => ProximityPreferencesRepository(),
+    );
     _registerIfAbsent<LaravelMapPoiHttpService>(
       () => LaravelMapPoiHttpService(),
     );
@@ -353,10 +358,12 @@ class ModuleSettings extends ModuleSettingsContract {
       () => UserEventsRepository(),
     );
     await _registerTenantRepository();
+    final adminModeRepository = GetIt.I.get<AdminModeRepositoryContract>();
+    // Hydrate admin mode before public auth bootstrap so tenant-admin landlord
+    // sessions do not trigger tenant-public identity/proximity flows.
+    await adminModeRepository.init();
     await _registerAuthRepository();
     await _registerLandlordAuthRepository();
-    final adminModeRepository = GetIt.I.get<AdminModeRepositoryContract>();
-    await adminModeRepository.init();
   }
 
   Future<void> _registerAppDataRepository() async {
