@@ -31,25 +31,95 @@ void main() {
   });
 
   testWidgets(
-      'asks destructive confirmation when disabling POI and respects cancel/confirm',
-      (tester) async {
-    final controller = _TestProfileTypesController(impactCount: 67);
+    'asks destructive confirmation when disabling POI and respects cancel/confirm',
+    (tester) async {
+      final controller = _TestProfileTypesController(impactCount: 67);
+      GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantAdminProfileTypeFormScreen(
+            definition: tenantAdminProfileTypeDefinitionFromRaw(
+              type: 'venue',
+              label: 'Venue',
+              allowedTaxonomies: const [],
+              visual: TenantAdminPoiVisual.icon(
+                iconValue: TenantAdminRequiredTextValue()..parse('place'),
+                colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+              ),
+              capabilities: TenantAdminProfileTypeCapabilities(
+                isFavoritable: TenantAdminFlagValue(true),
+                isPoiEnabled: TenantAdminFlagValue(true),
+                isReferenceLocationEnabled: TenantAdminFlagValue(true),
+                hasBio: TenantAdminFlagValue(true),
+                hasContent: TenantAdminFlagValue(true),
+                hasTaxonomies: TenantAdminFlagValue(true),
+                hasAvatar: TenantAdminFlagValue(true),
+                hasCover: TenantAdminFlagValue(true),
+                hasEvents: TenantAdminFlagValue(true),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(SwitchListTile, 'POI habilitado'));
+      await tester.pumpAndSettle();
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Alerta: vamos deletar 67 projeções de Venue.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(controller.submitUpdateCalls, 0);
+
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar'));
+      await tester.pumpAndSettle();
+
+      expect(controller.submitUpdateCalls, 1);
+      expect(controller.lastCapabilities?.isPoiEnabled, isFalse);
+      expect(controller.lastCapabilities?.isReferenceLocationEnabled, isFalse);
+      expect(controller.lastVisual, isNotNull);
+      expect(controller.lastVisual?.mode, TenantAdminPoiVisualMode.icon);
+    },
+  );
+
+  testWidgets('disables reference location toggle when poi is disabled', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
     GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
     await tester.pumpWidget(
       MaterialApp(
         home: TenantAdminProfileTypeFormScreen(
           definition: tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'venue',
-            label: 'Venue',
+            type: 'hotel',
+            label: 'Hotel',
             allowedTaxonomies: const [],
-            visual: TenantAdminPoiVisual.icon(
-              iconValue: TenantAdminRequiredTextValue()..parse('place'),
-              colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
-            ),
             capabilities: TenantAdminProfileTypeCapabilities(
               isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              isReferenceLocationEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(true),
               hasContent: TenantAdminFlagValue(true),
               hasTaxonomies: TenantAdminFlagValue(true),
@@ -63,45 +133,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(SwitchListTile, 'POI habilitado'));
-    await tester.pumpAndSettle();
-
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Alerta: vamos deletar 67 projeções de Venue.'),
-      findsOneWidget,
+    final referenceToggle = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, 'Referencia fixa habilitada'),
     );
 
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-    expect(controller.submitUpdateCalls, 0);
-
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirmar'));
-    await tester.pumpAndSettle();
-
-    expect(controller.submitUpdateCalls, 1);
-    expect(controller.lastCapabilities?.isPoiEnabled, isFalse);
-    expect(controller.lastVisual, isNotNull);
-    expect(controller.lastVisual?.mode, TenantAdminPoiVisualMode.icon);
+    expect(referenceToggle.value, isFalse);
+    expect(referenceToggle.onChanged, isNull);
+    expect(find.text('Requer POI habilitado.'), findsOneWidget);
   });
 
-  testWidgets('renders shared marker icon picker in POI visual editor',
-      (tester) async {
+  testWidgets('renders shared marker icon picker in POI visual editor', (
+    tester,
+  ) async {
     final controller = _TestProfileTypesController(impactCount: 0);
     GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
@@ -136,48 +179,51 @@ void main() {
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
   });
 
-  testWidgets('shows canonical type image upload controls for type_asset visuals',
-      (tester) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
-    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+  testWidgets(
+    'shows canonical type image upload controls for type_asset visuals',
+    (tester) async {
+      final controller = _TestProfileTypesController(impactCount: 0);
+      GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminProfileTypeFormScreen(
-          definition: tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'restaurant',
-            label: 'Restaurant',
-            allowedTaxonomies: const [],
-            visual: TenantAdminPoiVisual.image(
-              imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-              imageUrlValue: TenantAdminOptionalUrlValue()
-                ..parse(
-                  'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
-                ),
-            ),
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(true),
-              hasContent: TenantAdminFlagValue(true),
-              hasTaxonomies: TenantAdminFlagValue(true),
-              hasAvatar: TenantAdminFlagValue(true),
-              hasCover: TenantAdminFlagValue(true),
-              hasEvents: TenantAdminFlagValue(true),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantAdminProfileTypeFormScreen(
+            definition: tenantAdminProfileTypeDefinitionFromRaw(
+              type: 'restaurant',
+              label: 'Restaurant',
+              allowedTaxonomies: const [],
+              visual: TenantAdminPoiVisual.image(
+                imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+                imageUrlValue: TenantAdminOptionalUrlValue()
+                  ..parse(
+                    'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
+                  ),
+              ),
+              capabilities: TenantAdminProfileTypeCapabilities(
+                isFavoritable: TenantAdminFlagValue(true),
+                isPoiEnabled: TenantAdminFlagValue(true),
+                hasBio: TenantAdminFlagValue(true),
+                hasContent: TenantAdminFlagValue(true),
+                hasTaxonomies: TenantAdminFlagValue(true),
+                hasAvatar: TenantAdminFlagValue(true),
+                hasCover: TenantAdminFlagValue(true),
+                hasEvents: TenantAdminFlagValue(true),
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Imagem canônica do tipo'), findsOneWidget);
-    expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
-    expect(find.text('Enviar imagem canônica'), findsOneWidget);
-  });
+      expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+      expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
+      expect(find.text('Enviar imagem canônica'), findsOneWidget);
+    },
+  );
 
-  testWidgets('type_asset upload uses canonical image source sheet',
-      (tester) async {
+  testWidgets('type_asset upload uses canonical image source sheet', (
+    tester,
+  ) async {
     final controller = _TestProfileTypesController(impactCount: 0);
     GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
@@ -224,13 +270,12 @@ void main() {
 }
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
-  _TestProfileTypesController({
-    required int impactCount,
-  })  : _impactCount = impactCount,
-        super(
-          repository: _FakeAccountProfilesRepository(),
-          taxonomiesRepository: _FakeTaxonomiesRepository(),
-        );
+  _TestProfileTypesController({required int impactCount})
+    : _impactCount = impactCount,
+      super(
+        repository: _FakeAccountProfilesRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+      );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -298,11 +343,13 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -325,7 +372,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -337,7 +384,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -378,7 +426,8 @@ class _FakeAccountProfilesRepository
       type: newType ?? type,
       label: label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -432,7 +481,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -451,7 +500,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

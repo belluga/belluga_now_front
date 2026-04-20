@@ -10,6 +10,7 @@ class TenantAdminProfileTypeDTO {
     this.visual,
     required this.isFavoritable,
     required this.isPoiEnabled,
+    required this.isReferenceLocationEnabled,
     required this.hasBio,
     required this.hasContent,
     required this.hasTaxonomies,
@@ -25,6 +26,7 @@ class TenantAdminProfileTypeDTO {
   final TenantAdminPoiVisual? visual;
   final bool isFavoritable;
   final bool isPoiEnabled;
+  final bool isReferenceLocationEnabled;
   final bool hasBio;
   final bool hasContent;
   final bool hasTaxonomies;
@@ -45,6 +47,7 @@ class TenantAdminProfileTypeDTO {
     final capabilities = json['capabilities'];
     bool isFavoritable = false;
     bool isPoiEnabled = false;
+    bool isReferenceLocationEnabled = false;
     bool hasBio = false;
     bool hasContent = false;
     bool hasTaxonomies = false;
@@ -54,6 +57,8 @@ class TenantAdminProfileTypeDTO {
     if (capabilities is Map<String, dynamic>) {
       isFavoritable = _parseBool(capabilities['is_favoritable']);
       isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
+      isReferenceLocationEnabled = isPoiEnabled &&
+          _parseBool(capabilities['is_reference_location_enabled']);
       hasBio = _parseBool(capabilities['has_bio']);
       hasContent = _parseBool(capabilities['has_content']);
       hasTaxonomies = _parseBool(capabilities['has_taxonomies']);
@@ -85,6 +90,7 @@ class TenantAdminProfileTypeDTO {
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
+      isReferenceLocationEnabled: isReferenceLocationEnabled,
       hasBio: hasBio,
       hasContent: hasContent,
       hasTaxonomies: hasTaxonomies,
@@ -142,6 +148,9 @@ class TenantAdminProfileTypeDTO {
       capabilities: TenantAdminProfileTypeCapabilities(
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
+        isReferenceLocationEnabled: TenantAdminFlagValue(
+          isReferenceLocationEnabled,
+        ),
         hasBio: TenantAdminFlagValue(hasBio),
         hasContent: TenantAdminFlagValue(hasContent),
         hasTaxonomies: TenantAdminFlagValue(hasTaxonomies),
