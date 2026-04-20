@@ -44,11 +44,11 @@ class UpcomingEventCard extends StatelessWidget {
         imageUri: event.imageUri,
         headline: event.title,
         metaLabel: _dateLabelFor(event),
-        counterparts: event.artists
+        counterparts: event.counterpartProfiles
             .map(
-              (artist) => (
-                label: artist.displayName,
-                thumbUrl: artist.avatarUri?.toString(),
+              (counterpart) => (
+                label: counterpart.displayName,
+                thumbUrl: counterpart.avatarUrl ?? counterpart.coverUrl,
                 fallbackIcon: Icons.music_note,
               ),
             )

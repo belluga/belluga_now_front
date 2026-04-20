@@ -1,13 +1,13 @@
-import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
-class _LiveArtistItem {
-  final ArtistResume artist;
+class _LiveCounterpartItem {
+  final EventLinkedAccountProfile counterpart;
   final EventModel event;
 
-  _LiveArtistItem(this.artist, this.event);
+  _LiveCounterpartItem(this.counterpart, this.event);
 }
 
 class DiscoveryLiveNowSection extends StatelessWidget {
@@ -26,17 +26,18 @@ class DiscoveryLiveNowSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final uniqueArtists = <String, _LiveArtistItem>{};
+    final uniqueCounterparts = <String, _LiveCounterpartItem>{};
     for (final event in items) {
-      for (final artist in event.artists) {
-        if (!uniqueArtists.containsKey(artist.id)) {
-          uniqueArtists[artist.id] = _LiveArtistItem(artist, event);
+      for (final counterpart in event.counterpartProfiles) {
+        if (!uniqueCounterparts.containsKey(counterpart.id)) {
+          uniqueCounterparts[counterpart.id] =
+              _LiveCounterpartItem(counterpart, event);
         }
       }
     }
 
-    final liveArtists = uniqueArtists.values.toList();
-    if (liveArtists.isEmpty) {
+    final liveCounterparts = uniqueCounterparts.values.toList();
+    if (liveCounterparts.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -52,10 +53,10 @@ class DiscoveryLiveNowSection extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: liveArtists.length,
+            itemCount: liveCounterparts.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final item = liveArtists[index];
+              final item = liveCounterparts[index];
               return SizedBox(
                 width: MediaQuery.of(context).size.width * 0.42,
                 child: _LiveArtistCard(
@@ -126,13 +127,13 @@ class _LiveArtistCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final _LiveArtistItem item;
+  final _LiveCounterpartItem item;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final imageUrl = item.artist.avatarUri?.toString();
+    final imageUrl = item.counterpart.avatarUrl ?? item.counterpart.coverUrl;
     final venueLabel = _resolveVenueLabel(item.event).toUpperCase();
 
     return InkWell(
@@ -180,7 +181,7 @@ class _LiveArtistCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    item.artist.displayName,
+                    item.counterpart.displayName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -203,11 +204,12 @@ class _LiveArtistCard extends StatelessWidget {
                           venueLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.95),
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.95),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
                         ),
                       ),
                     ],

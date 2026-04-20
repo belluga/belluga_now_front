@@ -1444,7 +1444,7 @@ void main() {
             },
           },
           'date_time_start': '2026-03-06T20:00:00+00:00',
-          'artists': const [],
+          'linked_account_profiles': const [],
           'tags': const ['music'],
         }).toDomain();
         scheduleRepository.writeHomeAgendaCache(
@@ -1681,7 +1681,7 @@ void main() {
       expect(event.coordinate, isNotNull);
       expect(event.coordinate!.latitude, closeTo(-20.671339, 0.000001));
       expect(event.coordinate!.longitude, closeTo(-40.495395, 0.000001));
-      expect(event.artists.single.avatarUri, isNull);
+      expect(event.counterpartProfiles.single.avatarUrl, isNull);
 
       controller.onDispose();
     });
@@ -2799,10 +2799,12 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
-      'artists': const [
+      'linked_account_profiles': const [
         {
           'id': '507f1f77bcf86cd799439013',
-          'name': 'Main Artist',
+          'display_name': 'Main Artist',
+          'slug': 'main-artist',
+          'profile_type': 'artist',
           'avatar_url': null,
           'genres': ['rock'],
         },
@@ -2885,7 +2887,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -2912,7 +2914,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-04T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -2993,7 +2995,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
       },
       'date_time_start':
           '2026-03-${day.toString().padLeft(2, '0')}T${hour.toString().padLeft(2, '0')}:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3133,7 +3135,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-06T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3212,7 +3214,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-05T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3325,7 +3327,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-05T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }

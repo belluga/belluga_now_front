@@ -460,8 +460,8 @@ void main() {
     expect(
         controller.liveNowEventsStreamValue.value!.first.slug, 'evento-live');
     expect(
-      controller
-          .liveNowEventsStreamValue.value!.first.artists.first.displayName,
+      controller.liveNowEventsStreamValue.value!.first.counterpartProfiles.first
+          .displayName,
       'Artista Live',
     );
     controller.onDispose();
@@ -2096,10 +2096,12 @@ EventModel _event({
     'date_time_start': DateTime.now().toIso8601String(),
     'date_time_end':
         DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
-    'artists': [
+    'linked_account_profiles': [
       {
         'id': _mongoId('artist-live'),
         'display_name': artistName,
+        'slug': 'artist-live',
+        'profile_type': 'artist',
         'avatar_url': null,
         'highlight': true,
         'genres': ['samba'],

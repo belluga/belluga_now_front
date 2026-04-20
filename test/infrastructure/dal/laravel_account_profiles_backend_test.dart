@@ -290,7 +290,7 @@ void main() {
                 'display_name': 'Casa Marracini',
                 'hero_image_url': 'https://example.com/casa.jpg',
               },
-              'artists': [
+              'linked_account_profiles': [
                 {
                   'id': '507f1f77bcf86cd799439099',
                   'display_name': 'Marco Aurélio',
@@ -312,7 +312,7 @@ void main() {
                 'id': '507f1f77bcf86cd799439011',
                 'display_name': 'Casa Marracini',
               },
-              'artists': [
+              'linked_account_profiles': [
                 {
                   'id': '507f1f77bcf86cd799439099',
                   'display_name': 'Marco Aurélio',
@@ -336,10 +336,17 @@ void main() {
     expect(profile, isNotNull);
     expect(profile?.agendaEvents, hasLength(2));
     expect(profile?.agendaEvents.first.eventId, '507f1f77bcf86cd799439021');
-    expect(profile?.agendaEvents.first.occurrenceId, '507f1f77bcf86cd799439121');
+    expect(
+        profile?.agendaEvents.first.occurrenceId, '507f1f77bcf86cd799439121');
     expect(profile?.agendaEvents.last.occurrenceId, '507f1f77bcf86cd799439122');
-    expect(profile?.agendaEvents.first.primaryArtist?.id, '507f1f77bcf86cd799439099');
-    expect(profile?.agendaEvents.first.primaryArtist?.title, 'Marco Aurélio');
+    expect(
+      profile?.agendaEvents.first.primaryCounterpart?.id,
+      '507f1f77bcf86cd799439099',
+    );
+    expect(
+      profile?.agendaEvents.first.primaryCounterpart?.title,
+      'Marco Aurélio',
+    );
     expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
     expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');
     expect(profile?.agendaEvents.first.eventTypeLabel, 'Show');

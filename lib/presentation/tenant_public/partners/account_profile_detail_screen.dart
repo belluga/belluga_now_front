@@ -1609,8 +1609,11 @@ class _AccountProfileDetailScreenState
     final counterparts = <_AgendaCounterpart>[];
     final seen = <String>{};
 
-    for (final artist in _agendaCounterpartArtists(accountProfile, event)) {
-      final title = artist.title.trim();
+    for (final counterpart in _agendaCounterpartProfiles(
+      accountProfile,
+      event,
+    )) {
+      final title = counterpart.title.trim();
       if (title.isEmpty) {
         continue;
       }
@@ -1622,7 +1625,7 @@ class _AccountProfileDetailScreenState
       counterparts.add(
         _AgendaCounterpart(
           label: title,
-          thumbUrl: artist.thumb,
+          thumbUrl: counterpart.thumb,
         ),
       );
     }
@@ -1630,16 +1633,16 @@ class _AccountProfileDetailScreenState
     return counterparts;
   }
 
-  List<PartnerSupportedEntityView> _agendaCounterpartArtists(
+  List<PartnerSupportedEntityView> _agendaCounterpartProfiles(
     AccountProfileModel accountProfile,
     PartnerEventView event,
   ) {
-    return event.artists
+    return event.counterpartProfiles
         .where(
-          (artist) => !_agendaMatchesHost(
+          (counterpart) => !_agendaMatchesHost(
             accountProfile,
-            candidateId: artist.id,
-            candidateTitle: artist.title,
+            candidateId: counterpart.id,
+            candidateTitle: counterpart.title,
           ),
         )
         .toList(growable: false);

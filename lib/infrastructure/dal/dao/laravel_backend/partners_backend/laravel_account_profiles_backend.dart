@@ -310,8 +310,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     final tags = <String>[];
     for (final entry in raw) {
       if (entry is Map) {
-        final value =
-            entry['name']?.toString() ??
+        final value = entry['name']?.toString() ??
             entry['label']?.toString() ??
             entry['value']?.toString();
         if (value != null && value.trim().isNotEmpty) {
@@ -355,8 +354,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final eventTypeLabel = _extractAgendaEventTypeLabel(json);
       final locationLabel =
           _extractAgendaLocationLabel(json) ?? venueTitle ?? '';
+      final linkedAccountProfiles =
+          _extractAgendaLinkedAccountProfiles(json['linked_account_profiles']);
       ThumbUriValue? imageUriValue;
-      final imageUrl = _extractAgendaImageUrl(json);
+      final imageUrl = _extractAgendaImageUrl(
+        json,
+        linkedAccountProfiles,
+      );
       if (imageUrl != null && imageUrl.isNotEmpty) {
         imageUriValue = ThumbUriValue(defaultValue: Uri.parse(imageUrl))
           ..parse(imageUrl);
@@ -374,36 +378,38 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           startDateTimeValue: startDateTimeValue,
           endDateTimeValue: endDateTimeValue,
           locationValue: partnerProjectionRequiredText(locationLabel),
-          venueIdValue: venueId == null ? null : (MongoIDValue()..parse(venueId)),
-          venueTitleValue:
-              venueTitle == null ? null : partnerProjectionOptionalText(venueTitle),
+          venueIdValue:
+              venueId == null ? null : (MongoIDValue()..parse(venueId)),
+          venueTitleValue: venueTitle == null
+              ? null
+              : partnerProjectionOptionalText(venueTitle),
           imageUriValue: imageUriValue,
-          artists: _extractAgendaArtists(json['artists']),
+          linkedAccountProfiles: linkedAccountProfiles,
         ),
       );
     }
     return agendaEvents;
   }
 
-  List<PartnerSupportedEntityView> _extractAgendaArtists(dynamic raw) {
+  List<PartnerSupportedEntityView> _extractAgendaLinkedAccountProfiles(
+    dynamic raw,
+  ) {
     if (raw is! List) {
       return const [];
     }
 
-    final artists = <PartnerSupportedEntityView>[];
+    final linkedAccountProfiles = <PartnerSupportedEntityView>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
-      final displayName = (json['display_name'] ?? json['name'])
-              ?.toString()
-              .trim() ??
-          '';
+      final displayName =
+          (json['display_name'] ?? json['name'])?.toString().trim() ?? '';
       if (displayName.isEmpty) {
         continue;
       }
 
       final thumb = json['avatar_url']?.toString().trim();
-      artists.add(
+      linkedAccountProfiles.add(
         PartnerSupportedEntityView(
           idValue: (() {
             final id = json['id']?.toString().trim();
@@ -420,7 +426,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       );
     }
 
-    return artists;
+    return linkedAccountProfiles;
   }
 
   String? _extractAgendaVenueId(Map<String, dynamic> json) {
@@ -459,9 +465,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     final type = Map<String, dynamic>.from(rawType);
-    final value = (type['label'] ?? type['name'] ?? type['title'])
-        ?.toString()
-        .trim();
+    final value =
+        (type['label'] ?? type['name'] ?? type['title'])?.toString().trim();
     if (value == null || value.isEmpty) {
       return null;
     }
@@ -496,7 +501,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return null;
   }
 
-  String? _extractAgendaImageUrl(Map<String, dynamic> json) {
+  String? _extractAgendaImageUrl(
+    Map<String, dynamic> json,
+    List<PartnerSupportedEntityView> linkedAccountProfiles,
+  ) {
     final rawThumb = json['thumb'];
     if (rawThumb is Map) {
       final thumb = Map<String, dynamic>.from(rawThumb);
@@ -509,14 +517,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
     }
 
-    final artists = json['artists'];
-    if (artists is List) {
-      for (final entry in artists) {
-        if (entry is! Map) continue;
-        final imageUrl = entry['avatar_url']?.toString().trim();
-        if (imageUrl != null && imageUrl.isNotEmpty) {
-          return imageUrl;
-        }
+    for (final counterpart in linkedAccountProfiles) {
+      final imageUrl = counterpart.thumb?.trim();
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        return imageUrl;
       }
     }
 
