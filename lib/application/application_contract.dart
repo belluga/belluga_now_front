@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/application/router/modular_app/module_settings.dart';
 import 'package:belluga_now/application/startup/app_startup_navigation_coordinator.dart';
@@ -97,7 +98,7 @@ abstract class ApplicationContract extends ModularAppContract {
       debugPrint(
           '[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})');
     } catch (_) {
-      // Ignore if package info is unavailable for this platform.
+      // expected_control_flow: package metadata can be unavailable on some platforms.
     }
 
     await super.init();
@@ -239,8 +240,13 @@ abstract class ApplicationContract extends ModularAppContract {
     );
     try {
       await repository.init();
-    } catch (e) {
-      debugPrint('[Push] Init failed: $e');
+    } catch (error, stackTrace) {
+      await SentryErrorReporter.captureRecoverable(
+        origin: 'application.push.init',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      debugPrint('[Push] Init failed: $error');
       return;
     }
     _pushRepository = repository;

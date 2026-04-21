@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
@@ -176,7 +177,14 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         return Document.fromDelta(delta);
       }
       return Document.fromDelta(canonicalDelta);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      unawaited(
+        SentryErrorReporter.captureRecoverable(
+          origin: 'tenant_admin.rich_text_editor.html_to_delta',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
       debugPrint(
         '[TenantAdminRichTextEditor] Failed to parse HTML into delta: $error',
       );
