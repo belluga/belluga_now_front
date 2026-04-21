@@ -89,7 +89,7 @@ Repositories cannot own raw payload map typing/parsing/building (`Map<String, Ob
 Catch blocks that log unexpected failures with `debugPrint` must also report the failure to Sentry or propagate it. The app may recover quietly in the UI, but the engineering signal must not be killed locally.
 
 ### Remediation playbook
-1. If the path is expected control flow, document that explicitly and avoid treating it as an unexpected failure log.
+1. If the path is expected control flow, document it with an `expected_control_flow` marker inside the `catch`.
 2. For recoverable unexpected failures, call `SentryErrorReporter.captureRecoverable(...)` or `Sentry.captureException(...)` before returning fallback UI/state.
 3. For fatal failures, call `SentryErrorReporter.captureFatal(...)` or `Sentry.captureException(...)`, then rethrow or fail closed.
 4. Do not leave `catch` + `debugPrint` as the only evidence path.

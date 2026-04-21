@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart' show CommentToken;
 import 'package:analyzer/dart/ast/visitor.dart';
 
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
@@ -15,7 +16,7 @@ class FlutterSentryUnreportedDebugPrintCatchForbiddenRule extends DartLintRule {
           problemMessage:
               'Catch blocks that log with debugPrint must also report unexpected failures to Sentry or rethrow.',
           correctionMessage:
-              'Treatments: classify the catch as expected_control_flow, or call SentryErrorReporter/Sentry.captureException before recovering, or rethrow/fail closed.',
+              'Treatments: add an expected_control_flow marker for expected control flow, call SentryErrorReporter/Sentry.captureException before recovering, or rethrow/fail closed.',
         ),
       );
 
@@ -36,7 +37,8 @@ class FlutterSentryUnreportedDebugPrintCatchForbiddenRule extends DartLintRule {
 
       if (!visitor.hasDebugPrint ||
           visitor.hasSentryCapture ||
-          visitor.propagatesFailure) {
+          visitor.propagatesFailure ||
+          _hasExpectedControlFlowMarker(node)) {
         return;
       }
 
@@ -91,6 +93,34 @@ final class _SentryCatchVisitor extends RecursiveAstVisitor<void> {
   void visitFunctionDeclaration(FunctionDeclaration node) {
     // Ignore nested local functions; this rule targets direct catch/on control flow.
   }
+}
+
+bool _hasExpectedControlFlowMarker(CatchClause node) {
+  var token = node.beginToken;
+  final endToken = node.endToken;
+
+  while (true) {
+    var comment = token.precedingComments;
+    while (comment != null) {
+      if (comment.lexeme.contains('expected_control_flow')) {
+        return true;
+      }
+      final nextComment = comment.next;
+      comment = nextComment is CommentToken ? nextComment : null;
+    }
+
+    if (identical(token, endToken)) {
+      break;
+    }
+
+    final next = token.next;
+    if (next == null || identical(next, token)) {
+      break;
+    }
+    token = next;
+  }
+
+  return false;
 }
 
 bool _isSentryCapture(String? targetSource, String methodName) {

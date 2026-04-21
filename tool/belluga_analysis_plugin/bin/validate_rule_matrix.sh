@@ -117,6 +117,16 @@ class SentryUnreportedDebugPrintCase {
     }
   }
 
+  Future<int> loadExpectedControlFlow() async {
+    try {
+      throw Exception('optional platform metadata unavailable');
+    } catch (error) {
+      // expected_control_flow: optional metadata can be absent locally.
+      debugPrint('metadata unavailable: $error');
+      return 0;
+    }
+  }
+
   Future<int> loadPropagated() async {
     try {
       throw Exception('boom');
@@ -232,6 +242,16 @@ missing_codes="$(comm -23 "$expected_codes_file" "$found_codes_file" || true)"
 if [[ -n "$missing_codes" ]]; then
   echo "[validate_rule_matrix] missing expected lint codes:"
   echo "$missing_codes"
+  echo "[validate_rule_matrix] analyzer output (first 200 lines):"
+  sed -n '1,200p' "$output_file"
+  exit 1
+fi
+
+sentry_lint_count="$(
+  awk -F'|' 'tolower($3) == "flutter_sentry_unreported_debug_print_catch_forbidden" {count++} END {print count + 0}' "$output_file"
+)"
+if [[ "$sentry_lint_count" -ne 1 ]]; then
+  echo "[validate_rule_matrix] expected exactly one sentry debugPrint catch lint, found: $sentry_lint_count"
   echo "[validate_rule_matrix] analyzer output (first 200 lines):"
   sed -n '1,200p' "$output_file"
   exit 1
