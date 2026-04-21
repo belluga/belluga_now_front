@@ -44,6 +44,7 @@ plugins:
 YAML
 
 mkdir -p "$fixture_dir/integration_test"
+mkdir -p "$fixture_dir/lib/application/observability"
 mkdir -p "$fixture_dir/lib/infrastructure/repositories"
 mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/routes"
 mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/widgets"
@@ -88,6 +89,55 @@ class RepositoryCatchReturnFallbackCase {
 }
 DART
 temp_files+=("$catch_return_case")
+
+sentry_case="$fixture_dir/lib/application/observability/sentry_unreported_debug_print_case.dart"
+cat > "$sentry_case" <<'DART'
+class SentryUnreportedDebugPrintCase {
+  Future<int> loadSilently() async {
+    try {
+      throw Exception('boom');
+    } catch (error) {
+      // expect_lint: flutter_sentry_unreported_debug_print_catch_forbidden
+      debugPrint('failed: $error');
+      return 0;
+    }
+  }
+
+  Future<int> loadReported() async {
+    try {
+      throw Exception('boom');
+    } catch (error, stackTrace) {
+      SentryErrorReporter.captureRecoverable(
+        origin: 'fixture.reported',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      debugPrint('failed: $error');
+      return 0;
+    }
+  }
+
+  Future<int> loadPropagated() async {
+    try {
+      throw Exception('boom');
+    } catch (error) {
+      debugPrint('failed: $error');
+      rethrow;
+    }
+  }
+}
+
+void debugPrint(String message) {}
+
+class SentryErrorReporter {
+  static void captureRecoverable({
+    required String origin,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {}
+}
+DART
+temp_files+=("$sentry_case")
 
 route_case="$fixture_dir/lib/presentation/tenant_public/home/routes/route_required_non_url_args_case.dart"
 cat > "$route_case" <<'DART'

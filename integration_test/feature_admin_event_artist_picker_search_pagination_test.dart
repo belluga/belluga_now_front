@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
@@ -43,7 +45,7 @@ void main() {
   );
 
   testWidgets(
-    'tenant admin event artist picker searches beyond legacy snapshot and appends next pages from backend',
+    'tenant admin event related-profile picker searches beyond legacy snapshot and appends next pages from backend',
     (tester) async {
       await GetIt.I.reset(dispose: true);
 
@@ -137,19 +139,24 @@ void main() {
           ),
         );
 
+        await _waitForFinder(
+          tester,
+          find.byType(Scrollable),
+          timeout: const Duration(seconds: 60),
+        );
         await tester.scrollUntilVisible(
-          find.widgetWithText(OutlinedButton, 'Adicionar artista'),
+          find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
           280,
           scrollable: find.byType(Scrollable).first,
         );
         await _pumpFor(tester, const Duration(seconds: 1));
 
         await tester
-            .tap(find.widgetWithText(OutlinedButton, 'Adicionar artista'));
+            .tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
         await _pumpFor(tester, const Duration(seconds: 1));
         await _waitForFinder(
           tester,
-          find.widgetWithText(TextField, 'Buscar artista'),
+          find.widgetWithText(TextField, 'Buscar perfil relacionado'),
         );
 
         final searchInput = '$searchPrefix ';
@@ -157,7 +164,7 @@ void main() {
         final pageTwoArtist = '$searchPrefix 025';
 
         await tester.enterText(
-          find.widgetWithText(TextField, 'Buscar artista'),
+          find.widgetWithText(TextField, 'Buscar perfil relacionado'),
           searchInput,
         );
         await tester.pump(const Duration(milliseconds: 400));
@@ -209,6 +216,10 @@ Future<void> _pumpWithAutoRoute(
       NamedRouteDef(
         name: 'events-form-integration-test',
         path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminEventsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
         builder: (_, __) => child,
       ),
     ],
@@ -267,7 +278,7 @@ Future<void> _scrollPickerResultsUntilVisible(
       matching: find.byType(ListView),
     );
     if (pickerList.evaluate().isEmpty) {
-      throw TestFailure('Artist picker results list is not visible.');
+      throw TestFailure('Related profile picker results list is not visible.');
     }
 
     await tester.drag(pickerList.last, const Offset(0, -600));

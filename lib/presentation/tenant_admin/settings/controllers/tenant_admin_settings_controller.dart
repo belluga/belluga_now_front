@@ -3,6 +3,7 @@ export 'tenant_admin_branding_asset_slot.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -1712,9 +1713,8 @@ class TenantAdminSettingsController implements Disposable {
         darkIconUrl;
     _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.pwaIcon] =
         pwaIconUrl;
-    _loadedBrandingAssetPreviewUrls[
-            TenantAdminBrandingAssetSlot.publicWebDefaultImage] =
-        publicWebDefaultImageUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot
+        .publicWebDefaultImage] = publicWebDefaultImageUrl;
     brandingLightLogoUrlStreamValue.addValue(lightLogoUrl);
     brandingDarkLogoUrlStreamValue.addValue(darkLogoUrl);
     brandingLightIconUrlStreamValue.addValue(lightIconUrl);
@@ -2026,7 +2026,12 @@ class TenantAdminSettingsController implements Disposable {
   Future<void> _refreshAppDataSnapshot() async {
     try {
       await _appDataRepository.init();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      await SentryErrorReporter.captureRecoverable(
+        origin: 'tenant_admin.settings.refresh_app_data_snapshot',
+        error: error,
+        stackTrace: stackTrace,
+      );
       debugPrint(
         'TenantAdminSettingsController._refreshAppDataSnapshot failed: $error',
       );

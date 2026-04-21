@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/support/canonical_route_meta.dart
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -50,6 +51,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
@@ -157,6 +159,7 @@ void main() {
   });
 
   tearDown(() async {
+    SentryErrorReporter.resetForTesting();
     await GetIt.I.reset();
   });
 
@@ -2001,6 +2004,40 @@ void main() {
     controller.onDispose();
   });
 
+  test('controller reports recoverable app data refresh failures to Sentry',
+      () async {
+    final sentryCaptures = <_SentryCapture>[];
+    SentryErrorReporter.overrideCaptureExceptionForTesting(
+      (throwable, {stackTrace, hint, message, withScope}) async {
+        sentryCaptures.add(
+          _SentryCapture(
+            throwable: throwable,
+            stackTrace: stackTrace,
+            withScope: withScope,
+          ),
+        );
+        return SentryId.empty();
+      },
+    );
+    final repository = _FakeAppDataRepository(
+      _buildAppData(),
+      failInitOnCall: 1,
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+    controller.domainPathController.text = 'novo.guarappari.test';
+
+    await controller.createDomain();
+
+    expect(sentryCaptures, hasLength(1));
+    expect(sentryCaptures.single.throwable, isA<StateError>());
+    expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
+    controller.onDispose();
+  });
+
   test('controller rehydrates branding colors from repository after save',
       () async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -2254,9 +2291,10 @@ bool _isScaffoldWithBody<T extends Widget>(Widget child) {
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository(this._appData);
+  _FakeAppDataRepository(this._appData, {this.failInitOnCall});
 
   final AppData _appData;
+  final int? failInitOnCall;
   int initCallCount = 0;
 
   @override
@@ -2287,6 +2325,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   Future<void> init() async {
     initCallCount += 1;
+    if (initCallCount == failInitOnCall) {
+      throw StateError('app data refresh failed');
+    }
   }
 
   @override
@@ -2298,6 +2339,18 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   Future<void> setThemeMode(AppThemeModeValue mode) async {
     _themeModeStreamValue.addValue(mode.value);
   }
+}
+
+class _SentryCapture {
+  _SentryCapture({
+    required this.throwable,
+    required this.stackTrace,
+    required this.withScope,
+  });
+
+  final dynamic throwable;
+  final dynamic stackTrace;
+  final ScopeCallback? withScope;
 }
 
 class _FakeTenantAdminSettingsRepository
