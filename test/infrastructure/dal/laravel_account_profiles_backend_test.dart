@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
@@ -392,6 +393,53 @@ void main() {
     expect(adapter.lastRequest?.queryParameters.containsKey('filter'), isFalse);
   });
 
+  test('fetchAccountProfilesPage sends canonical type and taxonomy filters',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Filtered Artist',
+            'slug': 'filtered-artist',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+        'current_page': 1,
+        'last_page': 1,
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+      typeFilters: const ['artist', 'venue'],
+      taxonomyFilters: [
+        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+          type: 'genre',
+          value: 'rock',
+        ),
+      ],
+    );
+
+    final queryParameters = adapter.lastRequest?.queryParameters;
+    expect(queryParameters?['profile_type'], const ['artist', 'venue']);
+    expect(queryParameters?['filter'], {
+      'profile_type': const ['artist', 'venue'],
+    });
+    expect(queryParameters?['taxonomy[0][type]'], 'genre');
+    expect(queryParameters?['taxonomy[0][value]'], 'rock');
+  });
+
   test('fetchAccountProfiles computes distance using tenant default origin',
       () async {
     _registerAppData(
@@ -518,6 +566,45 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Nearby Venue');
     expect(profiles.first.distanceMeters, closeTo(240.0, 0.001));
+  });
+
+  test('fetchNearbyAccountProfiles sends canonical type and taxonomy filters',
+      () async {
+    _registerAppData(
+      defaultOriginLat: -20.670000,
+      defaultOriginLng: -40.500000,
+    );
+    final adapter = _RecordingAdapter(
+      response: {
+        'page': 1,
+        'page_size': 5,
+        'has_more': false,
+        'data': const [],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    await backend.fetchNearbyAccountProfiles(
+      pageSize: 5,
+      typeFilters: const ['venue'],
+      taxonomyFilters: [
+        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+          type: 'cuisine',
+          value: 'italian',
+        ),
+      ],
+    );
+
+    final queryParameters = adapter.lastRequest?.queryParameters;
+    expect(queryParameters?['profile_type'], 'venue');
+    expect(queryParameters?['taxonomy[0][type]'], 'cuisine');
+    expect(queryParameters?['taxonomy[0][value]'], 'italian');
   });
 
   test(

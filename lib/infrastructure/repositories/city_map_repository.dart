@@ -164,11 +164,37 @@ class CityMapRepository extends CityMapRepositoryContract {
         ),
       );
     }
+    for (final term in filters.taxonomyTerms) {
+      final type = term.type.trim().toLowerCase();
+      final value = term.value.trim().toLowerCase();
+      final token = '$type:$value';
+      final key = 'taxonomy:$token';
+      final label = term.displayLabel.trim();
+      if (type.isEmpty ||
+          value.isEmpty ||
+          label.isEmpty ||
+          categoryKeys.contains(key)) {
+        continue;
+      }
+      categoryKeys.add(key);
+      categories.add(
+        PoiFilterCategory(
+          keyValue: _parseKeyValue(key),
+          labelValue: _parseLabelValue(label),
+          countValue: _parseCountValue(term.count),
+          tagValues: const <PoiTagValue>[],
+          serverQuery: PoiFilterServerQuery(
+            taxonomyTokenValues: _parseTaxonomyValues({token}),
+          ),
+        ),
+      );
+    }
 
     return PoiFilterOptions(
       categories: List<PoiFilterCategory>.unmodifiable(categories),
     );
   }
+
   @override
   Future<List<MapRegionDefinition>> fetchRegions() async {
     return const <MapRegionDefinition>[];

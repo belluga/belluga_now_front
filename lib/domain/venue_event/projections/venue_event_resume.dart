@@ -30,13 +30,16 @@ class VenueEventResume {
     required this.locationValue,
     VenueEventOptionalTextValue? eventTypeLabelValue,
     VenueEventOptionalTextValue? venueTitleValue,
+    VenueEventOptionalTextValue? selectedOccurrenceIdValue,
     required this.linkedAccountProfiles,
     required this.tagValues,
     this.coordinate,
     this.mission,
   })  : eventTypeLabelValue =
             eventTypeLabelValue ?? VenueEventOptionalTextValue(),
-        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue();
+        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue(),
+        selectedOccurrenceIdValue =
+            selectedOccurrenceIdValue ?? VenueEventOptionalTextValue();
 
   final MongoIDValue idValue;
   final SlugValue slugValue;
@@ -47,6 +50,7 @@ class VenueEventResume {
   final DescriptionValue locationValue;
   final VenueEventOptionalTextValue eventTypeLabelValue;
   final VenueEventOptionalTextValue venueTitleValue;
+  final VenueEventOptionalTextValue selectedOccurrenceIdValue;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
@@ -82,6 +86,11 @@ class VenueEventResume {
 
   VenueEventResumePrimString? get venueTitle {
     final value = venueTitleValue.value.trim();
+    return value.isEmpty ? null : value;
+  }
+
+  VenueEventResumePrimString? get selectedOccurrenceId {
+    final value = selectedOccurrenceIdValue.value.trim();
     return value.isEmpty ? null : value;
   }
 
@@ -205,6 +214,8 @@ class VenueEventResume {
         ..parse(event.type.name.value),
       venueTitleValue: VenueEventOptionalTextValue()
         ..parse(event.venue?.displayName ?? ''),
+      selectedOccurrenceIdValue: VenueEventOptionalTextValue()
+        ..parse(event.selectedOccurrenceId ?? ''),
       linkedAccountProfiles: event.linkedAccountProfiles,
       tagValues: event.taxonomyTags,
       coordinate: event.coordinate,

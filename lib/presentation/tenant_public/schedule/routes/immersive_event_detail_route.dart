@@ -9,16 +9,23 @@ import 'package:flutter/material.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 @RoutePage(name: 'ImmersiveEventDetailRoute')
-class ImmersiveEventDetailRoutePage extends ResolverRoute<EventModel, ScheduleModule> {
+class ImmersiveEventDetailRoutePage
+    extends ResolverRoute<EventModel, ScheduleModule> {
   const ImmersiveEventDetailRoutePage({
     super.key,
     @PathParam('slug') required this.eventSlug,
+    @QueryParam('occurrence') this.occurrenceId,
   });
 
   final String eventSlug;
+  final String? occurrenceId;
 
   @override
-  RouteResolverParams get resolverParams => {'slug': eventSlug};
+  RouteResolverParams get resolverParams => {
+        'slug': eventSlug,
+        if (occurrenceId != null && occurrenceId!.trim().isNotEmpty)
+          'occurrence': occurrenceId,
+      };
 
   @override
   Widget buildScreen(BuildContext context, EventModel model) {

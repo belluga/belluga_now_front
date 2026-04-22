@@ -15,6 +15,8 @@ class TenantAdminFormScaffold extends StatelessWidget {
     this.closeTooltip = 'Fechar',
     this.showHandle = true,
     this.maxContentWidth = 760,
+    this.floatingActionButton,
+    this.floatingActionButtonLocation,
   });
 
   final String title;
@@ -23,6 +25,8 @@ class TenantAdminFormScaffold extends StatelessWidget {
   final String closeTooltip;
   final bool showHandle;
   final double maxContentWidth;
+  final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +39,8 @@ class TenantAdminFormScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surfaceContainerLowest,
+      floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
       body: SafeArea(
         bottom: false,
         child: Align(
@@ -83,10 +89,7 @@ class TenantAdminFormScaffold extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Divider(
-                    height: 1,
-                    color: colorScheme.outlineVariant,
-                  ),
+                  Divider(height: 1, color: colorScheme.outlineVariant),
                   Expanded(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(

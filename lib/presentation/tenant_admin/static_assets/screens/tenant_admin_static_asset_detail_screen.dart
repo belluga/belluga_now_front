@@ -94,7 +94,7 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
               context,
               'Taxonomias',
               asset.taxonomyTerms
-                  .map((term) => '${term.type}:${term.value}')
+                  .map((term) => term.displayLabel)
                   .toList(growable: false),
             ),
           ],

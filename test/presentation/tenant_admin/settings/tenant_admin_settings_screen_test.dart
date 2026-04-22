@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
@@ -22,6 +23,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
@@ -33,6 +35,14 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_items.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_surface_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filters_settings.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/screens/tenant_admin_discovery_filter_surface_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/tenant_admin_discovery_filters_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
@@ -138,16 +148,6 @@ EmailAddressValue _emailAddressValue(String raw) {
   return value;
 }
 
-TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
-  Iterable<TenantAdminMapFilterCatalogItem> items,
-) {
-  final collection = TenantAdminMapFilterCatalogItems();
-  for (final item in items) {
-    collection.add(item);
-  }
-  return collection;
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -209,7 +209,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.text('Toque para editar preferências e filtros do mapa'),
+      find.text('Toque para editar preferências locais e origem do mapa'),
       findsOneWidget,
     );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
@@ -650,7 +650,7 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
-  testWidgets('adds map filter item and persists catalog on map_ui save',
+  testWidgets('local preferences points filters to canonical admin menu',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -671,93 +671,135 @@ void main() {
       const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.text('Filtros públicos'), findsOneWidget);
+    expect(
+      find.text(
+        'Os filtros de Mapa, Home e Descoberta agora ficam no menu principal Filtros.',
+      ),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    await tester.tap(
+    expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      findsNothing,
     );
-    await tester.pumpAndSettle();
-
     expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
-      findsOneWidget,
-    );
-
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
-    );
-    await tester.pumpAndSettle();
-
-    expect(settingsRepository.updatedMapUiSettings, isNotNull);
-    final filters = settingsRepository.updatedMapUiSettings!.filters;
-    expect(filters, hasLength(1));
-    expect(filters.first.key, 'filter_1');
-    expect(filters.first.label, 'Filtro 1');
   });
 
-  testWidgets(
-      'map filter row exposes explicit Visual action and removes legacy image actions',
+  test(
+    'discovery filters controller ignores load completion after disposal',
+    () async {
+      final fetchCompleter =
+          Completer<TenantAdminDiscoveryFiltersSettingsValue>();
+      final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
+        fetchCompleter: fetchCompleter,
+      );
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+      );
+
+      final loadFuture = controller.loadSettings();
+      expect(settingsRepository.fetchCount, 1);
+
+      await controller.onDispose();
+      fetchCompleter.complete(TenantAdminDiscoveryFiltersSettingsValue());
+
+      await loadFuture;
+      await controller.onDispose();
+    },
+  );
+
+  test('discovery filters controller init keeps already loaded settings',
+      () async {
+    final fetchCompleter = Completer<TenantAdminDiscoveryFiltersSettingsValue>()
+      ..complete(
+        TenantAdminDiscoveryFiltersSettingsValue(
+          TenantAdminDynamicMapValue({
+            'surfaces': {
+              'public_map.primary': {
+                'target': 'map_poi',
+                'filters': [
+                  {
+                    'key': 'assets',
+                    'label': 'Assets',
+                    'image_uri': 'https://tenant.test/filter.png',
+                  },
+                ],
+              },
+            },
+          }),
+        ),
+      );
+    final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
+      fetchCompleter: fetchCompleter,
+    );
+    final controller = TenantAdminDiscoveryFiltersController(
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+    await controller.init();
+
+    expect(settingsRepository.fetchCount, 1);
+    expect(
+      controller
+          .filtersForSurface(TenantAdminDiscoveryFilterSurfaceDefinition.map)
+          .single
+          .imageUri,
+      'https://tenant.test/filter.png',
+    );
+
+    await controller.onDispose();
+  });
+
+  testWidgets('canonical map filter row exposes rule and visual actions',
       (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
       ),
     );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.addFilterButton),
     );
     await tester.pumpAndSettle();
 
     final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
     );
     expect(rowFinder, findsOneWidget);
 
     expect(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Regra'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterRuleButton(
+          'public_map.primary',
+          0,
+        ),
       ),
       findsOneWidget,
     );
     expect(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterVisualButton(
+          'public_map.primary',
+          0,
+        ),
       ),
       findsOneWidget,
     );
@@ -770,74 +812,60 @@ void main() {
       findsNothing,
     );
 
-    final popupFinder = find.descendant(
-      of: rowFinder,
-      matching: find.byType(PopupMenuButton<String>),
-    );
-    expect(popupFinder, findsOneWidget);
-    await tester.tap(popupFinder);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Editar regra'), findsOneWidget);
-    expect(find.text('Editar visual'), findsOneWidget);
     expect(find.text('Imagem'), findsNothing);
     expect(find.text('Limpar imagem'), findsNothing);
   });
 
   testWidgets(
-    'map filter row preview prefers marker override icon+color over legacy image',
+    'canonical map filter row preview prefers marker override icon+color over image',
     (tester) async {
-      final repository = _FakeAppDataRepository(_buildAppData());
-      final settingsRepository = _FakeTenantAdminSettingsRepository(
-        initialMapUiSettings: TenantAdminMapUiSettings(
-          rawMapUiValue: TenantAdminDynamicMapValue(const {
-            'radius': 15000,
-            'default_origin': {
-              'lat': -20.6736,
-              'lng': -40.4976,
-              'label': 'Centro',
-            },
-          }),
-          defaultOrigin: TenantAdminMapDefaultOrigin(
-            lat: _lat(-20.6736),
-            lng: _lng(-40.4976),
-            label: _optionalText('Centro'),
-          ),
-          filters: _mapFilterCatalogItems([
-            TenantAdminMapFilterCatalogItem(
-              keyValue: _token('events'),
-              labelValue: _requiredText('Eventos'),
-              imageUriValue:
-                  _optionalUrl('https://tenant.test/legacy-events.png'),
-              overrideMarkerValue: TenantAdminFlagValue(true),
-              markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-                iconValue: _requiredText('music'),
-                colorValue: _hexColor('#C6141F'),
-                iconColorValue: _hexColor('#FFFFFF'),
-              ),
+      final initialDiscoveryFilters =
+          TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
+        surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        filters: TenantAdminDiscoveryFilterCatalogItems([
+          TenantAdminDiscoveryFilterCatalogItem(
+            keyValue: _token('events'),
+            labelValue: _requiredText('Eventos'),
+            imageUriValue:
+                _optionalUrl('https://tenant.test/legacy-events.png'),
+            overrideMarkerValue: TenantAdminFlagValue(true),
+            markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+              iconValue: _requiredText('music'),
+              colorValue: _hexColor('#C6141F'),
+              iconColorValue: _hexColor('#FFFFFF'),
             ),
-          ]),
+            query: TenantAdminDiscoveryFilterQuery(
+              entityValues: [_token('event')],
+            ),
+          ),
+        ]),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialDiscoveryFiltersSettings:
+            TenantAdminDiscoveryFiltersSettingsValue(
+          initialDiscoveryFilters.rawDiscoveryFilters,
         ),
       );
-      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
       GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
         settingsRepository,
       );
-      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-        TenantAdminImageIngestionService(
-          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+        TenantAdminDiscoveryFiltersController(
+          settingsRepository: settingsRepository,
         ),
       );
-      final controller = TenantAdminSettingsController();
-      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+        const Scaffold(
+          body: TenantAdminDiscoveryFilterSurfaceScreen(
+            surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+          ),
+        ),
       );
 
       final rowFinder = find.byKey(
-        TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+        TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
       );
       expect(rowFinder, findsOneWidget);
 
@@ -850,7 +878,10 @@ void main() {
       expect(iconWidget.color, Colors.white);
 
       final previewFinder = find.byKey(
-        TenantAdminSettingsKeys.localPreferencesMapFilterVisualPreview(0),
+        TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
+          'public_map.primary',
+          0,
+        ),
       );
       expect(previewFinder, findsOneWidget);
       final previewContainer = tester.widget<Container>(previewFinder.first);
@@ -862,6 +893,61 @@ void main() {
       expect(previewColor.a, closeTo(0.22, 0.005));
     },
   );
+
+  testWidgets('canonical map filter row exposes image preview by URL key',
+      (tester) async {
+    const imageUri = 'https://tenant.test/filter-image.png';
+    final initialDiscoveryFilters =
+        TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
+      surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+      filters: TenantAdminDiscoveryFilterCatalogItems([
+        TenantAdminDiscoveryFilterCatalogItem(
+          keyValue: _token('assets'),
+          labelValue: _requiredText('Assets'),
+          imageUriValue: _optionalUrl(imageUri),
+          query: TenantAdminDiscoveryFilterQuery(
+            entityValues: [_token('static_asset')],
+          ),
+        ),
+      ]),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDiscoveryFiltersSettings: TenantAdminDiscoveryFiltersSettingsValue(
+        initialDiscoveryFilters.rawDiscoveryFilters,
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+      ),
+    );
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
+    );
+
+    final rowFinder = find.byKey(
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
+    );
+    expect(rowFinder, findsOneWidget);
+
+    final previewFinder = find.byKey(
+      TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
+        'public_map.primary',
+        0,
+      ),
+    );
+    expect(previewFinder, findsOneWidget);
+    expect(find.byKey(const ValueKey<String>(imageUri)), findsOneWidget);
+  });
 
   testWidgets('map filter rule sheet is query-only (without visual fields)',
       (tester) async {
@@ -915,45 +1001,41 @@ void main() {
 
   testWidgets('Visual sheet owns canonical marker icon-image flow',
       (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
       ),
     );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.addFilterButton),
     );
     await tester.pumpAndSettle();
 
     final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
     );
     expect(rowFinder, findsOneWidget);
 
     await tester.tap(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterVisualButton(
+          'public_map.primary',
+          0,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -987,26 +1069,29 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.saveFiltersButton),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.saveFiltersButton),
     );
     await tester.pumpAndSettle();
 
-    final updated = settingsRepository.updatedMapUiSettings;
+    final updated = settingsRepository.updatedDiscoveryFiltersSettings;
     expect(updated, isNotNull);
-    expect(updated!.filters, hasLength(1));
-    final filter = updated.filters.first;
-    expect(filter.overrideMarker, isTrue);
-    expect(filter.markerOverride, isNotNull);
-    expect(filter.markerOverride!.mode,
-        TenantAdminMapFilterMarkerOverrideMode.image);
+    final raw = updated!.rawDiscoveryFilters.value;
+    final surfaces = raw['surfaces'] as Map;
+    final surface = surfaces['public_map.primary'] as Map;
+    final filters = surface['filters'] as List;
+    expect(filters, hasLength(1));
+    final filter = filters.single as Map;
+    expect(filter['override_marker'], isTrue);
+    final markerOverride = filter['marker_override'] as Map;
+    expect(markerOverride['mode'], 'image');
     expect(
-      filter.markerOverride!.imageUri,
+      markerOverride['image_uri'],
       'https://guarappari.test/storage/filter-image.png',
     );
   });
@@ -1023,45 +1108,17 @@ void main() {
       return latest.toStringShort();
     }
 
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
+    final filter = TenantAdminMapFilterCatalogItem(
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
-    );
-
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-    );
-    await tester.pumpAndSettle();
-
-    final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
-    );
-    expect(rowFinder, findsOneWidget);
-
-    await tester.tap(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      Scaffold(
+        body: TenantAdminMapFilterVisualSheet(
+          filter: filter,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -2362,6 +2419,7 @@ class _FakeTenantAdminSettingsRepository
     bool initialHasDedicatedFavicon = false,
     bool initialUsesPwaFaviconFallback = true,
     TenantAdminMapUiSettings? initialMapUiSettings,
+    TenantAdminDiscoveryFiltersSettingsValue? initialDiscoveryFiltersSettings,
     List<TenantAdminDomainEntry>? initialDomains,
   })  : _brandingSettings = TenantAdminBrandingSettings(
           tenantName: _requiredText('Tenant Test'),
@@ -2400,6 +2458,9 @@ class _FakeTenantAdminSettingsRepository
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
     }
+    if (initialDiscoveryFiltersSettings != null) {
+      _discoveryFiltersSettings = initialDiscoveryFiltersSettings;
+    }
   }
 
   final bool throwOnBrandingFetch;
@@ -2413,6 +2474,7 @@ class _FakeTenantAdminSettingsRepository
   final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
+  TenantAdminDiscoveryFiltersSettingsValue? updatedDiscoveryFiltersSettings;
   TenantAdminAppLinksSettings? updatedAppLinksSettings;
   String? uploadedMapFilterKey;
   TenantAdminMediaUpload? uploadedMapFilterPayload;
@@ -2434,6 +2496,8 @@ class _FakeTenantAdminSettingsRepository
     ),
     filters: TenantAdminMapFilterCatalogItems(),
   );
+  TenantAdminDiscoveryFiltersSettingsValue _discoveryFiltersSettings =
+      TenantAdminDiscoveryFiltersSettingsValue();
   TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
       buildTenantAdminAppLinksSettings(
@@ -2483,6 +2547,22 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminMapUiSettings> fetchMapUiSettings() async {
     return _mapUiSettings;
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() async {
+    return _discoveryFiltersSettings;
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      updateDiscoveryFiltersSettings({
+    required TenantAdminDiscoveryFiltersSettingsValue settings,
+  }) async {
+    updatedDiscoveryFiltersSettings = settings;
+    _discoveryFiltersSettings = settings;
+    return settings;
   }
 
   @override
@@ -2680,6 +2760,23 @@ class _FakeTenantAdminSettingsRepository
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;
+  }
+}
+
+class _SlowDiscoveryFiltersSettingsRepository
+    extends _FakeTenantAdminSettingsRepository {
+  _SlowDiscoveryFiltersSettingsRepository({
+    required this.fetchCompleter,
+  });
+
+  final Completer<TenantAdminDiscoveryFiltersSettingsValue> fetchCompleter;
+  int fetchCount = 0;
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() {
+    fetchCount += 1;
+    return fetchCompleter.future;
   }
 }
 

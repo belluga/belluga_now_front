@@ -17,6 +17,7 @@ part 'tenant_admin_event/tenant_admin_event_occurrence.dart';
 part 'tenant_admin_event/tenant_admin_event_online_location.dart';
 part 'tenant_admin_event/tenant_admin_event_party.dart';
 part 'tenant_admin_event/tenant_admin_event_place_ref.dart';
+part 'tenant_admin_event/tenant_admin_event_programming_item.dart';
 part 'tenant_admin_event/tenant_admin_event_publication.dart';
 part 'tenant_admin_event/tenant_admin_event_type.dart';
 

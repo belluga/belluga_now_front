@@ -113,6 +113,65 @@ void main() {
     );
   });
 
+  test('loadHomeAgenda forwards category and taxonomy filters to backend',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [_buildEventDto()],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(backend: backend);
+    final taxonomy = ScheduleRepoTaxonomyEntries()
+      ..add(
+        ScheduleRepoTaxonomyEntry(
+          type: ScheduleRepoString.fromRaw('music_styles'),
+          term: ScheduleRepoString.fromRaw('rock'),
+        ),
+      );
+
+    await repository.loadHomeAgenda(
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+      confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      categories: [
+        ScheduleRepoString.fromRaw('show'),
+      ],
+      taxonomy: taxonomy,
+    );
+
+    expect(backend.requests.single.categories, const ['show']);
+    expect(backend.requests.single.taxonomy, const [
+      {'type': 'music_styles', 'value': 'rock'},
+    ]);
+    expect(
+      repository.readHomeAgenda(
+        showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+        confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        categories: [
+          ScheduleRepoString.fromRaw('show'),
+        ],
+        taxonomy: taxonomy,
+      ),
+      isNotNull,
+    );
+    expect(
+      repository.readHomeAgenda(
+        showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+        confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        categories: [
+          ScheduleRepoString.fromRaw('fair'),
+        ],
+        taxonomy: taxonomy,
+      ),
+      isNull,
+    );
+  });
+
   test('getEventBySlug returns backend detail without catalog fallback',
       () async {
     final backend = _CapturingScheduleBackend(
@@ -127,11 +186,16 @@ void main() {
 
     final event = await repository.getEventBySlug(
       ScheduleRepoString.fromRaw('event-slug', defaultValue: ''),
+      occurrenceId: ScheduleRepoString.fromRaw(
+        '507f1f77bcf86cd799439082',
+        defaultValue: '',
+      ),
     );
 
     expect(event, isNotNull);
     expect(event!.id.value, '507f1f77bcf86cd799439081');
     expect(backend.fetchEventDetailCalls, 1);
+    expect(backend.lastOccurrenceId, '507f1f77bcf86cd799439082');
     expect(backend.fetchEventsPageCalls, 0);
   });
 
@@ -253,12 +317,17 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   final List<EventPageDTO>? pagedResponses;
   final Map<String, EventDTO>? detailResponses;
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
+  String? lastOccurrenceId;
   int fetchEventDetailCalls = 0;
   int fetchEventsPageCalls = 0;
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
     fetchEventDetailCalls += 1;
+    lastOccurrenceId = occurrenceId;
     return detailResponses?[eventIdOrSlug];
   }
 
@@ -284,6 +353,8 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
         liveNowOnly: liveNowOnly,
         originLat: originLat,
         originLng: originLng,
+        categories: categories,
+        taxonomy: taxonomy,
       ),
     );
     if (pagedResponses != null) {
@@ -325,12 +396,16 @@ class _AgendaRequestSample {
     required this.liveNowOnly,
     required this.originLat,
     required this.originLng,
+    required this.categories,
+    required this.taxonomy,
   });
 
   final int page;
   final bool liveNowOnly;
   final double? originLat;
   final double? originLng;
+  final List<String>? categories;
+  final List<Map<String, String>>? taxonomy;
 }
 
 EventDTO _buildEventDto({

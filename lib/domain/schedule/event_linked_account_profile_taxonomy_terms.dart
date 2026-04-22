@@ -6,10 +6,10 @@ import 'package:belluga_now/domain/schedule/event_linked_account_profile_taxonom
 class EventLinkedAccountProfileTaxonomyTerms
     extends IterableBase<EventLinkedAccountProfileTaxonomyTerm> {
   const EventLinkedAccountProfileTaxonomyTerms.empty()
-    : _items = const <EventLinkedAccountProfileTaxonomyTerm>[];
+      : _items = const <EventLinkedAccountProfileTaxonomyTerm>[];
 
   EventLinkedAccountProfileTaxonomyTerms()
-    : _items = <EventLinkedAccountProfileTaxonomyTerm>[];
+      : _items = <EventLinkedAccountProfileTaxonomyTerm>[];
 
   final List<EventLinkedAccountProfileTaxonomyTerm> _items;
 
@@ -17,12 +17,16 @@ class EventLinkedAccountProfileTaxonomyTerms
     required AccountProfileTagValue typeValue,
     required AccountProfileTagValue valueValue,
     required AccountProfileTagValue nameValue,
+    AccountProfileTagValue? taxonomyNameValue,
+    AccountProfileTagValue? labelValue,
   }) {
     _items.add(
       EventLinkedAccountProfileTaxonomyTerm(
         typeValue: typeValue,
         valueValue: valueValue,
         nameValue: nameValue,
+        taxonomyNameValue: taxonomyNameValue,
+        compatibilityLabelValue: labelValue,
       ),
     );
   }

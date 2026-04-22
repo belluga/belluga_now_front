@@ -36,7 +36,8 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       builder: (context, isInitialLoading) {
         final hasActiveFilters =
             controller.inviteFilterStreamValue.value != InviteFilter.none ||
-                controller.showHistoryStreamValue.value;
+                controller.showHistoryStreamValue.value ||
+                controller.discoveryFilterSelectionStreamValue.value.isNotEmpty;
         return StreamValueBuilder<TenantHomeAgendaDisplayState?>(
           streamValue: controller.displayStateStreamValue,
           onNullWidget: _buildFirstFetchLoading(
@@ -160,9 +161,12 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                                 ),
                               )
                             : null,
-                        onEventSelected: (slug) {
+                        onEventSelected: (event) {
                           context.router.push(
-                            ImmersiveEventDetailRoute(eventSlug: slug),
+                            ImmersiveEventDetailRoute(
+                              eventSlug: event.slug,
+                              occurrenceId: event.selectedOccurrenceId,
+                            ),
                           );
                         },
                       ),

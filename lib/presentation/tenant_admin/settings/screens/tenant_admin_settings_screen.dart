@@ -151,17 +151,9 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                         label: 'Raio do mapa',
                         value: '$currentKm km',
                       ),
-                      const SizedBox(height: 8),
-                      _buildSummaryRow(
-                        context,
-                        label: 'Filtros do mapa',
-                        value: appData.mapFilterCatalogKeys.isEmpty
-                            ? 'Nenhum'
-                            : '${appData.mapFilterCatalogKeys.length} configurado(s)',
-                      ),
                       _buildHint(
                         context,
-                        'Toque para editar preferências e filtros do mapa',
+                        'Toque para editar preferências locais e origem do mapa',
                       ),
                     ],
                   ),

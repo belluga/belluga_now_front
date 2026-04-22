@@ -205,7 +205,13 @@ void main() {
           'avatar_url': 'https://tenant.test/artist-avatar.png',
           'cover_url': 'https://tenant.test/artist-cover.png',
           'taxonomy_terms': [
-            {'type': 'genre', 'value': 'samba', 'name': 'Samba'},
+            {
+              'type': 'genre',
+              'value': 'samba',
+              'name': 'Samba',
+              'taxonomy_name': 'Genero musical',
+              'label': 'Legacy Samba',
+            },
           ],
         },
       ],
@@ -216,10 +222,46 @@ void main() {
     expect(domain.linkedAccountProfiles, hasLength(1));
     expect(domain.linkedAccountProfiles.first.profileType, 'artist');
     expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
-    expect(
-      domain.linkedAccountProfiles.first.taxonomyTerms.first.labelValue.value,
-      'Samba',
-    );
+    final term = domain.linkedAccountProfiles.first.taxonomyTerms.first;
+    expect(term.valueValue.value, 'samba');
+    expect(term.taxonomyNameValue.value, 'Genero musical');
+    expect(term.compatibilityLabelValue.value, 'Legacy Samba');
+    expect(term.labelValue.value, 'Samba');
+  });
+
+  test('falls back linked account profile taxonomy labels to value', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909080f',
+      'slug': 'evt-linked-legacy-taxonomy',
+      'type': {
+        'id': '69a77aa3680219d569090810',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com perfis',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'slug': 'ananda-torres',
+          'profile_type': 'artist',
+          'taxonomy_terms': [
+            {'type': 'genre', 'value': 'samba'},
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+    final term = domain.linkedAccountProfiles.first.taxonomyTerms.first;
+
+    expect(term.taxonomyNameValue.value, isEmpty);
+    expect(term.compatibilityLabelValue.value, isEmpty);
+    expect(term.labelValue.value, 'samba');
   });
 
   test('does not synthesize linked account profiles from artists or venue', () {
@@ -311,5 +353,127 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('parses event detail occurrences and selected programming items', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439081',
+      'occurrence_id': '507f1f77bcf86cd799439083',
+      'slug': 'festival-de-verao',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival de Verao',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439082',
+          'occurrence_slug': 'festival-de-verao-1',
+          'date_time_start': '2026-03-03T17:00:00+00:00',
+          'date_time_end': '2026-03-03T21:00:00+00:00',
+          'is_selected': false,
+          'has_location_override': false,
+          'programming_count': 0,
+        },
+        {
+          'occurrence_id': '507f1f77bcf86cd799439083',
+          'occurrence_slug': 'festival-de-verao-2',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'date_time_end': '2026-03-04T21:00:00+00:00',
+          'is_selected': true,
+          'has_location_override': true,
+          'programming_count': 1,
+        },
+      ],
+      'programming_items': [
+        {
+          'time': '17:00',
+          'title': null,
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Coral XYZ',
+              'slug': 'coral-xyz',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.occurrences, hasLength(2));
+    expect(domain.hasMultipleOccurrences, isTrue);
+    expect(domain.selectedOccurrenceId, '507f1f77bcf86cd799439083');
+    expect(domain.selectedOccurrence!.hasLocationOverride, isTrue);
+    expect(domain.selectedOccurrence!.programmingCount, 1);
+    expect(domain.programmingItems, hasLength(1));
+    expect(domain.programmingItems.first.time, '17:00');
+    expect(domain.programmingItems.first.displayTitle, 'Coral XYZ');
+    expect(domain.programmingItems.first.linkedAccountProfiles, hasLength(1));
+  });
+
+  test('maps online occurrence location label into non-empty domain location',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439081',
+      'occurrence_id': '507f1f77bcf86cd799439084',
+      'slug': 'festival-online',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival Online',
+      'content': 'Descricao',
+      'location': {
+        'mode': 'online',
+        'online': {
+          'url': 'https://example.org/live',
+          'label': 'Transmissao ao vivo',
+        },
+      },
+      'place_ref': null,
+      'venue': null,
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439084',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'has_location_override': true,
+          'programming_count': 1,
+        },
+      ],
+      'programming_items': [
+        {
+          'time': '17:00',
+          'title': 'Show com a banda',
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Coral XYZ',
+              'slug': 'coral-xyz',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(dto.location, 'Transmissao ao vivo');
+    expect(domain.location.value, 'Transmissao ao vivo');
+    expect(domain.hasProgrammingItems, isTrue);
   });
 }

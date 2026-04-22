@@ -23,6 +23,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -463,6 +464,10 @@ class TenantAdminEventsController implements Disposable {
             .where((party) => party.partyType != 'venue')
             .map((party) => party.partyRefId),
       ],
+      occurrences: existingEvent?.occurrences
+              .map(_toLocalOccurrence)
+              .toList(growable: false) ??
+          const <TenantAdminEventOccurrence>[],
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
@@ -667,22 +672,85 @@ class TenantAdminEventsController implements Disposable {
     if (nextEndAt != null && nextEndAt.isBefore(value)) {
       nextEndAt = value;
     }
+    final nextOccurrences = _replacePrimaryOccurrenceTime(
+      current,
+      startAt: value,
+      endAt: nextEndAt,
+    );
     final nextState = current.copyWith(
       startAt: value,
       endAt: nextEndAt,
+      occurrences: nextOccurrences,
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
 
   void applyEventEndAt(DateTime value) {
-    final nextState = eventFormStateStreamValue.value.copyWith(endAt: value);
+    final current = eventFormStateStreamValue.value;
+    final nextState = current.copyWith(
+      endAt: value,
+      occurrences: _replacePrimaryOccurrenceTime(
+        current,
+        startAt: current.startAt,
+        endAt: value,
+      ),
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
 
   void clearEventEndAt() {
-    final nextState = eventFormStateStreamValue.value.copyWith(endAt: null);
+    final current = eventFormStateStreamValue.value;
+    final nextState = current.copyWith(
+      endAt: null,
+      occurrences: _replacePrimaryOccurrenceTime(
+        current,
+        startAt: current.startAt,
+        endAt: null,
+      ),
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  void upsertOccurrence({
+    required int? index,
+    required TenantAdminEventOccurrence occurrence,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final next = current.occurrences.toList(growable: true);
+    if (index == null || index < 0 || index >= next.length) {
+      next.add(occurrence);
+    } else {
+      next[index] = occurrence;
+    }
+    next.sort(
+        (left, right) => left.dateTimeStart.compareTo(right.dateTimeStart));
+    final primary = next.firstOrNull;
+    final nextState = current.copyWith(
+      startAt: primary?.dateTimeStart,
+      endAt: primary?.dateTimeEnd,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  void removeOccurrenceAt(int index) {
+    final current = eventFormStateStreamValue.value;
+    if (current.occurrences.length <= 1 ||
+        index < 0 ||
+        index >= current.occurrences.length) {
+      return;
+    }
+    final next = current.occurrences.toList(growable: true)..removeAt(index);
+    final primary = next.firstOrNull;
+    final nextState = current.copyWith(
+      startAt: primary?.dateTimeStart,
+      endAt: primary?.dateTimeEnd,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -1472,6 +1540,59 @@ class TenantAdminEventsController implements Disposable {
     eventStartController.text = _formatDateTime(state.startAt);
     eventEndController.text = _formatDateTime(state.endAt);
     eventPublishAtController.text = _formatDateTime(state.publishAt);
+  }
+
+  TenantAdminEventOccurrence _toLocalOccurrence(
+    TenantAdminEventOccurrence occurrence,
+  ) {
+    return TenantAdminEventOccurrence(
+      occurrenceIdValue: tenantAdminOptionalText(occurrence.occurrenceId),
+      occurrenceSlugValue: tenantAdminOptionalText(occurrence.occurrenceSlug),
+      dateTimeStartValue: tenantAdminDateTime(
+        TimezoneConverter.utcToLocal(occurrence.dateTimeStart),
+      ),
+      dateTimeEndValue: tenantAdminOptionalDateTime(
+        occurrence.dateTimeEnd == null
+            ? null
+            : TimezoneConverter.utcToLocal(occurrence.dateTimeEnd!),
+      ),
+      relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
+      relatedAccountProfiles: occurrence.relatedAccountProfiles,
+      locationOverride: occurrence.locationOverride,
+      placeRef: occurrence.placeRef,
+      programmingItems: occurrence.programmingItems,
+    );
+  }
+
+  List<TenantAdminEventOccurrence> _replacePrimaryOccurrenceTime(
+    TenantAdminEventFormState current, {
+    required DateTime? startAt,
+    required DateTime? endAt,
+  }) {
+    if (startAt == null) {
+      return current.occurrences;
+    }
+    final existing =
+        current.occurrences.isEmpty ? null : current.occurrences.first;
+    final nextPrimary = TenantAdminEventOccurrence(
+      occurrenceIdValue: tenantAdminOptionalText(existing?.occurrenceId),
+      occurrenceSlugValue: tenantAdminOptionalText(existing?.occurrenceSlug),
+      dateTimeStartValue: tenantAdminDateTime(startAt),
+      dateTimeEndValue: tenantAdminOptionalDateTime(endAt),
+      relatedAccountProfileIdValues:
+          existing?.relatedAccountProfileIds ?? const [],
+      relatedAccountProfiles: existing?.relatedAccountProfiles ?? const [],
+      locationOverride: existing?.locationOverride,
+      placeRef: existing?.placeRef,
+      programmingItems: existing?.programmingItems ?? const [],
+    );
+    final next = current.occurrences.toList(growable: true);
+    if (next.isEmpty) {
+      next.add(nextPrimary);
+    } else {
+      next[0] = nextPrimary;
+    }
+    return List<TenantAdminEventOccurrence>.unmodifiable(next);
   }
 
   void _syncEventTypeSlugFromName() {

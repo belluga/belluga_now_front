@@ -165,7 +165,12 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       );
       return;
     }
-    context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
+    context.router.push(
+      ImmersiveEventDetailRoute(
+        eventSlug: invite.eventId,
+        occurrenceId: invite.occurrenceId,
+      ),
+    );
   }
 
   Future<void> _handleDecision(

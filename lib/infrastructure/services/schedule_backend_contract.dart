@@ -3,7 +3,10 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 
 abstract class ScheduleBackendContract {
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug});
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  });
   Future<EventPageDTO> fetchEventsPage({
     required int page,
     required int pageSize,

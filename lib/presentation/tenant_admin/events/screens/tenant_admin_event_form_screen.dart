@@ -139,6 +139,17 @@ class _TenantAdminEventFormScreenState
                                                               ? 'Editar evento'
                                                               : 'Criar evento',
                                                           showHandle: false,
+                                                          floatingActionButton:
+                                                              _buildAddOccurrenceFloatingActionButton(
+                                                            formState:
+                                                                formState,
+                                                            venues: venues,
+                                                            isSubmitting:
+                                                                isSubmitting,
+                                                          ),
+                                                          floatingActionButtonLocation:
+                                                              FloatingActionButtonLocation
+                                                                  .endFloat,
                                                           child: Form(
                                                             key: _controller
                                                                 .eventFormKey,
@@ -227,6 +238,8 @@ class _TenantAdminEventFormScreenState
                                                                   _buildScheduleSection(
                                                                     formState:
                                                                         formState,
+                                                                    venues:
+                                                                        venues,
                                                                   ),
                                                                   const SizedBox(
                                                                     height: 16,
@@ -419,9 +432,7 @@ class _TenantAdminEventFormScreenState
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
-          child: Icon(Icons.delete_outline),
-        ),
+        child: const Center(child: Icon(Icons.delete_outline)),
       );
     }
 
@@ -443,9 +454,7 @@ class _TenantAdminEventFormScreenState
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Center(
-        child: Icon(Icons.image_outlined),
-      ),
+      child: const Center(child: Icon(Icons.image_outlined)),
     );
   }
 
@@ -467,9 +476,7 @@ class _TenantAdminEventFormScreenState
           DropdownButtonFormField<String>(
             key: ValueKey<String?>('event-type-${formState.selectedTypeSlug}'),
             initialValue: selectedType?.slug,
-            decoration: const InputDecoration(
-              labelText: 'Tipo',
-            ),
+            decoration: const InputDecoration(labelText: 'Tipo'),
             items: eventTypes
                 .map(
                   (type) => DropdownMenuItem<String>(
@@ -509,10 +516,41 @@ class _TenantAdminEventFormScreenState
 
   Widget _buildScheduleSection({
     required TenantAdminEventFormState formState,
+    required List<TenantAdminAccountProfile> venues,
   }) {
+    final occurrences = formState.occurrences;
+    if (occurrences.length > 1) {
+      return TenantAdminFormSectionCard(
+        title: 'Datas',
+        description:
+            'Gerencie as ocorrências deste evento. Campos compartilhados ficam nas seções acima.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < occurrences.length; index++)
+              _buildOccurrenceCard(
+                occurrence: occurrences[index],
+                index: index,
+                totalCount: occurrences.length,
+                venues: venues,
+              ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _buildAddOccurrenceInlineButton(
+                formState: formState,
+                venues: venues,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return TenantAdminFormSectionCard(
-      title: 'Agenda',
-      description: 'Selecione data e horário para início e fim da ocorrência.',
+      title: 'Ocorrência',
+      description:
+          'Selecione data e horário da primeira ocorrência. Depois disso, adicione outras datas quando o evento tiver múltiplas ocorrências.',
       child: Column(
         children: [
           _buildDateTimeField(
@@ -561,7 +599,144 @@ class _TenantAdminEventFormScreenState
               return null;
             },
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildAddOccurrenceInlineButton(
+              formState: formState,
+              venues: venues,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddOccurrenceFloatingActionButton({
+    required TenantAdminEventFormState formState,
+    required List<TenantAdminAccountProfile> venues,
+    required bool isSubmitting,
+  }) {
+    return FloatingActionButton.extended(
+      key: const Key('tenantAdminEventAddOccurrenceButton'),
+      heroTag: 'tenantAdminEventAddOccurrenceButton',
+      onPressed: isSubmitting
+          ? null
+          : () => _openOccurrenceEditor(
+                formState: formState,
+                index: null,
+                venues: venues,
+              ),
+      icon: const Icon(Icons.add),
+      label: const Text('Adicionar data'),
+    );
+  }
+
+  Widget _buildAddOccurrenceInlineButton({
+    required TenantAdminEventFormState formState,
+    required List<TenantAdminAccountProfile> venues,
+  }) {
+    return OutlinedButton.icon(
+      key: const Key('tenantAdminEventAddOccurrenceInlineButton'),
+      onPressed: () => _openOccurrenceEditor(
+        formState: formState,
+        index: null,
+        venues: venues,
+      ),
+      icon: const Icon(Icons.add),
+      label: const Text('Adicionar data'),
+    );
+  }
+
+  Future<bool> _closeModalSheet<T>(BuildContext context, [T? result]) {
+    final navigator = ModalRoute.of(context)?.navigator;
+    if (navigator != null) {
+      return navigator.maybePop<T>(result);
+    }
+    return context.router.maybePop<T>(result);
+  }
+
+  Widget _buildOccurrenceCard({
+    required TenantAdminEventOccurrence occurrence,
+    required int index,
+    required int totalCount,
+    required List<TenantAdminAccountProfile> venues,
+  }) {
+    final theme = Theme.of(context);
+    final end = occurrence.dateTimeEnd;
+    final relatedCount = occurrence.relatedAccountProfileIds.length;
+    final programmingCount = occurrence.programmingCount;
+    return Card(
+      key: Key('tenantAdminEventOccurrenceCard_$index'),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openOccurrenceEditor(
+          formState: _controller.eventFormStateStreamValue.value,
+          index: index,
+          venues: venues,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.event_available_outlined),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatOccurrenceDateTime(occurrence.dateTimeStart),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (end != null)
+                      Text(
+                        'Fim: ${_formatOccurrenceDateTime(end)}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (occurrence.hasLocationOverride)
+                          const _OccurrenceSummaryChip(
+                            label: 'Local sobrescrito',
+                            icon: Icons.place_outlined,
+                          ),
+                        if (relatedCount > 0)
+                          _OccurrenceSummaryChip(
+                            label: relatedCount == 1
+                                ? '1 perfil próprio'
+                                : '$relatedCount perfis próprios',
+                            icon: Icons.group_outlined,
+                          ),
+                        if (programmingCount > 0)
+                          _OccurrenceSummaryChip(
+                            label: programmingCount == 1
+                                ? '1 item de programação'
+                                : '$programmingCount itens de programação',
+                            icon: Icons.schedule,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remover data',
+                onPressed: totalCount <= 1
+                    ? null
+                    : () => _controller.removeOccurrenceAt(index),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -653,8 +828,9 @@ class _TenantAdminEventFormScreenState
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: formState.selectedVenueId,
-              decoration:
-                  const InputDecoration(labelText: 'Host físico (perfil)'),
+              decoration: const InputDecoration(
+                labelText: 'Host físico (perfil)',
+              ),
               items: venues
                   .map(
                     (venue) => DropdownMenuItem<String>(
@@ -688,9 +864,7 @@ class _TenantAdminEventFormScreenState
             const SizedBox(height: 12),
             TextFormField(
               controller: _controller.eventOnlineUrlController,
-              decoration: const InputDecoration(
-                labelText: 'URL online',
-              ),
+              decoration: const InputDecoration(labelText: 'URL online'),
               validator: (value) {
                 if (!(formState.locationMode == 'online' ||
                     formState.locationMode == 'hybrid')) {
@@ -764,9 +938,8 @@ class _TenantAdminEventFormScreenState
           ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => _openRelatedAccountProfilePickerSheet(
-              formState: formState,
-            ),
+            onPressed: () =>
+                _openRelatedAccountProfilePickerSheet(formState: formState),
             icon: const Icon(Icons.add),
             label: const Text('Adicionar perfil'),
           ),
@@ -913,6 +1086,838 @@ class _TenantAdminEventFormScreenState
     );
   }
 
+  Future<void> _openOccurrenceEditor({
+    required TenantAdminEventFormState formState,
+    required int? index,
+    required List<TenantAdminAccountProfile> venues,
+  }) async {
+    final existing =
+        index == null || index < 0 || index >= formState.occurrences.length
+            ? null
+            : formState.occurrences[index];
+    final fallbackStart = formState.occurrences.isNotEmpty
+        ? formState.occurrences.last.dateTimeStart.add(const Duration(days: 1))
+        : formState.startAt ?? DateTime.now();
+    var startAt = existing?.dateTimeStart ?? fallbackStart;
+    var endAt = existing?.dateTimeEnd ??
+        (formState.endAt == null || formState.startAt == null
+            ? null
+            : fallbackStart.add(
+                formState.endAt!.difference(formState.startAt!),
+              ));
+    final relatedProfileIds =
+        existing?.relatedAccountProfileIds.toList(growable: true) ??
+            <TenantAdminAccountProfileIdValue>[];
+    final relatedProfiles =
+        existing?.relatedAccountProfiles.toList(growable: true) ??
+            <TenantAdminAccountProfile>[];
+    final programmingItems =
+        existing?.programmingItems.toList(growable: true) ??
+            <TenantAdminEventProgrammingItem>[];
+    var locationOverrideEnabled = existing?.locationOverride != null;
+    var locationMode =
+        existing?.locationOverride?.mode ?? formState.locationMode;
+    var selectedVenueId = existing?.placeRef?.id;
+    var onlineUrl = existing?.locationOverride?.online?.url ?? '';
+    var onlinePlatform = existing?.locationOverride?.online?.platform ?? '';
+    String? errorMessage;
+
+    final result = await showModalBottomSheet<TenantAdminEventOccurrence>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> pickStart() async {
+              final picked = await _pickDateTime(
+                initialDateTime: startAt,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked == null) {
+                return;
+              }
+              setSheetState(() {
+                startAt = picked;
+                if (endAt != null && endAt!.isBefore(startAt)) {
+                  endAt = startAt;
+                }
+                errorMessage = null;
+              });
+            }
+
+            Future<void> pickEnd() async {
+              final picked = await _pickDateTime(
+                initialDateTime: endAt ?? startAt,
+                firstDate: startAt,
+                lastDate: DateTime(2100),
+              );
+              if (picked == null) {
+                return;
+              }
+              setSheetState(() {
+                endAt = picked;
+                errorMessage = null;
+              });
+            }
+
+            Future<void> addRelatedProfile() async {
+              final selected = await _pickRelatedAccountProfile(
+                excludedProfileIds: relatedProfileIds
+                    .map((profileId) => profileId.value)
+                    .toSet(),
+              );
+              if (selected == null) {
+                return;
+              }
+              setSheetState(() {
+                relatedProfileIds.add(
+                  TenantAdminAccountProfileIdValue(selected.id),
+                );
+                relatedProfiles.removeWhere(
+                  (profile) => profile.id == selected.id,
+                );
+                relatedProfiles.add(selected);
+                errorMessage = null;
+              });
+            }
+
+            Future<void> addProgrammingItem() async {
+              final item = await _openProgrammingItemEditor();
+              if (item == null) {
+                return;
+              }
+              setSheetState(() {
+                programmingItems.add(item);
+                programmingItems.sort((a, b) => a.time.compareTo(b.time));
+                errorMessage = null;
+              });
+            }
+
+            final includesPhysical =
+                locationMode == 'physical' || locationMode == 'hybrid';
+            final includesOnline =
+                locationMode == 'online' || locationMode == 'hybrid';
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      index == null ? 'Adicionar data' : 'Editar data',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      key: const Key('tenantAdminOccurrenceStartField'),
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event_outlined),
+                      title: const Text('Início'),
+                      subtitle: Text(_formatOccurrenceDateTime(startAt)),
+                      trailing: const Icon(Icons.edit_calendar_outlined),
+                      onTap: pickStart,
+                    ),
+                    ListTile(
+                      key: const Key('tenantAdminOccurrenceEndField'),
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event_busy_outlined),
+                      title: const Text('Fim'),
+                      subtitle: Text(
+                        endAt == null
+                            ? 'Sem fim definido'
+                            : _formatOccurrenceDateTime(endAt!),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (endAt != null)
+                            IconButton(
+                              tooltip: 'Limpar fim',
+                              onPressed: () {
+                                setSheetState(() {
+                                  endAt = null;
+                                  errorMessage = null;
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                          const Icon(Icons.edit_calendar_outlined),
+                        ],
+                      ),
+                      onTap: pickEnd,
+                    ),
+                    const Divider(height: 28),
+                    Text(
+                      'Perfis próprios da ocorrência',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (relatedProfileIds.isEmpty)
+                      Text(
+                        'Nenhum perfil próprio nesta data.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    else
+                      for (final profileId in relatedProfileIds)
+                        ListTile(
+                          key: Key(
+                            'tenantAdminOccurrenceProfile_${profileId.value}',
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.person_outline),
+                          title: Text(
+                            _profileDisplayName(
+                              profileId.value,
+                              relatedProfiles,
+                            ),
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remover perfil da ocorrência',
+                            onPressed: () {
+                              setSheetState(() {
+                                relatedProfileIds.removeWhere(
+                                  (item) => item.value == profileId.value,
+                                );
+                                errorMessage = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                        ),
+                    OutlinedButton.icon(
+                      key: const Key('tenantAdminOccurrenceAddProfileButton'),
+                      onPressed: addRelatedProfile,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar perfil próprio'),
+                    ),
+                    const Divider(height: 28),
+                    SwitchListTile(
+                      key: const Key(
+                        'tenantAdminOccurrenceLocationOverrideSwitch',
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Sobrescrever localização'),
+                      subtitle: const Text(
+                        'Use apenas quando esta data ocorrer em outro local.',
+                      ),
+                      value: locationOverrideEnabled,
+                      onChanged: (value) {
+                        setSheetState(() {
+                          locationOverrideEnabled = value;
+                          if (value &&
+                              selectedVenueId == null &&
+                              venues.isNotEmpty) {
+                            selectedVenueId = venues.first.id;
+                          }
+                          errorMessage = null;
+                        });
+                      },
+                    ),
+                    if (locationOverrideEnabled) ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        key: const Key('tenantAdminOccurrenceLocationMode'),
+                        initialValue: locationMode,
+                        decoration: const InputDecoration(labelText: 'Modo'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'physical',
+                            child: Text('Physical'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'online',
+                            child: Text('Online'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'hybrid',
+                            child: Text('Hybrid'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setSheetState(() {
+                            locationMode = value;
+                            if ((value == 'physical' || value == 'hybrid') &&
+                                selectedVenueId == null &&
+                                venues.isNotEmpty) {
+                              selectedVenueId = venues.first.id;
+                            }
+                            errorMessage = null;
+                          });
+                        },
+                      ),
+                      if (includesPhysical) ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          key: const Key('tenantAdminOccurrenceVenueDropdown'),
+                          initialValue: selectedVenueId,
+                          decoration: const InputDecoration(
+                            labelText: 'Host físico da ocorrência',
+                          ),
+                          items: venues
+                              .map(
+                                (venue) => DropdownMenuItem<String>(
+                                  value: venue.id,
+                                  child: Text(venue.displayName),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: venues.isEmpty
+                              ? null
+                              : (value) {
+                                  setSheetState(() {
+                                    selectedVenueId = value;
+                                    errorMessage = null;
+                                  });
+                                },
+                        ),
+                      ],
+                      if (includesOnline) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('tenantAdminOccurrenceOnlineUrl'),
+                          initialValue: onlineUrl,
+                          decoration: const InputDecoration(
+                            labelText: 'URL online',
+                          ),
+                          keyboardType: TextInputType.url,
+                          onChanged: (value) {
+                            onlineUrl = value;
+                            errorMessage = null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('tenantAdminOccurrenceOnlinePlatform'),
+                          initialValue: onlinePlatform,
+                          decoration: const InputDecoration(
+                            labelText: 'Plataforma online (opcional)',
+                          ),
+                          onChanged: (value) {
+                            onlinePlatform = value;
+                            errorMessage = null;
+                          },
+                        ),
+                      ],
+                    ],
+                    const Divider(height: 28),
+                    Text(
+                      'Programação',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (programmingItems.isEmpty)
+                      Text(
+                        'Nenhum item de programação nesta data.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    else
+                      for (var itemIndex = 0;
+                          itemIndex < programmingItems.length;
+                          itemIndex++)
+                        ListTile(
+                          key: Key(
+                            'tenantAdminOccurrenceProgrammingItem_$itemIndex',
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          leading: Text(programmingItems[itemIndex].time),
+                          title: Text(
+                            programmingItems[itemIndex].title ??
+                                _firstProgrammingProfileName(
+                                  programmingItems[itemIndex],
+                                ) ??
+                                'Item sem título',
+                          ),
+                          subtitle: Text(
+                            '${programmingItems[itemIndex].accountProfileIds.length} perfil(is) vinculado(s)',
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remover item de programação',
+                            onPressed: () {
+                              setSheetState(() {
+                                programmingItems.removeAt(itemIndex);
+                                errorMessage = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                        ),
+                    OutlinedButton.icon(
+                      key: const Key(
+                        'tenantAdminOccurrenceAddProgrammingButton',
+                      ),
+                      onPressed: addProgrammingItem,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar item de programação'),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                unawaited(_closeModalSheet<Object?>(context)),
+                            child: const Text('Cancelar'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            key: const Key('tenantAdminOccurrenceSaveButton'),
+                            onPressed: () {
+                              final selectedVenue = venues.firstWhereOrNull(
+                                (venue) => venue.id == selectedVenueId,
+                              );
+                              final validationError = _validateOccurrenceEditor(
+                                startAt: startAt,
+                                endAt: endAt,
+                                locationOverrideEnabled:
+                                    locationOverrideEnabled,
+                                locationMode: locationMode,
+                                includesPhysical: includesPhysical,
+                                includesOnline: includesOnline,
+                                selectedVenue: selectedVenue,
+                                onlineUrl: onlineUrl,
+                              );
+                              if (validationError != null) {
+                                setSheetState(() {
+                                  errorMessage = validationError;
+                                });
+                                return;
+                              }
+
+                              unawaited(
+                                _closeModalSheet<TenantAdminEventOccurrence>(
+                                  context,
+                                  TenantAdminEventOccurrence(
+                                    occurrenceIdValue: tenantAdminOptionalText(
+                                      existing?.occurrenceId,
+                                    ),
+                                    occurrenceSlugValue:
+                                        tenantAdminOptionalText(
+                                      existing?.occurrenceSlug,
+                                    ),
+                                    dateTimeStartValue: tenantAdminDateTime(
+                                      startAt,
+                                    ),
+                                    dateTimeEndValue:
+                                        tenantAdminOptionalDateTime(endAt),
+                                    relatedAccountProfileIdValues: List<
+                                            TenantAdminAccountProfileIdValue>.unmodifiable(
+                                        relatedProfileIds),
+                                    relatedAccountProfiles: List<
+                                            TenantAdminAccountProfile>.unmodifiable(
+                                        relatedProfiles),
+                                    locationOverride: locationOverrideEnabled
+                                        ? _buildOccurrenceLocationOverride(
+                                            mode: locationMode,
+                                            selectedVenue: selectedVenue,
+                                            onlineUrl: onlineUrl,
+                                            onlinePlatform: onlinePlatform,
+                                          )
+                                        : null,
+                                    placeRef: locationOverrideEnabled &&
+                                            includesPhysical
+                                        ? TenantAdminEventPlaceRef(
+                                            typeValue: tenantAdminRequiredText(
+                                              'account_profile',
+                                            ),
+                                            idValue: tenantAdminRequiredText(
+                                              selectedVenue!.id,
+                                            ),
+                                          )
+                                        : null,
+                                    programmingItems: List<
+                                            TenantAdminEventProgrammingItem>.unmodifiable(
+                                        programmingItems),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('Salvar data'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || !mounted) {
+      return;
+    }
+    _controller.upsertOccurrence(index: index, occurrence: result);
+  }
+
+  String? _validateOccurrenceEditor({
+    required DateTime startAt,
+    required DateTime? endAt,
+    required bool locationOverrideEnabled,
+    required String locationMode,
+    required bool includesPhysical,
+    required bool includesOnline,
+    required TenantAdminAccountProfile? selectedVenue,
+    required String onlineUrl,
+  }) {
+    if (endAt != null && endAt.isBefore(startAt)) {
+      return 'Fim deve ser posterior ao início.';
+    }
+    if (!locationOverrideEnabled) {
+      return null;
+    }
+    if (includesPhysical && selectedVenue == null) {
+      return 'Host físico é obrigatório para $locationMode.';
+    }
+    if (includesOnline) {
+      final uri = Uri.tryParse(onlineUrl.trim());
+      final valid = uri != null &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          uri.host.isNotEmpty;
+      if (!valid) {
+        return 'URL online da ocorrência é obrigatória e deve ser válida.';
+      }
+    }
+    return null;
+  }
+
+  TenantAdminEventLocation _buildOccurrenceLocationOverride({
+    required String mode,
+    required TenantAdminAccountProfile? selectedVenue,
+    required String onlineUrl,
+    required String onlinePlatform,
+  }) {
+    final includesPhysical = mode == 'physical' || mode == 'hybrid';
+    final includesOnline = mode == 'online' || mode == 'hybrid';
+    final latitude =
+        includesPhysical ? selectedVenue?.location?.latitude : null;
+    final longitude =
+        includesPhysical ? selectedVenue?.location?.longitude : null;
+    return TenantAdminEventLocation(
+      modeValue: tenantAdminRequiredText(mode),
+      latitudeValue: tenantAdminOptionalDouble(latitude),
+      longitudeValue: tenantAdminOptionalDouble(longitude),
+      online: includesOnline
+          ? TenantAdminEventOnlineLocation(
+              urlValue: tenantAdminRequiredText(onlineUrl.trim()),
+              platformValue: tenantAdminOptionalText(
+                onlinePlatform.trim().isEmpty ? null : onlinePlatform.trim(),
+              ),
+            )
+          : null,
+    );
+  }
+
+  Future<TenantAdminEventProgrammingItem?> _openProgrammingItemEditor() async {
+    var time = '';
+    var title = '';
+    final linkedProfileIds = <TenantAdminAccountProfileIdValue>[];
+    final linkedProfiles = <TenantAdminAccountProfile>[];
+    String? errorMessage;
+
+    final result = await showModalBottomSheet<TenantAdminEventProgrammingItem>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> addProfile() async {
+              final selected = await _pickRelatedAccountProfile(
+                excludedProfileIds: linkedProfileIds
+                    .map((profileId) => profileId.value)
+                    .toSet(),
+              );
+              if (selected == null) {
+                return;
+              }
+              setSheetState(() {
+                linkedProfileIds.add(
+                  TenantAdminAccountProfileIdValue(selected.id),
+                );
+                linkedProfiles.removeWhere(
+                  (profile) => profile.id == selected.id,
+                );
+                linkedProfiles.add(selected);
+                errorMessage = null;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adicionar item de programação',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('tenantAdminProgrammingTimeField'),
+                      initialValue: time,
+                      decoration: const InputDecoration(
+                        labelText: 'Horário',
+                        hintText: '13:00',
+                      ),
+                      keyboardType: TextInputType.datetime,
+                      onChanged: (value) {
+                        time = value;
+                        errorMessage = null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('tenantAdminProgrammingTitleField'),
+                      initialValue: title,
+                      decoration: const InputDecoration(
+                        labelText: 'Título (opcional)',
+                      ),
+                      onChanged: (value) {
+                        title = value;
+                        errorMessage = null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Perfis vinculados',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (linkedProfileIds.isEmpty)
+                      Text(
+                        'Nenhum perfil vinculado.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    else
+                      for (final profileId in linkedProfileIds)
+                        ListTile(
+                          key: Key(
+                            'tenantAdminProgrammingProfile_${profileId.value}',
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.person_outline),
+                          title: Text(
+                            _profileDisplayName(
+                              profileId.value,
+                              linkedProfiles,
+                            ),
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Remover perfil vinculado',
+                            onPressed: () {
+                              setSheetState(() {
+                                linkedProfileIds.removeWhere(
+                                  (item) => item.value == profileId.value,
+                                );
+                                errorMessage = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                        ),
+                    OutlinedButton.icon(
+                      key: const Key('tenantAdminProgrammingAddProfileButton'),
+                      onPressed: addProfile,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Vincular perfil'),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                unawaited(_closeModalSheet<Object?>(context)),
+                            child: const Text('Cancelar'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            key: const Key('tenantAdminProgrammingSaveButton'),
+                            onPressed: () {
+                              final normalizedTime = time.trim();
+                              final normalizedTitle = title.trim();
+                              final validationError = _validateProgrammingItem(
+                                time: normalizedTime,
+                                title: normalizedTitle,
+                                linkedProfileCount: linkedProfileIds.length,
+                              );
+                              if (validationError != null) {
+                                setSheetState(() {
+                                  errorMessage = validationError;
+                                });
+                                return;
+                              }
+                              unawaited(
+                                _closeModalSheet<
+                                    TenantAdminEventProgrammingItem>(
+                                  context,
+                                  TenantAdminEventProgrammingItem(
+                                    timeValue: tenantAdminRequiredText(
+                                      normalizedTime,
+                                    ),
+                                    titleValue: tenantAdminOptionalText(
+                                      normalizedTitle.isEmpty
+                                          ? null
+                                          : normalizedTitle,
+                                    ),
+                                    accountProfileIdValues: List<
+                                            TenantAdminAccountProfileIdValue>.unmodifiable(
+                                        linkedProfileIds),
+                                    linkedAccountProfiles: List<
+                                            TenantAdminAccountProfile>.unmodifiable(
+                                        linkedProfiles),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('Salvar item'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    return result;
+  }
+
+  String? _validateProgrammingItem({
+    required String time,
+    required String title,
+    required int linkedProfileCount,
+  }) {
+    if (!_isValidProgrammingTime(time)) {
+      return 'Horário deve estar no formato HH:mm.';
+    }
+    if (title.trim().isEmpty && linkedProfileCount == 0) {
+      return 'Informe um título ou vincule um perfil.';
+    }
+    if (title.trim().isEmpty && linkedProfileCount > 1) {
+      return 'Informe um título quando houver mais de um perfil vinculado.';
+    }
+    return null;
+  }
+
+  bool _isValidProgrammingTime(String value) {
+    final match = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$').firstMatch(value);
+    return match != null;
+  }
+
+  String _profileDisplayName(
+    String profileId,
+    List<TenantAdminAccountProfile> profiles,
+  ) {
+    final profile = profiles.firstWhereOrNull((item) => item.id == profileId);
+    return profile?.displayName ?? 'Perfil relacionado $profileId';
+  }
+
+  String? _firstProgrammingProfileName(TenantAdminEventProgrammingItem item) {
+    if (item.linkedAccountProfiles.isEmpty) {
+      return null;
+    }
+    return item.linkedAccountProfiles.first.displayName;
+  }
+
+  List<TenantAdminEventOccurrence> _buildOccurrencesForSubmit({
+    required TenantAdminEventFormState formState,
+    required DateTime startAt,
+    required DateTime? endAt,
+  }) {
+    final source = formState.occurrences.isEmpty
+        ? <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(startAt),
+              dateTimeEndValue: tenantAdminOptionalDateTime(endAt),
+            ),
+          ]
+        : formState.occurrences;
+
+    return source
+        .map(
+          (occurrence) => TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText(occurrence.occurrenceId),
+            occurrenceSlugValue: tenantAdminOptionalText(
+              occurrence.occurrenceSlug,
+            ),
+            dateTimeStartValue: tenantAdminDateTime(
+              TimezoneConverter.localToUtc(occurrence.dateTimeStart),
+            ),
+            dateTimeEndValue: tenantAdminOptionalDateTime(
+              occurrence.dateTimeEnd == null
+                  ? null
+                  : TimezoneConverter.localToUtc(occurrence.dateTimeEnd!),
+            ),
+            relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
+            relatedAccountProfiles: occurrence.relatedAccountProfiles,
+            locationOverride: occurrence.locationOverride,
+            placeRef: occurrence.placeRef,
+            programmingItems: occurrence.programmingItems,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  String _formatOccurrenceDateTime(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month/${value.year} $hour:$minute';
+  }
+
   Widget _buildDateTimeField({
     required TextEditingController controller,
     required String label,
@@ -960,6 +1965,23 @@ class _TenantAdminEventFormScreenState
 
   Future<void> _openRelatedAccountProfilePickerSheet({
     required TenantAdminEventFormState formState,
+  }) async {
+    final selectedAccountProfile = await _pickRelatedAccountProfile(
+      excludedProfileIds: formState.selectedRelatedAccountProfileIds.toSet(),
+    );
+
+    if (selectedAccountProfile == null || !mounted) {
+      return;
+    }
+
+    _controller.addRelatedAccountProfile(
+      selectedAccountProfile.id,
+      profile: selectedAccountProfile,
+    );
+  }
+
+  Future<TenantAdminAccountProfile?> _pickRelatedAccountProfile({
+    required Set<String> excludedProfileIds,
   }) async {
     unawaited(
       _controller.prepareAccountProfilePicker(
@@ -1035,8 +2057,9 @@ class _TenantAdminEventFormScreenState
                                           FilledButton(
                                             onPressed: _controller
                                                 .retryAccountProfilePickerSearch,
-                                            child:
-                                                const Text('Tentar novamente'),
+                                            child: const Text(
+                                              'Tentar novamente',
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -1076,18 +2099,21 @@ class _TenantAdminEventFormScreenState
                                       }
 
                                       final profile = searchResults[index];
-                                      final isAlreadySelected = formState
-                                          .selectedRelatedAccountProfileIds
-                                          .contains(profile.id);
+                                      final isAlreadySelected =
+                                          excludedProfileIds.contains(
+                                        profile.id,
+                                      );
 
                                       return Card(
                                         child: ListTile(
                                           enabled: !isAlreadySelected,
-                                          leading:
-                                              const Icon(Icons.person_outline),
+                                          leading: const Icon(
+                                            Icons.person_outline,
+                                          ),
                                           title: Text(profile.displayName),
-                                          subtitle:
-                                              Text(profile.slug ?? profile.id),
+                                          subtitle: Text(
+                                            profile.slug ?? profile.id,
+                                          ),
                                           trailing: Icon(
                                             isAlreadySelected
                                                 ? Icons.check_circle_outline
@@ -1095,9 +2121,11 @@ class _TenantAdminEventFormScreenState
                                           ),
                                           onTap: isAlreadySelected
                                               ? null
-                                              : () => context.router.maybePop<
-                                                      TenantAdminAccountProfile>(
-                                                  profile),
+                                              : () => unawaited(
+                                                    _closeModalSheet<
+                                                            TenantAdminAccountProfile>(
+                                                        context, profile),
+                                                  ),
                                         ),
                                       );
                                     },
@@ -1117,15 +2145,7 @@ class _TenantAdminEventFormScreenState
         );
       },
     );
-
-    if (selectedAccountProfile == null || !mounted) {
-      return;
-    }
-
-    _controller.addRelatedAccountProfile(
-      selectedAccountProfile.id,
-      profile: selectedAccountProfile,
-    );
+    return selectedAccountProfile;
   }
 
   Future<String?> _promptWebImageUrl({required String title}) async {
@@ -1190,10 +2210,7 @@ class _TenantAdminEventFormScreenState
         slot: TenantAdminImageSlot.cover,
         readBytesForCrop: _controller.readImageBytesForCrop,
         prepareCroppedFile: (croppedData, cropSlot) =>
-            _controller.prepareCroppedImage(
-          croppedData,
-          slot: cropSlot,
-        ),
+            _controller.prepareCroppedImage(croppedData, slot: cropSlot),
       );
       if (cropped == null) {
         return;
@@ -1231,10 +2248,7 @@ class _TenantAdminEventFormScreenState
         slot: TenantAdminImageSlot.cover,
         readBytesForCrop: _controller.readImageBytesForCrop,
         prepareCroppedFile: (croppedData, cropSlot) =>
-            _controller.prepareCroppedImage(
-          croppedData,
-          slot: cropSlot,
-        ),
+            _controller.prepareCroppedImage(croppedData, slot: cropSlot),
       );
       if (cropped == null) {
         return;
@@ -1310,8 +2324,11 @@ class _TenantAdminEventFormScreenState
     required DateTime firstDate,
     required DateTime lastDate,
   }) async {
-    final firstDateOnly =
-        DateTime(firstDate.year, firstDate.month, firstDate.day);
+    final firstDateOnly = DateTime(
+      firstDate.year,
+      firstDate.month,
+      firstDate.day,
+    );
     final lastDateOnly = DateTime(lastDate.year, lastDate.month, lastDate.day);
     final normalizedInitial = initialDateTime.isBefore(firstDateOnly)
         ? firstDateOnly
@@ -1471,9 +2488,11 @@ class _TenantAdminEventFormScreenState
 
       final draft = TenantAdminEventDraft(
         titleValue: tenantAdminRequiredText(
-            _controller.eventTitleController.text.trim()),
+          _controller.eventTitleController.text.trim(),
+        ),
         contentValue: tenantAdminOptionalText(
-            _controller.eventContentController.text.trim()),
+          _controller.eventContentController.text.trim(),
+        ),
         type: TenantAdminEventType(
           idValue: tenantAdminOptionalText(selectedTypeId),
           nameValue: tenantAdminRequiredText(selectedType.name),
@@ -1482,15 +2501,11 @@ class _TenantAdminEventFormScreenState
           iconValue: tenantAdminOptionalText(selectedType.icon),
           colorValue: tenantAdminOptionalText(selectedType.color),
         ),
-        occurrences: <TenantAdminEventOccurrence>[
-          TenantAdminEventOccurrence(
-            dateTimeStartValue:
-                tenantAdminDateTime(TimezoneConverter.localToUtc(startAt)),
-            dateTimeEndValue: tenantAdminOptionalDateTime(
-              endAt == null ? null : TimezoneConverter.localToUtc(endAt),
-            ),
-          ),
-        ],
+        occurrences: _buildOccurrencesForSubmit(
+          formState: formState,
+          startAt: startAt,
+          endAt: endAt,
+        ),
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(formState.publicationStatus),
           publishAtValue: tenantAdminOptionalDateTime(
@@ -1558,7 +2573,8 @@ class _TenantAdminEventFormScreenState
         ? TenantAdminEventOnlineLocation(
             urlValue: tenantAdminRequiredText(onlineUrl),
             platformValue: tenantAdminOptionalText(
-                onlinePlatform.isEmpty ? null : onlinePlatform),
+              onlinePlatform.isEmpty ? null : onlinePlatform,
+            ),
           )
         : null;
 
@@ -1592,6 +2608,29 @@ class _TenantAdminEventFormScreenState
       return null;
     }
     return TimezoneConverter.utcToLocal(value);
+  }
+}
+
+class _OccurrenceSummaryChip extends StatelessWidget {
+  const _OccurrenceSummaryChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [Icon(icon, size: 14), const SizedBox(width: 6), Text(label)],
+      ),
+    );
   }
 }
 

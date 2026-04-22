@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
@@ -115,9 +116,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 final hasSelectedType = selectedType?.isNotEmpty ?? false;
                 final showSections =
                     !isSearching && !hasSelectedType && trimmedQuery.isEmpty;
-                final emptyLabel = showSections
-                    ? 'Nenhum perfil disponível no momento.'
-                    : 'Nenhum resultado para os filtros.';
                 return StreamValueBuilder<Set<String>>(
                   streamValue: _controller.favoriteIdsStream,
                   builder: (context, favorites) {
@@ -131,181 +129,250 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                               streamValue:
                                   _controller.availableTypesStreamValue,
                               builder: (context, availableTypes) {
-                                final showDiscoveryHeader =
-                                    !isSearching && hasLoaded;
-                                final hasFilterChips =
-                                    availableTypes.isNotEmpty;
-                                return CustomScrollView(
-                                  controller: _controller.scrollController,
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  slivers: [
-                                    if (showSections)
-                                      SliverToBoxAdapter(
-                                        child: StreamValueBuilder<
-                                            List<EventModel>?>(
-                                          streamValue: _controller
-                                              .liveNowEventsStreamValue,
-                                          builder: (context, liveNow) {
-                                            return DiscoveryLiveNowSection(
-                                              items: liveNow ??
-                                                  const <EventModel>[],
-                                              onTap: (event) =>
-                                                  context.router.push(
-                                                ImmersiveEventDetailRoute(
-                                                  eventSlug: event.slug,
+                                return StreamValueBuilder<
+                                    DiscoveryFilterCatalog>(
+                                  streamValue: _controller
+                                      .discoveryFilterCatalogStreamValue,
+                                  builder: (context, catalog) {
+                                    return StreamValueBuilder<
+                                        DiscoveryFilterSelection>(
+                                      streamValue: _controller
+                                          .discoveryFilterSelectionStreamValue,
+                                      builder: (context, filterSelection) {
+                                        final hasCanonicalFilters =
+                                            catalog.filters.isNotEmpty;
+                                        final showDiscoveryHeader =
+                                            !isSearching && hasLoaded;
+                                        final hasFilterChips =
+                                            hasCanonicalFilters ||
+                                                availableTypes.isNotEmpty;
+                                        final showDefaultSections =
+                                            showSections &&
+                                                filterSelection.isEmpty;
+                                        final emptyLabel = showDefaultSections
+                                            ? 'Nenhum perfil disponível no momento.'
+                                            : 'Nenhum resultado para os filtros.';
+                                        return CustomScrollView(
+                                          controller:
+                                              _controller.scrollController,
+                                          physics:
+                                              const AlwaysScrollableScrollPhysics(),
+                                          slivers: [
+                                            if (showDefaultSections)
+                                              SliverToBoxAdapter(
+                                                child: StreamValueBuilder<
+                                                    List<EventModel>?>(
+                                                  streamValue: _controller
+                                                      .liveNowEventsStreamValue,
+                                                  builder: (context, liveNow) {
+                                                    return DiscoveryLiveNowSection(
+                                                      items: liveNow ??
+                                                          const <EventModel>[],
+                                                      onTap: (event) =>
+                                                          context.router.push(
+                                                        ImmersiveEventDetailRoute(
+                                                          eventSlug: event.slug,
+                                                          occurrenceId: event
+                                                              .selectedOccurrenceId,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    if (showSections)
-                                      SliverToBoxAdapter(
-                                        child: StreamValueBuilder<
-                                            List<AccountProfileModel>>(
-                                          streamValue:
-                                              _controller.nearbyStreamValue,
-                                          builder: (context, nearby) {
-                                            return DiscoveryNearbyRow(
-                                              items: nearby,
-                                              onTap: (partner) =>
-                                                  context.router.push(
-                                                PartnerDetailRoute(
-                                                    slug: partner.slug),
-                                              ),
-                                              resolvedVisualForItem: _controller
-                                                  .resolvedVisualForAccountProfile,
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    if (showDiscoveryHeader)
-                                      SliverPersistentHeader(
-                                        pinned: true,
-                                        delegate: DiscoveryFilterHeaderDelegate(
-                                          extent: hasFilterChips ? 128 : 72,
-                                          title: 'Descubra',
-                                          action: IconButton(
-                                            icon: const Icon(Icons.search),
-                                            onPressed: _controller.toggleSearch,
-                                          ),
-                                          filterBuilder: () {
-                                            if (!hasFilterChips) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            return StreamValueBuilder<String?>(
-                                              streamValue: _controller
-                                                  .selectedTypeFilterStreamValue,
-                                              builder: (context, selectedType) {
-                                                return DiscoveryFilterChips(
-                                                  selectedType: selectedType,
-                                                  availableTypes:
-                                                      availableTypes,
-                                                  onSelectType:
-                                                      _controller.setTypeFilter,
-                                                  labelForType: _controller
-                                                      .labelForAccountProfileType,
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    SliverToBoxAdapter(
-                                      child: StreamValueBuilder<bool>(
-                                        streamValue:
-                                            _controller.isRefreshingStreamValue,
-                                        builder: (context, isRefreshing) {
-                                          if (!isRefreshing) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return const Padding(
-                                            padding: EdgeInsets.only(bottom: 8),
-                                            child: LinearProgressIndicator(
-                                                minHeight: 2),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    if (partners.isEmpty)
-                                      SliverToBoxAdapter(
-                                        child: Builder(
-                                          builder: (context) {
-                                            if (!hasLoaded) {
-                                              return const Padding(
-                                                padding: EdgeInsets.all(24.0),
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
+                                            if (showDefaultSections)
+                                              SliverToBoxAdapter(
+                                                child: StreamValueBuilder<
+                                                    List<AccountProfileModel>>(
+                                                  streamValue: _controller
+                                                      .nearbyStreamValue,
+                                                  builder: (context, nearby) {
+                                                    return DiscoveryNearbyRow(
+                                                      items: nearby,
+                                                      onTap: (partner) =>
+                                                          context.router.push(
+                                                        PartnerDetailRoute(
+                                                            slug: partner.slug),
+                                                      ),
+                                                      resolvedVisualForItem:
+                                                          _controller
+                                                              .resolvedVisualForAccountProfile,
+                                                    );
+                                                  },
                                                 ),
-                                              );
-                                            }
-                                            if (isSearching) {
-                                              return _DiscoverySearchEmptyState(
-                                                hasQuery:
-                                                    trimmedQuery.isNotEmpty,
-                                              );
-                                            }
-                                            return Padding(
-                                              padding:
-                                                  const EdgeInsets.all(24.0),
-                                              child: Center(
-                                                child: Text(emptyLabel),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      )
-                                    else
-                                      SliverPadding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            16, 8, 16, 32),
-                                        sliver: DiscoveryPartnerGrid(
-                                          partners: partners,
-                                          favorites: favorites,
-                                          isFavoritable:
-                                              _controller.isFavoritable,
-                                          onFavoriteTap: (partnerId) {
-                                            if (partners.isEmpty) return;
-                                            final partner = partners.firstWhere(
-                                              (item) => item.id == partnerId,
-                                              orElse: () => partners.first,
-                                            );
-                                            if (_controller
-                                                .isFavoritable(partner)) {
-                                              _handleFavoriteTap(partner);
-                                            }
-                                          },
-                                          onPartnerTap: (partner) =>
-                                              context.router.push(
-                                            PartnerDetailRoute(
-                                                slug: partner.slug),
-                                          ),
-                                          resolvedVisualForPartner: _controller
-                                              .resolvedVisualForAccountProfile,
-                                        ),
-                                      ),
-                                    SliverToBoxAdapter(
-                                      child: StreamValueBuilder<bool>(
-                                        streamValue: _controller
-                                            .isPageLoadingStreamValue,
-                                        builder: (context, isPageLoading) {
-                                          if (!isPageLoading) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return const Padding(
-                                            padding: EdgeInsets.fromLTRB(
-                                                0, 0, 0, 24),
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
+                                            if (showDiscoveryHeader)
+                                              SliverPersistentHeader(
+                                                pinned: true,
+                                                delegate:
+                                                    DiscoveryFilterHeaderDelegate(
+                                                  extent:
+                                                      _discoveryHeaderExtent(
+                                                    hasFilterChips:
+                                                        hasFilterChips,
+                                                    hasCanonicalFilters:
+                                                        hasCanonicalFilters,
+                                                    catalog: catalog,
+                                                    selection: filterSelection,
+                                                  ),
+                                                  title: 'Descubra',
+                                                  action: IconButton(
+                                                    icon: const Icon(
+                                                        Icons.search),
+                                                    onPressed: _controller
+                                                        .toggleSearch,
+                                                  ),
+                                                  filterBuilder: () {
+                                                    if (!hasFilterChips) {
+                                                      return const SizedBox
+                                                          .shrink();
+                                                    }
+                                                    if (hasCanonicalFilters) {
+                                                      return _buildCanonicalDiscoveryFilters(
+                                                        context,
+                                                        catalog: catalog,
+                                                        selection:
+                                                            filterSelection,
+                                                      );
+                                                    }
+                                                    return StreamValueBuilder<
+                                                        String?>(
+                                                      streamValue: _controller
+                                                          .selectedTypeFilterStreamValue,
+                                                      builder: (context,
+                                                          selectedType) {
+                                                        return DiscoveryFilterChips(
+                                                          selectedType:
+                                                              selectedType,
+                                                          availableTypes:
+                                                              availableTypes,
+                                                          onSelectType:
+                                                              _controller
+                                                                  .setTypeFilter,
+                                                          labelForType: _controller
+                                                              .labelForAccountProfileType,
+                                                        );
+                                                      },
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            SliverToBoxAdapter(
+                                              child: StreamValueBuilder<bool>(
+                                                streamValue: _controller
+                                                    .isRefreshingStreamValue,
+                                                builder:
+                                                    (context, isRefreshing) {
+                                                  if (!isRefreshing) {
+                                                    return const SizedBox
+                                                        .shrink();
+                                                  }
+                                                  return const Padding(
+                                                    padding: EdgeInsets.only(
+                                                        bottom: 8),
+                                                    child:
+                                                        LinearProgressIndicator(
+                                                            minHeight: 2),
+                                                  );
+                                                },
+                                              ),
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
+                                            if (partners.isEmpty)
+                                              SliverToBoxAdapter(
+                                                child: Builder(
+                                                  builder: (context) {
+                                                    if (!hasLoaded) {
+                                                      return const Padding(
+                                                        padding: EdgeInsets.all(
+                                                            24.0),
+                                                        child: Center(
+                                                          child:
+                                                              CircularProgressIndicator(),
+                                                        ),
+                                                      );
+                                                    }
+                                                    if (isSearching) {
+                                                      return _DiscoverySearchEmptyState(
+                                                        hasQuery: trimmedQuery
+                                                            .isNotEmpty,
+                                                      );
+                                                    }
+                                                    return Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              24.0),
+                                                      child: Center(
+                                                        child: Text(emptyLabel),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              )
+                                            else
+                                              SliverPadding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        16, 8, 16, 32),
+                                                sliver: DiscoveryPartnerGrid(
+                                                  partners: partners,
+                                                  favorites: favorites,
+                                                  isFavoritable:
+                                                      _controller.isFavoritable,
+                                                  onFavoriteTap: (partnerId) {
+                                                    if (partners.isEmpty) {
+                                                      return;
+                                                    }
+                                                    final partner =
+                                                        partners.firstWhere(
+                                                      (item) =>
+                                                          item.id == partnerId,
+                                                      orElse: () =>
+                                                          partners.first,
+                                                    );
+                                                    if (_controller
+                                                        .isFavoritable(
+                                                            partner)) {
+                                                      _handleFavoriteTap(
+                                                          partner);
+                                                    }
+                                                  },
+                                                  onPartnerTap: (partner) =>
+                                                      context.router.push(
+                                                    PartnerDetailRoute(
+                                                        slug: partner.slug),
+                                                  ),
+                                                  resolvedVisualForPartner:
+                                                      _controller
+                                                          .resolvedVisualForAccountProfile,
+                                                ),
+                                              ),
+                                            SliverToBoxAdapter(
+                                              child: StreamValueBuilder<bool>(
+                                                streamValue: _controller
+                                                    .isPageLoadingStreamValue,
+                                                builder:
+                                                    (context, isPageLoading) {
+                                                  if (!isPageLoading) {
+                                                    return const SizedBox
+                                                        .shrink();
+                                                  }
+                                                  return const Padding(
+                                                    padding:
+                                                        EdgeInsets.fromLTRB(
+                                                            0, 0, 0, 24),
+                                                    child: Center(
+                                                      child:
+                                                          CircularProgressIndicator(),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -385,6 +452,85 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       width: 128,
       height: 34,
     );
+  }
+
+  Widget _buildCanonicalDiscoveryFilters(
+    BuildContext context, {
+    required DiscoveryFilterCatalog catalog,
+    required DiscoveryFilterSelection selection,
+  }) {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.isRefreshingStreamValue,
+      builder: (context, isRefreshing) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.isDiscoveryFilterCatalogLoadingStreamValue,
+          builder: (context, isCatalogLoading) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: DiscoveryFilterBar(
+                catalog: catalog,
+                selection: selection,
+                policy: _controller.discoveryFilterPolicy,
+                isLoading: isRefreshing || isCatalogLoading,
+                onSelectionChanged: _controller.setDiscoveryFilterSelection,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  double _discoveryHeaderExtent({
+    required bool hasFilterChips,
+    required bool hasCanonicalFilters,
+    required DiscoveryFilterCatalog catalog,
+    required DiscoveryFilterSelection selection,
+  }) {
+    if (!hasFilterChips) {
+      return 72;
+    }
+    if (!hasCanonicalFilters) {
+      return 128;
+    }
+    return _hasVisibleTaxonomyGroups(catalog, selection) ? 236 : 136;
+  }
+
+  bool _hasVisibleTaxonomyGroups(
+    DiscoveryFilterCatalog catalog,
+    DiscoveryFilterSelection selection,
+  ) {
+    if (selection.primaryKeys.isEmpty) {
+      return false;
+    }
+    final selectedFilters = catalog.filters.where(
+      (item) => selection.primaryKeys.contains(item.key),
+    );
+    for (final item in selectedFilters) {
+      for (final taxonomyKey in item.taxonomyKeys) {
+        if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
+            false)) {
+          return true;
+        }
+      }
+      for (final entity in item.entities) {
+        final selectedTypes = item.typesByEntity[entity] ?? item.types;
+        for (final option in catalog.typeOptionsByEntity[entity] ??
+            const <DiscoveryFilterTypeOption>[]) {
+          if (selectedTypes.isNotEmpty &&
+              !selectedTypes.contains(option.value)) {
+            continue;
+          }
+          for (final taxonomyKey in option.allowedTaxonomyKeys) {
+            if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
+                false)) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
   }
 }
 

@@ -27,6 +27,8 @@ enum CanonicalRouteFamily {
   tenantAdminAccountsInternal,
   tenantAdminAssetsRoot,
   tenantAdminAssetsInternal,
+  tenantAdminFiltersRoot,
+  tenantAdminFiltersInternal,
   tenantAdminSettingsRoot,
   tenantAdminSettingsInternal,
 }
@@ -42,5 +44,6 @@ enum AdminShellSection {
   events,
   accounts,
   assets,
+  filters,
   settings,
 }

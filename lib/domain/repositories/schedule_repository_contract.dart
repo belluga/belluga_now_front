@@ -22,6 +22,8 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   });
 
   Future<List<EventModel>> loadHomeAgenda({
@@ -31,6 +33,8 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   });
 
   Future<List<EventModel>> loadMoreHomeAgenda({
@@ -40,9 +44,14 @@ abstract class ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   });
 
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug);
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  });
 
   Future<List<EventModel>> loadEventSearch({
     required ScheduleRepoBool showPastOnly,

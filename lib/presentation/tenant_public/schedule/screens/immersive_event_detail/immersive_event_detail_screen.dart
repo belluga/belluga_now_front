@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -23,7 +24,9 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_dates_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/linked_profile_category_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
@@ -120,6 +123,27 @@ class _ImmersiveEventDetailScreenState
                             ImmersiveTabItem(
                               title: 'Sobre',
                               content: EventInfoSection(event: resolvedEvent),
+                              footer: null,
+                            ),
+                          if (resolvedEvent.hasMultipleOccurrences)
+                            ImmersiveTabItem(
+                              title: 'Datas',
+                              content: EventDatesSection(
+                                occurrences: resolvedEvent.occurrences,
+                                onOccurrenceTap: (occurrence) =>
+                                    _openOccurrence(
+                                  resolvedEvent,
+                                  occurrence,
+                                ),
+                              ),
+                              footer: null,
+                            ),
+                          if (resolvedEvent.hasProgrammingItems)
+                            ImmersiveTabItem(
+                              title: 'Programação',
+                              content: EventProgrammingSection(
+                                items: resolvedEvent.programmingItems,
+                              ),
                               footer: null,
                             ),
                           ..._buildDynamicProfileTabs(
@@ -410,6 +434,21 @@ class _ImmersiveEventDetailScreenState
       },
     ).toString();
     context.router.pushPath(path);
+  }
+
+  void _openOccurrence(
+    EventModel event,
+    EventOccurrenceOption occurrence,
+  ) {
+    final occurrenceId = occurrence.occurrenceId.trim();
+    if (occurrence.isSelected || occurrenceId.isEmpty) {
+      return;
+    }
+    final path = Uri(
+      path: '/agenda/evento/${event.slug}',
+      queryParameters: {'occurrence': occurrenceId},
+    ).toString();
+    unawaited(context.router.replacePath(path));
   }
 
   void _presentDirectionsChooser(EventModel event) {

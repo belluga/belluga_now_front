@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
@@ -155,6 +156,54 @@ void main() {
       _recipientStrings(updated.to),
       equals(['admin@bellugasolutions.com.br']),
     );
+  });
+
+  test('updateDiscoveryFiltersSettings preserves dotted surface keys',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateDiscoveryFiltersSettings(
+      settings: TenantAdminDiscoveryFiltersSettingsValue(
+        TenantAdminDynamicMapValue({
+          'surfaces': {
+            'public_map.primary': {
+              'target': 'map_poi',
+              'primary_selection_mode': 'single',
+              'filters': [
+                {
+                  'key': 'assets',
+                  'label': 'Assets',
+                  'image_uri': 'https://tenant-a.test/filter.png',
+                  'query': {
+                    'entities': ['static_asset'],
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/discovery_filters');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload.containsKey('surfaces.public_map.primary.filters'), isFalse);
+    final requestSurfaces = payload['surfaces'] as Map<String, dynamic>;
+    expect(requestSurfaces.containsKey('public_map.primary'), isTrue);
+
+    final updatedSurfaces =
+        updated.rawDiscoveryFilters['surfaces'] as Map<String, dynamic>;
+    final publicMap =
+        updatedSurfaces['public_map.primary'] as Map<String, dynamic>;
+    final filters = publicMap['filters'] as List<dynamic>;
+    expect(filters.single['image_uri'], 'https://tenant-a.test/filter.png');
   });
 
   test('fetchMapUiSettings parses default origin from settings values',
@@ -1763,6 +1812,16 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'map_ui': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/discovery_filters') &&
+        method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'discovery_filters': request,
         },
       });
     }

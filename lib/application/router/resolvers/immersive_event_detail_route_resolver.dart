@@ -23,12 +23,21 @@ class ImmersiveEventDetailRouteResolver
         'Event slug must be provided',
       );
     }
+    final occurrence = params['occurrence'] as String?;
+    final normalizedOccurrence = occurrence?.trim();
     final event = await _scheduleRepository.getEventBySlug(
       ScheduleRepoString.fromRaw(
         slug,
         defaultValue: slug,
         isRequired: true,
       ),
+      occurrenceId: normalizedOccurrence == null || normalizedOccurrence.isEmpty
+          ? null
+          : ScheduleRepoString.fromRaw(
+              normalizedOccurrence,
+              defaultValue: normalizedOccurrence,
+              isRequired: true,
+            ),
     );
     if (event == null) {
       throw Exception('Event not found for slug: $slug');

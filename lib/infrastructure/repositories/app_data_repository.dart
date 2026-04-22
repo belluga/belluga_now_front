@@ -1,14 +1,17 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/app_data_discovery_filter_selection_codec.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +48,8 @@ class AppDataRepository implements AppDataRepositoryContract {
   final StreamValue<LocationOriginSettings?> locationOriginSettingsStreamValue =
       StreamValue<LocationOriginSettings?>(defaultValue: null);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
+  static const String _discoveryFilterSelectionStoragePrefix =
+      'discovery_filter_selection';
   // Legacy key names are preserved for local compatibility.
   static const String _locationOriginUsesLiveStorageKey =
       'home_use_live_location';
@@ -56,6 +61,8 @@ class AppDataRepository implements AppDataRepositoryContract {
       'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const AppDataDiscoveryFilterSelectionCodec
+      _discoveryFilterSelectionCodec = AppDataDiscoveryFilterSelectionCodec();
   bool _hasPersistedMaxRadiusPreference = false;
   bool _hasPersistedLocationOriginPreference = false;
 
@@ -103,8 +110,7 @@ class AppDataRepository implements AppDataRepositoryContract {
     }
     final storedLocationOriginSettings = await _loadLocationOriginSettings();
     if (storedLocationOriginSettings != null) {
-      locationOriginSettingsStreamValue
-          .addValue(storedLocationOriginSettings);
+      locationOriginSettingsStreamValue.addValue(storedLocationOriginSettings);
       _hasPersistedLocationOriginPreference = true;
     } else {
       _hasPersistedLocationOriginPreference = false;
@@ -184,6 +190,32 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   @override
+  Future<AppDataDiscoveryFilterSelectionSnapshot?> getDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+  ) async {
+    final stored = await _storage.read(
+      key: _discoveryFilterSelectionStorageKey(surface),
+    );
+    return _discoveryFilterSelectionCodec.decode(stored);
+  }
+
+  @override
+  Future<void> setDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+    AppDataDiscoveryFilterSelectionSnapshot selection,
+  ) async {
+    final storageKey = _discoveryFilterSelectionStorageKey(surface);
+    if (_discoveryFilterSelectionCodec.isEmpty(selection)) {
+      await _storage.delete(key: storageKey);
+      return;
+    }
+    await _storage.write(
+      key: storageKey,
+      value: _discoveryFilterSelectionCodec.encode(selection),
+    );
+  }
+
+  @override
   Future<void> useUserLiveLocationOrigin() {
     return setLocationOriginSettings(
       LocationOriginSettings.userLiveLocation(),
@@ -207,6 +239,22 @@ class AppDataRepository implements AppDataRepositoryContract {
     final parsed = double.tryParse(stored);
     if (parsed == null || parsed <= 0) return null;
     return parsed;
+  }
+
+  String _discoveryFilterSelectionStorageKey(
+    AppDataDiscoveryFilterTokenValue surface,
+  ) {
+    final tenantKey = _storageSafeToken(appData.mainDomainValue.value.host);
+    final surfaceKey = _storageSafeToken(surface.value);
+    return '${_discoveryFilterSelectionStoragePrefix}_${tenantKey}_$surfaceKey';
+  }
+
+  String _storageSafeToken(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return 'default';
+    }
+    return normalized.replaceAll(RegExp(r'[^a-z0-9._-]+'), '_');
   }
 
   Future<LocationOriginSettings?> _loadLocationOriginSettings() async {

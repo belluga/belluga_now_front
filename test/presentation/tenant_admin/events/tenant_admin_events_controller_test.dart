@@ -116,6 +116,35 @@ void main() {
     );
   });
 
+  test('clearEventEndAt clears the optional first occurrence end date', () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final startAt = DateTime(2026, 4, 22, 10);
+    final endAt = DateTime(2026, 4, 22, 12);
+
+    controller.applyEventStartAt(startAt);
+    controller.applyEventEndAt(endAt);
+
+    expect(controller.eventFormStateStreamValue.value.endAt, endAt);
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences.first.dateTimeEnd,
+      endAt,
+    );
+
+    controller.clearEventEndAt();
+
+    expect(controller.eventFormStateStreamValue.value.endAt, isNull);
+    expect(controller.eventEndController.text, isEmpty);
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences.first.dateTimeEnd,
+      isNull,
+    );
+  });
+
   test('related account profile selection preserves order and supports reorder',
       () {
     final controller = TenantAdminEventsController(

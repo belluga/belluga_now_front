@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_va
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
@@ -36,6 +38,8 @@ EventModel eventModelFromRaw({
   required DateTimeValue? dateTimeEnd,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  List<EventOccurrenceOption> occurrences = const [],
+  List<EventProgrammingItem> programmingItems = const [],
   required CityCoordinate? coordinate,
   required Object tags,
   required EventIsConfirmedValue isConfirmedValue,
@@ -60,6 +64,8 @@ EventModel eventModelFromRaw({
     dateTimeStart: dateTimeStart,
     dateTimeEnd: dateTimeEnd,
     linkedAccountProfiles: resolvedLinkedAccountProfiles,
+    occurrences: occurrences,
+    programmingItems: programmingItems,
     coordinate: coordinate,
     tags: _parseTags(tags),
     isConfirmedValue: isConfirmedValue,

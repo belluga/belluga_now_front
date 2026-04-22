@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
+import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
@@ -2157,46 +2159,108 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _richTextBlock(String title, String body) {
+  Widget _richTextBlock(String? title, String body) {
+    return _richTextBlocks([
+      AccountProfileRichTextBlock(
+        title: title,
+        html: body,
+      ),
+    ]);
+  }
+
+  Widget _richTextBlocks(List<AccountProfileRichTextBlock> blocks) {
     final colorScheme = Theme.of(context).colorScheme;
+    final visibleBlocks = blocks
+        .map(
+          (block) => _VisibleRichTextBlock(
+            title: block.title,
+            raw: block.html.trim(),
+            html: SafeRichHtml.canonicalize(block.html),
+          ),
+        )
+        .where((block) => block.html.isNotEmpty)
+        .toList(growable: false);
+
+    if (visibleBlocks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Html(
-            data: body,
-            style: {
-              'body': Style(
-                margin: Margins.zero,
-                padding: HtmlPaddings.zero,
-                color: colorScheme.onSurfaceVariant,
-                fontSize: FontSize(
-                  Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-                ),
-                lineHeight: const LineHeight(1.45),
+          for (var index = 0; index < visibleBlocks.length; index++) ...[
+            if (index > 0) const SizedBox(height: 24),
+            if (visibleBlocks[index].title != null &&
+                visibleBlocks[index].title!.trim().isNotEmpty) ...[
+              Text(
+                visibleBlocks[index].title!,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
               ),
-              'p': Style(
-                margin: Margins.only(bottom: 12),
-              ),
-              'strong': Style(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-              'br': Style(
-                display: Display.block,
-              ),
-            },
-          ),
+              const SizedBox(height: 8),
+            ],
+            if (SafeRichHtml.looksLikeHtml(visibleBlocks[index].raw))
+              Html(
+                data: visibleBlocks[index].html,
+                style: {
+                  'body': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.zero,
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: FontSize(
+                      Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                    ),
+                    lineHeight: const LineHeight(1.45),
+                  ),
+                  'p': Style(
+                    margin: Margins.only(bottom: 12),
+                  ),
+                  'strong': Style(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  'br': Style(
+                    display: Display.block,
+                  ),
+                },
+              )
+            else
+              _plainRichTextBody(visibleBlocks[index].raw, colorScheme),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _plainRichTextBody(String body, ColorScheme colorScheme) {
+    final normalized =
+        body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    final paragraphs = normalized
+        .split(RegExp(r'\n\s*\n+'))
+        .where((paragraph) => paragraph.trim().isNotEmpty)
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var paragraphIndex = 0;
+            paragraphIndex < paragraphs.length;
+            paragraphIndex++) ...[
+          if (paragraphIndex > 0) const SizedBox(height: 12),
+          for (final line in paragraphs[paragraphIndex].split('\n'))
+            if (line.trim().isNotEmpty)
+              Text(
+                line.trimRight(),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+              ),
+        ],
+      ],
     );
   }
 
@@ -2253,12 +2317,12 @@ class _AccountProfileDetailScreenState
           data is List<PartnerSupportedEntityView> ? data : null,
         );
       case ProfileModuleId.richText:
-        return _richTextBlock(
-          module.title ?? 'Sobre',
-          data is String
-              ? data
-              : 'Conteúdo institucional e história do perfil.',
-        );
+        if (data is List<AccountProfileRichTextBlock>) {
+          return _richTextBlocks(data);
+        }
+        return data is String
+            ? _richTextBlock(module.title, data)
+            : const SizedBox.shrink();
       case ProfileModuleId.locationInfo:
         return _locationInfo(data as PartnerLocationView?);
       case ProfileModuleId.externalLinks:
@@ -2283,4 +2347,16 @@ class _AgendaCounterpart {
 
   final String label;
   final String? thumbUrl;
+}
+
+class _VisibleRichTextBlock {
+  const _VisibleRichTextBlock({
+    required this.raw,
+    required this.html,
+    this.title,
+  });
+
+  final String raw;
+  final String html;
+  final String? title;
 }

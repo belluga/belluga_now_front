@@ -36,11 +36,19 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   }
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
     try {
       final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/events/$eventIdOrSlug',
+      final uri = Uri.parse('$_apiBaseUrl/v1/events/$eventIdOrSlug').replace(
+        queryParameters: occurrenceId == null || occurrenceId.trim().isEmpty
+            ? null
+            : {'occurrence': occurrenceId.trim()},
+      );
+      final response = await _dio.getUri(
+        uri,
         options: Options(headers: headers),
       );
       final raw = response.data;
@@ -107,7 +115,16 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       params['tags'] = tags;
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
-      params['taxonomy'] = taxonomy;
+      for (var index = 0; index < taxonomy.length; index += 1) {
+        final term = taxonomy[index];
+        final type = term['type']?.trim();
+        final value = term['value']?.trim();
+        if (type == null || type.isEmpty || value == null || value.isEmpty) {
+          continue;
+        }
+        params['taxonomy[$index][type]'] = type;
+        params['taxonomy[$index][value]'] = value;
+      }
     }
     if (!hasSearchQuery && originLat != null && originLng != null) {
       params['origin_lat'] = originLat;
@@ -122,7 +139,10 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/agenda',
         queryParameters: params,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          listFormat: ListFormat.multiCompatible,
+        ),
       );
       final raw = response.data;
       final Map<String, dynamic> json;

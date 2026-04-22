@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
@@ -77,11 +78,28 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
         _isRadiusActionCompactStreamValue =
             StreamValue<bool>(defaultValue: false),
         _isRadiusRefreshLoadingStreamValue =
+            StreamValue<bool>(defaultValue: false),
+        _discoveryFilterCatalogStreamValue =
+            StreamValue<DiscoveryFilterCatalog>(
+          defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
+        ),
+        _discoveryFilterSelectionStreamValue =
+            StreamValue<DiscoveryFilterSelection>(
+          defaultValue: const DiscoveryFilterSelection(),
+        ),
+        _isDiscoveryFilterCatalogLoadingStreamValue =
+            StreamValue<bool>(defaultValue: false),
+        _isDiscoveryFilterPanelVisibleStreamValue =
             StreamValue<bool>(defaultValue: false);
 
   final StreamValue<UserContract?> _authUserStreamValue;
   final StreamValue<bool> _isRadiusActionCompactStreamValue;
   final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
+  final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
+  final StreamValue<DiscoveryFilterSelection>
+      _discoveryFilterSelectionStreamValue;
+  final StreamValue<bool> _isDiscoveryFilterCatalogLoadingStreamValue;
+  final StreamValue<bool> _isDiscoveryFilterPanelVisibleStreamValue;
 
   @override
   StreamValue<UserContract?>? get authUserStreamValue => _authUserStreamValue;
@@ -93,6 +111,32 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   @override
   StreamValue<bool> get isRadiusActionCompactStreamValue =>
       _isRadiusActionCompactStreamValue;
+
+  @override
+  StreamValue<DiscoveryFilterCatalog> get discoveryFilterCatalogStreamValue =>
+      _discoveryFilterCatalogStreamValue;
+
+  @override
+  StreamValue<DiscoveryFilterSelection>
+      get discoveryFilterSelectionStreamValue =>
+          _discoveryFilterSelectionStreamValue;
+
+  @override
+  StreamValue<bool> get isDiscoveryFilterCatalogLoadingStreamValue =>
+      _isDiscoveryFilterCatalogLoadingStreamValue;
+
+  @override
+  StreamValue<bool> get isDiscoveryFilterPanelVisibleStreamValue =>
+      _isDiscoveryFilterPanelVisibleStreamValue;
+
+  @override
+  DiscoveryFilterPolicy get discoveryFilterPolicy =>
+      const DiscoveryFilterPolicy(
+        primarySelectionMode: DiscoveryFilterSelectionMode.multiple,
+        taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+        primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+        taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
+      );
 
   @override
   void setRadiusActionCompactState(bool isCompact) {
@@ -451,6 +495,7 @@ void main() {
       imageUri: Uri.parse('http://example.com/img.jpg'),
       startDateTime: now.add(const Duration(hours: 2)),
       location: 'Local do Evento Teste Longo',
+      selectedOccurrenceId: 'occ-home-2',
     );
     mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
           StreamValue<List<VenueEventResume>>(defaultValue: [event]),
@@ -471,7 +516,13 @@ void main() {
     await tester.tap(cardFinder);
     await tester.pump();
 
-    mockito.verify(mockRouter.push(mockito.any)).called(1);
+    final pushedRoute = mockito
+        .verify(mockRouter.push(mockito.captureAny))
+        .captured
+        .single as ImmersiveEventDetailRoute;
+    expect(pushedRoute.args?.eventSlug, 'event-1');
+    expect(pushedRoute.args?.occurrenceId, 'occ-home-2');
+    expect(pushedRoute.rawQueryParams, {'occurrence': 'occ-home-2'});
   });
 
   testWidgets('renders pending invites banner when pending invites exist',

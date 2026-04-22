@@ -16,6 +16,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
     this.placeholder,
     this.minHeight = 180,
     this.errorText,
+    this.maxContentBytes,
+    this.warningThreshold = 0.90,
   });
 
   final TextEditingController controller;
@@ -23,6 +25,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
   final String? placeholder;
   final double minHeight;
   final String? errorText;
+  final int? maxContentBytes;
+  final double warningThreshold;
 
   @override
   State<TenantAdminRichTextEditor> createState() =>
@@ -88,6 +92,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         );
         _syncHtmlControllerFromDocument();
       }
+      _requestRebuild();
     });
   }
 
@@ -372,6 +377,27 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     return html.trim();
   }
 
+  int get _currentContentBytes => utf8.encode(widget.controller.text).length;
+
+  String _formatByteCount(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+    final kilobytes = bytes / 1024;
+    final hasFraction = kilobytes.truncateToDouble() != kilobytes;
+    return hasFraction
+        ? '${kilobytes.toStringAsFixed(1)} KB'
+        : '${kilobytes.toStringAsFixed(0)} KB';
+  }
+
+  bool get _shouldShowLimitWarning {
+    final maxBytes = widget.maxContentBytes;
+    if (maxBytes == null || maxBytes <= 0) {
+      return false;
+    }
+    return _currentContentBytes >= maxBytes * widget.warningThreshold;
+  }
+
   static const Set<String> _allowedTags = {
     'blockquote',
     'br',
@@ -397,6 +423,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         ? colorScheme.outlineVariant
         : colorScheme.error;
     final locale = Localizations.maybeLocaleOf(context) ?? const Locale('en');
+    final maxContentBytes = widget.maxContentBytes;
     return Localizations.override(
       context: context,
       locale: locale,
@@ -471,6 +498,36 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     color: colorScheme.error,
                   ),
             ),
+          ],
+          if (maxContentBytes != null && maxContentBytes > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Limite: 100 KB por campo. O backend valida o envio final.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_formatByteCount(_currentContentBytes)} / '
+              '${_formatByteCount(maxContentBytes)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _shouldShowLimitWarning
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            if (_shouldShowLimitWarning) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Este campo já passou de 90% do limite de 100 KB.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ],
         ],
       ),

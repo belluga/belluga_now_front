@@ -11,12 +11,15 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_va
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -24,6 +27,7 @@ import 'package:belluga_now/domain/user/value_objects/user_display_name_value.da
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -52,6 +56,8 @@ class EventDTO {
     this.dateTimeEnd,
     this.artists = const [],
     this.linkedAccountProfiles = const [],
+    this.occurrences = const [],
+    this.programmingItems = const [],
     this.isConfirmed = false,
     this.totalConfirmed = 0,
     this.receivedInvites,
@@ -74,6 +80,8 @@ class EventDTO {
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventOccurrenceOption> occurrences;
+  final List<EventProgrammingItem> programmingItems;
   final bool isConfirmed;
   final int totalConfirmed;
   final List<Map<String, dynamic>>? receivedInvites;
@@ -104,6 +112,7 @@ class EventDTO {
         : _resolveLegacyArtists(
             json['artists'],
           );
+    final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
 
     return EventDTO(
       id: _asString(json['id']) ??
@@ -136,6 +145,17 @@ class EventDTO {
           _asNullableString(json['ends_at']) ??
           _asNullableString(json['end_time']),
       linkedAccountProfiles: legacyLinkedProfiles,
+      occurrences: _resolveOccurrences(
+        occurrencesRaw: json['occurrences'],
+        fallbackOccurrenceId: selectedOccurrenceId,
+        fallbackDateTimeStart: _asNullableString(json['date_time_start']) ??
+            _asNullableString(json['starts_at']) ??
+            _asNullableString(json['start_time']),
+        fallbackDateTimeEnd: _asNullableString(json['date_time_end']) ??
+            _asNullableString(json['ends_at']) ??
+            _asNullableString(json['end_time']),
+      ),
+      programmingItems: _resolveProgrammingItems(json['programming_items']),
       isConfirmed: _asBool(json['is_confirmed']),
       totalConfirmed: _asInt(json['total_confirmed']),
       receivedInvites: _asMapList(json['received_invites']),
@@ -189,6 +209,8 @@ class EventDTO {
           dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
       venue: venueDomain,
       linkedAccountProfiles: linkedAccountProfiles,
+      occurrences: occurrences,
+      programmingItems: programmingItems,
       coordinate: coordinate,
       tags: tags,
       isConfirmedValue: EventIsConfirmedValue()..parse(isConfirmed.toString()),
@@ -381,6 +403,101 @@ class EventDTO {
     return List<EventLinkedAccountProfile>.unmodifiable(resolved);
   }
 
+  static List<EventOccurrenceOption> _resolveOccurrences({
+    required Object? occurrencesRaw,
+    required String? fallbackOccurrenceId,
+    required String? fallbackDateTimeStart,
+    required String? fallbackDateTimeEnd,
+  }) {
+    final rows = <Map<String, dynamic>>[];
+    if (occurrencesRaw is List) {
+      for (final entry in occurrencesRaw) {
+        final occurrence = _asMap(entry);
+        if (occurrence.isNotEmpty) {
+          rows.add(occurrence);
+        }
+      }
+    }
+
+    if (rows.isEmpty &&
+        fallbackOccurrenceId != null &&
+        fallbackOccurrenceId.trim().isNotEmpty &&
+        fallbackDateTimeStart != null &&
+        fallbackDateTimeStart.trim().isNotEmpty) {
+      rows.add({
+        'occurrence_id': fallbackOccurrenceId,
+        'date_time_start': fallbackDateTimeStart,
+        'date_time_end': fallbackDateTimeEnd,
+        'is_selected': true,
+      });
+    }
+
+    final resolved = <EventOccurrenceOption>[];
+    for (final row in rows) {
+      final occurrenceId =
+          _asNullableString(row['occurrence_id'])?.trim() ?? '';
+      final start = _asNullableString(row['date_time_start'])?.trim() ?? '';
+      if (occurrenceId.isEmpty || start.isEmpty) {
+        continue;
+      }
+
+      final isSelected = _asBool(row['is_selected']) ||
+          (fallbackOccurrenceId != null &&
+              fallbackOccurrenceId.trim().isNotEmpty &&
+              occurrenceId == fallbackOccurrenceId.trim());
+      final dateTimeEndValue = DomainOptionalDateTimeValue();
+      dateTimeEndValue.parse(_asNullableString(row['date_time_end']));
+
+      resolved.add(
+        EventOccurrenceOption(
+          occurrenceIdValue: EventLinkedAccountProfileTextValue(occurrenceId),
+          occurrenceSlugValue: EventLinkedAccountProfileTextValue(
+            _asNullableString(row['occurrence_slug'])?.trim() ?? '',
+          ),
+          dateTimeStartValue: DateTimeValue(isRequired: true)..parse(start),
+          dateTimeEndValue: dateTimeEndValue,
+          isSelectedValue: EventOccurrenceFlagValue()
+            ..parse(isSelected.toString()),
+          hasLocationOverrideValue: EventOccurrenceFlagValue()
+            ..parse(_asBool(row['has_location_override']).toString()),
+          programmingCountValue: EventProgrammingCountValue()
+            ..parse(_asInt(row['programming_count']).toString()),
+        ),
+      );
+    }
+
+    return List<EventOccurrenceOption>.unmodifiable(resolved);
+  }
+
+  static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {
+    if (raw is! List) {
+      return const [];
+    }
+
+    final resolved = <EventProgrammingItem>[];
+    for (final entry in raw) {
+      final item = _asMap(entry);
+      final time = _asNullableString(item['time'])?.trim() ?? '';
+      if (time.isEmpty) {
+        continue;
+      }
+
+      final title = _asNullableString(item['title'])?.trim() ?? '';
+      resolved.add(
+        EventProgrammingItem(
+          timeValue: EventProgrammingTimeValue(time),
+          titleValue:
+              title.isEmpty ? null : EventLinkedAccountProfileTextValue(title),
+          linkedAccountProfiles: _resolveLinkedAccountProfiles(
+            linkedProfilesRaw: item['linked_account_profiles'],
+          ),
+        ),
+      );
+    }
+
+    return List<EventProgrammingItem>.unmodifiable(resolved);
+  }
+
   static EventLinkedAccountProfile? _toLinkedAccountProfile(
     Map<String, dynamic> profile,
   ) {
@@ -412,7 +529,13 @@ class EventDTO {
           nameValue: AccountProfileTagValue(
             _asString(term['name'])?.trim() ??
                 _asString(term['label'])?.trim() ??
-                '',
+                value,
+          ),
+          taxonomyNameValue: AccountProfileTagValue(
+            _asString(term['taxonomy_name'])?.trim() ?? '',
+          ),
+          labelValue: AccountProfileTagValue(
+            _asString(term['label'])?.trim() ?? '',
           ),
         );
       }
@@ -517,6 +640,10 @@ class EventDTO {
             _preferNonEmptyString(existing['name'], term['name']);
         existing['label'] =
             _preferNonEmptyString(existing['label'], term['label']);
+        existing['taxonomy_name'] = _preferNonEmptyString(
+          existing['taxonomy_name'],
+          term['taxonomy_name'],
+        );
       }
     }
 
@@ -594,6 +721,20 @@ class EventDTO {
         _asString(locationMap['address_line']);
     if (locationFromMap != null) {
       return locationFromMap;
+    }
+
+    final onlinePayload = _asMap(locationMap['online']);
+    final onlineLocation = _asString(onlinePayload['label']) ??
+        _asString(onlinePayload['name']) ??
+        _asString(onlinePayload['title']) ??
+        _asString(onlinePayload['url']);
+    if (onlineLocation != null && onlineLocation.trim().isNotEmpty) {
+      return onlineLocation;
+    }
+
+    final mode = _asString(locationMap['mode'])?.trim().toLowerCase();
+    if (mode == 'online') {
+      return 'Online';
     }
 
     return _asString(venuePayload['display_name']) ??
