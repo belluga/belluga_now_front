@@ -57,6 +57,7 @@ app.*.map.json
 
 # DELPHI-AI
 AGENTS.md
+CLAUDE.md
 CLINE.md
 GEMINI.md
 scripts
@@ -72,6 +73,8 @@ foundation_documentation
 .cline/
 .clinerules
 .clinerules/
+.claude
+.claude/
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json
