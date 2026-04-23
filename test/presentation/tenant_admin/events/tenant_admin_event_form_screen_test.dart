@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -348,6 +349,133 @@ void main() {
     expect(eventsRepository.updateEventCalls, 1);
     expect(eventsRepository.lastUpdateEventId, 'evt-existing-1');
     expect(eventsRepository.lastUpdateDraft?.occurrences, hasLength(2));
+  });
+
+  testWidgets(
+      'editing unrelated event fields preserves occurrence-owned profiles and programming in update draft',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-1',
+      accountId: 'acc-artist',
+      profileType: 'artist',
+      displayName: 'Artist A',
+    );
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-details-1'),
+      slugValue: tenantAdminRequiredText('event-existing-details-1'),
+      titleValue: tenantAdminRequiredText('Evento com detalhes'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2-slug'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 17),
+          ),
+          relatedAccountProfileIdValues: [
+            TenantAdminAccountProfileIdValue('artist-1'),
+          ],
+          relatedAccountProfiles: [occurrenceProfile],
+          programmingItems: [
+            TenantAdminEventProgrammingItem(
+              timeValue: tenantAdminRequiredText('17:00'),
+              titleValue: tenantAdminOptionalText('Show com a banda'),
+              accountProfileIdValues: [
+                TenantAdminAccountProfileIdValue('artist-1'),
+              ],
+              linkedAccountProfiles: [occurrenceProfile],
+              placeRef: TenantAdminEventPlaceRef(
+                typeValue: tenantAdminRequiredText('account_profile'),
+                idValue: tenantAdminRequiredText('venue-1'),
+              ),
+            ),
+          ],
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Título'),
+      'Evento com detalhes atualizado',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Salvar alterações'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(eventsRepository.updateEventCalls, 1);
+    expect(eventsRepository.lastUpdateEventId, 'evt-existing-details-1');
+    final submittedOccurrence = eventsRepository.lastUpdateDraft?.occurrences[1];
+    expect(
+      submittedOccurrence?.relatedAccountProfileIds
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1'],
+    );
+    expect(
+      submittedOccurrence?.programmingItems
+          .map((item) => item.title)
+          .toList(growable: false),
+      ['Show com a banda'],
+    );
+    expect(
+      submittedOccurrence?.programmingItems.single.accountProfileIds
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1'],
+    );
+    expect(submittedOccurrence?.programmingItems.single.placeRef?.id, 'venue-1');
   });
 
   testWidgets('authors occurrence scoped profile and programming',
