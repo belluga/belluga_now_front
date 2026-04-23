@@ -111,7 +111,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   static const String _homeEventsFilterSurface = 'home.events';
   static const DiscoveryFilterPolicy _homeEventsFilterPolicy =
       DiscoveryFilterPolicy(
-    primarySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    primarySelectionMode: DiscoveryFilterSelectionMode.single,
     taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
     primaryLayoutMode: DiscoveryFilterLayoutMode.row,
     taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
@@ -230,6 +230,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       current: _outerScrollCompactHint,
       pixels: pixels,
     );
+    _hideDiscoveryFilterPanelWhenScrolled(pixels);
     _publishRadiusActionCompactState();
   }
 
@@ -238,7 +239,16 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       current: _innerScrollCompactHint,
       pixels: pixels,
     );
+    _hideDiscoveryFilterPanelWhenScrolled(pixels);
     _publishRadiusActionCompactState();
+  }
+
+  void _hideDiscoveryFilterPanelWhenScrolled(double pixels) {
+    if (pixels <= _radiusCompactScrollEpsilon ||
+        !isDiscoveryFilterPanelVisibleStreamValue.value) {
+      return;
+    }
+    setDiscoveryFilterPanelVisible(false);
   }
 
   bool _resolveRadiusActionCompactHint({
@@ -949,6 +959,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         .repair(
           selection: selection,
           catalog: catalog.filters,
+          catalogEnvelope: catalog,
           policy: _homeEventsFilterPolicy,
         )
         .selection;

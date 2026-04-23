@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'renders filter image before marker override icon',
+    'renders marker override icon before legacy filter image',
     (tester) async {
       const imageUri = 'https://tenant.test/media/filter.png';
       await tester.pumpWidget(
@@ -37,10 +37,8 @@ void main() {
         ),
       );
 
-      final imageFinder = find.byKey(const ValueKey<String>(imageUri));
-      expect(imageFinder, findsOneWidget);
-      expect(tester.widget<Image>(imageFinder).image, isA<NetworkImage>());
-      expect(find.byIcon(Icons.music_note), findsNothing);
+      expect(find.byIcon(Icons.music_note), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>(imageUri)), findsNothing);
     },
   );
 }

@@ -824,6 +824,101 @@ void main() {
     );
 
     test(
+      'home agenda canonical filter keeps one primary type and accepts taxonomy-only selection',
+      () async {
+        final scheduleRepository = _FakeScheduleRepository();
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalogWithMultipleTypes(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(
+            primaryKeys: <String>{'shows', 'fairs'},
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'rock'},
+            },
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(controller.discoveryFilterPolicy.primarySelectionMode,
+            DiscoveryFilterSelectionMode.single);
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            <String>{'shows'});
+        expect(scheduleRepository.lastCategories, ['show']);
+        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'rock'},
+            },
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            isEmpty);
+        expect(scheduleRepository.lastCategories, isNull);
+        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'home agenda hides expanded filter panel on scroll without clearing selection',
+      () async {
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalog(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+        controller.setDiscoveryFilterPanelVisible(true);
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+        );
+
+        controller.updateRadiusActionCompactStateFromScroll(24);
+
+        expect(
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            <String>{'shows'});
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'home agenda restores persisted canonical filter selection before first fetch',
       () async {
         final scheduleRepository = _FakeScheduleRepository();
@@ -929,6 +1024,11 @@ void main() {
         await tester.pump();
 
         expect(find.byTooltip('Filtros ativos'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey<String>('home-agenda-filter-badge')),
+          findsOneWidget,
+        );
+        expect(find.text('1'), findsOneWidget);
 
         controller.onDispose();
       },
@@ -2430,6 +2530,44 @@ DiscoveryFilterCatalog _homeEventsFilterCatalog() {
           'event': <String>{'show'},
         },
         taxonomyKeys: <String>{'music_styles'},
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      'music_styles': DiscoveryFilterTaxonomyGroupOption(
+        key: 'music_styles',
+        label: 'Estilos',
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: 'rock',
+            label: 'Rock',
+          ),
+        ],
+      ),
+    },
+  );
+}
+
+DiscoveryFilterCatalog _homeEventsFilterCatalogWithMultipleTypes() {
+  return const DiscoveryFilterCatalog(
+    surface: 'home.events',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: 'shows',
+        label: 'Shows',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'show'},
+        },
+      ),
+      DiscoveryFilterCatalogItem(
+        key: 'fairs',
+        label: 'Feiras',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'fair'},
+        },
       ),
     ],
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{

@@ -20,16 +20,6 @@ class MapFilterCategoryIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filterImageUri = category.imageUri?.trim() ?? '';
-    if (filterImageUri.isNotEmpty) {
-      return _ImageFallbackIcon(
-        imageUri: filterImageUri,
-        fallbackIcon: fallbackIcon,
-        fallbackColor: fallbackColor,
-        size: size + 2,
-      );
-    }
-
     final overrideVisual = category.markerOverrideVisual;
     if (overrideVisual != null && overrideVisual.isValid) {
       if (overrideVisual.isIcon) {
@@ -55,6 +45,16 @@ class MapFilterCategoryIcon extends StatelessWidget {
           size: size + 2,
         );
       }
+    }
+
+    final filterImageUri = category.imageUri?.trim() ?? '';
+    if (filterImageUri.isNotEmpty) {
+      return _ImageFallbackIcon(
+        imageUri: filterImageUri,
+        fallbackIcon: fallbackIcon,
+        fallbackColor: fallbackColor,
+        size: size + 2,
+      );
     }
 
     return Icon(

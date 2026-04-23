@@ -7,11 +7,11 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_header_delegate.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
+import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
 import 'package:flutter/foundation.dart';
@@ -125,27 +125,26 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         return StreamValueBuilder<bool>(
                           streamValue: _controller.hasLoadedStreamValue,
                           builder: (context, hasLoaded) {
-                            return StreamValueBuilder<List<String>>(
+                            return StreamValueBuilder<DiscoveryFilterCatalog>(
                               streamValue:
-                                  _controller.availableTypesStreamValue,
-                              builder: (context, availableTypes) {
+                                  _controller.discoveryFilterCatalogStreamValue,
+                              builder: (context, catalog) {
                                 return StreamValueBuilder<
-                                    DiscoveryFilterCatalog>(
+                                    DiscoveryFilterSelection>(
                                   streamValue: _controller
-                                      .discoveryFilterCatalogStreamValue,
-                                  builder: (context, catalog) {
-                                    return StreamValueBuilder<
-                                        DiscoveryFilterSelection>(
+                                      .discoveryFilterSelectionStreamValue,
+                                  builder: (context, filterSelection) {
+                                    return StreamValueBuilder<bool>(
                                       streamValue: _controller
-                                          .discoveryFilterSelectionStreamValue,
-                                      builder: (context, filterSelection) {
+                                          .isDiscoveryFilterPanelVisibleStreamValue,
+                                      builder: (context, isFilterPanelVisible) {
                                         final hasCanonicalFilters =
                                             catalog.filters.isNotEmpty;
                                         final showDiscoveryHeader =
                                             !isSearching && hasLoaded;
-                                        final hasFilterChips =
-                                            hasCanonicalFilters ||
-                                                availableTypes.isNotEmpty;
+                                        final showFilterPanel =
+                                            hasCanonicalFilters &&
+                                                isFilterPanelVisible;
                                         final showDefaultSections =
                                             showSections &&
                                                 filterSelection.isEmpty;
@@ -208,51 +207,40 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     DiscoveryFilterHeaderDelegate(
                                                   extent:
                                                       _discoveryHeaderExtent(
-                                                    hasFilterChips:
-                                                        hasFilterChips,
                                                     hasCanonicalFilters:
                                                         hasCanonicalFilters,
+                                                    showFilterPanel:
+                                                        showFilterPanel,
                                                     catalog: catalog,
                                                     selection: filterSelection,
                                                   ),
                                                   title: 'Descubra',
-                                                  action: IconButton(
-                                                    icon: const Icon(
-                                                        Icons.search),
-                                                    onPressed: _controller
-                                                        .toggleSearch,
+                                                  action: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      if (hasCanonicalFilters)
+                                                        _buildFilterAction(
+                                                          filterSelection,
+                                                        ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.search),
+                                                        onPressed: _controller
+                                                            .toggleSearch,
+                                                      ),
+                                                    ],
                                                   ),
                                                   filterBuilder: () {
-                                                    if (!hasFilterChips) {
+                                                    if (!showFilterPanel) {
                                                       return const SizedBox
                                                           .shrink();
                                                     }
-                                                    if (hasCanonicalFilters) {
-                                                      return _buildCanonicalDiscoveryFilters(
-                                                        context,
-                                                        catalog: catalog,
-                                                        selection:
-                                                            filterSelection,
-                                                      );
-                                                    }
-                                                    return StreamValueBuilder<
-                                                        String?>(
-                                                      streamValue: _controller
-                                                          .selectedTypeFilterStreamValue,
-                                                      builder: (context,
-                                                          selectedType) {
-                                                        return DiscoveryFilterChips(
-                                                          selectedType:
-                                                              selectedType,
-                                                          availableTypes:
-                                                              availableTypes,
-                                                          onSelectType:
-                                                              _controller
-                                                                  .setTypeFilter,
-                                                          labelForType: _controller
-                                                              .labelForAccountProfileType,
-                                                        );
-                                                      },
+                                                    return _buildCanonicalDiscoveryFilters(
+                                                      context,
+                                                      catalog: catalog,
+                                                      selection:
+                                                          filterSelection,
                                                     );
                                                   },
                                                 ),
@@ -465,14 +453,19 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         return StreamValueBuilder<bool>(
           streamValue: _controller.isDiscoveryFilterCatalogLoadingStreamValue,
           builder: (context, isCatalogLoading) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: DiscoveryFilterBar(
-                catalog: catalog,
-                selection: selection,
-                policy: _controller.discoveryFilterPolicy,
-                isLoading: isRefreshing || isCatalogLoading,
-                onSelectionChanged: _controller.setDiscoveryFilterSelection,
+            return Semantics(
+              container: true,
+              label: 'Painel de filtros de perfis',
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: DiscoveryFilterBar(
+                  catalog: catalog,
+                  selection: selection,
+                  policy: _controller.discoveryFilterPolicy,
+                  isLoading: isRefreshing || isCatalogLoading,
+                  iconBuilder: buildDiscoveryFilterVisualIcon,
+                  onSelectionChanged: _controller.setDiscoveryFilterSelection,
+                ),
               ),
             );
           },
@@ -481,17 +474,47 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
+  Widget _buildFilterAction(DiscoveryFilterSelection selection) {
+    final activeCount = selection.activeCount;
+    final isActive = activeCount > 0;
+    return IconButton(
+      key: const ValueKey<String>('discovery-filter-button'),
+      tooltip: isActive ? 'Filtros ativos' : 'Filtrar perfis',
+      onPressed: _controller.toggleDiscoveryFilterPanel,
+      icon: Builder(
+        builder: (context) {
+          final colorScheme = Theme.of(context).colorScheme;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isActive ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
+                color: isActive
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              if (activeCount > 0)
+                Positioned(
+                  key: const ValueKey<String>('discovery-filter-badge'),
+                  right: -7,
+                  top: -7,
+                  child: _FilterCounterBadge(count: activeCount),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   double _discoveryHeaderExtent({
-    required bool hasFilterChips,
     required bool hasCanonicalFilters,
+    required bool showFilterPanel,
     required DiscoveryFilterCatalog catalog,
     required DiscoveryFilterSelection selection,
   }) {
-    if (!hasFilterChips) {
+    if (!hasCanonicalFilters || !showFilterPanel) {
       return 72;
-    }
-    if (!hasCanonicalFilters) {
-      return 128;
     }
     return _hasVisibleTaxonomyGroups(catalog, selection) ? 236 : 136;
   }
@@ -501,13 +524,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     DiscoveryFilterSelection selection,
   ) {
     if (selection.primaryKeys.isEmpty) {
-      return false;
+      return catalog.taxonomyOptionsByKey.values.any(
+        (option) => option.terms.isNotEmpty,
+      );
     }
     final selectedFilters = catalog.filters.where(
       (item) => selection.primaryKeys.contains(item.key),
     );
+    var hasExplicitTaxonomyScope = false;
     for (final item in selectedFilters) {
       for (final taxonomyKey in item.taxonomyKeys) {
+        hasExplicitTaxonomyScope = true;
         if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
             false)) {
           return true;
@@ -522,6 +549,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             continue;
           }
           for (final taxonomyKey in option.allowedTaxonomyKeys) {
+            hasExplicitTaxonomyScope = true;
             if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
                 false)) {
               return true;
@@ -530,7 +558,38 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         }
       }
     }
-    return false;
+    return !hasExplicitTaxonomyScope &&
+        catalog.taxonomyOptionsByKey.values.any(
+          (option) => option.terms.isNotEmpty,
+        );
+  }
+}
+
+class _FilterCounterBadge extends StatelessWidget {
+  const _FilterCounterBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 99 ? '99+' : count.toString(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onPrimary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
   }
 }
 

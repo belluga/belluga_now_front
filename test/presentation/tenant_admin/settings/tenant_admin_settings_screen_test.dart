@@ -650,7 +650,7 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
-  testWidgets('local preferences points filters to canonical admin menu',
+  testWidgets('local preferences owns map filter configuration only',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -671,21 +671,16 @@ void main() {
       const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
     );
 
-    expect(find.text('Filtros públicos'), findsOneWidget);
+    expect(find.text('Filtros do mapa'), findsOneWidget);
     expect(
-      find.text(
-        'Os filtros de Mapa, Home e Descoberta agora ficam no menu principal Filtros.',
-      ),
+      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
       findsOneWidget,
     );
     expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      findsNothing,
+      findsOneWidget,
     );
-    expect(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
-      findsNothing,
-    );
+    expect(find.text('Filtros públicos'), findsNothing);
   });
 
   test(

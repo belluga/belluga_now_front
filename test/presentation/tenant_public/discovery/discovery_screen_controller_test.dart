@@ -767,7 +767,7 @@ void main() {
   });
 
   testWidgets(
-      'DiscoveryScreen keeps canonical primary filters pinned below Descubra while scrolling',
+      'DiscoveryScreen toggles canonical filters and hides expanded panel on scroll while keeping active badge',
       (tester) async {
     final profiles = List<AccountProfileModel>.generate(
       24,
@@ -802,6 +802,18 @@ void main() {
               },
             ),
           ],
+          taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+            'cuisine': DiscoveryFilterTaxonomyGroupOption(
+              key: 'cuisine',
+              label: 'Cozinha',
+              terms: <DiscoveryFilterTaxonomyTermOption>[
+                DiscoveryFilterTaxonomyTermOption(
+                  value: 'japanese',
+                  label: 'Japonesa',
+                ),
+              ],
+            ),
+          },
         ),
       ),
     );
@@ -837,8 +849,30 @@ void main() {
     expect(find.text('Descubra'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey<String>('discovery-filter-button')),
+        findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
       findsOneWidget,
     );
+    expect(find.text('Cozinha'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('discovery-filter-badge')),
+      findsOneWidget,
+    );
+    expect(find.text('1'), findsOneWidget);
 
     await tester.drag(
       find.byType(CustomScrollView),
@@ -848,7 +882,13 @@ void main() {
 
     expect(find.text('Descubra'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+      find.byKey(
+        const ValueKey<String>('discoveryFilterSelectedPrimary_venues'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('discovery-filter-badge')),
       findsOneWidget,
     );
 
@@ -1269,6 +1309,97 @@ void main() {
   });
 
   test(
+      'discovery canonical filters keep one primary type and accept taxonomy-only selection',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('cf3'), type: 'artist', name: 'Artist One'),
+            _profile(id: _mongoId('cf4'), type: 'venue', name: 'Venue One'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
+      ),
+    );
+
+    await controller.init();
+
+    controller.setDiscoveryFilterSelection(
+      const DiscoveryFilterSelection(
+        primaryKeys: <String>{'venues', 'artists'},
+        taxonomyTermKeys: <String, Set<String>>{
+          'cuisine': <String>{'japanese'},
+        },
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(controller.discoveryFilterPolicy.primarySelectionMode,
+        DiscoveryFilterSelectionMode.single);
+    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        <String>{'venues'});
+    expect(repository.pageRequests.last.typeFilters, ['venue']);
+    expect(repository.pageRequests.last.taxonomyFilters, ['cuisine:japanese']);
+
+    controller.setDiscoveryFilterSelection(
+      const DiscoveryFilterSelection(
+        taxonomyTermKeys: <String, Set<String>>{
+          'cuisine': <String>{'japanese'},
+        },
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        isEmpty);
+    expect(repository.pageRequests.last.typeFilters, isEmpty);
+    expect(repository.pageRequests.last.taxonomyFilters, ['cuisine:japanese']);
+    controller.onDispose();
+  });
+
+  test('discovery hides expanded filter panel on scroll without clearing state',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(id: _mongoId('cf5'), type: 'venue', name: 'Venue One'),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
+      ),
+    );
+
+    await controller.init();
+    controller.setDiscoveryFilterPanelVisible(true);
+    controller.setDiscoveryFilterSelection(
+      const DiscoveryFilterSelection(primaryKeys: <String>{'venues'}),
+    );
+
+    controller.updateDiscoveryFilterPanelVisibilityFromScroll(24);
+
+    expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        <String>{'venues'});
+    controller.onDispose();
+  });
+
+  test(
       'discovery restores persisted canonical filter selection before first fetch',
       () async {
     final appDataRepository = _FakeAppDataRepository(
@@ -1412,6 +1543,45 @@ void main() {
     expect(controller.favoriteIdsStreamValue.value.contains(artist.id), isTrue);
     controller.onDispose();
   });
+}
+
+DiscoveryFilterCatalog
+    _accountProfileDiscoveryFilterCatalogWithMultipleTypes() {
+  return const DiscoveryFilterCatalog(
+    surface: 'discovery.account_profiles',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: 'venues',
+        label: 'Locais',
+        target: 'account_profile',
+        entities: <String>{'account_profile'},
+        typesByEntity: <String, Set<String>>{
+          'account_profile': <String>{'venue'},
+        },
+      ),
+      DiscoveryFilterCatalogItem(
+        key: 'artists',
+        label: 'Artistas',
+        target: 'account_profile',
+        entities: <String>{'account_profile'},
+        typesByEntity: <String, Set<String>>{
+          'account_profile': <String>{'artist'},
+        },
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      'cuisine': DiscoveryFilterTaxonomyGroupOption(
+        key: 'cuisine',
+        label: 'Cozinha',
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: 'japanese',
+            label: 'Japonesa',
+          ),
+        ],
+      ),
+    },
+  );
 }
 
 DiscoveryScreenController _buildDiscoveryController({

@@ -10,8 +10,6 @@ class TenantAdminEventOccurrence {
         const <TenantAdminAccountProfileIdValue>[],
     List<TenantAdminAccountProfile> relatedAccountProfiles =
         const <TenantAdminAccountProfile>[],
-    this.locationOverride,
-    this.placeRef,
     List<TenantAdminEventProgrammingItem> programmingItems =
         const <TenantAdminEventProgrammingItem>[],
   })  : dateTimeEndValue =
@@ -36,8 +34,6 @@ class TenantAdminEventOccurrence {
   final TenantAdminOptionalTextValue occurrenceSlugValue;
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
   final List<TenantAdminAccountProfile> relatedAccountProfiles;
-  final TenantAdminEventLocation? locationOverride;
-  final TenantAdminEventPlaceRef? placeRef;
   final List<TenantAdminEventProgrammingItem> programmingItems;
 
   DateTime get dateTimeStart => dateTimeStartValue.value;
@@ -46,6 +42,5 @@ class TenantAdminEventOccurrence {
   String? get occurrenceSlug => occurrenceSlugValue.nullableValue;
   List<TenantAdminAccountProfileIdValue> get relatedAccountProfileIds =>
       relatedAccountProfileIdValues;
-  bool get hasLocationOverride => locationOverride != null;
   int get programmingCount => programmingItems.length;
 }

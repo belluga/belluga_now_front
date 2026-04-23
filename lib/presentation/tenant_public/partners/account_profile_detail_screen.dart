@@ -1085,7 +1085,7 @@ class _AccountProfileDetailScreenState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  hasAddress ? 'Endereço' : 'Ver no mapa',
+                                  'Ver no mapa',
                                   style: Theme.of(context)
                                       .textTheme
                                       .labelLarge

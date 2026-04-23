@@ -1,4 +1,5 @@
 import 'discovery_filter_catalog.dart';
+import 'discovery_filter_entity_registry.dart';
 import 'discovery_filter_policy.dart';
 import 'discovery_filter_selection.dart';
 
@@ -11,6 +12,7 @@ class DiscoveryFilterSelectionRepair {
     required DiscoveryFilterSelection selection,
     required Iterable<DiscoveryFilterCatalogItem> catalog,
     required DiscoveryFilterPolicy policy,
+    DiscoveryFilterCatalog? catalogEnvelope,
   }) {
     final catalogByKey = <String, DiscoveryFilterCatalogItem>{
       for (final item in catalog)
@@ -37,10 +39,11 @@ class DiscoveryFilterSelectionRepair {
       droppedPrimary.addAll(primaryKeys.skip(normalizedPrimaryKeys.length));
     }
 
-    final allowedTaxonomies = <String>{};
-    for (final key in normalizedPrimaryKeys) {
-      allowedTaxonomies.addAll(catalogByKey[key]?.taxonomyKeys ?? const {});
-    }
+    final allowedTaxonomies = _allowedTaxonomies(
+      catalogByKey: catalogByKey,
+      primaryKeys: normalizedPrimaryKeys,
+      catalogEnvelope: catalogEnvelope,
+    );
 
     final taxonomyTerms = <String, Set<String>>{};
     final droppedTaxonomyTerms = <String, Set<String>>{};
@@ -53,17 +56,24 @@ class DiscoveryFilterSelectionRepair {
         continue;
       }
 
+      final termOptions = catalogEnvelope?.taxonomyOptionsByKey[entry.key];
+      final allowedTerms = termOptions == null || termOptions.terms.isEmpty
+          ? null
+          : termOptions.terms.map((term) => term.value).toSet();
+      final candidateTerms = allowedTerms == null
+          ? Set<String>.of(entry.value)
+          : entry.value.where(allowedTerms.contains).toSet();
       final normalizedTerms =
           policy.taxonomySelectionMode == DiscoveryFilterSelectionMode.single
-              ? entry.value.take(1).toSet()
-              : Set<String>.of(entry.value);
+              ? candidateTerms.take(1).toSet()
+              : candidateTerms;
 
       if (normalizedTerms.isNotEmpty) {
         taxonomyTerms[entry.key] = normalizedTerms;
       }
-      if (normalizedTerms.length != entry.value.length) {
-        droppedTaxonomyTerms[entry.key] =
-            entry.value.skip(normalizedTerms.length).toSet();
+      final droppedTerms = entry.value.difference(normalizedTerms);
+      if (droppedTerms.isNotEmpty) {
+        droppedTaxonomyTerms[entry.key] = droppedTerms;
       }
     }
 
@@ -81,5 +91,52 @@ class DiscoveryFilterSelectionRepair {
       droppedPrimaryKeys: droppedPrimary,
       droppedTaxonomyTerms: droppedTaxonomyTerms,
     );
+  }
+
+  Set<String> _allowedTaxonomies({
+    required Map<String, DiscoveryFilterCatalogItem> catalogByKey,
+    required Set<String> primaryKeys,
+    required DiscoveryFilterCatalog? catalogEnvelope,
+  }) {
+    if (primaryKeys.isEmpty) {
+      return catalogEnvelope == null
+          ? const <String>{}
+          : catalogEnvelope.taxonomyOptionsByKey.keys.toSet();
+    }
+
+    final allowed = <String>{};
+    for (final key in primaryKeys) {
+      final item = catalogByKey[key];
+      if (item == null) {
+        continue;
+      }
+      allowed.addAll(item.taxonomyKeys);
+      allowed.addAll(item.taxonomyValuesByGroup.keys);
+      allowed.addAll(item.taxonomyConfigs.keys);
+
+      final envelope = catalogEnvelope;
+      if (envelope == null) {
+        continue;
+      }
+      for (final entity in item.entities) {
+        final entityKey = entity.trim();
+        if (entityKey.isEmpty) {
+          continue;
+        }
+        final selectedTypes = item.typesByEntity[entityKey] ?? item.types;
+        for (final option in envelope.typeOptionsByEntity[entityKey] ??
+            const <DiscoveryFilterTypeOption>[]) {
+          if (selectedTypes.isNotEmpty &&
+              !selectedTypes.contains(option.value)) {
+            continue;
+          }
+          allowed.addAll(option.allowedTaxonomyKeys);
+        }
+      }
+    }
+    if (allowed.isNotEmpty || catalogEnvelope == null) {
+      return allowed;
+    }
+    return catalogEnvelope.taxonomyOptionsByKey.keys.toSet();
   }
 }

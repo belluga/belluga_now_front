@@ -80,15 +80,6 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         TenantAdminDashboardCard(
-          icon: Icons.filter_alt_outlined,
-          title: 'Filtros',
-          description: 'Configure filtros de Mapa, Home e Descoberta.',
-          onTap: () {
-            context.router.push(const TenantAdminDiscoveryFiltersRoute());
-          },
-        ),
-        const SizedBox(height: 12),
-        TenantAdminDashboardCard(
           icon: Icons.settings_outlined,
           title: 'Configurações',
           description: 'Ajuste preferências e consulte o environment ativo.',

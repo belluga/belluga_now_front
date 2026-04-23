@@ -68,11 +68,12 @@ class DiscoveryScreenController implements Disposable {
       'discovery.account_profiles';
   static const DiscoveryFilterPolicy _discoveryAccountProfilesFilterPolicy =
       DiscoveryFilterPolicy(
-    primarySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    primarySelectionMode: DiscoveryFilterSelectionMode.single,
     taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
     primaryLayoutMode: DiscoveryFilterLayoutMode.row,
     taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
   );
+  static const double _filterPanelScrollHideEpsilon = 0.5;
 
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteIdsSubscription;
@@ -102,6 +103,8 @@ class DiscoveryScreenController implements Disposable {
       StreamValue<DiscoveryFilterSelection>(
     defaultValue: const DiscoveryFilterSelection(),
   );
+  final isDiscoveryFilterPanelVisibleStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final isDiscoveryFilterCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final availableTypesStreamValue =
@@ -172,13 +175,16 @@ class DiscoveryScreenController implements Disposable {
     if (_scrollListenerAttached) return;
     _scrollListenerAttached = true;
     scrollController.addListener(() {
+      if (!scrollController.hasClients) {
+        return;
+      }
+      updateDiscoveryFilterPanelVisibilityFromScroll(
+        scrollController.position.pixels,
+      );
       if (_isFetchingPage ||
           isLoadingStreamValue.value ||
           isRefreshingStreamValue.value ||
           !hasMoreStreamValue.value) {
-        return;
-      }
-      if (!scrollController.hasClients) {
         return;
       }
       const threshold = 280.0;
@@ -381,6 +387,27 @@ class DiscoveryScreenController implements Disposable {
   DiscoveryFilterPolicy get discoveryFilterPolicy =>
       _discoveryAccountProfilesFilterPolicy;
 
+  void toggleDiscoveryFilterPanel() {
+    setDiscoveryFilterPanelVisible(
+      !isDiscoveryFilterPanelVisibleStreamValue.value,
+    );
+  }
+
+  void setDiscoveryFilterPanelVisible(bool visible) {
+    if (isDiscoveryFilterPanelVisibleStreamValue.value == visible) {
+      return;
+    }
+    isDiscoveryFilterPanelVisibleStreamValue.addValue(visible);
+  }
+
+  void updateDiscoveryFilterPanelVisibilityFromScroll(double pixels) {
+    if (pixels <= _filterPanelScrollHideEpsilon ||
+        !isDiscoveryFilterPanelVisibleStreamValue.value) {
+      return;
+    }
+    setDiscoveryFilterPanelVisible(false);
+  }
+
   bool get hasActiveFilterState {
     final selectedType = selectedTypeFilterStreamValue.value;
     if (selectedType != null && selectedType.isNotEmpty) {
@@ -428,6 +455,9 @@ class DiscoveryScreenController implements Disposable {
 
     if (isSearchingStreamValue.value) {
       isSearchingStreamValue.addValue(false);
+    }
+    if (isDiscoveryFilterPanelVisibleStreamValue.value) {
+      isDiscoveryFilterPanelVisibleStreamValue.addValue(false);
     }
 
     if (changed) {
@@ -774,6 +804,7 @@ class DiscoveryScreenController implements Disposable {
         .repair(
           selection: selection,
           catalog: catalog.filters,
+          catalogEnvelope: catalog,
           policy: _discoveryAccountProfilesFilterPolicy,
         )
         .selection;
@@ -920,6 +951,7 @@ class DiscoveryScreenController implements Disposable {
     selectedTypeFilterStreamValue.dispose();
     discoveryFilterCatalogStreamValue.dispose();
     discoveryFilterSelectionStreamValue.dispose();
+    isDiscoveryFilterPanelVisibleStreamValue.dispose();
     isDiscoveryFilterCatalogLoadingStreamValue.dispose();
     availableTypesStreamValue.dispose();
     favoriteIdsStreamValue.dispose();

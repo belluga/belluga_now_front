@@ -36,7 +36,7 @@ void main() {
   });
 
   testWidgets(
-    'tenant admin create route saves second occurrence details through local mutation',
+    'tenant admin create route saves programação item location through local mutation',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -64,28 +64,6 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminOccurrenceLocationOverrideSwitch')),
-        250,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('tenantAdminOccurrenceLocationOverrideSwitch')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('tenantAdminOccurrenceLocationMode')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Online').last);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminOccurrenceOnlineUrl')),
-        'https://stream.example.com/feira',
-      );
-      await tester.pumpAndSettle();
-
-      await tester.scrollUntilVisible(
         find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
         250,
         scrollable: find.byType(Scrollable).last,
@@ -110,9 +88,16 @@ void main() {
       await tester.tap(find.text('Artist A').last);
       await tester.pumpAndSettle();
       await tester.tap(
+        find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Venue A').last);
+      await tester.pumpAndSettle();
+      await tester.tap(
         find.byKey(const Key('tenantAdminProgrammingSaveButton')),
       );
       await tester.pumpAndSettle();
+      expect(find.text('Local: Venue A'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
@@ -148,17 +133,19 @@ void main() {
             .map((value) => value.value),
         contains('artist-1'),
       );
-      expect(submittedOccurrence.hasLocationOverride, isTrue);
-      expect(submittedOccurrence.locationOverride?.mode, 'online');
-      expect(
-        submittedOccurrence.locationOverride?.online?.url,
-        'https://stream.example.com/feira',
-      );
       expect(submittedOccurrence.programmingItems.single.time, '13:00');
       expect(
         submittedOccurrence.programmingItems.single.accountProfileIds
             .map((value) => value.value),
         contains('artist-1'),
+      );
+      expect(
+        submittedOccurrence.programmingItems.single.placeRef?.type,
+        'account_profile',
+      );
+      expect(
+        submittedOccurrence.programmingItems.single.placeRef?.id,
+        'venue-1',
       );
     },
     timeout: const Timeout(Duration(minutes: 3)),

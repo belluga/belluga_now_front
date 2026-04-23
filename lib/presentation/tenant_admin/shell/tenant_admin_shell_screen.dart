@@ -68,14 +68,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       section: AdminShellSection.assets,
     ),
     _AdminDestination(
-      label: 'Filtros',
-      title: 'Filtros',
-      icon: Icons.filter_alt_outlined,
-      selectedIcon: Icons.filter_alt,
-      route: TenantAdminDiscoveryFiltersRoute(),
-      section: AdminShellSection.filters,
-    ),
-    _AdminDestination(
       label: 'Config',
       title: 'Configurações',
       icon: Icons.settings_outlined,

@@ -22,7 +22,7 @@ void main() {
   });
 
   test(
-      'fetchFilters exposes taxonomy terms as display-label categories with machine-key queries',
+      'fetchFilters keeps map primary filters limited to configured categories',
       () async {
     final adapter = _MapFiltersAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -37,20 +37,18 @@ void main() {
     );
 
     final filters = await repository.fetchFilters();
-    final taxonomyFilter = filters.categories.singleWhere(
-      (category) => category.key == 'taxonomy:genre:brasilidades',
-    );
 
-    expect(taxonomyFilter.label, 'Brasilidades');
+    expect(filters.categories, hasLength(1));
     expect(
       filters.categories.map((category) => category.label),
       isNot(contains('brasilidades')),
     );
     expect(
-      taxonomyFilter.serverQuery?.taxonomyTokenValues.single.value,
-      'genre:brasilidades',
+      filters.categories.map((category) => category.key),
+      isNot(contains('taxonomy:genre:brasilidades')),
     );
-    expect(taxonomyFilter.serverQuery?.categoryKeyValues, isEmpty);
+    expect(filters.categories.single.key, 'events');
+    expect(filters.categories.single.serverQuery?.sourceValue?.value, 'event');
   });
 }
 

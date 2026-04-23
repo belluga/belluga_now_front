@@ -728,13 +728,46 @@ class TenantAdminEventsController implements Disposable {
     next.sort(
         (left, right) => left.dateTimeStart.compareTo(right.dateTimeStart));
     final primary = next.firstOrNull;
+    final autoLinkedProfileIds = _resolveProgrammingAccountProfileIds(next);
+    final nextRelatedProfileIds = <String>[
+      ...current.selectedRelatedAccountProfileIds,
+    ];
+    for (final profileId in autoLinkedProfileIds) {
+      if (!nextRelatedProfileIds.contains(profileId)) {
+        nextRelatedProfileIds.add(profileId);
+      }
+    }
+    _mergeKnownRelatedAccountProfiles(
+      next
+          .expand((occurrence) => occurrence.programmingItems)
+          .expand((item) => item.linkedAccountProfiles),
+    );
     final nextState = current.copyWith(
       startAt: primary?.dateTimeStart,
       endAt: primary?.dateTimeEnd,
       occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+      selectedRelatedAccountProfileIds:
+          List<String>.unmodifiable(nextRelatedProfileIds),
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
+  }
+
+  Set<String> _resolveProgrammingAccountProfileIds(
+    List<TenantAdminEventOccurrence> occurrences,
+  ) {
+    final ids = <String>{};
+    for (final occurrence in occurrences) {
+      for (final item in occurrence.programmingItems) {
+        for (final profileId in item.accountProfileIds) {
+          final value = profileId.value.trim();
+          if (value.isNotEmpty) {
+            ids.add(value);
+          }
+        }
+      }
+    }
+    return ids;
   }
 
   void removeOccurrenceAt(int index) {
@@ -1558,8 +1591,6 @@ class TenantAdminEventsController implements Disposable {
       ),
       relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
       relatedAccountProfiles: occurrence.relatedAccountProfiles,
-      locationOverride: occurrence.locationOverride,
-      placeRef: occurrence.placeRef,
       programmingItems: occurrence.programmingItems,
     );
   }
@@ -1582,8 +1613,6 @@ class TenantAdminEventsController implements Disposable {
       relatedAccountProfileIdValues:
           existing?.relatedAccountProfileIds ?? const [],
       relatedAccountProfiles: existing?.relatedAccountProfiles ?? const [],
-      locationOverride: existing?.locationOverride,
-      placeRef: existing?.placeRef,
       programmingItems: existing?.programmingItems ?? const [],
     );
     final next = current.occurrences.toList(growable: true);

@@ -24,8 +24,8 @@ class TenantAdminDiscoveryFiltersScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
-        for (final surface
-            in TenantAdminDiscoveryFilterSurfaceDefinition.values) ...[
+        for (final surface in TenantAdminDiscoveryFilterSurfaceDefinition
+            .adminConfigurableValues) ...[
           TenantAdminDashboardCard(
             key: TenantAdminDiscoveryFiltersKeys.surfaceCard(surface.key),
             icon: _iconForSurface(surface),

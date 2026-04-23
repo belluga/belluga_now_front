@@ -35,6 +35,13 @@ class DiscoveryFilterSelection {
 
   bool get isNotEmpty => !isEmpty;
 
+  int get activeCount =>
+      primaryKeys.length +
+      taxonomyTermKeys.values.fold<int>(
+        0,
+        (total, terms) => total + terms.length,
+      );
+
   Map<String, Object?> toJson() => <String, Object?>{
         'primary_keys': primaryKeys.toList(growable: false),
         'taxonomy_terms': taxonomyTermKeys.map(

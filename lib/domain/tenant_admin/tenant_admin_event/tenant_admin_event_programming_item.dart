@@ -8,6 +8,7 @@ class TenantAdminEventProgrammingItem {
         const <TenantAdminAccountProfileIdValue>[],
     List<TenantAdminAccountProfile> linkedAccountProfiles =
         const <TenantAdminAccountProfile>[],
+    this.placeRef,
   })  : titleValue = titleValue ?? TenantAdminOptionalTextValue(),
         accountProfileIdValues =
             List<TenantAdminAccountProfileIdValue>.unmodifiable(
@@ -21,6 +22,7 @@ class TenantAdminEventProgrammingItem {
   final TenantAdminOptionalTextValue titleValue;
   final List<TenantAdminAccountProfileIdValue> accountProfileIdValues;
   final List<TenantAdminAccountProfile> linkedAccountProfiles;
+  final TenantAdminEventPlaceRef? placeRef;
 
   String get time => timeValue.value;
   String? get title => titleValue.nullableValue;

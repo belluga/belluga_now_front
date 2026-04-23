@@ -74,6 +74,117 @@ void main() {
     expect(find.text('Rock'), findsOneWidget);
   });
 
+  testWidgets('renders taxonomy groups from full catalog before primary select',
+      (tester) async {
+    DiscoveryFilterSelection? changedSelection;
+
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+          ),
+          onSelectionChanged: (selection) {
+            changedSelection = selection;
+          },
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('discoveryFilterTaxonomyDivider')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+          const ValueKey<String>('discoveryFilterTaxonomyTitle_music_styles')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>(
+          'discoveryFilterTaxonomyChip_music_styles_rock')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>(
+          'discoveryFilterTaxonomyChip_music_styles_rock')),
+    );
+
+    expect(changedSelection?.primaryKeys, isEmpty);
+    expect(
+      changedSelection?.taxonomyTermKeys['music_styles'],
+      <String>{'rock'},
+    );
+  });
+
+  testWidgets(
+      'renders full catalog taxonomy groups when selected primary has no restriction',
+      (tester) async {
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _unrestrictedPrimaryCatalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'shows'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('discoveryFilterTaxonomyDivider')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+          const ValueKey<String>('discoveryFilterTaxonomyTitle_music_styles')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>(
+          'discoveryFilterTaxonomyChip_music_styles_rock')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('does not reserve taxonomy divider space when catalog has none',
+      (tester) async {
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: const DiscoveryFilterCatalog(
+            surface: 'home.events',
+            filters: <DiscoveryFilterCatalogItem>[
+              DiscoveryFilterCatalogItem(
+                key: 'events',
+                label: 'Eventos',
+                entities: <String>{'event'},
+              ),
+            ],
+          ),
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('discoveryFilterTaxonomyDivider')),
+      findsNothing,
+    );
+    expect(find.byType(Divider), findsNothing);
+  });
+
   testWidgets('taxonomy config can hide title and enforce single selection',
       (tester) async {
     DiscoveryFilterSelection? changedSelection;
@@ -191,6 +302,30 @@ const _catalog = DiscoveryFilterCatalog(
       terms: <DiscoveryFilterTaxonomyTermOption>[
         DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
         DiscoveryFilterTaxonomyTermOption(value: 'jazz', label: 'Jazz'),
+      ],
+    ),
+  },
+);
+
+const _unrestrictedPrimaryCatalog = DiscoveryFilterCatalog(
+  surface: 'home.events',
+  filters: <DiscoveryFilterCatalogItem>[
+    DiscoveryFilterCatalogItem(
+      key: 'shows',
+      label: 'Shows',
+      target: 'event_occurrence',
+      entities: <String>{'event'},
+      typesByEntity: <String, Set<String>>{
+        'event': <String>{'show'},
+      },
+    ),
+  ],
+  taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+    'music_styles': DiscoveryFilterTaxonomyGroupOption(
+      key: 'music_styles',
+      label: 'Estilos musicais',
+      terms: <DiscoveryFilterTaxonomyTermOption>[
+        DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
       ],
     ),
   },

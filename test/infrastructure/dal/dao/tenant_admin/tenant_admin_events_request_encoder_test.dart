@@ -78,8 +78,7 @@ void main() {
     expect(payload['event_parties'], isEmpty);
   });
 
-  test('encodes occurrence-owned profiles location override and programação',
-      () {
+  test('encodes occurrence-owned profiles and programação place refs', () {
     const encoder = TenantAdminEventsRequestEncoder();
     final payload = encoder.encodeDraft(
       TenantAdminEventDraft(
@@ -97,13 +96,6 @@ void main() {
             relatedAccountProfileIdValues: [
               TenantAdminAccountProfileIdValue('artist-1'),
             ],
-            locationOverride: TenantAdminEventLocation(
-              modeValue: tenantAdminRequiredText('online'),
-              online: TenantAdminEventOnlineLocation(
-                urlValue: tenantAdminRequiredText('https://example.com/live'),
-                platformValue: tenantAdminOptionalText('YouTube'),
-              ),
-            ),
             programmingItems: [
               TenantAdminEventProgrammingItem(
                 timeValue: tenantAdminRequiredText('17:00'),
@@ -111,6 +103,10 @@ void main() {
                 accountProfileIdValues: [
                   TenantAdminAccountProfileIdValue('artist-1'),
                 ],
+                placeRef: TenantAdminEventPlaceRef(
+                  typeValue: tenantAdminRequiredText('account_profile'),
+                  idValue: tenantAdminRequiredText('venue-1'),
+                ),
               ),
             ],
           ),
@@ -130,18 +126,16 @@ void main() {
         'permissions': {'can_edit': true},
       },
     ]);
-    expect(occurrence['location'], {
-      'mode': 'online',
-      'online': {
-        'url': 'https://example.com/live',
-        'platform': 'YouTube',
-      },
-    });
+    expect(occurrence.containsKey('location'), isFalse);
     expect(occurrence['programming_items'], [
       {
         'time': '17:00',
         'title': 'Abertura',
         'account_profile_ids': ['artist-1'],
+        'place_ref': {
+          'type': 'account_profile',
+          'id': 'venue-1',
+        },
       },
     ]);
   });

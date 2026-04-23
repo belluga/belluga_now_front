@@ -1,10 +1,11 @@
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class EventOccurrenceOption {
-  const EventOccurrenceOption({
+  EventOccurrenceOption({
     required this.occurrenceIdValue,
     required this.occurrenceSlugValue,
     required this.dateTimeStartValue,
@@ -12,7 +13,10 @@ class EventOccurrenceOption {
     required this.isSelectedValue,
     required this.hasLocationOverrideValue,
     required this.programmingCountValue,
-  });
+    List<EventProgrammingItem> programmingItems = const [],
+  }) : programmingItems = List<EventProgrammingItem>.unmodifiable(
+          programmingItems,
+        );
 
   final EventLinkedAccountProfileTextValue occurrenceIdValue;
   final EventLinkedAccountProfileTextValue occurrenceSlugValue;
@@ -21,6 +25,7 @@ class EventOccurrenceOption {
   final EventOccurrenceFlagValue isSelectedValue;
   final EventOccurrenceFlagValue hasLocationOverrideValue;
   final EventProgrammingCountValue programmingCountValue;
+  final List<EventProgrammingItem> programmingItems;
 
   String get occurrenceId => occurrenceIdValue.value;
   String get occurrenceSlug => occurrenceSlugValue.value;

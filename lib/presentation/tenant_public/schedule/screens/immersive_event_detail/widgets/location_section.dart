@@ -1,16 +1,19 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:flutter/material.dart';
 
 class LocationSection extends StatelessWidget {
   const LocationSection({
     required this.event,
     this.onOpenMap,
+    this.onOpenDestinationMap,
     this.canOpenMap = false,
     super.key,
   });
 
   final EventModel event;
   final VoidCallback? onOpenMap;
+  final ValueChanged<EventLinkedAccountProfile>? onOpenDestinationMap;
   final bool canOpenMap;
 
   @override
@@ -18,8 +21,10 @@ class LocationSection extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final address = event.location.value.trim();
     final venueName = event.venue?.displayName.trim();
-    final resolvedTitle =
-        venueName != null && venueName.isNotEmpty ? venueName : 'Local do evento';
+    final resolvedTitle = venueName != null && venueName.isNotEmpty
+        ? venueName
+        : 'Local do evento';
+    final destinations = _buildDestinations(event);
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
@@ -122,7 +127,121 @@ class LocationSection extends StatelessWidget {
               ),
             ),
           ),
+          if (destinations.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            ...destinations.map(
+              (destination) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _LocationDestinationTile(
+                  destination: destination,
+                  onTap: destination.profile == null
+                      ? onOpenMap
+                      : onOpenDestinationMap == null
+                          ? null
+                          : () => onOpenDestinationMap!(destination.profile!),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  List<_LocationDestination> _buildDestinations(EventModel event) {
+    final destinations = <_LocationDestination>[];
+    final seen = <String>{};
+
+    final venueId = event.venue?.id.trim();
+    if (venueId != null && venueId.isNotEmpty) {
+      seen.add('account_profile:$venueId');
+      destinations.add(
+        _LocationDestination(
+          key: 'account_profile:$venueId',
+          title: event.venue!.displayName,
+          subtitle: event.location.value.trim(),
+          profile: null,
+        ),
+      );
+    }
+
+    for (final item in event.allProgrammingItems) {
+      final profile = item.locationProfile;
+      if (profile == null) {
+        continue;
+      }
+      final profileId = profile.id.trim();
+      if (profileId.isEmpty) {
+        continue;
+      }
+      final key = 'account_profile:$profileId';
+      if (!seen.add(key)) {
+        continue;
+      }
+      destinations.add(
+        _LocationDestination(
+          key: key,
+          title: profile.displayName,
+          subtitle: 'Local da programação',
+          profile: profile,
+        ),
+      );
+    }
+
+    return List<_LocationDestination>.unmodifiable(destinations);
+  }
+}
+
+class _LocationDestination {
+  const _LocationDestination({
+    required this.key,
+    required this.title,
+    required this.subtitle,
+    required this.profile,
+  });
+
+  final String key;
+  final String title;
+  final String subtitle;
+  final EventLinkedAccountProfile? profile;
+}
+
+class _LocationDestinationTile extends StatelessWidget {
+  const _LocationDestinationTile({
+    required this.destination,
+    required this.onTap,
+  });
+
+  final _LocationDestination destination;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(20),
+      child: ListTile(
+        key: Key('eventLocationDestination_${destination.key}'),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        leading: Icon(
+          Icons.location_on_outlined,
+          color: colorScheme.primary,
+        ),
+        title: Text(
+          destination.title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        subtitle: destination.subtitle.trim().isEmpty
+            ? null
+            : Text(destination.subtitle),
+        trailing: onTap == null ? null : const Icon(Icons.map_outlined),
       ),
     );
   }

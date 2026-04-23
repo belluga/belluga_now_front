@@ -201,7 +201,7 @@ class EventDTO {
           ..parse(type.color ?? '#000000'),
       ),
       title: TitleValue()..parse(title),
-      content: HTMLContentValue(minLenght: 0)..parse(content),
+      content: _htmlContentValue(content),
       location: DescriptionValue(minLenght: 1)..parse(location),
       thumb: thumbDomain,
       dateTimeStart: DateTimeValue()..parse(dateTimeStart),
@@ -220,6 +220,13 @@ class EventDTO {
       sentInvites: sentInvitesDomain,
       friendsGoing: friendsGoingDomain,
     );
+  }
+
+  static HTMLContentValue _htmlContentValue(String rawContent) {
+    final value = HTMLContentValue(minLenght: 0);
+    value.validate(rawContent);
+    value.set(rawContent);
+    return value;
   }
 
   static List<EventLinkedAccountProfile> _resolveLegacyArtists(Object? raw) {
@@ -462,6 +469,7 @@ class EventDTO {
             ..parse(_asBool(row['has_location_override']).toString()),
           programmingCountValue: EventProgrammingCountValue()
             ..parse(_asInt(row['programming_count']).toString()),
+          programmingItems: _resolveProgrammingItems(row['programming_items']),
         ),
       );
     }
@@ -483,6 +491,13 @@ class EventDTO {
       }
 
       final title = _asNullableString(item['title'])?.trim() ?? '';
+      final locationProfile = _toLinkedAccountProfile(
+        _asMap(
+          item['location_profile'] ??
+              item['location_account_profile'] ??
+              item['place_profile'],
+        ),
+      );
       resolved.add(
         EventProgrammingItem(
           timeValue: EventProgrammingTimeValue(time),
@@ -491,6 +506,7 @@ class EventDTO {
           linkedAccountProfiles: _resolveLinkedAccountProfiles(
             linkedProfilesRaw: item['linked_account_profiles'],
           ),
+          locationProfile: locationProfile,
         ),
       );
     }

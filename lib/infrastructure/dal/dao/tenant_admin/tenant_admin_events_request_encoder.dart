@@ -147,16 +147,6 @@ class TenantAdminEventsRequestEncoder {
       }).toList(growable: false);
     }
 
-    if (occurrence.locationOverride != null) {
-      payload['location'] = _encodeLocation(occurrence.locationOverride!);
-      if (occurrence.placeRef != null) {
-        payload['place_ref'] = <String, dynamic>{
-          'type': occurrence.placeRef!.type,
-          'id': occurrence.placeRef!.id,
-        };
-      }
-    }
-
     if (occurrence.programmingItems.isNotEmpty) {
       payload['programming_items'] = occurrence.programmingItems
           .map(
@@ -167,6 +157,11 @@ class TenantAdminEventsRequestEncoder {
                 'account_profile_ids': item.accountProfileIds
                     .map((profileId) => profileId.value)
                     .toList(growable: false),
+              if (item.placeRef != null)
+                'place_ref': <String, dynamic>{
+                  'type': item.placeRef!.type,
+                  'id': item.placeRef!.id,
+                },
             },
           )
           .toList(growable: false);

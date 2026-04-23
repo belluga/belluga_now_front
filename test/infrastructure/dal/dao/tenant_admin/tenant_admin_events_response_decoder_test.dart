@@ -319,8 +319,7 @@ void main() {
     expect(event.thumbUrl, 'https://cdn.example.com/thumb.png');
   });
 
-  test('decodes occurrence-owned profiles override location and programação',
-      () {
+  test('decodes occurrence-owned profiles and programação place refs', () {
     final event = decoder.decodeEventItem({
       'data': {
         'event_id': 'evt-occurrence-owned',
@@ -360,6 +359,10 @@ void main() {
                 'time': '17:00',
                 'title': 'Abertura',
                 'account_profile_ids': ['artist-1'],
+                'place_ref': {
+                  'type': 'account_profile',
+                  'id': 'venue-1',
+                },
                 'linked_account_profiles': [
                   {
                     'id': 'artist-1',
@@ -378,9 +381,6 @@ void main() {
     final occurrence = event.occurrences.first;
     expect(occurrence.relatedAccountProfileIds.first.value, 'artist-1');
     expect(occurrence.relatedAccountProfiles.first.displayName, 'Coral XYZ');
-    expect(occurrence.locationOverride?.mode, 'online');
-    expect(
-        occurrence.locationOverride?.online?.url, 'https://example.com/live');
     expect(occurrence.programmingItems, hasLength(1));
     expect(occurrence.programmingItems.first.time, '17:00');
     expect(occurrence.programmingItems.first.title, 'Abertura');
@@ -388,5 +388,7 @@ void main() {
       occurrence.programmingItems.first.accountProfileIds.first.value,
       'artist-1',
     );
+    expect(occurrence.programmingItems.first.placeRef?.type, 'account_profile');
+    expect(occurrence.programmingItems.first.placeRef?.id, 'venue-1');
   });
 }

@@ -336,9 +336,6 @@ class TenantAdminEventsResponseDecoder {
             .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
             .toList(growable: false);
 
-    final locationOverrideRow = _asMap(item['location_override']);
-    final locationOverride = _mapLocationOverride(locationOverrideRow);
-
     return TenantAdminEventOccurrence(
       occurrenceIdValue: tenantAdminOptionalText(
         _asString(item['occurrence_id']),
@@ -352,8 +349,6 @@ class TenantAdminEventsResponseDecoder {
       ),
       relatedAccountProfileIdValues: ownProfileIds,
       relatedAccountProfiles: ownProfiles,
-      locationOverride: locationOverride.location,
-      placeRef: locationOverride.placeRef,
       programmingItems: _mapProgrammingItems(item['programming_items']),
     );
   }
@@ -368,51 +363,6 @@ class TenantAdminEventsResponseDecoder {
         .cast<String>()
         .map(TenantAdminAccountProfileIdValue.new)
         .toList(growable: false);
-  }
-
-  ({TenantAdminEventLocation? location, TenantAdminEventPlaceRef? placeRef})
-      _mapLocationOverride(Map<String, dynamic> row) {
-    if (row.isEmpty) {
-      return (location: null, placeRef: null);
-    }
-    final locationRow = _asMap(row['location']);
-    final placeRefRow = _asMap(row['place_ref']);
-    final geoRow = _asMap(locationRow['geo']);
-    final coordinates = _asList(geoRow['coordinates']);
-    final lng = coordinates.length >= 2 ? _toDouble(coordinates[0]) : null;
-    final lat = coordinates.length >= 2 ? _toDouble(coordinates[1]) : null;
-    final onlineRow = _asMap(locationRow['online']);
-    final mode = _asString(locationRow['mode']) ?? '';
-    final location = mode.isEmpty
-        ? null
-        : TenantAdminEventLocation(
-            modeValue: tenantAdminRequiredText(mode),
-            latitudeValue: tenantAdminOptionalDouble(lat),
-            longitudeValue: tenantAdminOptionalDouble(lng),
-            online: onlineRow.isEmpty
-                ? null
-                : TenantAdminEventOnlineLocation(
-                    urlValue: tenantAdminRequiredText(
-                        _asString(onlineRow['url']) ?? ''),
-                    platformValue: tenantAdminOptionalText(
-                      _asString(onlineRow['platform']),
-                    ),
-                    labelValue: tenantAdminOptionalText(
-                      _asString(onlineRow['label']),
-                    ),
-                  ),
-          );
-    final placeRef = placeRefRow.isEmpty
-        ? null
-        : TenantAdminEventPlaceRef(
-            typeValue: tenantAdminRequiredText(
-              _asString(placeRefRow['type']) ?? '',
-            ),
-            idValue: tenantAdminRequiredText(
-              _extractPlaceRefId(placeRefRow) ?? '',
-            ),
-          );
-    return (location: location, placeRef: placeRef);
   }
 
   List<TenantAdminEventProgrammingItem> _mapProgrammingItems(Object? raw) {
@@ -439,10 +389,27 @@ class TenantAdminEventsResponseDecoder {
             titleValue: tenantAdminOptionalText(_asString(item['title'])),
             accountProfileIdValues: profileIds,
             linkedAccountProfiles: linkedProfiles,
+            placeRef: _mapProgrammingPlaceRef(item['place_ref']),
           );
         })
         .where((item) => item.time.isNotEmpty)
         .toList(growable: false);
+  }
+
+  TenantAdminEventPlaceRef? _mapProgrammingPlaceRef(Object? raw) {
+    final row = _asMap(raw);
+    if (row.isEmpty) {
+      return null;
+    }
+    final type = _asString(row['type']) ?? '';
+    final id = _extractPlaceRefId(row) ?? '';
+    if (type.isEmpty || id.isEmpty) {
+      return null;
+    }
+    return TenantAdminEventPlaceRef(
+      typeValue: tenantAdminRequiredText(type),
+      idValue: tenantAdminRequiredText(id),
+    );
   }
 
   TenantAdminPoiVisual? _decodeEventTypeVisual(Map<String, dynamic> row) {

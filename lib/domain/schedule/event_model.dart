@@ -81,6 +81,21 @@ class EventModel {
 
   EventModelPrimBool get hasMultipleOccurrences => occurrences.length > 1;
   EventModelPrimBool get hasProgrammingItems => programmingItems.isNotEmpty;
+  EventModelPrimBool get hasAnyProgrammingItems =>
+      hasProgrammingItems ||
+      occurrences.any(
+        (occurrence) =>
+            occurrence.programmingCount > 0 ||
+            occurrence.programmingItems.isNotEmpty,
+      );
+
+  List<EventProgrammingItem> get allProgrammingItems {
+    final items = <EventProgrammingItem>[
+      ...programmingItems,
+      for (final occurrence in occurrences) ...occurrence.programmingItems,
+    ];
+    return List<EventProgrammingItem>.unmodifiable(items);
+  }
 
   List<EventLinkedAccountProfile> get counterpartProfiles {
     return List<EventLinkedAccountProfile>.unmodifiable(

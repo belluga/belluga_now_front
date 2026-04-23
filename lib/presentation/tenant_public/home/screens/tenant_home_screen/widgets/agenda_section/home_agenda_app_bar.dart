@@ -70,20 +70,63 @@ class _HomeAgendaFilterAction extends StatelessWidget {
           builder: (context, selection) {
             final colorScheme = Theme.of(context).colorScheme;
             final isActive = selection.isNotEmpty;
+            final activeCount = selection.activeCount;
             return IconButton(
               key: const ValueKey<String>('home-agenda-filter-button'),
               tooltip: isActive ? 'Filtros ativos' : 'Filtrar eventos',
               onPressed: controller.toggleDiscoveryFilterPanel,
-              icon: Icon(
-                isActive ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
-                color: isActive
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    isActive
+                        ? Icons.filter_alt_rounded
+                        : Icons.filter_alt_outlined,
+                    color: isActive
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  if (activeCount > 0)
+                    Positioned(
+                      key: const ValueKey<String>('home-agenda-filter-badge'),
+                      right: -7,
+                      top: -7,
+                      child: _FilterCounterBadge(count: activeCount),
+                    ),
+                ],
               ),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _FilterCounterBadge extends StatelessWidget {
+  const _FilterCounterBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 99 ? '99+' : count.toString(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onPrimary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
     );
   }
 }

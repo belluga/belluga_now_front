@@ -3,6 +3,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_slots.dart';
+import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -159,13 +160,17 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     DiscoveryFilterSelection selection,
   ) {
     if (selection.primaryKeys.isEmpty) {
-      return false;
+      return catalog.taxonomyOptionsByKey.values.any(
+        (option) => option.terms.isNotEmpty,
+      );
     }
     final selectedFilters = catalog.filters.where(
       (item) => selection.primaryKeys.contains(item.key),
     );
+    var hasExplicitTaxonomyScope = false;
     for (final item in selectedFilters) {
       for (final taxonomyKey in item.taxonomyKeys) {
+        hasExplicitTaxonomyScope = true;
         if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
             false)) {
           return true;
@@ -180,6 +185,7 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
             continue;
           }
           for (final taxonomyKey in option.allowedTaxonomyKeys) {
+            hasExplicitTaxonomyScope = true;
             if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
                 false)) {
               return true;
@@ -188,7 +194,10 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
         }
       }
     }
-    return false;
+    return !hasExplicitTaxonomyScope &&
+        catalog.taxonomyOptionsByKey.values.any(
+          (option) => option.terms.isNotEmpty,
+        );
   }
 }
 
@@ -247,14 +256,19 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
         return StreamValueBuilder<bool>(
           streamValue: controller.isPageLoadingStreamValue,
           builder: (context, isPageLoading) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: DiscoveryFilterBar(
-                catalog: catalog,
-                selection: selection,
-                policy: controller.discoveryFilterPolicy,
-                isLoading: isInitialLoading || isPageLoading,
-                onSelectionChanged: controller.setDiscoveryFilterSelection,
+            return Semantics(
+              container: true,
+              label: 'Painel de filtros de eventos',
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: DiscoveryFilterBar(
+                  catalog: catalog,
+                  selection: selection,
+                  policy: controller.discoveryFilterPolicy,
+                  isLoading: isInitialLoading || isPageLoading,
+                  iconBuilder: buildDiscoveryFilterVisualIcon,
+                  onSelectionChanged: controller.setDiscoveryFilterSelection,
+                ),
               ),
             );
           },

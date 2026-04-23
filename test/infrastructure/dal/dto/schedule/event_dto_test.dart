@@ -74,6 +74,44 @@ void main() {
     expect(dto.id, 'occ-42');
   });
 
+  test('preserves sanitized rich html content for public event rendering', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439011',
+      'slug': 'evt-rich',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com HTML rico',
+      'content': '<h2>Event Rich Heading 🎉</h2>'
+          '<p><strong>Bold event</strong><br />Second event line</p>'
+          '<p><em>Italic event</em> and <s>strike event</s></p>'
+          '<blockquote>Event quote</blockquote>'
+          '<ul><li>Event bullet</li></ul>'
+          '<ol><li>Event ordered</li></ol>',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': const [],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.content.value, contains('<h2>Event Rich Heading 🎉</h2>'));
+    expect(domain.content.value, contains('<strong>Bold event</strong>'));
+    expect(domain.content.value, contains('<br'));
+    expect(domain.content.value, contains('<em>Italic event</em>'));
+    expect(domain.content.value, contains('<s>strike event</s>'));
+    expect(
+      domain.content.value,
+      contains('<blockquote>Event quote</blockquote>'),
+    );
+    expect(domain.content.value, contains('<ul><li>Event bullet</li></ul>'));
+    expect(domain.content.value, contains('<ol><li>Event ordered</li></ol>'));
+    expect(domain.content.valueText, contains('Event Rich Heading 🎉'));
+  });
+
   test(
       'derives latitude and longitude from location.geo when root keys are absent',
       () {

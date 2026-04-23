@@ -174,6 +174,160 @@ void main() {
     expect(selection.primaryKeys, <String>{'profiles'});
     expect(
         selection.taxonomyTermKeys['music_styles'], <String>{'rock', 'jazz'});
+    expect(selection.activeCount, 3);
+  });
+
+  test('repair preserves taxonomy selections from catalog without primary type',
+      () {
+    const policy = DiscoveryFilterPolicy(
+      primarySelectionMode: DiscoveryFilterSelectionMode.single,
+      taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    );
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'show',
+          label: 'Show',
+          entities: <String>{'event'},
+          typesByEntity: <String, Set<String>>{
+            'event': <String>{'show'},
+          },
+        ),
+      ],
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music_styles': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music_styles',
+          label: 'Estilos',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+            DiscoveryFilterTaxonomyTermOption(value: 'samba', label: 'Samba'),
+          ],
+        ),
+      },
+    );
+
+    final result = const DiscoveryFilterSelectionRepair().repair(
+      selection: const DiscoveryFilterSelection(
+        taxonomyTermKeys: <String, Set<String>>{
+          'music_styles': <String>{'rock', 'pagode'},
+        },
+      ),
+      catalog: catalog.filters,
+      catalogEnvelope: catalog,
+      policy: policy,
+    );
+
+    expect(result.selection.primaryKeys, isEmpty);
+    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
+      'music_styles': <String>{'rock'},
+    });
+    expect(result.droppedTaxonomyTerms['music_styles'], <String>{'pagode'});
+  });
+
+  test('repair derives taxonomy allowance from selected type option catalog',
+      () {
+    const policy = DiscoveryFilterPolicy(
+      primarySelectionMode: DiscoveryFilterSelectionMode.single,
+      taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    );
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'venues',
+          label: 'Locais',
+          entities: <String>{'account_profile'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'venue'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'venue',
+            label: 'Local',
+            allowedTaxonomyKeys: <String>{'cuisine'},
+          ),
+        ],
+      },
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'cuisine': DiscoveryFilterTaxonomyGroupOption(
+          key: 'cuisine',
+          label: 'Cozinha',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(
+                value: 'japanese', label: 'Japonesa'),
+          ],
+        ),
+      },
+    );
+
+    final result = const DiscoveryFilterSelectionRepair().repair(
+      selection: const DiscoveryFilterSelection(
+        primaryKeys: <String>{'venues'},
+        taxonomyTermKeys: <String, Set<String>>{
+          'cuisine': <String>{'japanese'},
+        },
+      ),
+      catalog: catalog.filters,
+      catalogEnvelope: catalog,
+      policy: policy,
+    );
+
+    expect(result.changed, isFalse);
+    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
+      'cuisine': <String>{'japanese'},
+    });
+  });
+
+  test(
+      'repair accepts catalog taxonomy options when primary has no restriction',
+      () {
+    const policy = DiscoveryFilterPolicy(
+      primarySelectionMode: DiscoveryFilterSelectionMode.single,
+      taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    );
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'shows',
+          label: 'Shows',
+          entities: <String>{'event'},
+          typesByEntity: <String, Set<String>>{
+            'event': <String>{'show'},
+          },
+        ),
+      ],
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music_styles': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music_styles',
+          label: 'Estilos',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+          ],
+        ),
+      },
+    );
+
+    final result = const DiscoveryFilterSelectionRepair().repair(
+      selection: const DiscoveryFilterSelection(
+        primaryKeys: <String>{'shows'},
+        taxonomyTermKeys: <String, Set<String>>{
+          'music_styles': <String>{'rock'},
+        },
+      ),
+      catalog: catalog.filters,
+      catalogEnvelope: catalog,
+      policy: policy,
+    );
+
+    expect(result.changed, isFalse);
+    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
+      'music_styles': <String>{'rock'},
+    });
   });
 
   test('repair drops stale primary and taxonomy selections', () {

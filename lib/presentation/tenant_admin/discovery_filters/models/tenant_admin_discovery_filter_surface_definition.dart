@@ -63,6 +63,11 @@ class TenantAdminDiscoveryFilterSurfaceDefinition {
     accountDiscovery,
   ];
 
+  static const adminConfigurableValues =
+      <TenantAdminDiscoveryFilterSurfaceDefinition>[
+    map,
+  ];
+
   static TenantAdminDiscoveryFilterSurfaceDefinition? byKey(String key) {
     final normalized = key.trim().toLowerCase();
     for (final surface in values) {

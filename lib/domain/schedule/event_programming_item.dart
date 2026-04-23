@@ -7,6 +7,7 @@ class EventProgrammingItem {
     required this.timeValue,
     this.titleValue,
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    this.locationProfile,
   }) : linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
           linkedAccountProfiles,
         );
@@ -14,6 +15,7 @@ class EventProgrammingItem {
   final EventProgrammingTimeValue timeValue;
   final EventLinkedAccountProfileTextValue? titleValue;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final EventLinkedAccountProfile? locationProfile;
 
   String get time => timeValue.value;
   String? get title => titleValue?.value;
@@ -27,4 +29,6 @@ class EventProgrammingItem {
     }
     return '';
   }
+
+  bool get hasLocationProfile => locationProfile != null;
 }

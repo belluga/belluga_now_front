@@ -17,10 +17,12 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -73,6 +75,16 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(event);
     _bindFavoriteAccountProfileState();
     unawaited(_refreshConfirmationState(event.id.value));
+  }
+
+  void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
+    final occurrenceId = occurrence.occurrenceId.trim();
+    if (occurrenceId.isEmpty || occurrence.isSelected) {
+      return;
+    }
+    final selectedEvent = _eventWithSelectedOccurrence(event, occurrenceId);
+    _invitesRepository.setImmersiveSelectedEvent(selectedEvent);
+    _hydrateState(selectedEvent);
   }
 
   // Reactive state
@@ -153,6 +165,9 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   void _hydrateState(EventModel event) {
+    unawaited(_pendingInvitesSubscription?.cancel());
+    _pendingInvitesSubscription = null;
+
     final isConfirmedLocally = _userEventsRepository.isEventConfirmed(
       userEventsRepoString(
         event.id.value,
@@ -171,6 +186,61 @@ class ImmersiveEventDetailController implements Disposable {
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
         .listen((invites) => _updateReceivedInvites(invites, event.id.value));
+  }
+
+  EventModel _eventWithSelectedOccurrence(
+    EventModel event,
+    String occurrenceId,
+  ) {
+    EventOccurrenceOption? selectedOccurrence;
+    for (final occurrence in event.occurrences) {
+      if (occurrence.occurrenceId == occurrenceId) {
+        selectedOccurrence = occurrence;
+        break;
+      }
+    }
+    if (selectedOccurrence == null) {
+      return event;
+    }
+    final updatedOccurrences = event.occurrences
+        .map(
+          (occurrence) => EventOccurrenceOption(
+            occurrenceIdValue: occurrence.occurrenceIdValue,
+            occurrenceSlugValue: occurrence.occurrenceSlugValue,
+            dateTimeStartValue: occurrence.dateTimeStartValue,
+            dateTimeEndValue: occurrence.dateTimeEndValue,
+            isSelectedValue: EventOccurrenceFlagValue()
+              ..parse((occurrence.occurrenceId == occurrenceId).toString()),
+            hasLocationOverrideValue: occurrence.hasLocationOverrideValue,
+            programmingCountValue: occurrence.programmingCountValue,
+            programmingItems: occurrence.programmingItems,
+          ),
+        )
+        .toList(growable: false);
+
+    return EventModel(
+      id: event.id,
+      slugValue: event.slugValue,
+      type: event.type,
+      title: event.title,
+      content: event.content,
+      location: event.location,
+      venue: event.venue,
+      thumb: event.thumb,
+      dateTimeStart: selectedOccurrence.dateTimeStartValue,
+      dateTimeEnd: event.dateTimeEnd,
+      linkedAccountProfiles: event.linkedAccountProfiles,
+      occurrences: updatedOccurrences,
+      programmingItems: selectedOccurrence.programmingItems,
+      coordinate: event.coordinate,
+      tags: event.tags,
+      isConfirmedValue: event.isConfirmedValue,
+      confirmedAtValue: event.confirmedAtValue,
+      receivedInvites: event.receivedInvites,
+      sentInvites: event.sentInvites,
+      friendsGoing: event.friendsGoing,
+      totalConfirmedValue: event.totalConfirmedValue,
+    );
   }
 
   Future<void> _refreshConfirmationState(String eventId) async {

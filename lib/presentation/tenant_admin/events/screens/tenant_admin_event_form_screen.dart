@@ -703,11 +703,6 @@ class _TenantAdminEventFormScreenState
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        if (occurrence.hasLocationOverride)
-                          const _OccurrenceSummaryChip(
-                            label: 'Local sobrescrito',
-                            icon: Icons.place_outlined,
-                          ),
                         if (relatedCount > 0)
                           _OccurrenceSummaryChip(
                             label: relatedCount == 1
@@ -962,6 +957,7 @@ class _TenantAdminEventFormScreenState
     required int totalCount,
   }) {
     return Card(
+      key: Key('tenantAdminRelatedProfileChip_$profileId'),
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1114,12 +1110,6 @@ class _TenantAdminEventFormScreenState
     final programmingItems =
         existing?.programmingItems.toList(growable: true) ??
             <TenantAdminEventProgrammingItem>[];
-    var locationOverrideEnabled = existing?.locationOverride != null;
-    var locationMode =
-        existing?.locationOverride?.mode ?? formState.locationMode;
-    var selectedVenueId = existing?.placeRef?.id;
-    var onlineUrl = existing?.locationOverride?.online?.url ?? '';
-    var onlinePlatform = existing?.locationOverride?.online?.platform ?? '';
     String? errorMessage;
 
     final result = await showModalBottomSheet<TenantAdminEventOccurrence>(
@@ -1184,7 +1174,7 @@ class _TenantAdminEventFormScreenState
             }
 
             Future<void> addProgrammingItem() async {
-              final item = await _openProgrammingItemEditor();
+              final item = await _openProgrammingItemEditor(venues: venues);
               if (item == null) {
                 return;
               }
@@ -1195,10 +1185,23 @@ class _TenantAdminEventFormScreenState
               });
             }
 
-            final includesPhysical =
-                locationMode == 'physical' || locationMode == 'hybrid';
-            final includesOnline =
-                locationMode == 'online' || locationMode == 'hybrid';
+            Future<void> editProgrammingItem(int itemIndex) async {
+              if (itemIndex < 0 || itemIndex >= programmingItems.length) {
+                return;
+              }
+              final item = await _openProgrammingItemEditor(
+                venues: venues,
+                existing: programmingItems[itemIndex],
+              );
+              if (item == null) {
+                return;
+              }
+              setSheetState(() {
+                programmingItems[itemIndex] = item;
+                programmingItems.sort((a, b) => a.time.compareTo(b.time));
+                errorMessage = null;
+              });
+            }
 
             return Padding(
               padding: EdgeInsets.fromLTRB(
@@ -1302,118 +1305,6 @@ class _TenantAdminEventFormScreenState
                       label: const Text('Adicionar perfil próprio'),
                     ),
                     const Divider(height: 28),
-                    SwitchListTile(
-                      key: const Key(
-                        'tenantAdminOccurrenceLocationOverrideSwitch',
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Sobrescrever localização'),
-                      subtitle: const Text(
-                        'Use apenas quando esta data ocorrer em outro local.',
-                      ),
-                      value: locationOverrideEnabled,
-                      onChanged: (value) {
-                        setSheetState(() {
-                          locationOverrideEnabled = value;
-                          if (value &&
-                              selectedVenueId == null &&
-                              venues.isNotEmpty) {
-                            selectedVenueId = venues.first.id;
-                          }
-                          errorMessage = null;
-                        });
-                      },
-                    ),
-                    if (locationOverrideEnabled) ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        key: const Key('tenantAdminOccurrenceLocationMode'),
-                        initialValue: locationMode,
-                        decoration: const InputDecoration(labelText: 'Modo'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'physical',
-                            child: Text('Physical'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'online',
-                            child: Text('Online'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'hybrid',
-                            child: Text('Hybrid'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setSheetState(() {
-                            locationMode = value;
-                            if ((value == 'physical' || value == 'hybrid') &&
-                                selectedVenueId == null &&
-                                venues.isNotEmpty) {
-                              selectedVenueId = venues.first.id;
-                            }
-                            errorMessage = null;
-                          });
-                        },
-                      ),
-                      if (includesPhysical) ...[
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          key: const Key('tenantAdminOccurrenceVenueDropdown'),
-                          initialValue: selectedVenueId,
-                          decoration: const InputDecoration(
-                            labelText: 'Host físico da ocorrência',
-                          ),
-                          items: venues
-                              .map(
-                                (venue) => DropdownMenuItem<String>(
-                                  value: venue.id,
-                                  child: Text(venue.displayName),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: venues.isEmpty
-                              ? null
-                              : (value) {
-                                  setSheetState(() {
-                                    selectedVenueId = value;
-                                    errorMessage = null;
-                                  });
-                                },
-                        ),
-                      ],
-                      if (includesOnline) ...[
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          key: const Key('tenantAdminOccurrenceOnlineUrl'),
-                          initialValue: onlineUrl,
-                          decoration: const InputDecoration(
-                            labelText: 'URL online',
-                          ),
-                          keyboardType: TextInputType.url,
-                          onChanged: (value) {
-                            onlineUrl = value;
-                            errorMessage = null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          key: const Key('tenantAdminOccurrenceOnlinePlatform'),
-                          initialValue: onlinePlatform,
-                          decoration: const InputDecoration(
-                            labelText: 'Plataforma online (opcional)',
-                          ),
-                          onChanged: (value) {
-                            onlinePlatform = value;
-                            errorMessage = null;
-                          },
-                        ),
-                      ],
-                    ],
-                    const Divider(height: 28),
                     Text(
                       'Programação',
                       style: Theme.of(context).textTheme.titleSmall,
@@ -1433,6 +1324,7 @@ class _TenantAdminEventFormScreenState
                             'tenantAdminOccurrenceProgrammingItem_$itemIndex',
                           ),
                           contentPadding: EdgeInsets.zero,
+                          onTap: () => editProgrammingItem(itemIndex),
                           leading: Text(programmingItems[itemIndex].time),
                           title: Text(
                             programmingItems[itemIndex].title ??
@@ -1441,8 +1333,9 @@ class _TenantAdminEventFormScreenState
                                 ) ??
                                 'Item sem título',
                           ),
-                          subtitle: Text(
-                            '${programmingItems[itemIndex].accountProfileIds.length} perfil(is) vinculado(s)',
+                          subtitle: _buildProgrammingItemSubtitle(
+                            programmingItems[itemIndex],
+                            venues,
                           ),
                           trailing: IconButton(
                             tooltip: 'Remover item de programação',
@@ -1487,19 +1380,9 @@ class _TenantAdminEventFormScreenState
                           child: FilledButton(
                             key: const Key('tenantAdminOccurrenceSaveButton'),
                             onPressed: () {
-                              final selectedVenue = venues.firstWhereOrNull(
-                                (venue) => venue.id == selectedVenueId,
-                              );
                               final validationError = _validateOccurrenceEditor(
                                 startAt: startAt,
                                 endAt: endAt,
-                                locationOverrideEnabled:
-                                    locationOverrideEnabled,
-                                locationMode: locationMode,
-                                includesPhysical: includesPhysical,
-                                includesOnline: includesOnline,
-                                selectedVenue: selectedVenue,
-                                onlineUrl: onlineUrl,
                               );
                               if (validationError != null) {
                                 setSheetState(() {
@@ -1530,25 +1413,6 @@ class _TenantAdminEventFormScreenState
                                     relatedAccountProfiles: List<
                                             TenantAdminAccountProfile>.unmodifiable(
                                         relatedProfiles),
-                                    locationOverride: locationOverrideEnabled
-                                        ? _buildOccurrenceLocationOverride(
-                                            mode: locationMode,
-                                            selectedVenue: selectedVenue,
-                                            onlineUrl: onlineUrl,
-                                            onlinePlatform: onlinePlatform,
-                                          )
-                                        : null,
-                                    placeRef: locationOverrideEnabled &&
-                                            includesPhysical
-                                        ? TenantAdminEventPlaceRef(
-                                            typeValue: tenantAdminRequiredText(
-                                              'account_profile',
-                                            ),
-                                            idValue: tenantAdminRequiredText(
-                                              selectedVenue!.id,
-                                            ),
-                                          )
-                                        : null,
                                     programmingItems: List<
                                             TenantAdminEventProgrammingItem>.unmodifiable(
                                         programmingItems),
@@ -1579,66 +1443,26 @@ class _TenantAdminEventFormScreenState
   String? _validateOccurrenceEditor({
     required DateTime startAt,
     required DateTime? endAt,
-    required bool locationOverrideEnabled,
-    required String locationMode,
-    required bool includesPhysical,
-    required bool includesOnline,
-    required TenantAdminAccountProfile? selectedVenue,
-    required String onlineUrl,
   }) {
     if (endAt != null && endAt.isBefore(startAt)) {
       return 'Fim deve ser posterior ao início.';
     }
-    if (!locationOverrideEnabled) {
-      return null;
-    }
-    if (includesPhysical && selectedVenue == null) {
-      return 'Host físico é obrigatório para $locationMode.';
-    }
-    if (includesOnline) {
-      final uri = Uri.tryParse(onlineUrl.trim());
-      final valid = uri != null &&
-          (uri.scheme == 'http' || uri.scheme == 'https') &&
-          uri.host.isNotEmpty;
-      if (!valid) {
-        return 'URL online da ocorrência é obrigatória e deve ser válida.';
-      }
-    }
     return null;
   }
 
-  TenantAdminEventLocation _buildOccurrenceLocationOverride({
-    required String mode,
-    required TenantAdminAccountProfile? selectedVenue,
-    required String onlineUrl,
-    required String onlinePlatform,
-  }) {
-    final includesPhysical = mode == 'physical' || mode == 'hybrid';
-    final includesOnline = mode == 'online' || mode == 'hybrid';
-    final latitude =
-        includesPhysical ? selectedVenue?.location?.latitude : null;
-    final longitude =
-        includesPhysical ? selectedVenue?.location?.longitude : null;
-    return TenantAdminEventLocation(
-      modeValue: tenantAdminRequiredText(mode),
-      latitudeValue: tenantAdminOptionalDouble(latitude),
-      longitudeValue: tenantAdminOptionalDouble(longitude),
-      online: includesOnline
-          ? TenantAdminEventOnlineLocation(
-              urlValue: tenantAdminRequiredText(onlineUrl.trim()),
-              platformValue: tenantAdminOptionalText(
-                onlinePlatform.trim().isEmpty ? null : onlinePlatform.trim(),
-              ),
-            )
-          : null,
-    );
-  }
-
-  Future<TenantAdminEventProgrammingItem?> _openProgrammingItemEditor() async {
-    var time = '';
-    var title = '';
-    final linkedProfileIds = <TenantAdminAccountProfileIdValue>[];
-    final linkedProfiles = <TenantAdminAccountProfile>[];
+  Future<TenantAdminEventProgrammingItem?> _openProgrammingItemEditor({
+    required List<TenantAdminAccountProfile> venues,
+    TenantAdminEventProgrammingItem? existing,
+  }) async {
+    var time = existing?.time ?? '';
+    var title = existing?.title ?? '';
+    String? selectedLocationProfileId = existing?.placeRef?.id;
+    final linkedProfileIds =
+        existing?.accountProfileIds.toList(growable: true) ??
+            <TenantAdminAccountProfileIdValue>[];
+    final linkedProfiles =
+        existing?.linkedAccountProfiles.toList(growable: true) ??
+            <TenantAdminAccountProfile>[];
     String? errorMessage;
 
     final result = await showModalBottomSheet<TenantAdminEventProgrammingItem>(
@@ -1682,7 +1506,9 @@ class _TenantAdminEventFormScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Adicionar item de programação',
+                      existing == null
+                          ? 'Adicionar item de programação'
+                          : 'Editar item de programação',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -1757,6 +1583,35 @@ class _TenantAdminEventFormScreenState
                       icon: const Icon(Icons.add),
                       label: const Text('Vincular perfil'),
                     ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      key: const Key(
+                        'tenantAdminProgrammingLocationProfileDropdown',
+                      ),
+                      initialValue: selectedLocationProfileId,
+                      decoration: const InputDecoration(
+                        labelText: 'Local da programação (opcional)',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: '',
+                          child: Text('Sem local específico'),
+                        ),
+                        ...venues.map(
+                          (venue) => DropdownMenuItem<String>(
+                            value: venue.id,
+                            child: Text(venue.displayName),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setSheetState(() {
+                          selectedLocationProfileId =
+                              value == null || value.isEmpty ? null : value;
+                          errorMessage = null;
+                        });
+                      },
+                    ),
                     if (errorMessage != null) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -1813,6 +1668,16 @@ class _TenantAdminEventFormScreenState
                                     linkedAccountProfiles: List<
                                             TenantAdminAccountProfile>.unmodifiable(
                                         linkedProfiles),
+                                    placeRef: selectedLocationProfileId == null
+                                        ? null
+                                        : TenantAdminEventPlaceRef(
+                                            typeValue: tenantAdminRequiredText(
+                                              'account_profile',
+                                            ),
+                                            idValue: tenantAdminRequiredText(
+                                              selectedLocationProfileId!,
+                                            ),
+                                          ),
                                   ),
                                 ),
                               );
@@ -1871,6 +1736,50 @@ class _TenantAdminEventFormScreenState
     return item.linkedAccountProfiles.first.displayName;
   }
 
+  Widget _buildProgrammingItemSubtitle(
+    TenantAdminEventProgrammingItem item,
+    List<TenantAdminAccountProfile> venues,
+  ) {
+    final locationLabel = _programmingLocationDisplayName(item, venues);
+    final lines = <String>[
+      '${item.accountProfileIds.length} perfil(is) vinculado(s)',
+      if (locationLabel != null) 'Local: $locationLabel',
+    ];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines
+          .map(
+            (line) => Text(
+              line,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  String? _programmingLocationDisplayName(
+    TenantAdminEventProgrammingItem item,
+    List<TenantAdminAccountProfile> venues,
+  ) {
+    final locationProfileId = item.placeRef?.id;
+    if (locationProfileId == null || locationProfileId.isEmpty) {
+      return null;
+    }
+    final venue = venues.firstWhereOrNull(
+      (candidate) => candidate.id == locationProfileId,
+    );
+    if (venue != null) {
+      return venue.displayName;
+    }
+    final linkedProfile = item.linkedAccountProfiles.firstWhereOrNull(
+      (candidate) => candidate.id == locationProfileId,
+    );
+    return linkedProfile?.displayName ??
+        'Perfil relacionado $locationProfileId';
+  }
+
   List<TenantAdminEventOccurrence> _buildOccurrencesForSubmit({
     required TenantAdminEventFormState formState,
     required DateTime startAt,
@@ -1902,8 +1811,6 @@ class _TenantAdminEventFormScreenState
             ),
             relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
             relatedAccountProfiles: occurrence.relatedAccountProfiles,
-            locationOverride: occurrence.locationOverride,
-            placeRef: occurrence.placeRef,
             programmingItems: occurrence.programmingItems,
           ),
         )
