@@ -116,6 +116,12 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<bool> taxonomyLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> taxonomyErrorStreamValue = StreamValue<String?>();
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>>
+      _taxonomyTermsCacheBySlug =
+      <String, List<TenantAdminTaxonomyTermDefinition>>{};
+  String? _loadedTaxonomyTermsKey;
+  String? _loadingTaxonomyTermsKey;
+  int _taxonomyTermsLoadSerial = 0;
 
   final StreamValue<List<TenantAdminAccountProfile>>
       venueCandidatesStreamValue =
@@ -547,11 +553,13 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void updateEventTypeSelection(String? slug) {
-    _replaceEventFormState(
-      eventFormStateStreamValue.value.copyWith(
-        selectedTypeSlug: slug,
-      ),
+    final current = eventFormStateStreamValue.value.copyWith(
+      selectedTypeSlug: slug,
     );
+    _replaceEventFormState(
+      _sanitizeEventTaxonomyTermsForSelectedType(current),
+    );
+    unawaited(_loadTermsForSelectedEventType());
   }
 
   void updateEventPublicationStatus(String status) {
@@ -651,6 +659,9 @@ class TenantAdminEventsController implements Disposable {
     required bool isSelected,
   }) {
     final current = eventFormStateStreamValue.value;
+    if (!_isTaxonomyAllowedForSelectedEventType(taxonomySlug, current)) {
+      return;
+    }
     final next = <String, Set<String>>{
       for (final entry in current.selectedTaxonomyTerms.entries)
         entry.key: {...entry.value},
@@ -828,24 +839,113 @@ class TenantAdminEventsController implements Disposable {
   void hydrateDefaultEventType(List<TenantAdminEventType> eventTypes) {
     final current = eventFormStateStreamValue.value;
     if (eventTypes.isEmpty) {
-      final selectedTypeSlug = current.selectedTypeSlug?.trim();
-      if (selectedTypeSlug == null || selectedTypeSlug.isEmpty) {
-        return;
-      }
-      _replaceEventFormState(
-        current.copyWith(selectedTypeSlug: null),
-      );
       return;
     }
     final selectedTypeSlug = current.selectedTypeSlug?.trim();
     if (selectedTypeSlug != null &&
         selectedTypeSlug.isNotEmpty &&
         eventTypes.any((type) => type.slug.trim() == selectedTypeSlug)) {
+      final sanitized = _sanitizeEventTaxonomyTermsForSelectedType(current);
+      if (!identical(sanitized, current)) {
+        _replaceEventFormState(sanitized);
+      }
+      unawaited(_loadTermsForSelectedEventType());
       return;
     }
     _replaceEventFormState(
-      current.copyWith(selectedTypeSlug: eventTypes.first.slug.trim()),
+      _sanitizeEventTaxonomyTermsForSelectedType(
+        current.copyWith(selectedTypeSlug: eventTypes.first.slug.trim()),
+      ),
     );
+    unawaited(_loadTermsForSelectedEventType());
+  }
+
+  TenantAdminEventFormState _sanitizeEventTaxonomyTermsForSelectedType(
+    TenantAdminEventFormState state,
+  ) {
+    final allowedTaxonomies = _allowedTaxonomiesForEventType(
+      state.selectedTypeSlug,
+    );
+    if (allowedTaxonomies.isEmpty) {
+      if (state.selectedTaxonomyTerms.isEmpty) {
+        return state;
+      }
+      return state
+          .copyWith(selectedTaxonomyTerms: const <String, Set<String>>{});
+    }
+
+    final sanitized = <String, Set<String>>{};
+    for (final entry in state.selectedTaxonomyTerms.entries) {
+      final taxonomySlug = entry.key.trim();
+      if (!allowedTaxonomies.contains(taxonomySlug)) {
+        continue;
+      }
+      final values = entry.value
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet();
+      if (values.isNotEmpty) {
+        sanitized[taxonomySlug] = values;
+      }
+    }
+
+    if (_taxonomyTermMapsEqual(state.selectedTaxonomyTerms, sanitized)) {
+      return state;
+    }
+    return state.copyWith(
+      selectedTaxonomyTerms: Map<String, Set<String>>.unmodifiable(
+        sanitized.map(
+          (key, value) => MapEntry(key, Set<String>.unmodifiable(value)),
+        ),
+      ),
+    );
+  }
+
+  bool _isTaxonomyAllowedForSelectedEventType(
+    String taxonomySlug,
+    TenantAdminEventFormState state,
+  ) {
+    final normalized = taxonomySlug.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+    return _allowedTaxonomiesForEventType(state.selectedTypeSlug)
+        .contains(normalized);
+  }
+
+  Set<String> _allowedTaxonomiesForEventType(String? typeSlug) {
+    final normalizedTypeSlug = typeSlug?.trim();
+    if (normalizedTypeSlug == null || normalizedTypeSlug.isEmpty) {
+      return const <String>{};
+    }
+    for (final type in eventTypeCatalogStreamValue.value) {
+      if (type.slug.trim() != normalizedTypeSlug) {
+        continue;
+      }
+      return type.allowedTaxonomies.value
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet();
+    }
+    return const <String>{};
+  }
+
+  bool _taxonomyTermMapsEqual(
+    Map<String, Set<String>> left,
+    Map<String, Set<String>> right,
+  ) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      final rightValues = right[entry.key];
+      if (rightValues == null ||
+          rightValues.length != entry.value.length ||
+          !rightValues.containsAll(entry.value)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void initEventTypeForm({
@@ -1055,6 +1155,9 @@ class TenantAdminEventsController implements Disposable {
     ];
 
     await Future.wait<void>(tasks);
+    if (!_isDisposed) {
+      await _loadTermsForSelectedEventType();
+    }
   }
 
   Future<void> _loadEventTypeCatalog() async {
@@ -1096,29 +1199,10 @@ class TenantAdminEventsController implements Disposable {
       }
       taxonomiesStreamValue.addValue(filtered);
       _sanitizeEventTypeAllowedTaxonomies();
-
-      final entries =
-          <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
-      for (final taxonomy in filtered) {
-        await _taxonomiesRepository.loadAllTerms(
-            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
-                defaultValue: '', isRequired: true));
-        final terms = _taxonomiesRepository.termsStreamValue.value ??
-            const <TenantAdminTaxonomyTermDefinition>[];
-        entries.add(
-          MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
-            taxonomy.slug,
-            terms,
-          ),
-        );
-      }
-
-      if (_isDisposed) {
-        return;
-      }
-      taxonomyTermsBySlugStreamValue.addValue({
-        for (final entry in entries) entry.key: entry.value,
-      });
+      _taxonomyTermsCacheBySlug.clear();
+      _loadedTaxonomyTermsKey = null;
+      _loadingTaxonomyTermsKey = null;
+      taxonomyTermsBySlugStreamValue.addValue(const {});
       taxonomyErrorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) {
@@ -1129,6 +1213,112 @@ class TenantAdminEventsController implements Disposable {
       taxonomyErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
+        taxonomyLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> _loadTermsForSelectedEventType() async {
+    final allowedTaxonomySlugs = _allowedTaxonomiesForEventType(
+      eventFormStateStreamValue.value.selectedTypeSlug,
+    );
+    final sortedAllowedSlugs = allowedTaxonomySlugs.toList(growable: false)
+      ..sort();
+    final cacheKey = sortedAllowedSlugs.join('|');
+
+    if (sortedAllowedSlugs.isEmpty) {
+      _loadedTaxonomyTermsKey = cacheKey;
+      _loadingTaxonomyTermsKey = null;
+      taxonomyTermsBySlugStreamValue.addValue(const {});
+      taxonomyErrorStreamValue.addValue(null);
+      return;
+    }
+    if (_loadedTaxonomyTermsKey == cacheKey ||
+        _loadingTaxonomyTermsKey == cacheKey) {
+      return;
+    }
+
+    final taxonomyBySlug = {
+      for (final taxonomy in taxonomiesStreamValue.value)
+        taxonomy.slug: taxonomy
+    };
+    if (taxonomyBySlug.isEmpty) {
+      taxonomyTermsBySlugStreamValue.addValue(const {});
+      return;
+    }
+    final missingDefinitions = <TenantAdminTaxonomyDefinition>[];
+    final scopedTerms = <String, List<TenantAdminTaxonomyTermDefinition>>{};
+    for (final taxonomySlug in sortedAllowedSlugs) {
+      final cachedTerms = _taxonomyTermsCacheBySlug[taxonomySlug];
+      if (cachedTerms != null) {
+        scopedTerms[taxonomySlug] = cachedTerms;
+        continue;
+      }
+      final definition = taxonomyBySlug[taxonomySlug];
+      if (definition != null && definition.id.trim().isNotEmpty) {
+        missingDefinitions.add(definition);
+      }
+    }
+
+    if (missingDefinitions.isEmpty) {
+      _loadedTaxonomyTermsKey = cacheKey;
+      taxonomyTermsBySlugStreamValue.addValue(Map.unmodifiable(scopedTerms));
+      taxonomyErrorStreamValue.addValue(null);
+      return;
+    }
+
+    final loadSerial = ++_taxonomyTermsLoadSerial;
+    _loadingTaxonomyTermsKey = cacheKey;
+    taxonomyLoadingStreamValue.addValue(true);
+    try {
+      if (_taxonomiesRepository
+          is! TenantAdminTaxonomiesBatchTermsRepositoryContract) {
+        throw StateError(
+          'Tenant admin taxonomies repository must support batch term loading.',
+        );
+      }
+      final batchRepository = _taxonomiesRepository
+          as TenantAdminTaxonomiesBatchTermsRepositoryContract;
+      final fetchedById = await batchRepository.fetchTermsByTaxonomyIds(
+        taxonomyIds: missingDefinitions
+            .map(
+              (taxonomy) => TenantAdminTaxRepoString.fromRaw(
+                taxonomy.id,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .toList(growable: false),
+      );
+      if (_isDisposed || loadSerial != _taxonomyTermsLoadSerial) {
+        return;
+      }
+      for (final taxonomy in missingDefinitions) {
+        final terms = fetchedById.termsForId(tenantAdminRequiredText(
+          taxonomy.id,
+        ));
+        _taxonomyTermsCacheBySlug[taxonomy.slug] =
+            List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
+        scopedTerms[taxonomy.slug] = _taxonomyTermsCacheBySlug[taxonomy.slug]!;
+      }
+      for (final taxonomySlug in sortedAllowedSlugs) {
+        final cachedTerms = _taxonomyTermsCacheBySlug[taxonomySlug];
+        if (cachedTerms != null) {
+          scopedTerms[taxonomySlug] = cachedTerms;
+        }
+      }
+      _loadedTaxonomyTermsKey = cacheKey;
+      taxonomyTermsBySlugStreamValue.addValue(Map.unmodifiable(scopedTerms));
+      taxonomyErrorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed || loadSerial != _taxonomyTermsLoadSerial) {
+        return;
+      }
+      taxonomyTermsBySlugStreamValue.addValue(const {});
+      taxonomyErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed && loadSerial == _taxonomyTermsLoadSerial) {
+        _loadingTaxonomyTermsKey = null;
         taxonomyLoadingStreamValue.addValue(false);
       }
     }
@@ -1596,6 +1786,10 @@ class TenantAdminEventsController implements Disposable {
     eventDetailErrorStreamValue.addValue(null);
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
+    _taxonomyTermsCacheBySlug.clear();
+    _loadedTaxonomyTermsKey = null;
+    _loadingTaxonomyTermsKey = null;
+    _taxonomyTermsLoadSerial += 1;
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
     eventTypeAllowedTaxonomiesStreamValue.addValue(const []);

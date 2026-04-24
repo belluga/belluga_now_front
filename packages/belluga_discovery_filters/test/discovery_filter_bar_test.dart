@@ -74,7 +74,7 @@ void main() {
     expect(find.text('Rock'), findsOneWidget);
   });
 
-  testWidgets('renders taxonomy groups from full catalog before primary select',
+  testWidgets('does not render taxonomy groups before any primary is selected',
       (tester) async {
     DiscoveryFilterSelection? changedSelection;
 
@@ -96,29 +96,19 @@ void main() {
 
     expect(
       find.byKey(const ValueKey<String>('discoveryFilterTaxonomyDivider')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(
           const ValueKey<String>('discoveryFilterTaxonomyTitle_music_styles')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey<String>(
           'discoveryFilterTaxonomyChip_music_styles_rock')),
-      findsOneWidget,
+      findsNothing,
     );
-
-    await tester.tap(
-      find.byKey(const ValueKey<String>(
-          'discoveryFilterTaxonomyChip_music_styles_rock')),
-    );
-
-    expect(changedSelection?.primaryKeys, isEmpty);
-    expect(
-      changedSelection?.taxonomyTermKeys['music_styles'],
-      <String>{'rock'},
-    );
+    expect(changedSelection, isNull);
   });
 
   testWidgets(
@@ -310,7 +300,8 @@ void main() {
 
     expect(
       find.byKey(
-        const ValueKey<String>('discoveryFilterSelectedPrimarySemantics_events'),
+        const ValueKey<String>(
+            'discoveryFilterSelectedPrimarySemantics_events'),
       ),
       findsOneWidget,
     );

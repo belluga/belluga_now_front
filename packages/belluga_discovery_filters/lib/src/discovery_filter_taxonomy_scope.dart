@@ -6,7 +6,7 @@ Set<String> resolveDiscoveryFilterAllowedTaxonomyKeys({
   required DiscoveryFilterSelection selection,
 }) {
   if (selection.primaryKeys.isEmpty) {
-    return catalog.taxonomyOptionsByKey.keys.toSet();
+    return const <String>{};
   }
 
   final allowed = <String>{};
@@ -35,8 +35,7 @@ Set<String> resolveDiscoveryFilterAllowedTaxonomyKeys({
       }
       final selectedTypes = item.typesByEntity[entityKey] ?? item.types;
       for (final option in catalog.typeOptionsByEntity[entityKey] ?? const []) {
-        if (selectedTypes.isNotEmpty &&
-            !selectedTypes.contains(option.value)) {
+        if (selectedTypes.isNotEmpty && !selectedTypes.contains(option.value)) {
           continue;
         }
         appendAll(option.allowedTaxonomyKeys);
@@ -52,9 +51,7 @@ bool hasVisibleDiscoveryFilterTaxonomyGroups({
   required DiscoveryFilterSelection selection,
 }) {
   if (selection.primaryKeys.isEmpty) {
-    return catalog.taxonomyOptionsByKey.values.any(
-      (option) => option.terms.isNotEmpty,
-    );
+    return false;
   }
 
   final allowedKeys = resolveDiscoveryFilterAllowedTaxonomyKeys(

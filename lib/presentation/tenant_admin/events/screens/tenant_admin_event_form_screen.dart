@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/rich_text/tenant_admin_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
@@ -279,12 +280,16 @@ class _TenantAdminEventFormScreenState
                                                                           venues,
                                                                     ),
                                                                   ],
-                                                                  const SizedBox(
-                                                                    height: 16,
-                                                                  ),
-                                                                  _buildTaxonomySection(
+                                                                  ..._buildTaxonomySectionEntries(
                                                                     taxonomies:
-                                                                        taxonomies,
+                                                                        _allowedTaxonomyDefinitions(
+                                                                      taxonomies:
+                                                                          taxonomies,
+                                                                      eventTypes:
+                                                                          eventTypes,
+                                                                      formState:
+                                                                          formState,
+                                                                    ),
                                                                     termsBySlug:
                                                                         termsBySlug,
                                                                     formState:
@@ -367,7 +372,9 @@ class _TenantAdminEventFormScreenState
             controller: _controller.eventContentController,
             label: 'Descrição (opcional)',
             placeholder: 'Escreva a descrição do evento',
-            minHeight: 180,
+            minHeight: 280,
+            maxContentBytes: tenantAdminRichTextMaxBytes,
+            warningThreshold: tenantAdminRichTextWarningThreshold,
           ),
         ],
       ),
@@ -1199,13 +1206,9 @@ class _TenantAdminEventFormScreenState
     required Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug,
     required TenantAdminEventFormState formState,
   }) {
-    if (taxonomies.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     return TenantAdminFormSectionCard(
       title: 'Taxonomias',
-      description: 'Termos com applies_to=event.',
+      description: 'Termos permitidos para o tipo de evento selecionado.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: taxonomies.map((taxonomy) {
@@ -1245,6 +1248,32 @@ class _TenantAdminEventFormScreenState
         }).toList(growable: false),
       ),
     );
+  }
+
+  List<Widget> _buildTaxonomySectionEntries({
+    required List<TenantAdminTaxonomyDefinition> taxonomies,
+    required Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug,
+    required TenantAdminEventFormState formState,
+  }) {
+    final visibleTaxonomies = taxonomies
+        .where(
+          (taxonomy) => (termsBySlug[taxonomy.slug] ??
+                  const <TenantAdminTaxonomyTermDefinition>[])
+              .isNotEmpty,
+        )
+        .toList(growable: false);
+    if (visibleTaxonomies.isEmpty) {
+      return const <Widget>[];
+    }
+
+    return <Widget>[
+      const SizedBox(height: 16),
+      _buildTaxonomySection(
+        taxonomies: visibleTaxonomies,
+        termsBySlug: termsBySlug,
+        formState: formState,
+      ),
+    ];
   }
 
   Future<void> _openOccurrenceEditor({
@@ -2715,7 +2744,14 @@ class _TenantAdminEventFormScreenState
         .toList(growable: false);
 
     final taxonomyTerms = <TenantAdminTaxonomyTerm>[];
+    final allowedTaxonomySlugs = _allowedTaxonomySlugsForSelectedType(
+      eventTypes: eventTypes,
+      formState: formState,
+    );
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
+      if (!allowedTaxonomySlugs.contains(taxonomySlug.trim())) {
+        return;
+      }
       for (final termSlug in termSlugs) {
         taxonomyTerms.add(
           tenantAdminTaxonomyTermFromRaw(type: taxonomySlug, value: termSlug),
@@ -2867,6 +2903,43 @@ class _TenantAdminEventFormScreenState
       return null;
     }
     return TimezoneConverter.utcToLocal(value);
+  }
+
+  Set<String> _allowedTaxonomySlugsForSelectedType({
+    required List<TenantAdminEventType> eventTypes,
+    required TenantAdminEventFormState formState,
+  }) {
+    final selectedTypeSlug = formState.selectedTypeSlug?.trim();
+    if (selectedTypeSlug == null || selectedTypeSlug.isEmpty) {
+      return const <String>{};
+    }
+    final selectedType = eventTypes.firstWhereOrNull(
+      (type) => type.slug.trim() == selectedTypeSlug,
+    );
+    if (selectedType == null) {
+      return const <String>{};
+    }
+    return selectedType.allowedTaxonomies.value
+        .map((slug) => slug.trim())
+        .where((slug) => slug.isNotEmpty)
+        .toSet();
+  }
+
+  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions({
+    required List<TenantAdminTaxonomyDefinition> taxonomies,
+    required List<TenantAdminEventType> eventTypes,
+    required TenantAdminEventFormState formState,
+  }) {
+    final allowed = _allowedTaxonomySlugsForSelectedType(
+      eventTypes: eventTypes,
+      formState: formState,
+    );
+    if (allowed.isEmpty) {
+      return const <TenantAdminTaxonomyDefinition>[];
+    }
+    return taxonomies
+        .where((taxonomy) => allowed.contains(taxonomy.slug.trim()))
+        .toList(growable: false);
   }
 }
 

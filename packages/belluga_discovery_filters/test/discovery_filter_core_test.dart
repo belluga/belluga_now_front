@@ -177,8 +177,7 @@ void main() {
     expect(selection.activeCount, 3);
   });
 
-  test('repair preserves taxonomy selections from catalog without primary type',
-      () {
+  test('repair drops taxonomy selections when no primary is selected', () {
     const policy = DiscoveryFilterPolicy(
       primarySelectionMode: DiscoveryFilterSelectionMode.single,
       taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
@@ -218,11 +217,13 @@ void main() {
       policy: policy,
     );
 
+    expect(result.changed, isTrue);
     expect(result.selection.primaryKeys, isEmpty);
-    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
-      'music_styles': <String>{'rock'},
-    });
-    expect(result.droppedTaxonomyTerms['music_styles'], <String>{'pagode'});
+    expect(result.selection.taxonomyTermKeys, isEmpty);
+    expect(
+      result.droppedTaxonomyTerms['music_styles'],
+      <String>{'rock', 'pagode'},
+    );
   });
 
   test('repair derives taxonomy allowance from selected type option catalog',
@@ -459,6 +460,43 @@ void main() {
         <String, String>{'type': 'music_styles', 'value': 'jazz'},
       },
     );
+  });
+
+  test('compile ignores taxonomy-only selections when no primary is selected',
+      () {
+    final catalog = DiscoveryFilterCatalog.fromJson(
+      <String, Object?>{
+        'surface': 'home.events',
+        'filters': <Object?>[
+          <String, Object?>{
+            'key': 'events',
+            'label': 'Eventos',
+            'target': 'event_occurrence',
+            'query': <String, Object?>{
+              'entities': <String>['event'],
+              'types_by_entity': <String, Object?>{
+                'event': <String>['show'],
+              },
+            },
+          },
+        ],
+      },
+    );
+
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: catalog,
+      selection: const DiscoveryFilterSelection(
+        taxonomyTermKeys: <String, Set<String>>{
+          'music_styles': <String>{'rock'},
+        },
+      ),
+    );
+
+    expect(payload.entities, isEmpty);
+    expect(payload.typesByEntity, isEmpty);
+    expect(payload.taxonomyTermsByGroup, isEmpty);
+    expect(payload.taxonomyEntries, isEmpty);
+    expect(payload.isEmpty, isTrue);
   });
 }
 

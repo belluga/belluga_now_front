@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_taxonomies_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomies_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
@@ -13,7 +15,9 @@ import 'package:get_it/get_it.dart';
 
 class TenantAdminTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
+    implements
+        TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesBatchTermsRepositoryContract {
   TenantAdminTaxonomiesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
@@ -192,6 +196,46 @@ class TenantAdminTaxonomiesRepository
     }
 
     return List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+  }) async {
+    final ids = taxonomyIds
+        .map((taxonomyId) => taxonomyId.value.trim())
+        .where((taxonomyId) => taxonomyId.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (ids.isEmpty) {
+      return const TenantAdminTaxonomyTermsByTaxonomyId.empty();
+    }
+
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/taxonomies/terms',
+        queryParameters: {'taxonomy_ids': ids},
+        options: Options(
+          headers: _buildHeaders(),
+          listFormat: ListFormat.multiCompatible,
+        ),
+      );
+      final decoded = _responseDecoder.decodeTermsByTaxonomyId(response.data);
+      return TenantAdminTaxonomyTermsByTaxonomyId(
+        entries: decoded.entries
+            .map(
+              (entry) => TenantAdminTaxonomyTermsForTaxonomyId(
+                taxonomyIdValue: tenantAdminRequiredText(entry.key),
+                terms: entry.value
+                    .map((term) => term.toDomain())
+                    .toList(growable: false),
+              ),
+            )
+            .toList(growable: false),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load taxonomy terms batch');
+    }
   }
 
   @override

@@ -824,7 +824,7 @@ void main() {
     );
 
     test(
-      'home agenda canonical filter keeps one primary type and accepts taxonomy-only selection',
+      'home agenda canonical filter keeps one primary type and drops taxonomy-only selection without a primary',
       () async {
         final scheduleRepository = _FakeScheduleRepository();
         final controller = _buildAgendaController(
@@ -861,7 +861,7 @@ void main() {
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
             <String>{'shows'});
         expect(scheduleRepository.lastCategories, ['show']);
-        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+        expect(scheduleRepository.lastTaxonomy, isNull);
 
         controller.setDiscoveryFilterSelection(
           const DiscoveryFilterSelection(
@@ -875,7 +875,7 @@ void main() {
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
             isEmpty);
         expect(scheduleRepository.lastCategories, isNull);
-        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+        expect(scheduleRepository.lastTaxonomy, isNull);
 
         controller.onDispose();
       },

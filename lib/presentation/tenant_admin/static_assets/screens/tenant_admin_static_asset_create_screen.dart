@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/rich_text/tenant_admin_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -549,6 +550,8 @@ class _TenantAdminStaticAssetCreateScreenState
                 label: 'Bio',
                 placeholder: 'Escreva a bio do ativo',
                 minHeight: 150,
+                maxContentBytes: tenantAdminRichTextMaxBytes,
+                warningThreshold: tenantAdminRichTextWarningThreshold,
               ),
             ],
             if (hasContent) ...[
@@ -558,6 +561,8 @@ class _TenantAdminStaticAssetCreateScreenState
                 label: 'Conteudo',
                 placeholder: 'Escreva o conteudo detalhado do ativo',
                 minHeight: 220,
+                maxContentBytes: tenantAdminRichTextMaxBytes,
+                warningThreshold: tenantAdminRichTextWarningThreshold,
               ),
             ],
           ],

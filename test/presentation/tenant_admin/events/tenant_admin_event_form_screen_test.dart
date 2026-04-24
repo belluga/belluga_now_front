@@ -11,7 +11,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_partie
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -43,11 +46,14 @@ void main() {
     );
 
     eventsRepository.eventTypes = [
-      TenantAdminEventType(
+      TenantAdminEventType.withAllowedTaxonomies(
         idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
         nameValue: tenantAdminRequiredText('Feira'),
         slugValue: tenantAdminRequiredText('feira'),
         descriptionValue: tenantAdminOptionalText('Tipo default do teste'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+          const ['music_genre'],
+        ),
       ),
     ];
 
@@ -87,6 +93,344 @@ void main() {
       isTrue,
     );
     expect(draft.occurrences.first.dateTimeStart.isUtc, isTrue);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
+      ['tax-1'],
+    ]);
+  });
+
+  testWidgets(
+      'filters event taxonomy UI and submit payload by selected event type',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439031'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        const ['music_genre'],
+      ),
+    );
+
+    eventsRepository.eventTypes = [eventType];
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-taxonomy-filter'),
+      slugValue: tenantAdminRequiredText('evt-taxonomy-filter'),
+      titleValue: tenantAdminRequiredText('Evento com taxonomia legada'),
+      contentValue: tenantAdminOptionalText('<p>Conteúdo</p>'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+      taxonomyTerms: _tenantAdminTaxonomyTerms([
+        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+        tenantAdminTaxonomyTermFromRaw(type: 'cuisine', value: 'italian'),
+      ]),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Rock'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Music Genre'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text('Cuisine'), findsNothing);
+    expect(find.text('Italian'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Salvar alterações'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    final submittedTerms = eventsRepository.lastUpdateDraft?.taxonomyTerms
+        .map((term) => '${term.type}:${term.value}')
+        .toList(growable: false);
+    expect(submittedTerms, ['music_genre:rock']);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
+      ['tax-1'],
+    ]);
+  });
+
+  testWidgets('reloads taxonomy terms in one batch when event type changes',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final feiraType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439033'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        const ['music_genre'],
+      ),
+    );
+    final restauranteType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439034'),
+      nameValue: tenantAdminRequiredText('Restaurante'),
+      slugValue: tenantAdminRequiredText('restaurante'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        const ['cuisine'],
+      ),
+    );
+
+    eventsRepository.eventTypes = [feiraType, restauranteType];
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-taxonomy-type-change'),
+      slugValue: tenantAdminRequiredText('evt-taxonomy-type-change'),
+      titleValue: tenantAdminRequiredText('Evento com troca de tipo'),
+      contentValue: tenantAdminOptionalText('<p>Conteúdo</p>'),
+      type: feiraType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+      taxonomyTerms: _tenantAdminTaxonomyTerms([
+        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+      ]),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Rock'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Music Genre'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text('Cuisine'), findsNothing);
+    expect(find.text('Italian'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byType(DropdownButtonFormField<String>).first,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restaurante').last);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Italian'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Music Genre'), findsNothing);
+    expect(find.text('Rock'), findsNothing);
+    expect(find.text('Cuisine'), findsOneWidget);
+    expect(find.text('Italian'), findsOneWidget);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
+      ['tax-1'],
+      ['tax-2'],
+    ]);
+  });
+
+  testWidgets('hides taxonomy section when selected event type allows none',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439032'),
+      nameValue: tenantAdminRequiredText('Karaoke'),
+      slugValue: tenantAdminRequiredText('karaoke'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(const []),
+    );
+
+    eventsRepository.eventTypes = [eventType];
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-karaoke'),
+      slugValue: tenantAdminRequiredText('evt-karaoke'),
+      titleValue: tenantAdminRequiredText('Evento Karaoke'),
+      contentValue: tenantAdminOptionalText('<p>Conteúdo</p>'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+      taxonomyTerms: _tenantAdminTaxonomyTerms([
+        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+        tenantAdminTaxonomyTermFromRaw(type: 'cuisine', value: 'italian'),
+      ]),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    expect(find.text('Taxonomias'), findsNothing);
+    expect(find.text('Music Genre'), findsNothing);
+    expect(find.text('Rock'), findsNothing);
+    expect(find.text('Cuisine'), findsNothing);
+    expect(find.text('Italian'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Salvar alterações'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(eventsRepository.lastUpdateDraft?.taxonomyTerms.isEmpty, isTrue);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, isEmpty);
+  });
+
+  testWidgets('does not render allowed taxonomy groups with no terms',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439035'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        const ['music_genre', 'empty_topic'],
+      ),
+    );
+
+    eventsRepository.eventTypes = [eventType];
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-empty-taxonomy'),
+      slugValue: tenantAdminRequiredText('evt-empty-taxonomy'),
+      titleValue: tenantAdminRequiredText('Evento com taxonomia vazia'),
+      contentValue: tenantAdminOptionalText('<p>Conteúdo</p>'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Rock'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Music Genre'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text('Empty Topic'), findsNothing);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
+      ['tax-empty', 'tax-1'],
+    ]);
   });
 
   testWidgets('guards against duplicate create submit taps', (tester) async {
@@ -1514,6 +1858,11 @@ void main() {
 
     expect(find.byType(TenantAdminRichTextEditor), findsOneWidget);
     expect(find.text('Descrição (opcional)'), findsOneWidget);
+    expect(
+      find.text('Limite: 100 KB por campo. O backend valida o envio final.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/ 100 KB'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Descrição (opcional)'),
         findsNothing);
   });
@@ -1651,6 +2000,16 @@ Future<void> _fillRequiredFields(
     'https://example.com/live',
   );
   await tester.pumpAndSettle();
+}
+
+TenantAdminTaxonomyTerms _tenantAdminTaxonomyTerms(
+  Iterable<TenantAdminTaxonomyTerm> items,
+) {
+  final terms = TenantAdminTaxonomyTerms();
+  for (final item in items) {
+    terms.add(item);
+  }
+  return terms;
 }
 
 class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
@@ -1821,7 +2180,12 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
+    implements
+        TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  int fetchTermsCalls = 0;
+  final List<List<String>> batchFetchTaxonomyIds = <List<String>>[];
+
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required TenantAdminTaxRepoString slug,
@@ -1866,6 +2230,22 @@ class _FakeTaxonomiesRepository
         icon: null,
         color: null,
       ),
+      tenantAdminTaxonomyDefinitionFromRaw(
+        id: 'tax-2',
+        slug: 'cuisine',
+        name: 'Cuisine',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
+      tenantAdminTaxonomyDefinitionFromRaw(
+        id: 'tax-empty',
+        slug: 'empty_topic',
+        name: 'Empty Topic',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
     ];
   }
 
@@ -1886,6 +2266,46 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
   }) async {
+    fetchTermsCalls += 1;
+    return _termsForTaxonomyId(taxonomyId.value);
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+  }) async {
+    final ids = taxonomyIds
+        .map((taxonomyId) => taxonomyId.value)
+        .toList(growable: false);
+    batchFetchTaxonomyIds.add(ids);
+    return TenantAdminTaxonomyTermsByTaxonomyId(
+      entries: ids
+          .map(
+            (taxonomyId) => TenantAdminTaxonomyTermsForTaxonomyId(
+              taxonomyIdValue: tenantAdminRequiredText(taxonomyId),
+              terms: _termsForTaxonomyId(taxonomyId),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  List<TenantAdminTaxonomyTermDefinition> _termsForTaxonomyId(
+    String taxonomyId,
+  ) {
+    if (taxonomyId == 'tax-empty') {
+      return const <TenantAdminTaxonomyTermDefinition>[];
+    }
+    if (taxonomyId == 'tax-2') {
+      return [
+        tenantAdminTaxonomyTermDefinitionFromRaw(
+          id: 'term-2',
+          taxonomyId: 'tax-2',
+          slug: 'italian',
+          name: 'Italian',
+        ),
+      ];
+    }
     return [
       tenantAdminTaxonomyTermDefinitionFromRaw(
         id: 'term-1',

@@ -149,12 +149,12 @@ class DiscoveryFilterBar extends StatelessWidget {
     final selectedFilters = filters
         .where((item) => selection.primaryKeys.contains(item.key))
         .toList(growable: false);
+    if (selectedFilters.isEmpty) {
+      return const <_ResolvedTaxonomyGroup>[];
+    }
 
     final orderedKeys = <String>[];
     final configs = <String, DiscoveryFilterTaxonomyConfig>{};
-    if (selectedFilters.isEmpty) {
-      orderedKeys.addAll(catalog.taxonomyOptionsByKey.keys);
-    }
     for (final item in selectedFilters) {
       for (final entry in item.taxonomyConfigs.entries) {
         configs[entry.key] = entry.value;
@@ -195,12 +195,10 @@ class DiscoveryFilterBar extends StatelessWidget {
     final primary = selection.primaryKeys.toList(growable: false)..sort();
     final taxonomy = selection.taxonomyTermKeys.entries.toList(growable: false)
       ..sort((left, right) => left.key.compareTo(right.key));
-    final taxonomySegments = taxonomy
-        .map((entry) {
-          final values = entry.value.toList(growable: false)..sort();
-          return '${entry.key}:${values.join(",")}';
-        })
-        .join('|');
+    final taxonomySegments = taxonomy.map((entry) {
+      final values = entry.value.toList(growable: false)..sort();
+      return '${entry.key}:${values.join(",")}';
+    }).join('|');
     return '${primary.join(",")}__$taxonomySegments';
   }
 }

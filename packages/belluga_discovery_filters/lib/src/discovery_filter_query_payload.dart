@@ -17,6 +17,9 @@ class DiscoveryFilterQueryPayload {
     final selectedItems = catalog.filters
         .where((item) => selection.primaryKeys.contains(item.key))
         .toList(growable: false);
+    if (selectedItems.isEmpty) {
+      return const DiscoveryFilterQueryPayload();
+    }
     final entities = <String>{};
     final typesByEntity = <String, Set<String>>{};
     final taxonomyTermsByGroup = <String, Set<String>>{};

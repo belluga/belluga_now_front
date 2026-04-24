@@ -1,2 +1,5 @@
-const int accountProfileRichTextMaxBytes = 100 * 1024;
-const double accountProfileRichTextWarningThreshold = 0.90;
+import 'tenant_admin_rich_text_limits.dart';
+
+const int accountProfileRichTextMaxBytes = tenantAdminRichTextMaxBytes;
+const double accountProfileRichTextWarningThreshold =
+    tenantAdminRichTextWarningThreshold;

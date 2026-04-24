@@ -18,7 +18,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_edit_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -160,6 +162,65 @@ void main() {
     expect(find.byType(TenantAdminImageUploadField), findsNWidgets(2));
   });
 
+  testWidgets('shows 100 KB guidance for static asset bio and content',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(),
+      profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(false),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(true),
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    expect(find.byType(TenantAdminRichTextEditor), findsNWidgets(2));
+    expect(
+      find.text('Limite: 100 KB por campo. O backend valida o envio final.'),
+      findsNWidgets(2),
+    );
+    expect(find.textContaining('/ 100 KB'), findsNWidgets(2));
+  });
+
+  testWidgets('shows 100 KB guidance on static asset create after type select',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(),
+      profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasTaxonomies: TenantAdminFlagValue(false),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(true),
+      ),
+    );
+    await _pumpCreateScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('POI').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TenantAdminRichTextEditor), findsNWidgets(2));
+    expect(
+      find.text('Limite: 100 KB por campo. O backend valida o envio final.'),
+      findsNWidgets(2),
+    );
+    expect(find.textContaining('/ 100 KB'), findsNWidgets(2));
+  });
+
   testWidgets('sends explicit remove avatar flag when clearing persisted media',
       (tester) async {
     final assetsRepository = _FakeStaticAssetsRepository(
@@ -235,11 +296,45 @@ Future<void> _pumpScreen(
   await tester.pumpAndSettle();
 }
 
-RootStackRouter _buildTestRouter(Widget child) {
+Future<void> _pumpCreateScreen(
+  WidgetTester tester, {
+  required _FakeStaticAssetsRepository assetsRepository,
+  required _FakeTaxonomiesRepository taxonomiesRepository,
+}) async {
+  final controller = TenantAdminStaticAssetsController(
+    repository: assetsRepository,
+    taxonomiesRepository: taxonomiesRepository,
+    locationSelection: TenantAdminLocationSelectionService(),
+  );
+  GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
+  GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
+    _FakeExternalImageProxy(),
+  );
+  GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+    TenantAdminImageIngestionService(),
+  );
+  final router = _buildTestRouter(
+    const TenantAdminStaticAssetCreateScreen(),
+    routeName: TenantAdminStaticAssetCreateRoute.name,
+  );
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+RootStackRouter _buildTestRouter(
+  Widget child, {
+  String routeName = TenantAdminStaticAssetEditRoute.name,
+}) {
   return RootStackRouter.build(
     routes: [
       NamedRouteDef(
-        name: TenantAdminStaticAssetEditRoute.name,
+        name: routeName,
         path: '/',
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.tenantAdminAssetsInternal,

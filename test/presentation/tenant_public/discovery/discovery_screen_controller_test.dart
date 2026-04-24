@@ -862,12 +862,14 @@ void main() {
       find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
       findsOneWidget,
     );
-    expect(find.text('Cozinha'), findsOneWidget);
+    expect(find.text('Cozinha'), findsNothing);
 
     await tester.tap(
       find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('Cozinha'), findsNothing);
     expect(
       find.byKey(const ValueKey<String>('discovery-filter-badge')),
       findsOneWidget,
@@ -1309,7 +1311,7 @@ void main() {
   });
 
   test(
-      'discovery canonical filters keep one primary type and accept taxonomy-only selection',
+      'discovery canonical filters keep one primary type and drop taxonomy-only selection without a primary',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -1347,7 +1349,7 @@ void main() {
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
         <String>{'venues'});
     expect(repository.pageRequests.last.typeFilters, ['venue']);
-    expect(repository.pageRequests.last.taxonomyFilters, ['cuisine:japanese']);
+    expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
 
     controller.setDiscoveryFilterSelection(
       const DiscoveryFilterSelection(
@@ -1361,7 +1363,7 @@ void main() {
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
         isEmpty);
     expect(repository.pageRequests.last.typeFilters, isEmpty);
-    expect(repository.pageRequests.last.taxonomyFilters, ['cuisine:japanese']);
+    expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
     controller.onDispose();
   });
 
