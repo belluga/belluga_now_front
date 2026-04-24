@@ -504,6 +504,104 @@ void main() {
     },
   );
 
+  test(
+    'hydrateFormDefinition loads off-page profile type definitions with persisted allowed taxonomies',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        List<TenantAdminProfileTypeDefinition>.generate(
+          24,
+          (index) => tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'type-$index',
+            label: 'Type $index',
+            allowedTaxonomies: index == 23 ? ['music_genre'] : [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(false),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(index == 23),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ),
+      );
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+        taxonomiesRepository: _FakeTaxonomiesRepository([
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-music',
+            slug: 'music_genre',
+            name: 'Music Genre',
+            appliesTo: ['account_profile'],
+            icon: null,
+            color: null,
+          ),
+        ]),
+      );
+
+      await controller.loadTypes();
+      expect(controller.typesStreamValue.value?.length, 20);
+
+      await controller.hydrateFormDefinition('type-23');
+      await controller.loadAvailableTaxonomies();
+
+      expect(controller.typeController.text, 'type-23');
+      expect(
+        controller.selectedAllowedTaxonomiesStreamValue.value,
+        ['music_genre'],
+      );
+    },
+  );
+
+  test(
+    'loadAvailableTaxonomies reapplies persisted allowed taxonomies when edit state was cleared before catalog hydration',
+    () async {
+      final repository = _FakeAccountProfilesRepository(const []);
+      final taxonomiesRepository = _FakeTaxonomiesRepository([
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: '1',
+          slug: 'music_genre',
+          name: 'Music Genre',
+          appliesTo: ['account_profile'],
+          icon: null,
+          color: null,
+        ),
+      ]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      controller.initForm(
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: ['music_genre'],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
+          ),
+        ),
+      );
+      controller.setAllowedTaxonomies(const []);
+
+      await controller.loadAvailableTaxonomies();
+
+      expect(
+        controller.selectedAllowedTaxonomiesStreamValue.value,
+        ['music_genre'],
+      );
+    },
+  );
+
   test('ignores non-listed taxonomy slug when toggling selection', () async {
     final repository = _FakeAccountProfilesRepository([]);
     final taxonomiesRepository = _FakeTaxonomiesRepository([

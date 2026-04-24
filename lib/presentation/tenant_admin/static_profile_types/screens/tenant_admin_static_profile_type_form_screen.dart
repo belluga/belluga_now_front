@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
@@ -44,6 +46,9 @@ class _TenantAdminStaticProfileTypeFormScreenState
     super.initState();
     _controller.initForm(widget.definition);
     _controller.loadTaxonomies();
+    if (_isEdit) {
+      unawaited(_controller.hydrateFormDefinition(widget.definition!.type));
+    }
     if (!_isEdit) {
       _controller.labelController.addListener(_syncSlugFromLabel);
       _syncSlugFromLabel();
