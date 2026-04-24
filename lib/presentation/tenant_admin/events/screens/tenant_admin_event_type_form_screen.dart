@@ -372,11 +372,19 @@ class _TenantAdminEventTypeFormScreenState
                                       final isSelected =
                                           selected.contains(taxonomy.slug);
                                       return Semantics(
+                                        key: ValueKey<String>(
+                                          'tenantAdminEventTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                                        ),
                                         container: true,
                                         label: label,
                                         button: true,
+                                        focusable: true,
                                         toggled: isSelected,
                                         selected: isSelected,
+                                        onTap: () => _controller
+                                            .toggleEventTypeAllowedTaxonomy(
+                                              taxonomy.slug,
+                                            ),
                                         child: ExcludeSemantics(
                                           child: FilterChip(
                                             label: Text(label),

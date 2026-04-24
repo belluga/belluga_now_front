@@ -505,11 +505,17 @@ class _TenantAdminProfileTypeFormScreenState
                                   final isSelected =
                                       selectedSet.contains(taxonomy.slug);
                                   return Semantics(
+                                    key: ValueKey<String>(
+                                      'tenantAdminProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                                    ),
                                     container: true,
                                     label: label,
                                     button: true,
+                                    focusable: true,
                                     toggled: isSelected,
                                     selected: isSelected,
+                                    onTap: () => _controller
+                                        .toggleAllowedTaxonomy(taxonomy.slug),
                                     child: ExcludeSemantics(
                                       child: FilterChip(
                                         label: Text(label),

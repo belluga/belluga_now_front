@@ -71,7 +71,7 @@ class DiscoveryScreenController implements Disposable {
     primarySelectionMode: DiscoveryFilterSelectionMode.single,
     taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
     primaryLayoutMode: DiscoveryFilterLayoutMode.row,
-    taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
+    taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
   );
   static const double _filterPanelScrollHideEpsilon = 0.5;
 

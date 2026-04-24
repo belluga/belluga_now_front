@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -307,6 +310,90 @@ void main() {
     );
   });
 
+  testWidgets('taxonomy chips expose actionable semantic tap', (tester) async {
+    DiscoveryFilterSelection? changedSelection;
+
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+          ),
+          onSelectionChanged: (selection) {
+            changedSelection = selection;
+          },
+        ),
+      ),
+    );
+
+    final semantics = tester
+        .getSemantics(
+          find.byKey(
+            const ValueKey<String>(
+              'discoveryFilterTaxonomySemantics_music_styles_rock',
+            ),
+          ),
+        )
+        .getSemanticsData();
+
+    expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+    expect(semantics.flagsCollection.isButton, isTrue);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>(
+          'discoveryFilterTaxonomySemantics_music_styles_rock',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      changedSelection?.taxonomyTermKeys['music_styles'],
+      <String>{'rock'},
+    );
+  });
+
+  testWidgets('row taxonomy layout virtualizes large term lists',
+      (tester) async {
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _largeTaxonomyCatalog(),
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterTaxonomyList_music_styles'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Term 0'), findsOneWidget);
+    expect(find.text('Term 99'), findsNothing);
+  });
+
+  test('horizontal primary row does not prebuild unused chip widgets', () {
+    final source = File(
+      'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
+    ).readAsStringSync();
+
+    expect(source, isNot(contains('final chips = filters')));
+    expect(source, contains('discoveryFilterPrimaryList'));
+  });
+
   testWidgets('iconBuilder receives the same foreground color as the label',
       (tester) async {
     Color? capturedForeground;
@@ -342,6 +429,45 @@ void main() {
     );
     expect(capturedForeground, labelText.style?.color);
   });
+}
+
+DiscoveryFilterCatalog _largeTaxonomyCatalog() {
+  return DiscoveryFilterCatalog(
+    surface: 'home.events',
+    filters: const <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: 'events',
+        label: 'Eventos',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'show'},
+        },
+      ),
+    ],
+    typeOptionsByEntity: const <String, List<DiscoveryFilterTypeOption>>{
+      'event': <DiscoveryFilterTypeOption>[
+        DiscoveryFilterTypeOption(
+          value: 'show',
+          label: 'Show',
+          allowedTaxonomyKeys: <String>{'music_styles'},
+        ),
+      ],
+    },
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      'music_styles': DiscoveryFilterTaxonomyGroupOption(
+        key: 'music_styles',
+        label: 'Estilos musicais',
+        terms: List<DiscoveryFilterTaxonomyTermOption>.generate(
+          100,
+          (index) => DiscoveryFilterTaxonomyTermOption(
+            value: 'term_$index',
+            label: 'Term $index',
+          ),
+        ),
+      ),
+    },
+  );
 }
 
 const _catalog = DiscoveryFilterCatalog(

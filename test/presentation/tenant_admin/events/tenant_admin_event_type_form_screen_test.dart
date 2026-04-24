@@ -28,6 +28,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -266,6 +267,18 @@ void main() {
       controller.selectedEventTypeAllowedTaxonomies,
       ['genre', 'cuisine'],
     );
+    await tester.ensureVisible(find.text('Genero Musical (genre)'));
+    await tester.pumpAndSettle();
+    final taxonomySemantics = tester
+        .getSemantics(
+          find.byKey(
+            const ValueKey<String>(
+              'tenantAdminEventTypeAllowedTaxonomySemantics_genre',
+            ),
+          ),
+        )
+        .getSemanticsData();
+    expect(taxonomySemantics.hasAction(SemanticsAction.tap), isTrue);
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Cor do marcador'),
@@ -555,6 +568,18 @@ class _SeededTaxonomiesRepository extends _NoopTaxonomiesRepository {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
     return List<TenantAdminTaxonomyDefinition>.unmodifiable(taxonomies);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
+  }) async {
+    return tenantAdminPagedResultFromRaw(
+      items: taxonomies,
+      hasMore: false,
+    );
   }
 }
 

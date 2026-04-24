@@ -84,36 +84,40 @@ class DiscoveryFilterBar extends StatelessWidget {
     BuildContext context,
     List<DiscoveryFilterCatalogItem> filters,
   ) {
-    final chips = filters
-        .map(
-          (item) => _PrimaryFilterChip(
-            item: item,
-            isActive: selection.primaryKeys.contains(item.key),
-            isLoading: isLoading && selection.primaryKeys.contains(item.key),
-            iconBuilder: iconBuilder,
-            onToggle: _togglePrimary,
-          ),
-        )
-        .toList(growable: false);
-
     if (policy.primaryLayoutMode == DiscoveryFilterLayoutMode.wrap) {
       return Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: chips,
+        children: filters
+            .map(
+              (item) => _PrimaryFilterChip(
+                item: item,
+                isActive: selection.primaryKeys.contains(item.key),
+                isLoading:
+                    isLoading && selection.primaryKeys.contains(item.key),
+                iconBuilder: iconBuilder,
+                onToggle: _togglePrimary,
+              ),
+            )
+            .toList(growable: false),
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final chip in chips) ...[
-            chip,
-            if (chip != chips.last) const SizedBox(width: 8),
-          ],
-        ],
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        key: const ValueKey<String>('discoveryFilterPrimaryList'),
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => _PrimaryFilterChip(
+          item: filters[index],
+          isActive: selection.primaryKeys.contains(filters[index].key),
+          isLoading:
+              isLoading && selection.primaryKeys.contains(filters[index].key),
+          iconBuilder: iconBuilder,
+          onToggle: _togglePrimary,
+        ),
       ),
     );
   }
@@ -362,21 +366,6 @@ class _TaxonomyGroupBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = group.option.terms
-        .map(
-          (term) => _TaxonomyTermChip(
-            group: group,
-            term: term,
-            isSelected: selection.taxonomyTermKeys[group.option.key]?.contains(
-                  term.value,
-                ) ??
-                false,
-            isLoading: isLoading,
-            onToggle: onToggle,
-          ),
-        )
-        .toList(growable: false);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -396,25 +385,53 @@ class _TaxonomyGroupBlock extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         if (group.layoutMode == DiscoveryFilterLayoutMode.wrap)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: children,
-          )
+          _buildWrappedTerms()
         else
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final child in children) ...[
-                  child,
-                  if (child != children.last) const SizedBox(width: 8),
-                ],
-              ],
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              key: ValueKey<String>(
+                'discoveryFilterTaxonomyList_${group.option.key}',
+              ),
+              scrollDirection: Axis.horizontal,
+              itemCount: group.option.terms.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) => _TaxonomyTermChip(
+                group: group,
+                term: group.option.terms[index],
+                isSelected:
+                    selection.taxonomyTermKeys[group.option.key]?.contains(
+                          group.option.terms[index].value,
+                        ) ??
+                        false,
+                isLoading: isLoading,
+                onToggle: onToggle,
+              ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildWrappedTerms() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: group.option.terms
+          .map(
+            (term) => _TaxonomyTermChip(
+              group: group,
+              term: term,
+              isSelected:
+                  selection.taxonomyTermKeys[group.option.key]?.contains(
+                        term.value,
+                      ) ??
+                      false,
+              isLoading: isLoading,
+              onToggle: onToggle,
+            ),
+          )
+          .toList(growable: false),
     );
   }
 }
@@ -454,10 +471,16 @@ class _TaxonomyTermChip extends StatelessWidget {
         : 'discoveryFilterTaxonomyChip';
 
     return Semantics(
+      key: ValueKey<String>(
+        'discoveryFilterTaxonomySemantics_${group.option.key}_${term.value}',
+      ),
       container: true,
       button: true,
+      focusable: true,
       selected: isSelected,
+      toggled: isSelected,
       label: term.label,
+      onTap: isLoading ? null : () => onToggle(group, term),
       child: ExcludeSemantics(
         child: DecoratedBox(
           key: ValueKey<String>(

@@ -114,7 +114,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     primarySelectionMode: DiscoveryFilterSelectionMode.single,
     taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
     primaryLayoutMode: DiscoveryFilterLayoutMode.row,
-    taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
+    taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
   );
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
