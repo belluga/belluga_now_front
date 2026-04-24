@@ -14,19 +14,28 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
@@ -34,6 +43,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
@@ -117,6 +127,36 @@ TenantAdminDomainStatusValue _domainStatus(String raw) {
   final value = TenantAdminDomainStatusValue();
   value.parse(raw);
   return value;
+}
+
+TenantAdminTaxonomyDefinition _taxonomyDefinition({
+  required String id,
+  required String slug,
+  required String name,
+  required List<String> appliesTo,
+}) {
+  return TenantAdminTaxonomyDefinition(
+    idValue: _requiredText(id),
+    slugValue: _requiredText(slug),
+    nameValue: _requiredText(name),
+    appliesToValue: TenantAdminTrimmedStringListValue(appliesTo),
+    iconValue: TenantAdminOptionalTextValue(),
+    colorValue: TenantAdminOptionalTextValue(),
+  );
+}
+
+TenantAdminTaxonomyTermDefinition _taxonomyTermDefinition({
+  required String id,
+  required String taxonomyId,
+  required String slug,
+  required String name,
+}) {
+  return TenantAdminTaxonomyTermDefinition(
+    idValue: _requiredText(id),
+    taxonomyIdValue: _requiredText(taxonomyId),
+    slugValue: _requiredText(slug),
+    nameValue: _requiredText(name),
+  );
 }
 
 TenantAdminDomainEntry _domainEntry({
@@ -748,6 +788,39 @@ void main() {
 
     await controller.onDispose();
   });
+
+  test(
+    'discovery filters rule catalog fetches taxonomy terms in one batch',
+    () async {
+      final taxonomiesRepository = _FakeDiscoveryFilterTaxonomiesRepository();
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: _FakeTenantAdminSettingsRepository(),
+        accountProfilesRepository:
+            _FakeDiscoveryFilterAccountProfilesRepository(),
+        staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+        taxonomiesRepository: taxonomiesRepository,
+        eventsRepository: _FakeDiscoveryFilterEventsRepository(),
+      );
+
+      await controller.loadRuleCatalog();
+
+      expect(taxonomiesRepository.loadAllTermsCallCount, 0);
+      expect(taxonomiesRepository.batchTermsCallCount, 1);
+      expect(
+        taxonomiesRepository.lastBatchTaxonomyIds,
+        containsAll(<String>['genre-id', 'cuisine-id']),
+      );
+      expect(
+        controller.ruleCatalogStreamValue.value
+            .taxonomyForSource(TenantAdminMapFilterSource.event)
+            .map((term) => term.token)
+            .toSet(),
+        containsAll(<String>['genre:rock', 'cuisine:pizza']),
+      );
+
+      await controller.onDispose();
+    },
+  );
 
   testWidgets('canonical map filter row exposes rule and visual actions',
       (tester) async {
@@ -2340,6 +2413,126 @@ bool _isInternalSettingsTestChild(Widget child) {
 
 bool _isScaffoldWithBody<T extends Widget>(Widget child) {
   return child is Scaffold && child.body is T;
+}
+
+class _FakeDiscoveryFilterAccountProfilesRepository
+    extends TenantAdminAccountProfilesRepositoryContract {
+  @override
+  Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
+    return const <TenantAdminProfileTypeDefinition>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterStaticAssetsRepository
+    extends TenantAdminStaticAssetsRepositoryContract {
+  @override
+  Future<List<TenantAdminStaticProfileTypeDefinition>>
+      fetchStaticProfileTypes() async {
+    return const <TenantAdminStaticProfileTypeDefinition>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterEventsRepository
+    extends TenantAdminEventsRepositoryContract {
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    return const <TenantAdminEventType>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterTaxonomiesRepository
+    extends TenantAdminTaxonomiesRepositoryContract
+    implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  int loadAllTermsCallCount = 0;
+  int batchTermsCallCount = 0;
+  List<String> lastBatchTaxonomyIds = const <String>[];
+
+  final List<TenantAdminTaxonomyDefinition> _taxonomies = [
+    _taxonomyDefinition(
+      id: 'genre-id',
+      slug: 'genre',
+      name: 'Gênero Musical',
+      appliesTo: ['event'],
+    ),
+    _taxonomyDefinition(
+      id: 'cuisine-id',
+      slug: 'cuisine',
+      name: 'Cozinha',
+      appliesTo: ['event'],
+    ),
+  ];
+
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _termsById = {
+    'genre-id': [
+      _taxonomyTermDefinition(
+        id: 'rock-id',
+        taxonomyId: 'genre-id',
+        slug: 'rock',
+        name: 'Rock',
+      ),
+    ],
+    'cuisine-id': [
+      _taxonomyTermDefinition(
+        id: 'pizza-id',
+        taxonomyId: 'cuisine-id',
+        slug: 'pizza',
+        name: 'Pizza',
+      ),
+    ],
+  };
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return _taxonomies;
+  }
+
+  @override
+  Future<void> loadAllTerms({
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoInt? pageSize,
+  }) async {
+    loadAllTermsCallCount += 1;
+    await super.loadAllTerms(taxonomyId: taxonomyId, pageSize: pageSize);
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required TenantAdminTaxRepoString taxonomyId,
+  }) async {
+    return _termsById[taxonomyId.value] ??
+        const <TenantAdminTaxonomyTermDefinition>[];
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+  }) async {
+    batchTermsCallCount += 1;
+    lastBatchTaxonomyIds = taxonomyIds.map((entry) => entry.value).toList();
+
+    return TenantAdminTaxonomyTermsByTaxonomyId(
+      entries: [
+        for (final taxonomyId in taxonomyIds)
+          TenantAdminTaxonomyTermsForTaxonomyId(
+            taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
+            terms: _termsById[taxonomyId.value] ??
+                const <TenantAdminTaxonomyTermDefinition>[],
+          ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {

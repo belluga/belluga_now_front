@@ -19,7 +19,7 @@ void main() {
           'music_styles': <String, Object?>{
             'label_override': 'Estilos',
             'show_label': true,
-            'selection_mode': 'multiple',
+            'selection_mode': 'multi',
           },
         },
       },
@@ -32,6 +32,25 @@ void main() {
     expect(item.taxonomyConfigs['music_styles']?.labelOverride, 'Estilos');
     expect(
       item.taxonomyConfigs['music_styles']?.selectionMode,
+      DiscoveryFilterSelectionMode.multiple,
+    );
+    expect(
+      item.taxonomyConfigs['music_styles']?.toJson()['selection_mode'],
+      'multi',
+    );
+  });
+
+  test('selection mode emits canonical multi wire value and reads legacy alias',
+      () {
+    expect(
+      DiscoveryFilterSelectionMode.multiple.wireName,
+      'multi',
+    );
+    expect(
+      DiscoveryFilterSelectionModeX.fromWire(
+        'multiple',
+        fallback: DiscoveryFilterSelectionMode.single,
+      ),
       DiscoveryFilterSelectionMode.multiple,
     );
   });

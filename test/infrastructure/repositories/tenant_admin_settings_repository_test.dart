@@ -68,7 +68,7 @@ void main() {
     expect(settings.from, 'Belluga <noreply@belluga.space>');
     expect(
       _recipientStrings(settings.to),
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
     expect(
       _recipientStrings(settings.cc),
@@ -123,7 +123,7 @@ void main() {
       settings: TenantAdminResendEmailSettings(
         token: _optionalTextValue('re_live_token'),
         from: _optionalTextValue('Belluga <noreply@belluga.space>'),
-        toRecipients: _recipients(['admin@bellugasolutions.com.br']),
+        toRecipients: _recipients(['admin@example.com']),
         ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
         bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
         replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
@@ -137,7 +137,7 @@ void main() {
     expect(payload['from'], 'Belluga <noreply@belluga.space>');
     expect(
       payload['to'],
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
     expect(
       payload['cc'],
@@ -154,7 +154,7 @@ void main() {
     expect(updated.from, 'Belluga <noreply@belluga.space>');
     expect(
       _recipientStrings(updated.to),
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
   });
 
@@ -850,7 +850,8 @@ void main() {
         'public_web_metadata': {
           'default_title': 'Guarappari Home',
           'default_description': 'Fallback institucional da home.',
-          'default_image': 'https://tenant-a.test/storage/public-web-updated.jpg',
+          'default_image':
+              'https://tenant-a.test/storage/public-web-updated.jpg',
         },
         'logo_settings': {
           'pwa_icon': {
@@ -954,7 +955,8 @@ void main() {
     expect(updated.primarySeedColor, '#112233');
     expect(updated.secondarySeedColor, '#445566');
     expect(updated.publicWebDefaultTitle, 'Guarappari Home');
-    expect(updated.publicWebDefaultDescription, 'Fallback institucional da home.');
+    expect(
+        updated.publicWebDefaultDescription, 'Fallback institucional da home.');
     expect(
       updated.publicWebDefaultImageUrl,
       'https://tenant-a.test/storage/public-web-updated.jpg',
@@ -1673,7 +1675,7 @@ class _RoutingAdapter implements HttpClientAdapter {
                 'resend_email': {
                   'token': 're_live_token',
                   'from': 'Belluga <noreply@belluga.space>',
-                  'to': ['admin@bellugasolutions.com.br'],
+                  'to': ['admin@example.com'],
                   'cc': ['ops@bellugasolutions.com.br'],
                   'bcc': ['audit@bellugasolutions.com.br'],
                   'reply_to': ['reply@bellugasolutions.com.br'],

@@ -148,8 +148,8 @@ void main() {
     await _waitForFinder(tester, emailField);
     await _waitForFinder(tester, passwordField);
 
-    await tester.enterText(emailField, 'admin@bellugasolutions.com.br');
-    await tester.enterText(passwordField, '765432e1');
+    await tester.enterText(emailField, 'admin@example.invalid');
+    await tester.enterText(passwordField, 'mock-password-123');
     await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
@@ -215,8 +215,8 @@ void main() {
       await _waitForFinder(tester, emailField);
       await _waitForFinder(tester, passwordField);
 
-      await tester.enterText(emailField, 'admin@bellugasolutions.com.br');
-      await tester.enterText(passwordField, '765432e1');
+      await tester.enterText(emailField, 'admin@example.invalid');
+      await tester.enterText(passwordField, 'mock-password-123');
       await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 

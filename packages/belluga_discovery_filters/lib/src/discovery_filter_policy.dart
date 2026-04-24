@@ -17,7 +17,7 @@ extension DiscoveryFilterSelectionModeX on DiscoveryFilterSelectionMode {
 
   String get wireName => switch (this) {
         DiscoveryFilterSelectionMode.single => 'single',
-        DiscoveryFilterSelectionMode.multiple => 'multiple',
+        DiscoveryFilterSelectionMode.multiple => 'multi',
       };
 }
 

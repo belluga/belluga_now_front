@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_items.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
@@ -452,25 +453,35 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     if (taxonomyRepo == null) {
       return const <String, List<TenantAdminTaxonomyTermDefinition>>{};
     }
-    final entries =
-        <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
-    for (final taxonomy in taxonomies) {
-      await taxonomyRepo.loadAllTerms(
-        taxonomyId: TenantAdminTaxRepoString.fromRaw(
-          taxonomy.id,
-          defaultValue: '',
-          isRequired: true,
-        ),
+    if (taxonomyRepo is TenantAdminTaxonomiesBatchTermsRepositoryContract) {
+      final batchTermsRepository =
+          taxonomyRepo as TenantAdminTaxonomiesBatchTermsRepositoryContract;
+      final requestedTaxonomies = taxonomies
+          .where((taxonomy) =>
+              taxonomy.id.trim().isNotEmpty && taxonomy.slug.trim().isNotEmpty)
+          .toList(growable: false);
+      final fetchedById = await batchTermsRepository.fetchTermsByTaxonomyIds(
+        taxonomyIds: requestedTaxonomies
+            .map(
+              (taxonomy) => TenantAdminTaxRepoString.fromRaw(
+                taxonomy.id,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .toList(growable: false),
       );
-      entries.add(
-        MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
-          taxonomy.slug,
-          taxonomyRepo.termsStreamValue.value ??
-              const <TenantAdminTaxonomyTermDefinition>[],
-        ),
-      );
+      return <String, List<TenantAdminTaxonomyTermDefinition>>{
+        for (final taxonomy in requestedTaxonomies)
+          taxonomy.slug: fetchedById.termsForId(
+            tenantAdminRequiredText(taxonomy.id),
+          ),
+      };
     }
-    return {for (final entry in entries) entry.key: entry.value};
+
+    throw StateError(
+      'Tenant admin taxonomies repository must support batch term loading.',
+    );
   }
 
   TenantAdminMapFilterRuleCatalog _buildRuleCatalog({
