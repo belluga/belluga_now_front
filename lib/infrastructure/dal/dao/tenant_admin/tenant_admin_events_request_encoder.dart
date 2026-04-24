@@ -9,6 +9,7 @@ class TenantAdminEventsRequestEncoder {
     String? name,
     String? slug,
     String? description,
+    List<String>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     bool includeDescription = false,
     bool includeVisual = false,
@@ -24,6 +25,9 @@ class TenantAdminEventsRequestEncoder {
     if (includeDescription || description != null) {
       payload['description'] = description;
     }
+    if (allowedTaxonomies != null) {
+      payload['allowed_taxonomies'] = List<String>.from(allowedTaxonomies);
+    }
     if (includeVisual) {
       payload['visual'] = visual?.toJson();
       payload['poi_visual'] = visual?.toJson();
@@ -38,6 +42,7 @@ class TenantAdminEventsRequestEncoder {
     required String name,
     required String slug,
     String? description,
+    List<String>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     bool includeVisual = false,
   }) {
@@ -46,6 +51,8 @@ class TenantAdminEventsRequestEncoder {
       'slug': slug,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
+      if (allowedTaxonomies != null)
+        'allowed_taxonomies': List<String>.from(allowedTaxonomies),
       if (includeVisual) 'visual': visual?.toJson(),
       if (includeVisual) 'poi_visual': visual?.toJson(),
     };

@@ -12,6 +12,7 @@ void main() {
         'name': 'Festival',
         'slug': 'festival',
         'description': 'Tipo com imagem canônica',
+        'allowed_taxonomies': ['genre', 'cuisine'],
         'visual': {
           'mode': 'image',
           'image_source': 'type_asset',
@@ -31,6 +32,7 @@ void main() {
       eventType.visual?.imageUrl,
       'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
     );
+    expect(eventType.allowedTaxonomies.value, ['genre', 'cuisine']);
   });
 
   test('prefers related account profile ids from event_parties when available',

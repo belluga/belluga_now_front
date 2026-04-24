@@ -1,6 +1,11 @@
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +15,7 @@ class EventProgrammingSection extends StatelessWidget {
     required this.occurrences,
     required this.onOccurrenceTap,
     required this.onLocationTap,
+    required this.profileTypeRegistry,
     super.key,
   });
 
@@ -17,6 +23,7 @@ class EventProgrammingSection extends StatelessWidget {
   final List<EventOccurrenceOption> occurrences;
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
   final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +56,7 @@ class EventProgrammingSection extends StatelessWidget {
                 child: _ProgrammingCard(
                   item: item,
                   onLocationTap: onLocationTap,
+                  profileTypeRegistry: profileTypeRegistry,
                 ),
               ),
             ),
@@ -104,71 +112,75 @@ class _ProgrammingDateChip extends StatelessWidget {
     final isSelected = occurrence.isSelected;
     final dateLabel =
         start == null ? 'Data' : DateFormat('dd/MM').format(start);
-    final timeLabel = start == null ? '' : DateFormat('HH:mm').format(start);
+    final weekdayLabel = _formatWeekday(start);
 
-    return InkWell(
-      key: Key('eventDateCard_${occurrence.occurrenceId}'),
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer
-              : colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color:
-                isSelected ? colorScheme.primary : colorScheme.outlineVariant,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              dateLabel,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: isSelected
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-              ),
+    return Semantics(
+      label: weekdayLabel.isEmpty ? dateLabel : '$dateLabel, $weekdayLabel',
+      selected: isSelected,
+      button: !isSelected,
+      child: InkWell(
+        key: Key('eventDateCard_${occurrence.occurrenceId}'),
+        onTap: isSelected ? null : onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          constraints: const BoxConstraints(minWidth: 132),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colorScheme.primaryContainer
+                : colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color:
+                  isSelected ? colorScheme.primary : colorScheme.outlineVariant,
             ),
-            if (timeLabel.isNotEmpty) ...[
-              const SizedBox(height: 2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
               Text(
-                timeLabel,
-                style: theme.textTheme.labelMedium?.copyWith(
+                dateLabel,
+                style: theme.textTheme.titleSmall?.copyWith(
                   color: isSelected
                       ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurfaceVariant,
+                      : colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-            ],
-            if (isSelected) ...[
-              const SizedBox(height: 8),
-              Container(
-                key: Key('eventDateCurrentBadge_${occurrence.occurrenceId}'),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'Atual',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.w800,
+              if (weekdayLabel.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  weekdayLabel,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  String _formatWeekday(DateTime? value) {
+    if (value == null) {
+      return '';
+    }
+    final label = DateFormat('EEEE', 'pt_BR')
+        .format(value)
+        .replaceAll('.', '')
+        .replaceAll('-feira', '')
+        .trim();
+    if (label.isEmpty) {
+      return '';
+    }
+    return '${label[0].toUpperCase()}${label.substring(1).toLowerCase()}';
   }
 }
 
@@ -200,18 +212,22 @@ class _ProgrammingCard extends StatelessWidget {
   const _ProgrammingCard({
     required this.item,
     required this.onLocationTap,
+    required this.profileTypeRegistry,
   });
 
   final EventProgrammingItem item;
   final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final title = item.displayTitle.trim().isEmpty
-        ? 'Atividade'
-        : item.displayTitle.trim();
+    final title = item.displayTitle.trim();
+    final hasTitle = title.isNotEmpty;
+    final hasProfiles = item.linkedAccountProfiles.isNotEmpty;
+    final hasLocation = item.locationProfile != null;
+    final hasSecondaryContent = hasProfiles || hasLocation;
 
     return DecoratedBox(
       key: Key('eventProgrammingItem_${item.time}'),
@@ -223,7 +239,9 @@ class _ProgrammingCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: hasSecondaryContent
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
           children: [
             Container(
               width: 64,
@@ -244,32 +262,34 @@ class _ProgrammingCard extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  if (hasTitle)
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  if (item.linkedAccountProfiles.isNotEmpty) ...[
-                    const SizedBox(height: 10),
+                  if (hasProfiles) ...[
+                    if (hasTitle) const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: item.linkedAccountProfiles
                           .map(
                             (profile) => _ProgrammingProfileChip(
-                              name: profile.displayName,
-                              profileId: profile.id,
+                              profile: profile,
+                              profileTypeRegistry: profileTypeRegistry,
                             ),
                           )
                           .toList(growable: false),
                     ),
                   ],
-                  if (item.locationProfile != null) ...[
+                  if (hasLocation) ...[
                     const SizedBox(height: 12),
-                    _ProgrammingLocationButton(
+                    _ProgrammingLocationLine(
                       profile: item.locationProfile!,
                       onTap: () => onLocationTap(item.locationProfile!),
                     ),
@@ -284,8 +304,8 @@ class _ProgrammingCard extends StatelessWidget {
   }
 }
 
-class _ProgrammingLocationButton extends StatelessWidget {
-  const _ProgrammingLocationButton({
+class _ProgrammingLocationLine extends StatelessWidget {
+  const _ProgrammingLocationLine({
     required this.profile,
     required this.onTap,
   });
@@ -295,32 +315,38 @@ class _ProgrammingLocationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       key: Key('eventProgrammingLocation_${profile.id}'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(999),
-        ),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.location_on_outlined,
               size: 16,
-              color: colorScheme.onSecondaryContainer,
+              color: colorScheme.primary,
             ),
             const SizedBox(width: 6),
-            Text(
-              profile.displayName,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: colorScheme.onSecondaryContainer,
-                    fontWeight: FontWeight.w800,
-                  ),
+            Expanded(
+              child: Text(
+                profile.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
             ),
           ],
         ),
@@ -331,30 +357,106 @@ class _ProgrammingLocationButton extends StatelessWidget {
 
 class _ProgrammingProfileChip extends StatelessWidget {
   const _ProgrammingProfileChip({
-    required this.name,
-    required this.profileId,
+    required this.profile,
+    required this.profileTypeRegistry,
   });
 
-  final String name;
-  final String profileId;
+  final EventLinkedAccountProfile profile;
+  final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final maxWidth = MediaQuery.sizeOf(context).width * 0.56;
+    final resolvedVisual = AccountProfileVisualResolver.resolvePreview(
+      registry: profileTypeRegistry,
+      profileType: profile.profileType,
+      avatarUrl: profile.avatarUrl,
+      coverUrl: profile.coverUrl,
+    );
     return Container(
-      key: Key('eventProgrammingProfile_$profileId'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      key: Key('eventProgrammingProfile_${profile.id}'),
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ProgrammingProfileVisual(
+            profile: profile,
+            resolvedVisual: resolvedVisual,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              profile.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgrammingProfileVisual extends StatelessWidget {
+  const _ProgrammingProfileVisual({
+    required this.profile,
+    required this.resolvedVisual,
+  });
+
+  final EventLinkedAccountProfile profile;
+  final ResolvedAccountProfileVisual resolvedVisual;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = profile.avatarUrl?.trim();
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return ClipOval(
+        child: BellugaNetworkImage(
+          avatarUrl,
+          width: 18,
+          height: 18,
+          fit: BoxFit.cover,
+          errorWidget: _buildFallback(context),
+        ),
+      );
+    }
+
+    final typeVisual = resolvedVisual.typeVisual;
+    if (typeVisual != null) {
+      return AccountProfileTypeAvatar(
+        visual: typeVisual,
+        size: 18,
+        iconSize: 10,
+      );
+    }
+
+    return _buildFallback(context);
+  }
+
+  Widget _buildFallback(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 18,
+      height: 18,
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colorScheme.outlineVariant),
+        shape: BoxShape.circle,
       ),
-      child: Text(
-        name,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person_outline,
+        size: 11,
+        color: colorScheme.onSurfaceVariant,
       ),
     );
   }

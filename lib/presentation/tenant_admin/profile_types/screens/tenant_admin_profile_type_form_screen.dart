@@ -494,18 +494,29 @@ class _TenantAdminProfileTypeFormScreenState
                             spacing: 8,
                             runSpacing: 8,
                             children: availableTaxonomies
-                                .map(
-                                  (taxonomy) => FilterChip(
-                                    label: Text(
-                                      '${taxonomy.name} (${taxonomy.slug})',
+                                .map((taxonomy) {
+                                  final label =
+                                      '${taxonomy.name} (${taxonomy.slug})';
+                                  final isSelected =
+                                      selectedSet.contains(taxonomy.slug);
+                                  return Semantics(
+                                    container: true,
+                                    label: label,
+                                    button: true,
+                                    toggled: isSelected,
+                                    selected: isSelected,
+                                    child: ExcludeSemantics(
+                                      child: FilterChip(
+                                        label: Text(label),
+                                        selected: isSelected,
+                                        onSelected: (_) => _controller
+                                            .toggleAllowedTaxonomy(
+                                              taxonomy.slug,
+                                            ),
+                                      ),
                                     ),
-                                    selected: selectedSet.contains(
-                                      taxonomy.slug,
-                                    ),
-                                    onSelected: (_) => _controller
-                                        .toggleAllowedTaxonomy(taxonomy.slug),
-                                  ),
-                                )
+                                  );
+                                })
                                 .toList(growable: false),
                           ),
                       ],

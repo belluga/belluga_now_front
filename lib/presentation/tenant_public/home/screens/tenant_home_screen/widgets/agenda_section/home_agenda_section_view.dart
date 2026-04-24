@@ -159,45 +159,10 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     DiscoveryFilterCatalog catalog,
     DiscoveryFilterSelection selection,
   ) {
-    if (selection.primaryKeys.isEmpty) {
-      return catalog.taxonomyOptionsByKey.values.any(
-        (option) => option.terms.isNotEmpty,
-      );
-    }
-    final selectedFilters = catalog.filters.where(
-      (item) => selection.primaryKeys.contains(item.key),
+    return hasVisibleDiscoveryFilterTaxonomyGroups(
+      catalog: catalog,
+      selection: selection,
     );
-    var hasExplicitTaxonomyScope = false;
-    for (final item in selectedFilters) {
-      for (final taxonomyKey in item.taxonomyKeys) {
-        hasExplicitTaxonomyScope = true;
-        if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
-            false)) {
-          return true;
-        }
-      }
-      for (final entity in item.entities) {
-        final selectedTypes = item.typesByEntity[entity] ?? item.types;
-        for (final option in catalog.typeOptionsByEntity[entity] ??
-            const <DiscoveryFilterTypeOption>[]) {
-          if (selectedTypes.isNotEmpty &&
-              !selectedTypes.contains(option.value)) {
-            continue;
-          }
-          for (final taxonomyKey in option.allowedTaxonomyKeys) {
-            hasExplicitTaxonomyScope = true;
-            if ((catalog.taxonomyOptionsByKey[taxonomyKey]?.terms.isNotEmpty ??
-                false)) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return !hasExplicitTaxonomyScope &&
-        catalog.taxonomyOptionsByKey.values.any(
-          (option) => option.terms.isNotEmpty,
-        );
   }
 }
 

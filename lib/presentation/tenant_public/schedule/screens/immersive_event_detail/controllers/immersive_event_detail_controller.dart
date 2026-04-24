@@ -71,10 +71,11 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<Set<String>>(defaultValue: const <String>{});
 
   void init(EventModel event) {
-    _invitesRepository.setImmersiveSelectedEvent(event);
-    _hydrateState(event);
+    final resolvedEvent = _alignEventToSelectedOccurrence(event);
+    _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
+    _hydrateState(resolvedEvent);
     _bindFavoriteAccountProfileState();
-    unawaited(_refreshConfirmationState(event.id.value));
+    unawaited(_refreshConfirmationState(resolvedEvent.id.value));
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -241,6 +242,17 @@ class ImmersiveEventDetailController implements Disposable {
       friendsGoing: event.friendsGoing,
       totalConfirmedValue: event.totalConfirmedValue,
     );
+  }
+
+  EventModel _alignEventToSelectedOccurrence(EventModel event) {
+    if (event.programmingItems.isNotEmpty) {
+      return event;
+    }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId == null || occurrenceId.isEmpty) {
+      return event;
+    }
+    return _eventWithSelectedOccurrence(event, occurrenceId);
   }
 
   Future<void> _refreshConfirmationState(String eventId) async {

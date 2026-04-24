@@ -6,15 +6,13 @@ Widget buildDiscoveryFilterVisualIcon(
   BuildContext context,
   DiscoveryFilterCatalogItem item,
   bool isActive,
+  Color foregroundColor,
 ) {
-  final colorScheme = Theme.of(context).colorScheme;
   final configuredColor =
       MapMarkerVisualResolver.tryParseHexColor(item.colorHex);
   return Icon(
     MapMarkerVisualResolver.resolveIcon(item.iconKey),
     size: 20,
-    color: isActive
-        ? colorScheme.onPrimary
-        : configuredColor ?? colorScheme.onSurfaceVariant,
+    color: isActive ? foregroundColor : configuredColor ?? foregroundColor,
   );
 }

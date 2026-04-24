@@ -21,13 +21,7 @@ class EventProgrammingItem {
   String? get title => titleValue?.value;
   String get displayTitle {
     final explicitTitle = title?.trim();
-    if (explicitTitle != null && explicitTitle.isNotEmpty) {
-      return explicitTitle;
-    }
-    if (linkedAccountProfiles.length == 1) {
-      return linkedAccountProfiles.first.displayName;
-    }
-    return '';
+    return explicitTitle == null || explicitTitle.isEmpty ? '' : explicitTitle;
   }
 
   bool get hasLocationProfile => locationProfile != null;

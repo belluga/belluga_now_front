@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -176,6 +177,68 @@ void main() {
       controller
           .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
       ['artist-1', 'producer-1'],
+    );
+  });
+
+  test(
+      'upsertOccurrence keeps occurrence programming profiles out of event-level related selection',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-1',
+      accountId: 'acc-artist-1',
+      profileType: 'artist',
+      displayName: 'Artist A',
+    );
+
+    controller.initEventForm();
+    controller.addRelatedAccountProfile('producer-1');
+    controller.upsertOccurrence(
+      index: null,
+      occurrence: TenantAdminEventOccurrence(
+        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
+        relatedAccountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
+          [
+            TenantAdminAccountProfileIdValue('artist-1'),
+          ],
+        ),
+        relatedAccountProfiles: [occurrenceProfile],
+        programmingItems: List<TenantAdminEventProgrammingItem>.of([
+          TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminRequiredText('20:00'),
+            accountProfileIdValues:
+                List<TenantAdminAccountProfileIdValue>.of([
+              TenantAdminAccountProfileIdValue('artist-1'),
+            ]),
+            linkedAccountProfiles: [occurrenceProfile],
+          ),
+        ]),
+      ),
+    );
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
+      ['producer-1'],
+    );
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences.single
+          .relatedAccountProfileIds
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1'],
+    );
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences.single
+          .programmingItems.single.accountProfileIds
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1'],
     );
   });
 
@@ -1075,6 +1138,7 @@ class _EventTypeUpdateTrackingRepository
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) async {
     lastUpdateDescription = description?.value;
     return TenantAdminEventType(
@@ -1099,6 +1163,7 @@ class _EventTypeVisualTrackingRepository
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminEventsRepoBool? removeTypeAsset,

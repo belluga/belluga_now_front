@@ -143,6 +143,8 @@ class _ImmersiveEventDetailScreenState
                               content: EventProgrammingSection(
                                 items: resolvedEvent.programmingItems,
                                 occurrences: resolvedEvent.occurrences,
+                                profileTypeRegistry:
+                                    _controller.profileTypeRegistry,
                                 onOccurrenceTap: (occurrence) =>
                                     _openOccurrence(
                                   resolvedEvent,

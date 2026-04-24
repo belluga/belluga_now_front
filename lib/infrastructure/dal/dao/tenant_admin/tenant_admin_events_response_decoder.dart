@@ -306,13 +306,16 @@ class TenantAdminEventsResponseDecoder {
   }
 
   TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
-    return TenantAdminEventType(
+    return TenantAdminEventType.withAllowedTaxonomies(
       idValue: tenantAdminOptionalText(_asString(row['id'])),
       nameValue: tenantAdminRequiredText(_asString(row['name']) ?? ''),
       slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
       descriptionValue: tenantAdminOptionalText(_asString(row['description'])),
       iconValue: tenantAdminOptionalText(_asString(row['icon'])),
       colorValue: tenantAdminOptionalText(_asString(row['color'])),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        row['allowed_taxonomies'],
+      ),
       visual: _decodeEventTypeVisual(row),
     );
   }

@@ -18,6 +18,7 @@ class LocationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final address = event.location.value.trim();
     final venueName = event.venue?.displayName.trim();
@@ -129,6 +130,13 @@ class LocationSection extends StatelessWidget {
           ),
           if (destinations.isNotEmpty) ...[
             const SizedBox(height: 18),
+            Text(
+              'Outros endereços relacionados',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
             ...destinations.map(
               (destination) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -155,14 +163,6 @@ class LocationSection extends StatelessWidget {
     final venueId = event.venue?.id.trim();
     if (venueId != null && venueId.isNotEmpty) {
       seen.add('account_profile:$venueId');
-      destinations.add(
-        _LocationDestination(
-          key: 'account_profile:$venueId',
-          title: event.venue!.displayName,
-          subtitle: event.location.value.trim(),
-          profile: null,
-        ),
-      );
     }
 
     for (final item in event.allProgrammingItems) {
@@ -182,7 +182,6 @@ class LocationSection extends StatelessWidget {
         _LocationDestination(
           key: key,
           title: profile.displayName,
-          subtitle: 'Local da programação',
           profile: profile,
         ),
       );
@@ -196,13 +195,11 @@ class _LocationDestination {
   const _LocationDestination({
     required this.key,
     required this.title,
-    required this.subtitle,
     required this.profile,
   });
 
   final String key;
   final String title;
-  final String subtitle;
   final EventLinkedAccountProfile? profile;
 }
 
@@ -238,9 +235,6 @@ class _LocationDestinationTile extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
         ),
-        subtitle: destination.subtitle.trim().isEmpty
-            ? null
-            : Text(destination.subtitle),
         trailing: onTap == null ? null : const Icon(Icons.map_outlined),
       ),
     );

@@ -456,18 +456,30 @@ class _TenantAdminStaticProfileTypeFormScreenState
                       spacing: 8,
                       runSpacing: 8,
                       children: taxonomies
-                          .map(
-                            (taxonomy) => FilterChip(
-                              label: Text(taxonomy.name),
-                              selected: selected.contains(taxonomy.slug),
-                              onSelected: (enabled) {
-                                _controller.toggleTaxonomySelection(
-                                  taxonomy.slug,
-                                  enabled,
-                                );
-                              },
-                            ),
-                          )
+                          .map((taxonomy) {
+                            final label = taxonomy.name;
+                            final isSelected =
+                                selected.contains(taxonomy.slug);
+                            return Semantics(
+                              container: true,
+                              label: label,
+                              button: true,
+                              toggled: isSelected,
+                              selected: isSelected,
+                              child: ExcludeSemantics(
+                                child: FilterChip(
+                                  label: Text(label),
+                                  selected: isSelected,
+                                  onSelected: (enabled) {
+                                    _controller.toggleTaxonomySelection(
+                                      taxonomy.slug,
+                                      enabled,
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          })
                           .toList(growable: false),
                     ),
                 ],

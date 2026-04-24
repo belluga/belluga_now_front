@@ -122,7 +122,7 @@ void main() {
   });
 
   testWidgets(
-      'renders full catalog taxonomy groups when selected primary has no restriction',
+      'does not render taxonomy groups when selected primary has no allowed scope',
       (tester) async {
     await tester.pumpWidget(
       _Harness(
@@ -142,17 +142,17 @@ void main() {
 
     expect(
       find.byKey(const ValueKey<String>('discoveryFilterTaxonomyDivider')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(
           const ValueKey<String>('discoveryFilterTaxonomyTitle_music_styles')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey<String>(
           'discoveryFilterTaxonomyChip_music_styles_rock')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
@@ -256,6 +256,100 @@ void main() {
       find.byKey(const ValueKey<String>('discoveryFilterPrimaryClear_events')),
       findsNothing,
     );
+  });
+
+  testWidgets('primary chips expose semantic wrappers and selected state',
+      (tester) async {
+    DiscoveryFilterSelection? changedSelection;
+
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+          ),
+          onSelectionChanged: (selection) {
+            changedSelection = selection;
+          },
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterPrimarySemantics_events'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterPrimarySemantics_events'),
+      ),
+    );
+    await tester.pump();
+
+    expect(changedSelection?.primaryKeys, <String>{'events'});
+
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterSelectedPrimarySemantics_events'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('iconBuilder receives the same foreground color as the label',
+      (tester) async {
+    Color? capturedForeground;
+
+    await tester.pumpWidget(
+      _Harness(
+        child: DiscoveryFilterBar(
+          catalog: _catalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+          ),
+          iconBuilder: (context, item, isActive, foregroundColor) {
+            if (item.key == 'events' && isActive) {
+              capturedForeground = foregroundColor;
+            }
+            return Icon(Icons.ac_unit, color: foregroundColor);
+          },
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    final labelText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(
+          const ValueKey<String>('discoveryFilterSelectedPrimary_events'),
+        ),
+        matching: find.text('Eventos'),
+      ),
+    );
+    expect(capturedForeground, labelText.style?.color);
   });
 }
 

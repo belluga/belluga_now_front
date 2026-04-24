@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'discovery_filter_catalog.dart';
-import 'discovery_filter_entity_registry.dart';
 import 'discovery_filter_policy.dart';
 import 'discovery_filter_selection.dart';
+import 'discovery_filter_taxonomy_scope.dart';
 
 typedef DiscoveryFilterIconBuilder = Widget Function(
   BuildContext context,
   DiscoveryFilterCatalogItem item,
   bool isActive,
+  Color foregroundColor,
 );
 
 class DiscoveryFilterBar extends StatelessWidget {
@@ -35,6 +36,9 @@ class DiscoveryFilterBar extends StatelessWidget {
           growable: false,
         );
     final taxonomyGroups = _resolveTaxonomyGroups(filters);
+    final taxonomyAreaKey = ValueKey<String>(
+      'discoveryFilterTaxonomyArea_${_taxonomySelectionKey()}',
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -42,27 +46,35 @@ class DiscoveryFilterBar extends StatelessWidget {
       children: [
         _buildPrimaryRow(context, filters),
         if (taxonomyGroups.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Divider(
-            key: const ValueKey<String>('discoveryFilterTaxonomyDivider'),
-            height: 1,
-            thickness: 0.6,
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant
-                .withValues(alpha: 0.38),
-          ),
-          const SizedBox(height: 10),
-          for (final group in taxonomyGroups) ...[
-            _TaxonomyGroupBlock(
-              group: group,
-              selection: selection,
-              fallbackPolicy: policy,
-              isLoading: isLoading,
-              onToggle: _toggleTaxonomyTerm,
+          KeyedSubtree(
+            key: taxonomyAreaKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
+                Divider(
+                  key: const ValueKey<String>('discoveryFilterTaxonomyDivider'),
+                  height: 1,
+                  thickness: 0.6,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.38),
+                ),
+                const SizedBox(height: 10),
+                for (final group in taxonomyGroups) ...[
+                  _TaxonomyGroupBlock(
+                    group: group,
+                    selection: selection,
+                    fallbackPolicy: policy,
+                    isLoading: isLoading,
+                    onToggle: _toggleTaxonomyTerm,
+                  ),
+                  if (group != taxonomyGroups.last) const SizedBox(height: 12),
+                ],
+              ],
             ),
-            if (group != taxonomyGroups.last) const SizedBox(height: 12),
-          ],
+          ),
         ],
       ],
     );
@@ -147,14 +159,14 @@ class DiscoveryFilterBar extends StatelessWidget {
       for (final entry in item.taxonomyConfigs.entries) {
         configs[entry.key] = entry.value;
       }
-      for (final taxonomyKey in _allowedTaxonomyKeysFor(item)) {
+      for (final taxonomyKey in resolveDiscoveryFilterAllowedTaxonomyKeys(
+        catalog: catalog,
+        selection: DiscoveryFilterSelection(primaryKeys: <String>{item.key}),
+      )) {
         if (!orderedKeys.contains(taxonomyKey)) {
           orderedKeys.add(taxonomyKey);
         }
       }
-    }
-    if (selectedFilters.isNotEmpty && orderedKeys.isEmpty) {
-      orderedKeys.addAll(catalog.taxonomyOptionsByKey.keys);
     }
 
     final groups = <_ResolvedTaxonomyGroup>[];
@@ -179,36 +191,17 @@ class DiscoveryFilterBar extends StatelessWidget {
     return groups;
   }
 
-  List<String> _allowedTaxonomyKeysFor(DiscoveryFilterCatalogItem item) {
-    final keys = <String>[];
-    void appendAll(Iterable<String> rawKeys) {
-      for (final rawKey in rawKeys) {
-        final key = rawKey.trim();
-        if (key.isNotEmpty && !keys.contains(key)) {
-          keys.add(key);
-        }
-      }
-    }
-
-    appendAll(item.taxonomyKeys);
-    appendAll(item.taxonomyValuesByGroup.keys);
-
-    for (final entity in item.entities) {
-      final entityKey = entity.trim();
-      if (entityKey.isEmpty) {
-        continue;
-      }
-      final selectedTypes = item.typesByEntity[entityKey] ?? item.types;
-      for (final option in catalog.typeOptionsByEntity[entityKey] ??
-          const <DiscoveryFilterTypeOption>[]) {
-        if (selectedTypes.isNotEmpty && !selectedTypes.contains(option.value)) {
-          continue;
-        }
-        appendAll(option.allowedTaxonomyKeys);
-      }
-    }
-
-    return keys;
+  String _taxonomySelectionKey() {
+    final primary = selection.primaryKeys.toList(growable: false)..sort();
+    final taxonomy = selection.taxonomyTermKeys.entries.toList(growable: false)
+      ..sort((left, right) => left.key.compareTo(right.key));
+    final taxonomySegments = taxonomy
+        .map((entry) {
+          final values = entry.value.toList(growable: false)..sort();
+          return '${entry.key}:${values.join(",")}';
+        })
+        .join('|');
+    return '${primary.join(",")}__$taxonomySegments';
   }
 }
 
@@ -232,25 +225,40 @@ class _PrimaryFilterChip extends StatelessWidget {
     final palette = _ChipPalette.resolve(context, item.colorHex, isActive);
 
     if (!isActive) {
-      return Tooltip(
-        message: item.label,
-        child: Material(
-          key: ValueKey<String>('discoveryFilterPrimary_${item.key}'),
-          color: palette.backgroundColor,
-          shape: const CircleBorder(),
-          child: InkWell(
-            onTap: isLoading ? null : () => onToggle(item),
-            customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Center(
-                child: iconBuilder?.call(context, item, false) ??
-                    Icon(
-                      Icons.filter_alt_rounded,
-                      size: 20,
-                      color: palette.foregroundColor,
-                    ),
+      return Semantics(
+        key: ValueKey<String>('discoveryFilterPrimarySemantics_${item.key}'),
+        container: true,
+        button: true,
+        focusable: true,
+        label: item.label,
+        onTap: isLoading ? null : () => onToggle(item),
+        child: ExcludeSemantics(
+          child: Tooltip(
+            message: item.label,
+            child: Material(
+              key: ValueKey<String>('discoveryFilterPrimary_${item.key}'),
+              color: palette.backgroundColor,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: isLoading ? null : () => onToggle(item),
+                customBorder: const CircleBorder(),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Center(
+                    child: iconBuilder?.call(
+                          context,
+                          item,
+                          false,
+                          palette.foregroundColor,
+                        ) ??
+                        Icon(
+                          Icons.filter_alt_rounded,
+                          size: 20,
+                          color: palette.foregroundColor,
+                        ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -258,59 +266,78 @@ class _PrimaryFilterChip extends StatelessWidget {
       );
     }
 
-    return DecoratedBox(
-      key: ValueKey<String>('discoveryFilterSelectedPrimary_${item.key}'),
-      decoration: BoxDecoration(
-        color: palette.backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+    return Semantics(
+      key: ValueKey<String>(
+        'discoveryFilterSelectedPrimarySemantics_${item.key}',
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            iconBuilder?.call(context, item, true) ??
-                Icon(
-                  Icons.tune_rounded,
-                  size: 20,
-                  color: palette.foregroundColor,
-                ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                item.label,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+      container: true,
+      button: true,
+      focusable: true,
+      label: item.label,
+      selected: true,
+      toggled: true,
+      onTap: isLoading ? null : () => onToggle(item),
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          key: ValueKey<String>('discoveryFilterSelectedPrimary_${item.key}'),
+          decoration: BoxDecoration(
+            color: palette.backgroundColor,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                iconBuilder?.call(
+                      context,
+                      item,
+                      true,
+                      palette.foregroundColor,
+                    ) ??
+                    Icon(
+                      Icons.tune_rounded,
+                      size: 20,
                       color: palette.foregroundColor,
-                      fontWeight: FontWeight.w700,
                     ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (isLoading)
-              SizedBox(
-                key: ValueKey<String>(
-                  'discoveryFilterPrimaryLoading_${item.key}',
-                ),
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    palette.foregroundColor,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    item.label,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: palette.foregroundColor,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ),
-              )
-            else
-              _ChipClearButton(
-                key: ValueKey<String>(
-                  'discoveryFilterPrimaryClear_${item.key}',
-                ),
-                palette: palette,
-                tooltip: 'Remover filtro',
-                onTap: () => onToggle(item),
-              ),
-          ],
+                const SizedBox(width: 10),
+                if (isLoading)
+                  SizedBox(
+                    key: ValueKey<String>(
+                      'discoveryFilterPrimaryLoading_${item.key}',
+                    ),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        palette.foregroundColor,
+                      ),
+                    ),
+                  )
+                else
+                  _ChipClearButton(
+                    key: ValueKey<String>(
+                      'discoveryFilterPrimaryClear_${item.key}',
+                    ),
+                    palette: palette,
+                    tooltip: 'Remover filtro',
+                    onTap: () => onToggle(item),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -428,56 +455,65 @@ class _TaxonomyTermChip extends StatelessWidget {
         ? 'discoveryFilterSelectedTaxonomy'
         : 'discoveryFilterTaxonomyChip';
 
-    return DecoratedBox(
-      key: ValueKey<String>(
-        '${keyPrefix}_${group.option.key}_${term.value}',
-      ),
-      decoration: BoxDecoration(
-        color: palette.backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isLoading ? null : () => onToggle(group, term),
-          borderRadius: BorderRadius.circular(999),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  term.label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: palette.foregroundColor,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w600,
-                      ),
-                ),
-                if (isSelected) ...[
-                  const SizedBox(width: 8),
-                  if (isLoading)
-                    SizedBox(
-                      key: ValueKey<String>(
-                        'discoveryFilterTaxonomyLoading_${group.option.key}_${term.value}',
-                      ),
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          palette.foregroundColor,
-                        ),
-                      ),
-                    )
-                  else
-                    Icon(
-                      Icons.close_rounded,
-                      size: 15,
-                      color: palette.foregroundColor,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: isSelected,
+      label: term.label,
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          key: ValueKey<String>(
+            '${keyPrefix}_${group.option.key}_${term.value}',
+          ),
+          decoration: BoxDecoration(
+            color: palette.backgroundColor,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isLoading ? null : () => onToggle(group, term),
+              borderRadius: BorderRadius.circular(999),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      term.label,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: palette.foregroundColor,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w600,
+                          ),
                     ),
-                ],
-              ],
+                    if (isSelected) ...[
+                      const SizedBox(width: 8),
+                      if (isLoading)
+                        SizedBox(
+                          key: ValueKey<String>(
+                            'discoveryFilterTaxonomyLoading_${group.option.key}_${term.value}',
+                          ),
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              palette.foregroundColor,
+                            ),
+                          ),
+                        )
+                      else
+                        Icon(
+                          Icons.close_rounded,
+                          size: 15,
+                          color: palette.foregroundColor,
+                        ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

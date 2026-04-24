@@ -283,7 +283,7 @@ void main() {
   });
 
   test(
-      'repair accepts catalog taxonomy options when primary has no restriction',
+      'repair drops taxonomy selections when selected primary has no allowed scope',
       () {
     const policy = DiscoveryFilterPolicy(
       primarySelectionMode: DiscoveryFilterSelectionMode.single,
@@ -324,10 +324,9 @@ void main() {
       policy: policy,
     );
 
-    expect(result.changed, isFalse);
-    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
-      'music_styles': <String>{'rock'},
-    });
+    expect(result.changed, isTrue);
+    expect(result.selection.taxonomyTermKeys, isEmpty);
+    expect(result.droppedTaxonomyTerms['music_styles'], <String>{'rock'});
   });
 
   test('repair drops stale primary and taxonomy selections', () {

@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -42,6 +43,7 @@ class _TenantAdminEventTypeFormScreenState
   void initState() {
     super.initState();
     _controller.initEventTypeForm(existingType: widget.existingType);
+    _controller.loadEventTypeFormTaxonomies();
   }
 
   Future<void> _save() async {
@@ -98,6 +100,7 @@ class _TenantAdminEventTypeFormScreenState
         name: name,
         slug: slug,
         description: description,
+        allowedTaxonomies: _controller.selectedEventTypeAllowedTaxonomies,
         visual: visual,
         typeAssetUpload: typeAssetUpload,
         removeTypeAsset: _controller.isEventTypeTypeAssetMarkedForRemoval,
@@ -201,6 +204,8 @@ class _TenantAdminEventTypeFormScreenState
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _buildTaxonomySelection(context),
                   const SizedBox(height: 24),
                   TenantAdminPrimaryFormAction(
                     label: _isEdit ? 'Salvar alterações' : 'Criar tipo',
@@ -316,6 +321,87 @@ class _TenantAdminEventTypeFormScreenState
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTaxonomySelection(BuildContext context) {
+    return TenantAdminFormSectionCard(
+      title: 'Taxonomias permitidas',
+      description: 'Selecione quais taxonomias podem ser usadas neste tipo.',
+      child: StreamValueBuilder<bool>(
+        streamValue: _controller.taxonomyLoadingStreamValue,
+        builder: (context, isLoading) {
+          return StreamValueBuilder<String?>(
+            streamValue: _controller.taxonomyErrorStreamValue,
+            builder: (context, error) {
+              return StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
+                streamValue: _controller.taxonomiesStreamValue,
+                builder: (context, availableTaxonomies) {
+                  return StreamValueBuilder<List<String>>(
+                    streamValue: _controller.eventTypeAllowedTaxonomiesStreamValue,
+                    builder: (context, selectedTaxonomies) {
+                      final selected = selectedTaxonomies.toSet();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isLoading) const LinearProgressIndicator(),
+                          if (error?.isNotEmpty ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: TenantAdminErrorBanner(
+                                rawError: error ?? '',
+                                fallbackMessage:
+                                    'Nao foi possivel carregar taxonomias.',
+                                onRetry: _controller.loadEventTypeFormTaxonomies,
+                              ),
+                            ),
+                          if (availableTaxonomies.isEmpty && !isLoading)
+                            Text(
+                              'Nenhuma taxonomia aplicavel a eventos encontrada.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: availableTaxonomies
+                                  .map(
+                                    (taxonomy) {
+                                      final label =
+                                          '${taxonomy.name} (${taxonomy.slug})';
+                                      final isSelected =
+                                          selected.contains(taxonomy.slug);
+                                      return Semantics(
+                                        container: true,
+                                        label: label,
+                                        button: true,
+                                        toggled: isSelected,
+                                        selected: isSelected,
+                                        child: ExcludeSemantics(
+                                          child: FilterChip(
+                                            label: Text(label),
+                                            selected: isSelected,
+                                            onSelected: (_) => _controller
+                                                .toggleEventTypeAllowedTaxonomy(
+                                                  taxonomy.slug,
+                                                ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                  .toList(growable: false),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

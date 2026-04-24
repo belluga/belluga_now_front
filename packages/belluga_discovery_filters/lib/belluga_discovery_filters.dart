@@ -5,3 +5,4 @@ export 'src/discovery_filter_policy.dart';
 export 'src/discovery_filter_query_payload.dart';
 export 'src/discovery_filter_selection.dart';
 export 'src/discovery_filter_selection_repair.dart';
+export 'src/discovery_filter_taxonomy_scope.dart';

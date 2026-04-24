@@ -1,7 +1,7 @@
 import 'discovery_filter_catalog.dart';
-import 'discovery_filter_entity_registry.dart';
 import 'discovery_filter_policy.dart';
 import 'discovery_filter_selection.dart';
+import 'discovery_filter_taxonomy_scope.dart';
 
 part 'discovery_filter_selection_repair_result.dart';
 
@@ -98,45 +98,26 @@ class DiscoveryFilterSelectionRepair {
     required Set<String> primaryKeys,
     required DiscoveryFilterCatalog? catalogEnvelope,
   }) {
-    if (primaryKeys.isEmpty) {
-      return catalogEnvelope == null
-          ? const <String>{}
-          : catalogEnvelope.taxonomyOptionsByKey.keys.toSet();
-    }
-
-    final allowed = <String>{};
-    for (final key in primaryKeys) {
-      final item = catalogByKey[key];
-      if (item == null) {
-        continue;
+    final envelope = catalogEnvelope;
+    if (envelope == null) {
+      if (primaryKeys.isEmpty) {
+        return const <String>{};
       }
-      allowed.addAll(item.taxonomyKeys);
-      allowed.addAll(item.taxonomyValuesByGroup.keys);
-      allowed.addAll(item.taxonomyConfigs.keys);
-
-      final envelope = catalogEnvelope;
-      if (envelope == null) {
-        continue;
-      }
-      for (final entity in item.entities) {
-        final entityKey = entity.trim();
-        if (entityKey.isEmpty) {
+      final allowed = <String>{};
+      for (final key in primaryKeys) {
+        final item = catalogByKey[key];
+        if (item == null) {
           continue;
         }
-        final selectedTypes = item.typesByEntity[entityKey] ?? item.types;
-        for (final option in envelope.typeOptionsByEntity[entityKey] ??
-            const <DiscoveryFilterTypeOption>[]) {
-          if (selectedTypes.isNotEmpty &&
-              !selectedTypes.contains(option.value)) {
-            continue;
-          }
-          allowed.addAll(option.allowedTaxonomyKeys);
-        }
+        allowed.addAll(item.taxonomyKeys);
+        allowed.addAll(item.taxonomyValuesByGroup.keys);
+        allowed.addAll(item.taxonomyConfigs.keys);
       }
-    }
-    if (allowed.isNotEmpty || catalogEnvelope == null) {
       return allowed;
     }
-    return catalogEnvelope.taxonomyOptionsByKey.keys.toSet();
+    return resolveDiscoveryFilterAllowedTaxonomyKeys(
+      catalog: envelope,
+      selection: DiscoveryFilterSelection(primaryKeys: primaryKeys),
+    );
   }
 }

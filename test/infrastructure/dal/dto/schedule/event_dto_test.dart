@@ -454,7 +454,7 @@ void main() {
     expect(domain.selectedOccurrence!.programmingCount, 1);
     expect(domain.programmingItems, hasLength(1));
     expect(domain.programmingItems.first.time, '17:00');
-    expect(domain.programmingItems.first.displayTitle, 'Coral XYZ');
+    expect(domain.programmingItems.first.displayTitle, isEmpty);
     expect(domain.programmingItems.first.linkedAccountProfiles, hasLength(1));
   });
 

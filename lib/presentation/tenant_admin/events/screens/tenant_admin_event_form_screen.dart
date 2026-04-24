@@ -264,6 +264,21 @@ class _TenantAdminEventFormScreenState
                                                                     formState:
                                                                         formState,
                                                                   ),
+                                                                  if (formState
+                                                                          .occurrences
+                                                                          .length <=
+                                                                      1) ...[
+                                                                    const SizedBox(
+                                                                      height:
+                                                                          16,
+                                                                    ),
+                                                                    _buildPrimaryOccurrenceProgrammingSection(
+                                                                      formState:
+                                                                          formState,
+                                                                      venues:
+                                                                          venues,
+                                                                    ),
+                                                                  ],
                                                                   const SizedBox(
                                                                     height: 16,
                                                                   ),
@@ -950,6 +965,156 @@ class _TenantAdminEventFormScreenState
     );
   }
 
+  Widget _buildPrimaryOccurrenceProgrammingSection({
+    required TenantAdminEventFormState formState,
+    required List<TenantAdminAccountProfile> venues,
+  }) {
+    final primaryOccurrence =
+        formState.occurrences.isEmpty ? null : formState.occurrences.first;
+    final programmingItems = primaryOccurrence?.programmingItems ?? const [];
+    final canEditProgramming =
+        formState.startAt != null || primaryOccurrence != null;
+
+    Future<void> addProgrammingItem() async {
+      if (!canEditProgramming) {
+        return;
+      }
+      final occurrenceRelatedProfileIds =
+          primaryOccurrence?.relatedAccountProfileIds.toList(growable: true) ??
+              <TenantAdminAccountProfileIdValue>[];
+      final occurrenceRelatedProfiles =
+          primaryOccurrence?.relatedAccountProfiles.toList(growable: true) ??
+              <TenantAdminAccountProfile>[];
+      final item = await _openProgrammingItemEditor(
+        venues: venues,
+        occurrenceRelatedProfileIds: occurrenceRelatedProfileIds,
+        occurrenceRelatedProfiles: occurrenceRelatedProfiles,
+      );
+      if (item == null) {
+        return;
+      }
+      final nextItems = <TenantAdminEventProgrammingItem>[
+        ...programmingItems,
+        item,
+      ];
+      _sortProgrammingItems(nextItems);
+      _controller.replacePrimaryOccurrenceDetails(
+        relatedAccountProfileIdValues:
+            List<TenantAdminAccountProfileIdValue>.unmodifiable(
+          occurrenceRelatedProfileIds,
+        ),
+        relatedAccountProfiles: List<TenantAdminAccountProfile>.unmodifiable(
+          occurrenceRelatedProfiles,
+        ),
+        programmingItems: List<TenantAdminEventProgrammingItem>.unmodifiable(
+          nextItems,
+        ),
+      );
+    }
+
+    Future<void> editProgrammingItem(int itemIndex) async {
+      final existing = programmingItems[itemIndex];
+      final occurrenceRelatedProfileIds =
+          primaryOccurrence?.relatedAccountProfileIds.toList(growable: true) ??
+              <TenantAdminAccountProfileIdValue>[];
+      final occurrenceRelatedProfiles =
+          primaryOccurrence?.relatedAccountProfiles.toList(growable: true) ??
+              <TenantAdminAccountProfile>[];
+      final updated = await _openProgrammingItemEditor(
+        venues: venues,
+        occurrenceRelatedProfileIds: occurrenceRelatedProfileIds,
+        occurrenceRelatedProfiles: occurrenceRelatedProfiles,
+        existing: existing,
+      );
+      if (updated == null) {
+        return;
+      }
+      final nextItems = programmingItems.toList(growable: true);
+      nextItems[itemIndex] = updated;
+      _sortProgrammingItems(nextItems);
+      _controller.replacePrimaryOccurrenceDetails(
+        relatedAccountProfileIdValues:
+            List<TenantAdminAccountProfileIdValue>.unmodifiable(
+          occurrenceRelatedProfileIds,
+        ),
+        relatedAccountProfiles: List<TenantAdminAccountProfile>.unmodifiable(
+          occurrenceRelatedProfiles,
+        ),
+        programmingItems: List<TenantAdminEventProgrammingItem>.unmodifiable(
+          nextItems,
+        ),
+      );
+    }
+
+    void removeProgrammingItem(int itemIndex) {
+      final nextItems = programmingItems.toList(growable: true)
+        ..removeAt(itemIndex);
+      _controller.replacePrimaryOccurrenceProgrammingItems(
+        List<TenantAdminEventProgrammingItem>.unmodifiable(nextItems),
+      );
+    }
+
+    return KeyedSubtree(
+      key: const Key('tenantAdminPrimaryOccurrenceProgrammingSection'),
+      child: TenantAdminFormSectionCard(
+        title: 'Programação',
+        description:
+            'Enquanto o evento tiver só uma ocorrência, a programação dessa data fica visível aqui na raiz do formulário.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!canEditProgramming)
+              Text(
+                'Defina a primeira data do evento para liberar a programação.',
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else if (programmingItems.isEmpty)
+              Text(
+                'Nenhum item de programação nesta data.',
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else
+              for (var itemIndex = 0;
+                  itemIndex < programmingItems.length;
+                  itemIndex++)
+                ListTile(
+                  key: Key(
+                    'tenantAdminPrimaryOccurrenceProgrammingItem_$itemIndex',
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () => editProgrammingItem(itemIndex),
+                  leading: Text(programmingItems[itemIndex].time),
+                  title: Text(
+                    programmingItems[itemIndex].title ??
+                        _firstProgrammingProfileName(
+                          programmingItems[itemIndex],
+                        ) ??
+                        'Item sem título',
+                  ),
+                  subtitle: _buildProgrammingItemSubtitle(
+                    programmingItems[itemIndex],
+                    venues,
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Remover item de programação',
+                    onPressed: () => removeProgrammingItem(itemIndex),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key:
+                  const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+              onPressed: canEditProgramming ? addProgrammingItem : null,
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar item de programação'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRelatedAccountProfileCard({
     required String profileId,
     required TenantAdminAccountProfile? profile,
@@ -1174,13 +1339,17 @@ class _TenantAdminEventFormScreenState
             }
 
             Future<void> addProgrammingItem() async {
-              final item = await _openProgrammingItemEditor(venues: venues);
+              final item = await _openProgrammingItemEditor(
+                venues: venues,
+                occurrenceRelatedProfileIds: relatedProfileIds,
+                occurrenceRelatedProfiles: relatedProfiles,
+              );
               if (item == null) {
                 return;
               }
               setSheetState(() {
                 programmingItems.add(item);
-                programmingItems.sort((a, b) => a.time.compareTo(b.time));
+                _sortProgrammingItems(programmingItems);
                 errorMessage = null;
               });
             }
@@ -1191,6 +1360,8 @@ class _TenantAdminEventFormScreenState
               }
               final item = await _openProgrammingItemEditor(
                 venues: venues,
+                occurrenceRelatedProfileIds: relatedProfileIds,
+                occurrenceRelatedProfiles: relatedProfiles,
                 existing: programmingItems[itemIndex],
               );
               if (item == null) {
@@ -1198,7 +1369,7 @@ class _TenantAdminEventFormScreenState
               }
               setSheetState(() {
                 programmingItems[itemIndex] = item;
-                programmingItems.sort((a, b) => a.time.compareTo(b.time));
+                _sortProgrammingItems(programmingItems);
                 errorMessage = null;
               });
             }
@@ -1291,6 +1462,13 @@ class _TenantAdminEventFormScreenState
                               setSheetState(() {
                                 relatedProfileIds.removeWhere(
                                   (item) => item.value == profileId.value,
+                                );
+                                relatedProfiles.removeWhere(
+                                  (profile) => profile.id == profileId.value,
+                                );
+                                _removeOccurrenceProfileFromProgrammingItems(
+                                  profileId: profileId.value,
+                                  programmingItems: programmingItems,
                                 );
                                 errorMessage = null;
                               });
@@ -1452,6 +1630,8 @@ class _TenantAdminEventFormScreenState
 
   Future<TenantAdminEventProgrammingItem?> _openProgrammingItemEditor({
     required List<TenantAdminAccountProfile> venues,
+    required List<TenantAdminAccountProfileIdValue> occurrenceRelatedProfileIds,
+    required List<TenantAdminAccountProfile> occurrenceRelatedProfiles,
     TenantAdminEventProgrammingItem? existing,
   }) async {
     var time = existing?.time ?? '';
@@ -1472,8 +1652,10 @@ class _TenantAdminEventFormScreenState
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            Future<void> addProfile() async {
-              final selected = await _pickRelatedAccountProfile(
+            Future<void> linkOccurrenceProfile() async {
+              final selected = await _pickOccurrenceRelatedAccountProfile(
+                occurrenceRelatedProfileIds: occurrenceRelatedProfileIds,
+                occurrenceRelatedProfiles: occurrenceRelatedProfiles,
                 excludedProfileIds: linkedProfileIds
                     .map((profileId) => profileId.value)
                     .toSet(),
@@ -1482,16 +1664,47 @@ class _TenantAdminEventFormScreenState
                 return;
               }
               setSheetState(() {
-                linkedProfileIds.add(
-                  TenantAdminAccountProfileIdValue(selected.id),
+                _upsertProgrammingLinkedProfile(
+                  profile: selected,
+                  linkedProfileIds: linkedProfileIds,
+                  linkedProfiles: linkedProfiles,
                 );
-                linkedProfiles.removeWhere(
-                  (profile) => profile.id == selected.id,
-                );
-                linkedProfiles.add(selected);
                 errorMessage = null;
               });
             }
+
+            Future<void> addOccurrenceProfile() async {
+              final selected = await _pickRelatedAccountProfile(
+                excludedProfileIds: occurrenceRelatedProfileIds
+                    .map((profileId) => profileId.value)
+                    .toSet(),
+              );
+              if (selected == null) {
+                return;
+              }
+              setSheetState(() {
+                _upsertOccurrenceRelatedProfile(
+                  profile: selected,
+                  occurrenceRelatedProfileIds: occurrenceRelatedProfileIds,
+                  occurrenceRelatedProfiles: occurrenceRelatedProfiles,
+                );
+                _upsertProgrammingLinkedProfile(
+                  profile: selected,
+                  linkedProfileIds: linkedProfileIds,
+                  linkedProfiles: linkedProfiles,
+                );
+                errorMessage = null;
+              });
+            }
+
+            final availableOccurrenceProfileIds = occurrenceRelatedProfiles
+                .map((profile) => profile.id)
+                .where(
+                  (profileId) => !linkedProfileIds.any(
+                    (selected) => selected.value == profileId,
+                  ),
+                )
+                .toList(growable: false);
 
             return Padding(
               padding: EdgeInsets.fromLTRB(
@@ -1545,6 +1758,11 @@ class _TenantAdminEventFormScreenState
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
+                    Text(
+                      'A programação só pode usar perfis próprios desta data.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
                     if (linkedProfileIds.isEmpty)
                       Text(
                         'Nenhum perfil vinculado.',
@@ -1577,11 +1795,29 @@ class _TenantAdminEventFormScreenState
                             icon: const Icon(Icons.close),
                           ),
                         ),
-                    OutlinedButton.icon(
-                      key: const Key('tenantAdminProgrammingAddProfileButton'),
-                      onPressed: addProfile,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Vincular perfil'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        OutlinedButton.icon(
+                          key: const Key(
+                            'tenantAdminProgrammingLinkOccurrenceProfileButton',
+                          ),
+                          onPressed: availableOccurrenceProfileIds.isEmpty
+                              ? null
+                              : linkOccurrenceProfile,
+                          icon: const Icon(Icons.link),
+                          label: const Text('Vincular perfil da data'),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key(
+                            'tenantAdminProgrammingAddOccurrenceProfileButton',
+                          ),
+                          onPressed: addOccurrenceProfile,
+                          icon: const Icon(Icons.person_add_alt_1_outlined),
+                          label: const Text('Adicionar perfil à data'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -1697,6 +1933,122 @@ class _TenantAdminEventFormScreenState
     );
 
     return result;
+  }
+
+  void _sortProgrammingItems(List<TenantAdminEventProgrammingItem> items) {
+    items.sort((left, right) => left.time.compareTo(right.time));
+  }
+
+  void _removeOccurrenceProfileFromProgrammingItems({
+    required String profileId,
+    required List<TenantAdminEventProgrammingItem> programmingItems,
+  }) {
+    for (var itemIndex = 0; itemIndex < programmingItems.length; itemIndex++) {
+      programmingItems[itemIndex] = _withoutProgrammingProfile(
+        programmingItems[itemIndex],
+        profileId,
+      );
+    }
+  }
+
+  TenantAdminEventProgrammingItem _withoutProgrammingProfile(
+    TenantAdminEventProgrammingItem item,
+    String profileId,
+  ) {
+    return TenantAdminEventProgrammingItem(
+      timeValue: tenantAdminRequiredText(item.time),
+      titleValue: tenantAdminOptionalText(item.title),
+      accountProfileIdValues: item.accountProfileIds
+          .where((entry) => entry.value != profileId)
+          .toList(growable: false),
+      linkedAccountProfiles: item.linkedAccountProfiles
+          .where((profile) => profile.id != profileId)
+          .toList(growable: false),
+      placeRef: item.placeRef,
+    );
+  }
+
+  void _upsertOccurrenceRelatedProfile({
+    required TenantAdminAccountProfile profile,
+    required List<TenantAdminAccountProfileIdValue> occurrenceRelatedProfileIds,
+    required List<TenantAdminAccountProfile> occurrenceRelatedProfiles,
+  }) {
+    if (!occurrenceRelatedProfileIds
+        .any((entry) => entry.value == profile.id)) {
+      occurrenceRelatedProfileIds.add(
+        TenantAdminAccountProfileIdValue(profile.id),
+      );
+    }
+    occurrenceRelatedProfiles.removeWhere((entry) => entry.id == profile.id);
+    occurrenceRelatedProfiles.add(profile);
+  }
+
+  void _upsertProgrammingLinkedProfile({
+    required TenantAdminAccountProfile profile,
+    required List<TenantAdminAccountProfileIdValue> linkedProfileIds,
+    required List<TenantAdminAccountProfile> linkedProfiles,
+  }) {
+    if (!linkedProfileIds.any((entry) => entry.value == profile.id)) {
+      linkedProfileIds.add(
+        TenantAdminAccountProfileIdValue(profile.id),
+      );
+    }
+    linkedProfiles.removeWhere((entry) => entry.id == profile.id);
+    linkedProfiles.add(profile);
+  }
+
+  Future<TenantAdminAccountProfile?> _pickOccurrenceRelatedAccountProfile({
+    required List<TenantAdminAccountProfileIdValue> occurrenceRelatedProfileIds,
+    required List<TenantAdminAccountProfile> occurrenceRelatedProfiles,
+    required Set<String> excludedProfileIds,
+  }) async {
+    final profilesById = <String, TenantAdminAccountProfile>{
+      for (final profile in occurrenceRelatedProfiles) profile.id: profile,
+    };
+    final candidates = occurrenceRelatedProfileIds
+        .map((profileId) => profilesById[profileId.value])
+        .whereType<TenantAdminAccountProfile>()
+        .where((profile) => !excludedProfileIds.contains(profile.id))
+        .toList(growable: false);
+
+    if (candidates.isEmpty) {
+      return null;
+    }
+
+    return showModalBottomSheet<TenantAdminAccountProfile>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(
+                title: Text('Perfis próprios da data'),
+                subtitle: Text(
+                  'Selecione um participante já vinculado a esta ocorrência.',
+                ),
+              ),
+              for (final profile in candidates)
+                ListTile(
+                  key: Key(
+                    'tenantAdminOccurrenceProgrammingCandidate_${profile.id}',
+                  ),
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(profile.displayName),
+                  subtitle: Text(profile.slug ?? profile.id),
+                  onTap: () => unawaited(
+                    _closeModalSheet<TenantAdminAccountProfile>(
+                      context,
+                      profile,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   String? _validateProgrammingItem({
