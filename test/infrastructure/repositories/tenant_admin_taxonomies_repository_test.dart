@@ -127,6 +127,7 @@ void main() {
       'tax-1',
       'tax-2',
     ]);
+    expect(adapter.requests.single.queryParameters['term_limit'], 200);
     expect(adapter.requests.single.listFormat, ListFormat.multiCompatible);
     expect(
       adapter.requests.where(

@@ -57,7 +57,7 @@ class DiscoveryFilterSelectionRepair {
       }
 
       final termOptions = catalogEnvelope?.taxonomyOptionsByKey[entry.key];
-      final allowedTerms = termOptions == null || termOptions.terms.isEmpty
+      final allowedTerms = termOptions == null || termOptions.termsTruncated
           ? null
           : termOptions.terms.map((term) => term.value).toSet();
       final candidateTerms = allowedTerms == null

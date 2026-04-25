@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
@@ -14,13 +12,12 @@ import 'package:belluga_now/domain/repositories/discovery_filters_repository_con
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
-import 'package:belluga_now/domain/repositories/value_objects/discovery_filters_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_controller_mixin.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -30,7 +27,9 @@ enum FavoriteToggleOutcome {
   requiresAuthentication,
 }
 
-class DiscoveryScreenController implements Disposable {
+class DiscoveryScreenController extends Object
+    with PublicDiscoveryFilterControllerMixin
+    implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
     AuthRepositoryContract? authRepository,
@@ -94,17 +93,21 @@ class DiscoveryScreenController implements Disposable {
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<String?>();
+  @override
   final discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
     defaultValue: const DiscoveryFilterCatalog(
       surface: _discoveryAccountProfilesSurface,
     ),
   );
+  @override
   final discoveryFilterSelectionStreamValue =
       StreamValue<DiscoveryFilterSelection>(
     defaultValue: const DiscoveryFilterSelection(),
   );
+  @override
   final isDiscoveryFilterPanelVisibleStreamValue =
       StreamValue<bool>(defaultValue: false);
+  @override
   final isDiscoveryFilterCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final availableTypesStreamValue =
@@ -126,6 +129,30 @@ class DiscoveryScreenController implements Disposable {
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
+
+  @override
+  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
+      _discoveryFiltersRepository;
+
+  @override
+  AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
+      _appDataRepository;
+
+  @override
+  String get publicDiscoveryFilterSurface => _discoveryAccountProfilesSurface;
+
+  @override
+  bool get isPublicDiscoveryFilterDisposed => _isDisposed;
+
+  @override
+  String get publicDiscoveryFilterLogLabel => 'DiscoveryScreenController';
+
+  @override
+  void onPublicDiscoveryFilterSelectionChanged(
+    DiscoveryFilterSelection selection,
+  ) {
+    _scheduleReload(immediate: true);
+  }
 
   Future<void> init() async {
     if (_initialized) {
@@ -160,7 +187,25 @@ class DiscoveryScreenController implements Disposable {
     );
     await _loadFavoriteIds();
     _hydrateFromRepositoryCache();
-    await _loadDiscoveryFilterCatalog();
+    final restoredSelection =
+        await loadPersistedPublicDiscoveryFilterSelection();
+    if (restoredSelection != null &&
+        !samePublicDiscoveryFilterSelection(
+          discoveryFilterSelectionStreamValue.value,
+          restoredSelection,
+        )) {
+      discoveryFilterSelectionStreamValue.addValue(restoredSelection);
+    }
+    final mustAwaitCatalogBeforeResults = restoredSelection?.isEmpty == false ||
+        discoveryFilterSelectionStreamValue.value.isNotEmpty;
+    final catalogFuture = loadPublicDiscoveryFilterCatalog(
+      restoredSelection: restoredSelection,
+    );
+    if (mustAwaitCatalogBeforeResults) {
+      await catalogFuture;
+    } else {
+      unawaited(catalogFuture);
+    }
     await _reloadPartners(showFullScreenLoader: false);
   }
 
@@ -180,6 +225,7 @@ class DiscoveryScreenController implements Disposable {
       }
       updateDiscoveryFilterPanelVisibilityFromScroll(
         scrollController.position.pixels,
+        epsilon: _filterPanelScrollHideEpsilon,
       );
       if (_isFetchingPage ||
           isLoadingStreamValue.value ||
@@ -371,42 +417,9 @@ class DiscoveryScreenController implements Disposable {
     _scheduleReload(immediate: true);
   }
 
-  void setDiscoveryFilterSelection(DiscoveryFilterSelection selection) {
-    final repaired = _repairDiscoveryFilterSelection(selection);
-    if (_sameDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
-      repaired,
-    )) {
-      return;
-    }
-    discoveryFilterSelectionStreamValue.addValue(repaired);
-    unawaited(_persistDiscoveryFilterSelection(repaired));
-    _scheduleReload(immediate: true);
-  }
-
+  @override
   DiscoveryFilterPolicy get discoveryFilterPolicy =>
       _discoveryAccountProfilesFilterPolicy;
-
-  void toggleDiscoveryFilterPanel() {
-    setDiscoveryFilterPanelVisible(
-      !isDiscoveryFilterPanelVisibleStreamValue.value,
-    );
-  }
-
-  void setDiscoveryFilterPanelVisible(bool visible) {
-    if (isDiscoveryFilterPanelVisibleStreamValue.value == visible) {
-      return;
-    }
-    isDiscoveryFilterPanelVisibleStreamValue.addValue(visible);
-  }
-
-  void updateDiscoveryFilterPanelVisibilityFromScroll(double pixels) {
-    if (pixels <= _filterPanelScrollHideEpsilon ||
-        !isDiscoveryFilterPanelVisibleStreamValue.value) {
-      return;
-    }
-    setDiscoveryFilterPanelVisible(false);
-  }
 
   bool get hasActiveFilterState {
     final selectedType = selectedTypeFilterStreamValue.value;
@@ -440,7 +453,7 @@ class DiscoveryScreenController implements Disposable {
     if (discoveryFilterSelectionStreamValue.value.isNotEmpty) {
       const emptySelection = DiscoveryFilterSelection();
       discoveryFilterSelectionStreamValue.addValue(emptySelection);
-      unawaited(_persistDiscoveryFilterSelection(emptySelection));
+      unawaited(persistPublicDiscoveryFilterSelection(emptySelection));
       changed = true;
     }
 
@@ -541,128 +554,6 @@ class DiscoveryScreenController implements Disposable {
           .map((entry) => entry.value),
     );
     favoriteIdsStreamValue.addValue(ids);
-  }
-
-  Future<void> _loadDiscoveryFilterCatalog() async {
-    final repository = _discoveryFiltersRepository;
-    if (repository == null) {
-      return;
-    }
-
-    isDiscoveryFilterCatalogLoadingStreamValue.addValue(true);
-    try {
-      final catalog = await repository.fetchCatalog(
-        discoveryFiltersRepoText(_discoveryAccountProfilesSurface),
-      );
-      discoveryFilterCatalogStreamValue.addValue(catalog);
-
-      final restoredSelection = await _loadPersistedDiscoveryFilterSelection();
-      final repaired = _repairDiscoveryFilterSelection(
-        restoredSelection ?? discoveryFilterSelectionStreamValue.value,
-        catalogOverride: catalog,
-      );
-      if (!_sameDiscoveryFilterSelection(
-        discoveryFilterSelectionStreamValue.value,
-        repaired,
-      )) {
-        discoveryFilterSelectionStreamValue.addValue(repaired);
-      }
-      if (restoredSelection != null &&
-          !_sameDiscoveryFilterSelection(restoredSelection, repaired)) {
-        unawaited(_persistDiscoveryFilterSelection(repaired));
-      }
-    } catch (error) {
-      debugPrint(
-        'DiscoveryScreenController._loadDiscoveryFilterCatalog failed: $error',
-      );
-      discoveryFilterCatalogStreamValue.addValue(
-        const DiscoveryFilterCatalog(
-          surface: _discoveryAccountProfilesSurface,
-        ),
-      );
-    } finally {
-      isDiscoveryFilterCatalogLoadingStreamValue.addValue(false);
-    }
-  }
-
-  Future<DiscoveryFilterSelection?>
-      _loadPersistedDiscoveryFilterSelection() async {
-    final repository = _appDataRepository;
-    if (repository == null) {
-      return null;
-    }
-    final stored = await repository.getDiscoveryFilterSelection(
-      AppDataDiscoveryFilterTokenValue.fromRaw(
-        _discoveryAccountProfilesSurface,
-      ),
-    );
-    if (stored == null) {
-      return null;
-    }
-    return _discoveryFilterSelectionFromSnapshot(stored);
-  }
-
-  Future<void> _persistDiscoveryFilterSelection(
-    DiscoveryFilterSelection selection,
-  ) async {
-    final repository = _appDataRepository;
-    if (repository == null) {
-      return;
-    }
-    try {
-      await repository.setDiscoveryFilterSelection(
-        AppDataDiscoveryFilterTokenValue.fromRaw(
-          _discoveryAccountProfilesSurface,
-        ),
-        _discoveryFilterSelectionSnapshot(selection),
-      );
-    } catch (error) {
-      debugPrint(
-        'DiscoveryScreenController._persistDiscoveryFilterSelection failed: $error',
-      );
-    }
-  }
-
-  DiscoveryFilterSelection _discoveryFilterSelectionFromSnapshot(
-    AppDataDiscoveryFilterSelectionSnapshot snapshot,
-  ) {
-    return DiscoveryFilterSelection(
-      primaryKeys: snapshot.primaryKeys
-          .map((value) => value.value)
-          .where((value) => value.isNotEmpty)
-          .toSet(),
-      taxonomyTermKeys: <String, Set<String>>{
-        for (final taxonomy in snapshot.taxonomySelections)
-          if (!taxonomy.isEmpty)
-            taxonomy.taxonomyKey.value: taxonomy.termKeys
-                .map((value) => value.value)
-                .where((value) => value.isNotEmpty)
-                .toSet(),
-      },
-    );
-  }
-
-  AppDataDiscoveryFilterSelectionSnapshot _discoveryFilterSelectionSnapshot(
-    DiscoveryFilterSelection selection,
-  ) {
-    return AppDataDiscoveryFilterSelectionSnapshot(
-      primaryKeys: selection.primaryKeys
-          .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-          .where((value) => value.value.isNotEmpty)
-          .toList(growable: false),
-      taxonomySelections: selection.taxonomyTermKeys.entries
-          .map(
-            (entry) => AppDataDiscoveryFilterTaxonomySelection(
-              taxonomyKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
-              termKeys: entry.value
-                  .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-                  .where((value) => value.value.isNotEmpty)
-                  .toList(growable: false),
-            ),
-          )
-          .where((selection) => !selection.isEmpty)
-          .toList(growable: false),
-    );
   }
 
   String? _originSignature() {
@@ -793,48 +684,6 @@ class DiscoveryScreenController implements Disposable {
         )
         .where((entry) => entry.isValid)
         .toList(growable: false);
-  }
-
-  DiscoveryFilterSelection _repairDiscoveryFilterSelection(
-    DiscoveryFilterSelection selection, {
-    DiscoveryFilterCatalog? catalogOverride,
-  }) {
-    final catalog = catalogOverride ?? discoveryFilterCatalogStreamValue.value;
-    return const DiscoveryFilterSelectionRepair()
-        .repair(
-          selection: selection,
-          catalog: catalog.filters,
-          catalogEnvelope: catalog,
-          policy: _discoveryAccountProfilesFilterPolicy,
-        )
-        .selection;
-  }
-
-  bool _sameDiscoveryFilterSelection(
-    DiscoveryFilterSelection left,
-    DiscoveryFilterSelection right,
-  ) {
-    return _sameStringSet(left.primaryKeys, right.primaryKeys) &&
-        _sameTaxonomySelection(left.taxonomyTermKeys, right.taxonomyTermKeys);
-  }
-
-  bool _sameTaxonomySelection(
-    Map<String, Set<String>> left,
-    Map<String, Set<String>> right,
-  ) {
-    if (!setEquals(left.keys.toSet(), right.keys.toSet())) {
-      return false;
-    }
-    for (final key in left.keys) {
-      if (!_sameStringSet(left[key] ?? const {}, right[key] ?? const {})) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool _sameStringSet(Set<String> left, Set<String> right) {
-    return setEquals(left, right);
   }
 
   void _updateAvailableTypes() {

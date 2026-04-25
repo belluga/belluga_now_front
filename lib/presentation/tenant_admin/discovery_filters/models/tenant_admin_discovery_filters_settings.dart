@@ -1,5 +1,5 @@
+import 'package:belluga_now/application/tenant_admin/settings/tenant_admin_discovery_filters_settings_canonicalizer.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
-import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -77,31 +77,11 @@ class TenantAdminDiscoveryFiltersSettings {
     required Map<String, dynamic> discoveryFilters,
     Map<String, dynamic>? legacyMapUi,
   }) {
-    final next = Map<String, dynamic>.from(discoveryFilters);
-    final surfaces = _mutableMap(next['surfaces']);
-    final mapSurface = _mutableMap(
-      surfaces[TenantAdminDiscoveryFilterSurfaceDefinition.map.key],
+    final next =
+        const TenantAdminDiscoveryFiltersSettingsCanonicalizer().canonicalize(
+      discoveryFilters: discoveryFilters,
+      legacyMapUi: legacyMapUi,
     );
-    final mapFilters = mapSurface['filters'];
-    final hasCanonicalMapFilters =
-        mapFilters is Iterable && mapFilters.isNotEmpty;
-    if (!hasCanonicalMapFilters && legacyMapUi != null) {
-      final legacyFilters = legacyMapUi['filters'];
-      if (legacyFilters is Iterable) {
-        mapSurface['target'] =
-            TenantAdminDiscoveryFilterSurfaceDefinition.map.target;
-        mapSurface['primary_selection_mode'] =
-            TenantAdminDiscoveryFilterSurfaceDefinition
-                .map.primarySelectionMode;
-        mapSurface['filters'] = legacyFilters
-            .map((raw) => _legacyMapFilterToCanonical(_mapOf(raw)))
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-        surfaces[TenantAdminDiscoveryFilterSurfaceDefinition.map.key] =
-            mapSurface;
-      }
-    }
-    next['surfaces'] = surfaces;
     return TenantAdminDiscoveryFiltersSettings(
       rawDiscoveryFiltersValue: TenantAdminDynamicMapValue(
         Map<String, dynamic>.unmodifiable(next),
@@ -135,66 +115,6 @@ class TenantAdminDiscoveryFiltersSettings {
             : null,
       ),
     );
-  }
-
-  static Map<String, dynamic>? _legacyMapFilterToCanonical(
-    Map<String, dynamic> raw,
-  ) {
-    final key = _normalizeToken(raw['key']);
-    final label = raw['label']?.toString().trim() ?? '';
-    if (key.isEmpty || label.isEmpty) {
-      return null;
-    }
-    final query = _mapOf(raw['query']);
-    final source = _normalizeToken(query['source']);
-    final entity = _legacySourceToEntity(source);
-    final types = _stringList(query['types']);
-    final taxonomy = _legacyTaxonomy(query['taxonomy']);
-
-    return {
-      'key': key,
-      'surface': TenantAdminDiscoveryFilterSurfaceDefinition.map.key,
-      'target': TenantAdminDiscoveryFilterSurfaceDefinition.map.target,
-      'label': label,
-      'primary_selection_mode':
-          TenantAdminDiscoveryFilterSurfaceDefinition.map.primarySelectionMode,
-      if (raw['image_uri'] != null) 'image_uri': raw['image_uri'],
-      'override_marker': _parseBool(raw['override_marker']),
-      if (raw['marker_override'] is Map)
-        'marker_override': raw['marker_override'],
-      'query': {
-        if (entity != null) 'entities': [entity],
-        if (entity != null && types.isNotEmpty)
-          'types_by_entity': {entity: types},
-        if (taxonomy.isNotEmpty) 'taxonomy': taxonomy,
-      },
-    };
-  }
-
-  static String? _legacySourceToEntity(String source) {
-    final sourceValue = TenantAdminMapFilterSource.fromRaw(
-      TenantAdminLowercaseTokenValue.fromRaw(
-        source,
-        isRequired: false,
-      ),
-    );
-    return sourceValue?.apiValue;
-  }
-
-  static Map<String, List<String>> _legacyTaxonomy(Object? raw) {
-    final mapped = <String, List<String>>{};
-    for (final token in _stringList(raw)) {
-      final separator = token.indexOf(':');
-      final group = separator <= 0 ? 'legacy' : token.substring(0, separator);
-      final value = separator <= 0 ? token : token.substring(separator + 1);
-      final groupKey = _normalizeToken(group);
-      final termValue = _normalizeToken(value);
-      if (groupKey.isEmpty || termValue.isEmpty) {
-        continue;
-      }
-      mapped.putIfAbsent(groupKey, () => <String>[]).add(termValue);
-    }
-    return mapped;
   }
 
   static TenantAdminMapFilterMarkerOverride? _markerOverrideFromRaw(
@@ -249,19 +169,6 @@ class TenantAdminDiscoveryFiltersSettings {
       return Map<String, dynamic>.from(raw);
     }
     return const <String, dynamic>{};
-  }
-
-  static List<String> _stringList(Object? raw) {
-    final source = raw is Iterable ? raw : [raw];
-    final values = <String>[];
-    final seen = <String>{};
-    for (final item in source) {
-      final value = _normalizeToken(item);
-      if (value.isNotEmpty && seen.add(value)) {
-        values.add(value);
-      }
-    }
-    return values;
   }
 
   static bool _parseBool(Object? raw) {

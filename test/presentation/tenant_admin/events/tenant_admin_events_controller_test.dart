@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -14,6 +15,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -202,7 +204,8 @@ void main() {
       index: null,
       occurrence: TenantAdminEventOccurrence(
         dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
-        relatedAccountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
+        relatedAccountProfileIdValues:
+            List<TenantAdminAccountProfileIdValue>.of(
           [
             TenantAdminAccountProfileIdValue('artist-1'),
           ],
@@ -211,8 +214,7 @@ void main() {
         programmingItems: List<TenantAdminEventProgrammingItem>.of([
           TenantAdminEventProgrammingItem(
             timeValue: tenantAdminRequiredText('20:00'),
-            accountProfileIdValues:
-                List<TenantAdminAccountProfileIdValue>.of([
+            accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of([
               TenantAdminAccountProfileIdValue('artist-1'),
             ]),
             linkedAccountProfiles: [occurrenceProfile],
@@ -335,6 +337,128 @@ void main() {
   });
 
   test(
+      'event type taxonomy term loading ignores stale in-flight responses after empty transition',
+      () async {
+    final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: taxonomiesRepository,
+      batchTermsRepository: taxonomiesRepository,
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    controller.eventTypeCatalogStreamValue.addValue([
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Shows'),
+        slugValue: tenantAdminRequiredText('shows'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+      ),
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Plain'),
+        slugValue: tenantAdminRequiredText('plain'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(const []),
+      ),
+    ]);
+    controller.taxonomiesStreamValue.addValue([
+      tenantAdminTaxonomyDefinitionFromRaw(
+        id: 'tax-genre',
+        slug: 'genre',
+        name: 'Genre',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
+    ]);
+
+    controller.updateEventTypeSelection('shows');
+    await taxonomiesRepository.waitForPendingRequest();
+    expect(controller.taxonomyLoadingStreamValue.value, isTrue);
+    controller.updateEventTypeSelection('plain');
+    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+
+    taxonomiesRepository.completePending(
+      taxonomyId: 'tax-genre',
+      termSlug: 'rock',
+      termName: 'Rock',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.taxonomyTermsBySlugStreamValue.value, isEmpty);
+    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+  });
+
+  test(
+      'event type taxonomy term loading ignores stale in-flight responses after cache hit transition',
+      () async {
+    final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: taxonomiesRepository,
+      batchTermsRepository: taxonomiesRepository,
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    controller.eventTypeCatalogStreamValue.addValue([
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Shows'),
+        slugValue: tenantAdminRequiredText('shows'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+      ),
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Food'),
+        slugValue: tenantAdminRequiredText('food'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
+      ),
+    ]);
+    controller.taxonomiesStreamValue.addValue([
+      tenantAdminTaxonomyDefinitionFromRaw(
+        id: 'tax-genre',
+        slug: 'genre',
+        name: 'Genre',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
+      tenantAdminTaxonomyDefinitionFromRaw(
+        id: 'tax-cuisine',
+        slug: 'cuisine',
+        name: 'Cuisine',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
+    ]);
+
+    controller.updateEventTypeSelection('shows');
+    await taxonomiesRepository.waitForPendingRequest();
+    taxonomiesRepository.completePending(
+      taxonomyId: 'tax-genre',
+      termSlug: 'rock',
+      termName: 'Rock',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
+
+    controller.updateEventTypeSelection('food');
+    await taxonomiesRepository.waitForPendingRequest();
+    expect(controller.taxonomyLoadingStreamValue.value, isTrue);
+    controller.updateEventTypeSelection('shows');
+    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+
+    taxonomiesRepository.completePending(
+      taxonomyId: 'tax-cuisine',
+      termSlug: 'pizza',
+      termName: 'Pizza',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final termsBySlug = controller.taxonomyTermsBySlugStreamValue.value;
+    expect(termsBySlug.keys, ['genre']);
+    expect(termsBySlug['genre']?.single.slug, 'rock');
+    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+  });
+
+  test(
       'account-scoped loadFormDependencies uses dedicated event types endpoint and account-profile candidate pages',
       () async {
     final eventsRepository = _AccountScopedEventsRepository();
@@ -356,6 +480,56 @@ void main() {
         TenantAdminEventAccountProfileCandidateType.physicalHost,
         TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
       ]),
+    );
+  });
+
+  test(
+      'loadFormDependencies hydrates default event type and terms in controller',
+      () async {
+    final eventsRepository = _ConfigurableEventTypesRepository([
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Shows'),
+        slugValue: tenantAdminRequiredText('shows'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+      ),
+    ]);
+    final taxonomiesRepository = _StaticBatchTaxonomiesRepository(
+      taxonomies: [
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: 'tax-genre',
+          slug: 'genre',
+          name: 'Genre',
+          appliesTo: ['event'],
+          icon: null,
+          color: null,
+        ),
+      ],
+      termsByTaxonomyId: {
+        'tax-genre': [
+          TenantAdminTaxonomyTermDefinition(
+            idValue: tenantAdminRequiredText('term-rock'),
+            taxonomyIdValue: tenantAdminRequiredText('tax-genre'),
+            slugValue: tenantAdminRequiredText('rock'),
+            nameValue: tenantAdminRequiredText('Rock'),
+          ),
+        ],
+      },
+    );
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      batchTermsRepository: taxonomiesRepository,
+    );
+
+    controller.initEventForm();
+    await controller.loadFormDependencies();
+
+    expect(
+        controller.eventFormStateStreamValue.value.selectedTypeSlug, 'shows');
+    expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
+    expect(
+      controller.taxonomyTermsBySlugStreamValue.value['genre']?.single.slug,
+      'rock',
     );
   });
 
@@ -957,6 +1131,100 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   }
 }
 
+class _DelayedBatchTaxonomiesRepository extends _NoopTaxonomiesRepository
+    implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  Completer<TenantAdminTaxonomyTermsByTaxonomyId>? _pendingCompleter;
+  Completer<void>? _pendingStarted;
+
+  Future<void> waitForPendingRequest() async {
+    final started = _pendingStarted;
+    if (started != null && !started.isCompleted) {
+      await started.future;
+    }
+  }
+
+  void completePending({
+    required String taxonomyId,
+    required String termSlug,
+    required String termName,
+  }) {
+    final completer = _pendingCompleter;
+    if (completer == null || completer.isCompleted) {
+      throw StateError('No pending taxonomy batch request.');
+    }
+    completer.complete(
+      TenantAdminTaxonomyTermsByTaxonomyId(
+        entries: [
+          TenantAdminTaxonomyTermsForTaxonomyId(
+            taxonomyIdValue: tenantAdminRequiredText(taxonomyId),
+            terms: [
+              TenantAdminTaxonomyTermDefinition(
+                idValue: tenantAdminRequiredText('$taxonomyId-$termSlug'),
+                taxonomyIdValue: tenantAdminRequiredText(taxonomyId),
+                slugValue: tenantAdminRequiredText(termSlug),
+                nameValue: tenantAdminRequiredText(termName),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
+  }) {
+    if (_pendingCompleter != null && !_pendingCompleter!.isCompleted) {
+      throw StateError('A taxonomy batch request is already pending.');
+    }
+    _pendingCompleter = Completer<TenantAdminTaxonomyTermsByTaxonomyId>();
+    _pendingStarted = Completer<void>()..complete();
+    return _pendingCompleter!.future;
+  }
+}
+
+class _StaticBatchTaxonomiesRepository extends _NoopTaxonomiesRepository
+    implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  _StaticBatchTaxonomiesRepository({
+    required this.taxonomies,
+    required this.termsByTaxonomyId,
+  });
+
+  final List<TenantAdminTaxonomyDefinition> taxonomies;
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> termsByTaxonomyId;
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
+  }) async {
+    return tenantAdminPagedResultFromRaw(
+      items: page.value == 1 ? taxonomies : <TenantAdminTaxonomyDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
+  }) async {
+    return TenantAdminTaxonomyTermsByTaxonomyId(
+      entries: [
+        for (final taxonomyId in taxonomyIds)
+          TenantAdminTaxonomyTermsForTaxonomyId(
+            taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
+            terms: termsByTaxonomyId[taxonomyId.value] ??
+                const <TenantAdminTaxonomyTermDefinition>[],
+          ),
+      ],
+    );
+  }
+}
+
 class _FakeLandlordAuthRepositoryWithToken
     implements LandlordAuthRepositoryContract {
   _FakeLandlordAuthRepositoryWithToken(this._token);
@@ -1125,6 +1393,18 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
       unchangedValue: TenantAdminCountValue(0),
       failedValue: TenantAdminCountValue(0),
     );
+  }
+}
+
+class _ConfigurableEventTypesRepository extends _AccountScopedEventsRepository {
+  _ConfigurableEventTypesRepository(this.eventTypes);
+
+  final List<TenantAdminEventType> eventTypes;
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    fetchEventTypesCalls += 1;
+    return List<TenantAdminEventType>.unmodifiable(eventTypes);
   }
 }
 

@@ -4,5 +4,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_t
 abstract class TenantAdminTaxonomiesBatchTermsRepositoryContract {
   Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
     required List<TenantAdminTaxonomiesRepositoryContractTextValue> taxonomyIds,
+    TenantAdminTaxonomiesRepositoryContractIntValue? termLimit,
   });
 }

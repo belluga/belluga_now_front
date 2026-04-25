@@ -817,7 +817,10 @@ void main() {
     await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('eventProgrammingItem_17:00')), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventProgrammingItem_0_17:00')),
+      findsOneWidget,
+    );
     expect(find.text('17:00'), findsOneWidget);
     expect(find.text('Coral XYZ'), findsWidgets);
     expect(
@@ -830,6 +833,172 @@ void main() {
         matching: find.byType(BellugaNetworkImage),
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('event detail programming renders large schedules progressively',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    final programmingItems = List<EventProgrammingItem>.generate(
+      30,
+      (index) => _buildProgrammingItem(
+        time: 'T$index',
+        title: 'Programação $index',
+      ),
+      growable: false,
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(programmingItems: programmingItems),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Programação 0'), findsOneWidget);
+    expect(find.text('Programação 23'), findsOneWidget);
+    expect(find.text('Programação 24'), findsNothing);
+    expect(
+      find.byKey(const Key('eventProgrammingShowMoreButton')),
+      findsOneWidget,
+    );
+
+    final showMoreButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('eventProgrammingShowMoreButton')),
+    );
+    showMoreButton.onPressed?.call();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Programação 24'), findsOneWidget);
+    expect(find.text('Programação 29'), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventProgrammingShowMoreButton')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'event detail programming caps profile fanout and supports duplicate times',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    final profiles = List<EventLinkedAccountProfile>.generate(
+      24,
+      (index) => _buildLinkedAccountProfile(
+        id: 'artist-$index',
+        displayName: 'Artista $index',
+        profileType: 'artist',
+        slug: 'artist-$index',
+        avatarUrl: 'https://example.com/avatar-$index.png',
+      ),
+      growable: false,
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                programmingItems: [
+                  _buildProgrammingItem(
+                    time: '17:00',
+                    title: 'Palco principal',
+                    linkedProfiles: profiles,
+                  ),
+                  _buildProgrammingItem(
+                    time: '17:00',
+                    title: 'Palco alternativo',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('eventProgrammingItem_0_17:00')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('eventProgrammingItem_1_17:00')),
+      findsOneWidget,
+    );
+    expect(find.text('Palco principal'), findsOneWidget);
+    expect(find.text('Palco alternativo'), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventProgrammingProfilesOverflow_0')),
+      findsOneWidget,
+    );
+    expect(find.text('+20 perfis'), findsOneWidget);
+    expect(find.byKey(const Key('eventProgrammingProfile_artist-0')),
+        findsOneWidget);
+    expect(find.byKey(const Key('eventProgrammingProfile_artist-3')),
+        findsOneWidget);
+    expect(find.byKey(const Key('eventProgrammingProfile_artist-4')),
+        findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('eventProgrammingItem_0_17:00')),
+        matching: find.byType(BellugaNetworkImage),
+      ),
+      findsNWidgets(4),
     );
   });
 
@@ -954,7 +1123,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final rowFinder = find.descendant(
-      of: find.byKey(const Key('eventProgrammingItem_17:00')),
+      of: find.byKey(const Key('eventProgrammingItem_0_17:00')),
       matching: find.byWidgetPredicate((widget) => widget is Row),
     );
     final row = tester.widget<Row>(rowFinder.first);
@@ -1091,7 +1260,8 @@ void main() {
 
     expect(find.text('Programação'), findsWidgets);
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
-    expect(find.byKey(const Key('eventProgrammingItem_19:00')), findsOneWidget);
+    expect(
+        find.byKey(const Key('eventProgrammingItem_0_19:00')), findsOneWidget);
     expect(find.byKey(const Key('eventDateCard_occ-1')), findsNothing);
     expect(find.text('Atual'), findsNothing);
   });
@@ -1236,7 +1406,8 @@ void main() {
 
     expect(find.byKey(const Key('eventDateCard_occ-1')), findsOneWidget);
     expect(find.byKey(const Key('eventDateCard_occ-2')), findsOneWidget);
-    expect(find.byKey(const Key('eventProgrammingItem_17:00')), findsOneWidget);
+    expect(
+        find.byKey(const Key('eventProgrammingItem_0_17:00')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
     await tester.pump();

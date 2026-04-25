@@ -122,6 +122,19 @@ String? _readString(Object? value) {
   return trimmed.isEmpty ? null : trimmed;
 }
 
+int? _readInt(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  if (value is String) {
+    return int.tryParse(value.trim());
+  }
+  return null;
+}
+
 bool? _readBool(Object? value) {
   if (value is bool) {
     return value;

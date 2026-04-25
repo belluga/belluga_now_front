@@ -26,6 +26,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_value
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class ImmersiveEventDetailController implements Disposable {
   ImmersiveEventDetailController({
@@ -229,7 +230,7 @@ class ImmersiveEventDetailController implements Disposable {
       venue: event.venue,
       thumb: event.thumb,
       dateTimeStart: selectedOccurrence.dateTimeStartValue,
-      dateTimeEnd: event.dateTimeEnd,
+      dateTimeEnd: _dateTimeEndForSelectedOccurrence(selectedOccurrence),
       linkedAccountProfiles: event.linkedAccountProfiles,
       occurrences: updatedOccurrences,
       programmingItems: selectedOccurrence.programmingItems,
@@ -242,6 +243,17 @@ class ImmersiveEventDetailController implements Disposable {
       friendsGoing: event.friendsGoing,
       totalConfirmedValue: event.totalConfirmedValue,
     );
+  }
+
+  DateTimeValue? _dateTimeEndForSelectedOccurrence(
+    EventOccurrenceOption selectedOccurrence,
+  ) {
+    final end = selectedOccurrence.dateTimeEnd;
+    if (end == null) {
+      return null;
+    }
+
+    return DateTimeValue()..parse(end.toIso8601String());
   }
 
   EventModel _alignEventToSelectedOccurrence(EventModel event) {

@@ -8,13 +8,12 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
-import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_surface_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filters_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/tenant_admin_discovery_filters_keys.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/widgets/tenant_admin_filter_catalog_row.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/widgets/tenant_admin_discovery_filter_rule_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_visual_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
@@ -362,145 +361,39 @@ class _SurfaceFilterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final visual = _resolveVisual(item);
-    final visualBackgroundColor = switch (visual.kind) {
-      _RowVisualKind.icon =>
-        (MapMarkerVisualResolver.tryParseHexColor(visual.color) ??
-                theme.colorScheme.surfaceContainerHighest)
-            .withValues(alpha: 0.22),
-      _ => theme.colorScheme.surfaceContainerHighest,
-    };
-
-    return Container(
+    return KeyedSubtree(
       key: TenantAdminDiscoveryFiltersKeys.filterRow(surface.key, index),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  key: TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
-                    surface.key,
-                    index,
-                  ),
-                  width: 56,
-                  height: 56,
-                  color: visualBackgroundColor,
-                  child: switch (visual.kind) {
-                    _RowVisualKind.image => KeyedSubtree(
-                        key: ValueKey<String>(visual.imageUri!),
-                        child: BellugaNetworkImage(
-                          visual.imageUri!,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorWidget: Icon(
-                            Icons.broken_image_outlined,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    _RowVisualKind.icon => Icon(
-                        MapMarkerVisualResolver.resolveIcon(visual.icon),
-                        color: MapMarkerVisualResolver.tryParseHexColor(
-                              visual.iconColor,
-                            ) ??
-                            theme.colorScheme.onSurfaceVariant,
-                      ),
-                    _RowVisualKind.fallback => Icon(
-                        Icons.filter_alt_outlined,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.label, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.key,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _ruleSummary(item),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: onEditKey,
-                icon: const Icon(Icons.vpn_key_outlined),
-                label: const Text('Chave'),
-              ),
-              OutlinedButton.icon(
-                onPressed: onEditLabel,
-                icon: const Icon(Icons.label_outline),
-                label: const Text('Rótulo'),
-              ),
-              OutlinedButton.icon(
-                key: TenantAdminDiscoveryFiltersKeys.filterRuleButton(
-                  surface.key,
-                  index,
-                ),
-                onPressed: onEditRule,
-                icon: const Icon(Icons.rule_outlined),
-                label: const Text('Regra'),
-              ),
-              OutlinedButton.icon(
-                key: TenantAdminDiscoveryFiltersKeys.filterVisualButton(
-                  surface.key,
-                  index,
-                ),
-                onPressed: onEditVisual,
-                icon: const Icon(Icons.palette_outlined),
-                label: Text(surface.supportsMarkerOverride
-                    ? 'Visual/Marcador'
-                    : 'Visual'),
-              ),
-              OutlinedButton.icon(
-                onPressed: hasPrevious ? onMoveUp : null,
-                icon: const Icon(Icons.arrow_upward),
-                label: const Text('Subir'),
-              ),
-              OutlinedButton.icon(
-                onPressed: hasNext ? onMoveDown : null,
-                icon: const Icon(Icons.arrow_downward),
-                label: const Text('Descer'),
-              ),
-              TextButton.icon(
-                onPressed: onRemove,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Remover'),
-              ),
-            ],
-          ),
-        ],
+      child: TenantAdminFilterCatalogRow(
+        visualPreviewKey: TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
+          surface.key,
+          index,
+        ),
+        ruleButtonKey: TenantAdminDiscoveryFiltersKeys.filterRuleButton(
+          surface.key,
+          index,
+        ),
+        visualButtonKey: TenantAdminDiscoveryFiltersKeys.filterVisualButton(
+          surface.key,
+          index,
+        ),
+        label: item.label,
+        secondaryLabel: item.key,
+        ruleSummary: _ruleSummary(item),
+        supportsMarkerOverride: surface.supportsMarkerOverride,
+        overrideMarker: item.overrideMarker,
+        markerOverride: item.markerOverride,
+        imageUri: item.imageUri,
+        visualButtonLabel:
+            surface.supportsMarkerOverride ? 'Visual/Marcador' : 'Visual',
+        hasPrevious: hasPrevious,
+        hasNext: hasNext,
+        onEditKey: onEditKey,
+        onEditLabel: onEditLabel,
+        onEditRule: onEditRule,
+        onEditVisual: onEditVisual,
+        onRemove: onRemove,
+        onMoveUp: onMoveUp,
+        onMoveDown: onMoveDown,
       ),
     );
   }
@@ -517,32 +410,6 @@ class _SurfaceFilterRow extends StatelessWidget {
         ? item.markerOverride!.mode.label
         : 'sem override';
     return 'entidades: ${entities.length} · tipos: $typeCount · taxonomias: $taxonomyCount · marcador: $marker';
-  }
-
-  _RowVisual _resolveVisual(TenantAdminDiscoveryFilterCatalogItem item) {
-    final markerOverride = item.markerOverride;
-    if (surface.supportsMarkerOverride &&
-        item.overrideMarker &&
-        markerOverride?.isValid == true) {
-      if (markerOverride!.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
-        return _RowVisual.icon(
-          icon: markerOverride.icon ?? '',
-          color: markerOverride.color,
-          iconColor: markerOverride.iconColor,
-        );
-      }
-      final imageUri = markerOverride.imageUri?.trim();
-      if (imageUri != null && imageUri.isNotEmpty) {
-        return _RowVisual.image(imageUri: imageUri);
-      }
-      return const _RowVisual.fallback();
-    }
-
-    final imageUri = item.imageUri?.trim();
-    if (imageUri != null && imageUri.isNotEmpty) {
-      return _RowVisual.image(imageUri: imageUri);
-    }
-    return const _RowVisual.fallback();
   }
 }
 
@@ -574,39 +441,4 @@ class _StatusBanner extends StatelessWidget {
       ),
     );
   }
-}
-
-enum _RowVisualKind {
-  icon,
-  image,
-  fallback,
-}
-
-class _RowVisual {
-  const _RowVisual.icon({
-    required this.icon,
-    required this.color,
-    required this.iconColor,
-  })  : kind = _RowVisualKind.icon,
-        imageUri = null;
-
-  const _RowVisual.image({
-    required this.imageUri,
-  })  : kind = _RowVisualKind.image,
-        icon = null,
-        color = null,
-        iconColor = null;
-
-  const _RowVisual.fallback()
-      : kind = _RowVisualKind.fallback,
-        icon = null,
-        color = null,
-        iconColor = null,
-        imageUri = null;
-
-  final _RowVisualKind kind;
-  final String? icon;
-  final String? color;
-  final String? iconColor;
-  final String? imageUri;
 }

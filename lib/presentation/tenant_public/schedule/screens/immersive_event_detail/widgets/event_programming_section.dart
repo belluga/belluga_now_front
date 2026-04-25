@@ -9,7 +9,11 @@ import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.da
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class EventProgrammingSection extends StatelessWidget {
+const _initialVisibleProgrammingItems = 24;
+const _visibleProgrammingItemsPageSize = 24;
+const _visibleProgrammingProfilesPerItem = 4;
+
+class EventProgrammingSection extends StatefulWidget {
   const EventProgrammingSection({
     required this.items,
     required this.occurrences,
@@ -26,8 +30,35 @@ class EventProgrammingSection extends StatelessWidget {
   final ProfileTypeRegistry? profileTypeRegistry;
 
   @override
+  State<EventProgrammingSection> createState() =>
+      _EventProgrammingSectionState();
+}
+
+class _EventProgrammingSectionState extends State<EventProgrammingSection> {
+  int _visibleItemCount = _initialVisibleProgrammingItems;
+
+  @override
+  void didUpdateWidget(covariant EventProgrammingSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.items, widget.items)) {
+      _visibleItemCount = _initialVisibleProgrammingItems;
+    }
+  }
+
+  void _showMoreItems() {
+    setState(() {
+      _visibleItemCount = (_visibleItemCount + _visibleProgrammingItemsPageSize)
+          .clamp(0, widget.items.length);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final visibleItems = widget.items.take(_visibleItemCount).toList(
+          growable: false,
+        );
+    final remainingItemCount = widget.items.length - visibleItems.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 112),
       child: Column(
@@ -39,27 +70,38 @@ class EventProgrammingSection extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          if (occurrences.length > 1) ...[
+          if (widget.occurrences.length > 1) ...[
             const SizedBox(height: 14),
             _ProgrammingDateSelector(
-              occurrences: occurrences,
-              onOccurrenceTap: onOccurrenceTap,
+              occurrences: widget.occurrences,
+              onOccurrenceTap: widget.onOccurrenceTap,
             ),
           ],
           const SizedBox(height: 18),
-          if (items.isEmpty)
+          if (widget.items.isEmpty)
             _ProgrammingEmptyState()
-          else
-            ...items.map(
-              (item) => Padding(
+          else ...[
+            for (final entry in visibleItems.asMap().entries)
+              Padding(
+                key: Key(
+                  'eventProgrammingItemSlot_${entry.key}_${entry.value.time}',
+                ),
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _ProgrammingCard(
-                  item: item,
-                  onLocationTap: onLocationTap,
-                  profileTypeRegistry: profileTypeRegistry,
+                child: RepaintBoundary(
+                  child: _ProgrammingCard(
+                    item: entry.value,
+                    itemIndex: entry.key,
+                    onLocationTap: widget.onLocationTap,
+                    profileTypeRegistry: widget.profileTypeRegistry,
+                  ),
                 ),
               ),
-            ),
+            if (remainingItemCount > 0)
+              _ShowMoreProgrammingItemsButton(
+                remainingItemCount: remainingItemCount,
+                onPressed: _showMoreItems,
+              ),
+          ],
         ],
       ),
     );
@@ -77,19 +119,58 @@ class _ProgrammingDateSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final occurrence in occurrences)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _ProgrammingDateChip(
-                occurrence: occurrence,
-                onTap: () => onOccurrenceTap(occurrence),
-              ),
-            ),
-        ],
+    return SizedBox(
+      height: 86,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: occurrences.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final occurrence = occurrences[index];
+          return _ProgrammingDateChip(
+            occurrence: occurrence,
+            onTap: () => onOccurrenceTap(occurrence),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ShowMoreProgrammingItemsButton extends StatelessWidget {
+  const _ShowMoreProgrammingItemsButton({
+    required this.remainingItemCount,
+    required this.onPressed,
+  });
+
+  final int remainingItemCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final label = remainingItemCount == 1
+        ? 'Mostrar mais 1 item'
+        : 'Mostrar mais $remainingItemCount itens';
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const Key('eventProgrammingShowMoreButton'),
+        onPressed: onPressed,
+        icon: const Icon(Icons.expand_more),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colorScheme.primary,
+          side: BorderSide(color: colorScheme.outlineVariant),
+          textStyle: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
       ),
     );
   }
@@ -211,11 +292,13 @@ class _ProgrammingEmptyState extends StatelessWidget {
 class _ProgrammingCard extends StatelessWidget {
   const _ProgrammingCard({
     required this.item,
+    required this.itemIndex,
     required this.onLocationTap,
     required this.profileTypeRegistry,
   });
 
   final EventProgrammingItem item;
+  final int itemIndex;
   final ValueChanged<EventLinkedAccountProfile> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
 
@@ -228,9 +311,14 @@ class _ProgrammingCard extends StatelessWidget {
     final hasProfiles = item.linkedAccountProfiles.isNotEmpty;
     final hasLocation = item.locationProfile != null;
     final hasSecondaryContent = hasProfiles || hasLocation;
+    final visibleProfiles = item.linkedAccountProfiles
+        .take(_visibleProgrammingProfilesPerItem)
+        .toList(growable: false);
+    final remainingProfileCount =
+        item.linkedAccountProfiles.length - visibleProfiles.length;
 
     return DecoratedBox(
-      key: Key('eventProgrammingItem_${item.time}'),
+      key: Key('eventProgrammingItem_${itemIndex}_${item.time}'),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
@@ -277,14 +365,18 @@ class _ProgrammingCard extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: item.linkedAccountProfiles
-                          .map(
-                            (profile) => _ProgrammingProfileChip(
-                              profile: profile,
-                              profileTypeRegistry: profileTypeRegistry,
-                            ),
-                          )
-                          .toList(growable: false),
+                      children: [
+                        for (final profile in visibleProfiles)
+                          _ProgrammingProfileChip(
+                            profile: profile,
+                            profileTypeRegistry: profileTypeRegistry,
+                          ),
+                        if (remainingProfileCount > 0)
+                          _ProgrammingProfileOverflowChip(
+                            itemIndex: itemIndex,
+                            remainingProfileCount: remainingProfileCount,
+                          ),
+                      ],
                     ),
                   ],
                   if (hasLocation) ...[
@@ -350,6 +442,39 @@ class _ProgrammingLocationLine extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProgrammingProfileOverflowChip extends StatelessWidget {
+  const _ProgrammingProfileOverflowChip({
+    required this.itemIndex,
+    required this.remainingProfileCount,
+  });
+
+  final int itemIndex;
+  final int remainingProfileCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final label = remainingProfileCount == 1
+        ? '+1 perfil'
+        : '+$remainingProfileCount perfis';
+    return Container(
+      key: Key('eventProgrammingProfilesOverflow_$itemIndex'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
       ),
     );
   }

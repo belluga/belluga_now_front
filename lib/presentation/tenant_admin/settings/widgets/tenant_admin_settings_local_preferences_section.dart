@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
-import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/widgets/tenant_admin_filter_catalog_row.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -375,138 +374,32 @@ class _MapFilterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final visual = _resolveRowVisual(item);
-    final visualBackgroundColor = switch (visual.kind) {
-      _MapFilterRowVisualKind.icon =>
-        (MapMarkerVisualResolver.tryParseHexColor(visual.color) ??
-                theme.colorScheme.surfaceContainerHighest)
-            .withValues(alpha: 0.22),
-      _ => theme.colorScheme.surfaceContainerHighest,
-    };
-
-    return Container(
+    return KeyedSubtree(
       key: TenantAdminSettingsKeys.localPreferencesMapFilterRow(index),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
+      child: TenantAdminFilterCatalogRow(
+        visualPreviewKey:
+            TenantAdminSettingsKeys.localPreferencesMapFilterVisualPreview(
+          index,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  key: TenantAdminSettingsKeys
-                      .localPreferencesMapFilterVisualPreview(index),
-                  width: 56,
-                  height: 56,
-                  color: visualBackgroundColor,
-                  child: switch (visual.kind) {
-                    _MapFilterRowVisualKind.image => BellugaNetworkImage(
-                        visual.imageUri!,
-                        key: ValueKey(visual.imageUri),
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorWidget: Icon(
-                          Icons.broken_image_outlined,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    _MapFilterRowVisualKind.icon => Icon(
-                        MapMarkerVisualResolver.resolveIcon(visual.icon),
-                        color: MapMarkerVisualResolver.tryParseHexColor(
-                              visual.iconColor,
-                            ) ??
-                            theme.colorScheme.onSurfaceVariant,
-                      ),
-                    _MapFilterRowVisualKind.fallback => Icon(
-                        Icons.filter_alt_outlined,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.label,
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.key,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _ruleSummary(item),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => onEditMapFilterKey?.call(index),
-                icon: const Icon(Icons.vpn_key_outlined),
-                label: const Text('Chave'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onEditMapFilterLabel?.call(index),
-                icon: const Icon(Icons.label_outline),
-                label: const Text('Rótulo'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onEditMapFilterRule?.call(index),
-                icon: const Icon(Icons.rule_outlined),
-                label: const Text('Regra'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onEditMapFilterVisual?.call(index),
-                icon: const Icon(Icons.palette_outlined),
-                label: const Text('Visual/Marcador'),
-              ),
-              OutlinedButton.icon(
-                onPressed:
-                    hasPrevious ? () => onMoveMapFilterUp?.call(index) : null,
-                icon: const Icon(Icons.arrow_upward),
-                label: const Text('Subir'),
-              ),
-              OutlinedButton.icon(
-                onPressed:
-                    hasNext ? () => onMoveMapFilterDown?.call(index) : null,
-                icon: const Icon(Icons.arrow_downward),
-                label: const Text('Descer'),
-              ),
-              TextButton.icon(
-                onPressed: () => onRemoveMapFilter?.call(index),
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Remover'),
-              ),
-            ],
-          ),
-        ],
+        ruleButtonKey: null,
+        visualButtonKey: null,
+        label: item.label,
+        secondaryLabel: item.key,
+        ruleSummary: _ruleSummary(item),
+        supportsMarkerOverride: true,
+        overrideMarker: item.overrideMarker,
+        markerOverride: item.markerOverride,
+        imageUri: item.imageUri,
+        visualButtonLabel: 'Visual/Marcador',
+        hasPrevious: hasPrevious,
+        hasNext: hasNext,
+        onEditKey: () => onEditMapFilterKey?.call(index),
+        onEditLabel: () => onEditMapFilterLabel?.call(index),
+        onEditRule: () => onEditMapFilterRule?.call(index),
+        onEditVisual: () => onEditMapFilterVisual?.call(index),
+        onRemove: () => onRemoveMapFilter?.call(index),
+        onMoveUp: () => onMoveMapFilterUp?.call(index),
+        onMoveDown: () => onMoveMapFilterDown?.call(index),
       ),
     );
   }
@@ -521,64 +414,4 @@ class _MapFilterRow extends StatelessWidget {
         : 'desativado';
     return '$source · tipos: $typesCount · taxonomias: $taxonomyCount · marcador: $markerOverride';
   }
-
-  _MapFilterRowVisual _resolveRowVisual(TenantAdminMapFilterCatalogItem item) {
-    final markerOverride = item.markerOverride;
-    if (item.overrideMarker && markerOverride?.isValid == true) {
-      if (markerOverride!.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
-        return _MapFilterRowVisual.icon(
-          icon: markerOverride.icon ?? '',
-          color: markerOverride.color,
-          iconColor: markerOverride.iconColor,
-        );
-      }
-      final overrideImageUri = markerOverride.imageUri?.trim();
-      if (overrideImageUri != null && overrideImageUri.isNotEmpty) {
-        return _MapFilterRowVisual.image(imageUri: overrideImageUri);
-      }
-      return const _MapFilterRowVisual.fallback();
-    }
-
-    final imageUri = item.imageUri?.trim();
-    if (imageUri != null && imageUri.isNotEmpty) {
-      return _MapFilterRowVisual.image(imageUri: imageUri);
-    }
-
-    return const _MapFilterRowVisual.fallback();
-  }
-}
-
-enum _MapFilterRowVisualKind {
-  icon,
-  image,
-  fallback,
-}
-
-class _MapFilterRowVisual {
-  const _MapFilterRowVisual.icon({
-    required this.icon,
-    required this.color,
-    required this.iconColor,
-  })  : kind = _MapFilterRowVisualKind.icon,
-        imageUri = null;
-
-  const _MapFilterRowVisual.image({
-    required this.imageUri,
-  })  : kind = _MapFilterRowVisualKind.image,
-        icon = null,
-        color = null,
-        iconColor = null;
-
-  const _MapFilterRowVisual.fallback()
-      : kind = _MapFilterRowVisualKind.fallback,
-        icon = null,
-        color = null,
-        iconColor = null,
-        imageUri = null;
-
-  final _MapFilterRowVisualKind kind;
-  final String? icon;
-  final String? color;
-  final String? iconColor;
-  final String? imageUri;
 }

@@ -1,7 +1,26 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('matches the shared cross-stack sanitizer fixtures', () {
+    final fixtures = jsonDecode(
+      File(
+        '../laravel-app/tests/Fixtures/shared_rich_text/safe_rich_html_fixtures.json',
+      ).readAsStringSync(),
+    ) as List<dynamic>;
+
+    for (final fixture in fixtures.cast<Map<String, dynamic>>()) {
+      expect(
+        SafeRichHtml.canonicalize(fixture['input'] as String),
+        fixture['expected'] as String,
+        reason: fixture['name'] as String,
+      );
+    }
+  });
+
   test('canonicalizes plain text newlines into faithful HTML blocks', () {
     final html = SafeRichHtml.canonicalize(
       'Primeira linha\nSegunda linha\n\nNovo parágrafo',
@@ -37,7 +56,9 @@ void main() {
     expect(html, isNot(contains('<a')));
     expect(html, isNot(contains('href')));
     expect(html, isNot(contains('script')));
-    expect(html, isNot(contains('iframe')));
-    expect(html, isNot(contains('remover')));
+    expect(html, isNot(contains('<iframe')));
+    expect(html, isNot(contains('</iframe>')));
+    expect(html, isNot(contains('remover script')));
+    expect(html, contains('remover iframe'));
   });
 }

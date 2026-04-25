@@ -13,6 +13,8 @@ class TenantAdminEventFormState {
     required this.selectedTypeSlug,
     required this.selectedRelatedAccountProfileIds,
     required this.occurrences,
+    required this.occurrenceLocalIds,
+    required this.programmingItemLocalIdsByOccurrenceKey,
     required this.selectedTaxonomyTerms,
     required this.hasHydratedDefaultVenue,
   });
@@ -28,6 +30,8 @@ class TenantAdminEventFormState {
       selectedTypeSlug: null,
       selectedRelatedAccountProfileIds: <String>[],
       occurrences: <TenantAdminEventOccurrence>[],
+      occurrenceLocalIds: <String>[],
+      programmingItemLocalIdsByOccurrenceKey: <String, List<String>>{},
       selectedTaxonomyTerms: <String, Set<String>>{},
       hasHydratedDefaultVenue: false,
     );
@@ -42,6 +46,8 @@ class TenantAdminEventFormState {
   final String? selectedTypeSlug;
   final List<String> selectedRelatedAccountProfileIds;
   final List<TenantAdminEventOccurrence> occurrences;
+  final List<String> occurrenceLocalIds;
+  final Map<String, List<String>> programmingItemLocalIdsByOccurrenceKey;
   final Map<String, Set<String>> selectedTaxonomyTerms;
   final bool hasHydratedDefaultVenue;
 
@@ -55,6 +61,8 @@ class TenantAdminEventFormState {
     Object? selectedTypeSlug = _undefined,
     List<String>? selectedRelatedAccountProfileIds,
     List<TenantAdminEventOccurrence>? occurrences,
+    List<String>? occurrenceLocalIds,
+    Map<String, List<String>>? programmingItemLocalIdsByOccurrenceKey,
     Map<String, Set<String>>? selectedTaxonomyTerms,
     bool? hasHydratedDefaultVenue,
   }) {
@@ -74,6 +82,10 @@ class TenantAdminEventFormState {
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds ??
           this.selectedRelatedAccountProfileIds,
       occurrences: occurrences ?? this.occurrences,
+      occurrenceLocalIds: occurrenceLocalIds ?? this.occurrenceLocalIds,
+      programmingItemLocalIdsByOccurrenceKey:
+          programmingItemLocalIdsByOccurrenceKey ??
+              this.programmingItemLocalIdsByOccurrenceKey,
       selectedTaxonomyTerms:
           selectedTaxonomyTerms ?? this.selectedTaxonomyTerms,
       hasHydratedDefaultVenue:

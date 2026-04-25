@@ -12,6 +12,7 @@ import 'package:belluga_now/application/router/modular_app/modules/map_module.da
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
+import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
@@ -34,6 +35,7 @@ import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart'
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
@@ -67,6 +69,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_discovery_filter_rule_catalog_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
@@ -310,8 +313,30 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<TenantAdminStaticAssetsRepositoryContract>(
       () => TenantAdminStaticAssetsRepository(),
     );
-    _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
-      () => TenantAdminTaxonomiesRepository(),
+    final tenantAdminTaxonomiesRepository = TenantAdminTaxonomiesRepository();
+    final taxonomiesRepository =
+        _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
+      () => tenantAdminTaxonomiesRepository,
+    );
+    _registerIfAbsent<TenantAdminTaxonomiesBatchTermsRepositoryContract>(
+      () => identical(taxonomiesRepository, tenantAdminTaxonomiesRepository)
+          ? tenantAdminTaxonomiesRepository
+          : TenantAdminTaxonomiesSequentialBatchTermsRepository(
+              taxonomiesRepository,
+            ),
+    );
+    _registerIfAbsent<TenantAdminDiscoveryFilterRuleCatalogRepositoryContract>(
+      () => TenantAdminDiscoveryFilterRuleCatalogRepository(
+        accountProfilesRepository:
+            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+        staticAssetsRepository:
+            GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
+        taxonomiesRepository:
+            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+        batchTermsRepository:
+            GetIt.I.get<TenantAdminTaxonomiesBatchTermsRepositoryContract>(),
+        eventsRepository: GetIt.I.get<TenantAdminEventsRepositoryContract>(),
+      ),
     );
     _registerIfAbsent<LandlordTenantsRepositoryContract>(
       () => LandlordTenantsRepository(),

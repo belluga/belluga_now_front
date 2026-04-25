@@ -524,6 +524,54 @@ void main() {
     );
   });
 
+  testWidgets('dirty event form asks before closing without saving',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439023'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Título'),
+      'Evento com alteração local',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Fechar').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sair sem salvar?'), findsOneWidget);
+    expect(
+      find.text('As alterações neste evento ainda não foram salvas.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Continuar editando'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sair sem salvar?'), findsNothing);
+    expect(find.text('Evento com alteração local'), findsOneWidget);
+  });
+
   testWidgets('adds a second occurrence date before create submit',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -569,18 +617,12 @@ void main() {
     await tester
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
+    expect(
       find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
+      findsNothing,
     );
-    await tester.pumpAndSettle();
-    final occurrenceSaveButton =
-        find.byKey(const Key('tenantAdminOccurrenceSaveButton'));
-    await tester.tapAt(
-      tester.getTopLeft(occurrenceSaveButton) + const Offset(24, 12),
-    );
-    await tester.pumpAndSettle();
+    expect(find.text('Salvar data'), findsNothing);
+    await _closeOccurrenceSheet(tester);
 
     expect(
         controller.eventFormStateStreamValue.value.occurrences, hasLength(2));
@@ -665,14 +707,7 @@ void main() {
     await tester
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     expect(
         controller.eventFormStateStreamValue.value.occurrences, hasLength(2));
@@ -916,14 +951,7 @@ void main() {
     );
     expect(find.text('Local: Venue A'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     final occurrence =
         controller.eventFormStateStreamValue.value.occurrences[1];
@@ -1053,14 +1081,7 @@ void main() {
     );
     expect(find.text('0 perfil(is) vinculado(s)'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     final occurrence =
         controller.eventFormStateStreamValue.value.occurrences[1];
@@ -1147,14 +1168,7 @@ void main() {
 
     expect(find.text('Local: Venue A'), findsNothing);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     final occurrence =
         controller.eventFormStateStreamValue.value.occurrences[1];
@@ -1230,14 +1244,7 @@ void main() {
     await tester
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-      250,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     expect(
       find.byKey(const Key('tenantAdminPrimaryOccurrenceProgrammingSection')),
@@ -1261,8 +1268,7 @@ void main() {
     );
     expect(find.text('Abertura principal'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Cancelar'));
-    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
 
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
@@ -1279,6 +1285,919 @@ void main() {
           .map((item) => item.title)
           .toList(growable: false),
       ['Abertura principal'],
+    );
+  });
+
+  testWidgets(
+      'multi-occurrence editor accumulates multiple programming items without occurrence save boundary',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439189'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    expect(
+        controller.eventFormStateStreamValue.value.occurrences, hasLength(2));
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingTitleOnly(
+      tester,
+      time: '10:00',
+      title: 'Primeira atividade',
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(find.text('Primeira atividade'), findsOneWidget);
+
+    await _addOccurrenceProgrammingTitleOnly(
+      tester,
+      time: '11:00',
+      title: 'Segunda atividade',
+    );
+
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+    expect(find.text('Primeira atividade'), findsOneWidget);
+    expect(find.text('Segunda atividade'), findsOneWidget);
+
+    await _closeOccurrenceSheet(tester);
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences[1];
+    expect(
+      occurrence.programmingItems.map((item) => item.title),
+      ['Primeira atividade', 'Segunda atividade'],
+    );
+  });
+
+  testWidgets(
+      'multi-occurrence editor accumulates programming items that add occurrence profiles',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439190'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(find.text('Artist A'), findsWidgets);
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '11:00',
+      profileName: 'Artist B',
+    );
+
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+    expect(find.text('Artist A'), findsWidgets);
+    expect(find.text('Artist B'), findsWidgets);
+
+    await _closeOccurrenceSheet(tester);
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences[1];
+    expect(
+      occurrence.programmingItems.map((item) => item.time),
+      ['10:00', '11:00'],
+    );
+    expect(
+      occurrence.relatedAccountProfileIds.map((item) => item.value),
+      containsAll(['artist-1', 'artist-2']),
+    );
+  });
+
+  testWidgets(
+      'update multi-occurrence editor accumulates programming items without occurrence save boundary',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439192'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming'),
+      slugValue: tenantAdminRequiredText('event-existing-programming'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '11:00',
+      profileName: 'Artist B',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(find.text('Artist B'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'update multi-occurrence editor preserves programming items after closing and reopening date',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439193'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming-reopen'),
+      slugValue: tenantAdminRequiredText('event-existing-programming-reopen'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+    await _closeOccurrenceSheet(tester);
+
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences[1].programmingItems
+          .map((item) => item.time),
+      ['10:00'],
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '11:00',
+      profileName: 'Artist B',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(find.text('Artist B'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+
+    await _closeOccurrenceSheet(tester);
+
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences[1].programmingItems
+          .map((item) => item.time),
+      ['10:00', '11:00'],
+    );
+  });
+
+  testWidgets(
+      'update event with three occurrences preserves programming items on the third date',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439194'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming-three'),
+      slugValue: tenantAdminRequiredText('event-existing-programming-three'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-3'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-3'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 22, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '11:00',
+      profileName: 'Artist B',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(find.text('Artist B'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+
+    await _closeOccurrenceSheet(tester);
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.occurrences[0].programmingItems,
+      isEmpty,
+    );
+    expect(
+      controller
+          .eventFormStateStreamValue.value.occurrences[1].programmingItems,
+      isEmpty,
+    );
+    expect(
+      controller.eventFormStateStreamValue.value.occurrences[2].programmingItems
+          .map((item) => item.time),
+      ['10:00', '11:00'],
+    );
+  });
+
+  testWidgets(
+      'update event with three occurrences preserves programming items when reusing an occurrence profile',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439195'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming-reuse'),
+      slugValue: tenantAdminRequiredText('event-existing-programming-reuse'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-3'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-3'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 22, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+    await _addOccurrenceProgrammingWithExistingProfile(
+      tester,
+      time: '11:00',
+      profileName: 'Artist A',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
+      findsOneWidget,
+    );
+
+    await _closeOccurrenceSheet(tester);
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences[2];
+    expect(
+      occurrence.relatedAccountProfileIds.map((item) => item.value),
+      ['artist-1'],
+    );
+    expect(
+      occurrence.programmingItems.map((item) => item.time),
+      ['10:00', '11:00'],
+    );
+    expect(
+      occurrence.programmingItems
+          .expand((item) => item.accountProfileIds)
+          .map((item) => item.value),
+      ['artist-1', 'artist-1'],
+    );
+  });
+
+  testWidgets(
+      'update event occurrence sheet keeps unsaved programming item after dragging modal',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439196'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming-drag'),
+      slugValue: tenantAdminRequiredText('event-existing-programming-drag'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-3'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-3'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 22, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+
+    await tester.drag(find.byType(BottomSheet).last, const Offset(0, 32));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'update event programming item sheet keeps unsaved linked profile after dragging modal',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439197'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue:
+          tenantAdminRequiredText('evt-existing-programming-drag-item'),
+      slugValue:
+          tenantAdminRequiredText('event-existing-programming-drag-item'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-3'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-3'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 22, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingTimeField')),
+      '10:00',
+    );
+    await tester.tap(
+      find.byKey(
+        const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Artist A').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
+      findsOneWidget,
+    );
+
+    await tester.drag(find.byType(BottomSheet).last, const Offset(0, 32));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'update event occurrence sheet keeps unsaved programming item after layout metrics change',
+      (tester) async {
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439198'),
+      nameValue: tenantAdminRequiredText('Feira'),
+      slugValue: tenantAdminRequiredText('feira'),
+    );
+    eventsRepository.eventTypes = [eventType];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-existing-programming-dismiss'),
+      slugValue: tenantAdminRequiredText('event-existing-programming-dismiss'),
+      titleValue: tenantAdminRequiredText('Evento existente'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 21, 20),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occ-3'),
+          occurrenceSlugValue: tenantAdminOptionalText('occ-3'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 22, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-1'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
+    await tester.pumpAndSettle();
+
+    await _addOccurrenceProgrammingWithNewProfile(
+      tester,
+      time: '10:00',
+      profileName: 'Artist A',
+    );
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
+    );
+
+    tester.view.physicalSize = const Size(1000, 760);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artist A'), findsWidgets);
+    expect(
+      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      findsOneWidget,
     );
   });
 
@@ -2002,6 +2921,103 @@ Future<void> _fillRequiredFields(
   await tester.pumpAndSettle();
 }
 
+Future<void> _closeOccurrenceSheet(WidgetTester tester) async {
+  final closeButton = find.byKey(const Key('tenantAdminOccurrenceCloseButton'));
+  await tester.ensureVisible(closeButton);
+  await tester.pumpAndSettle();
+  await tester.tap(closeButton);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _addOccurrenceProgrammingTitleOnly(
+  WidgetTester tester, {
+  required String time,
+  required String title,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTimeField')),
+    time,
+  );
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTitleField')),
+    title,
+  );
+  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _addOccurrenceProgrammingWithNewProfile(
+  WidgetTester tester, {
+  required String time,
+  required String profileName,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTimeField')),
+    time,
+  );
+  await tester.tap(
+    find.byKey(
+      const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(profileName).last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _addOccurrenceProgrammingWithExistingProfile(
+  WidgetTester tester, {
+  required String time,
+  required String profileName,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTimeField')),
+    time,
+  );
+  await tester.tap(
+    find.byKey(
+      const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(profileName).last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+  await tester.pumpAndSettle();
+}
+
 TenantAdminTaxonomyTerms _tenantAdminTaxonomyTerms(
   Iterable<TenantAdminTaxonomyTerm> items,
 ) {
@@ -2273,6 +3289,7 @@ class _FakeTaxonomiesRepository
   @override
   Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
     required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
   }) async {
     final ids = taxonomyIds
         .map((taxonomyId) => taxonomyId.value)
@@ -2356,6 +3373,46 @@ class _FakeTaxonomiesRepository
     TenantAdminTaxRepoString? name,
   }) {
     throw UnimplementedError();
+  }
+}
+
+class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      return super.fetchEventAccountProfileCandidatesPage(
+        candidateType: candidateType,
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        accountSlug: accountSlug,
+      );
+    }
+    return tenantAdminPagedResultFromRaw(
+      items: [
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-1',
+          accountId: 'acc-artist-1',
+          profileType: 'artist',
+          displayName: 'Artist A',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-2',
+          accountId: 'acc-artist-2',
+          profileType: 'artist',
+          displayName: 'Artist B',
+        ),
+      ],
+      hasMore: false,
+    );
   }
 }
 

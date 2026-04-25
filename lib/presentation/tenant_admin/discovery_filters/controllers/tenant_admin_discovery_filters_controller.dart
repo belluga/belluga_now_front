@@ -1,20 +1,11 @@
-import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_items.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
@@ -26,36 +17,17 @@ import 'package:stream_value/core/stream_value.dart';
 class TenantAdminDiscoveryFiltersController implements Disposable {
   TenantAdminDiscoveryFiltersController({
     TenantAdminSettingsRepositoryContract? settingsRepository,
-    TenantAdminAccountProfilesRepositoryContract? accountProfilesRepository,
-    TenantAdminStaticAssetsRepositoryContract? staticAssetsRepository,
-    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
-    TenantAdminEventsRepositoryContract? eventsRepository,
+    TenantAdminDiscoveryFilterRuleCatalogRepositoryContract?
+        ruleCatalogRepository,
   })  : _settingsRepository = settingsRepository ??
             GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
-        _accountProfilesRepository = accountProfilesRepository ??
-            (GetIt.I.isRegistered<
-                    TenantAdminAccountProfilesRepositoryContract>()
-                ? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-                : null),
-        _staticAssetsRepository = staticAssetsRepository ??
-            (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()
-                ? GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>()
-                : null),
-        _taxonomiesRepository = taxonomiesRepository ??
-            (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
-                ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
-                : null),
-        _eventsRepository = eventsRepository ??
-            (GetIt.I.isRegistered<TenantAdminEventsRepositoryContract>()
-                ? GetIt.I.get<TenantAdminEventsRepositoryContract>()
-                : null);
+        _ruleCatalogRepository = ruleCatalogRepository ??
+            GetIt.I
+                .get<TenantAdminDiscoveryFilterRuleCatalogRepositoryContract>();
 
   final TenantAdminSettingsRepositoryContract _settingsRepository;
-  final TenantAdminAccountProfilesRepositoryContract?
-      _accountProfilesRepository;
-  final TenantAdminStaticAssetsRepositoryContract? _staticAssetsRepository;
-  final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
-  final TenantAdminEventsRepositoryContract? _eventsRepository;
+  final TenantAdminDiscoveryFilterRuleCatalogRepositoryContract
+      _ruleCatalogRepository;
 
   bool _isDisposed = false;
   TenantAdminDiscoveryFiltersSettings _settings =
@@ -327,46 +299,7 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
     }
     _emitRuleCatalogLoading(true);
     try {
-      final accountRepo = _accountProfilesRepository;
-      final staticRepo = _staticAssetsRepository;
-      final taxonomyRepo = _taxonomiesRepository;
-      final eventsRepo = _eventsRepository;
-      if (accountRepo == null ||
-          staticRepo == null ||
-          taxonomyRepo == null ||
-          eventsRepo == null) {
-        _emitRuleCatalog(
-          const TenantAdminMapFilterRuleCatalog.empty(),
-        );
-        return;
-      }
-
-      final eventTypesFuture = eventsRepo.fetchEventTypes();
-      await Future.wait<void>([
-        accountRepo.loadAllProfileTypes(),
-        staticRepo.loadAllStaticProfileTypes(),
-        taxonomyRepo.loadAllTaxonomies(),
-      ]);
-
-      final accountTypes = accountRepo.profileTypesStreamValue.value ??
-          const <TenantAdminProfileTypeDefinition>[];
-      final staticTypes = staticRepo.staticProfileTypesStreamValue.value ??
-          const <TenantAdminStaticProfileTypeDefinition>[];
-      final eventTypes = await eventTypesFuture;
-      final taxonomies = taxonomyRepo.taxonomiesStreamValue.value ??
-          const <TenantAdminTaxonomyDefinition>[];
-      final termsByTaxonomySlug =
-          await _loadTermsByTaxonomySlug(taxonomies: taxonomies);
-
-      _emitRuleCatalog(
-        _buildRuleCatalog(
-          accountTypes: accountTypes,
-          staticTypes: staticTypes,
-          eventTypes: eventTypes,
-          taxonomies: taxonomies,
-          termsByTaxonomySlug: termsByTaxonomySlug,
-        ),
-      );
+      _emitRuleCatalog(await _ruleCatalogRepository.fetchRuleCatalog());
     } catch (error) {
       _emitRemoteError(
         'Não foi possível carregar catálogo de regras dos filtros: $error',
@@ -442,173 +375,6 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
         surface: surface,
         filters: TenantAdminDiscoveryFilterCatalogItems(nextFilters),
       ),
-    );
-  }
-
-  Future<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
-      _loadTermsByTaxonomySlug({
-    required List<TenantAdminTaxonomyDefinition> taxonomies,
-  }) async {
-    final taxonomyRepo = _taxonomiesRepository;
-    if (taxonomyRepo == null) {
-      return const <String, List<TenantAdminTaxonomyTermDefinition>>{};
-    }
-    if (taxonomyRepo is TenantAdminTaxonomiesBatchTermsRepositoryContract) {
-      final batchTermsRepository =
-          taxonomyRepo as TenantAdminTaxonomiesBatchTermsRepositoryContract;
-      final requestedTaxonomies = taxonomies
-          .where((taxonomy) =>
-              taxonomy.id.trim().isNotEmpty && taxonomy.slug.trim().isNotEmpty)
-          .toList(growable: false);
-      final fetchedById = await batchTermsRepository.fetchTermsByTaxonomyIds(
-        taxonomyIds: requestedTaxonomies
-            .map(
-              (taxonomy) => TenantAdminTaxRepoString.fromRaw(
-                taxonomy.id,
-                defaultValue: '',
-                isRequired: true,
-              ),
-            )
-            .toList(growable: false),
-      );
-      return <String, List<TenantAdminTaxonomyTermDefinition>>{
-        for (final taxonomy in requestedTaxonomies)
-          taxonomy.slug: fetchedById.termsForId(
-            tenantAdminRequiredText(taxonomy.id),
-          ),
-      };
-    }
-
-    throw StateError(
-      'Tenant admin taxonomies repository must support batch term loading.',
-    );
-  }
-
-  TenantAdminMapFilterRuleCatalog _buildRuleCatalog({
-    required List<TenantAdminProfileTypeDefinition> accountTypes,
-    required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
-    required List<TenantAdminEventType> eventTypes,
-    required List<TenantAdminTaxonomyDefinition> taxonomies,
-    required Map<String, List<TenantAdminTaxonomyTermDefinition>>
-        termsByTaxonomySlug,
-  }) {
-    final accountTypeOptions = accountTypes
-        .where((item) => item.type.trim().isNotEmpty)
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.type.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.label.trim().isEmpty ? item.type : item.label.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final staticTypeOptions = staticTypes
-        .where((item) => item.type.trim().isNotEmpty)
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.type.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.label.trim().isEmpty ? item.type : item.label.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final eventTypeOptions = eventTypes
-        .where((item) => item.slug.trim().isNotEmpty)
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.slug.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.name.trim().isEmpty ? item.slug : item.name.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final taxonomyBySource = <TenantAdminMapFilterSource,
-        List<TenantAdminMapFilterTaxonomyTermOption>>{
-      TenantAdminMapFilterSource.accountProfile:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-      TenantAdminMapFilterSource.staticAsset:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-      TenantAdminMapFilterSource.event:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-    };
-
-    for (final taxonomy in taxonomies) {
-      final taxonomySlug = taxonomy.slug.trim().toLowerCase();
-      if (taxonomySlug.isEmpty) {
-        continue;
-      }
-      final taxonomyLabel =
-          taxonomy.name.trim().isEmpty ? taxonomySlug : taxonomy.name.trim();
-      for (final term in termsByTaxonomySlug[taxonomy.slug] ??
-          const <TenantAdminTaxonomyTermDefinition>[]) {
-        final termSlug = term.slug.trim().toLowerCase();
-        if (termSlug.isEmpty) {
-          continue;
-        }
-        final option = TenantAdminMapFilterTaxonomyTermOption(
-          tokenValue: _tokenValue('$taxonomySlug:$termSlug'),
-          labelValue: _requiredTextValue(
-            term.name.trim().isEmpty ? term.slug : term.name.trim(),
-          ),
-          taxonomySlugValue: _tokenValue(taxonomySlug),
-          taxonomyLabelValue: _requiredTextValue(taxonomyLabel),
-        );
-        if (taxonomy.appliesToAccountProfile()) {
-          taxonomyBySource[TenantAdminMapFilterSource.accountProfile]!
-              .add(option);
-        }
-        if (taxonomy.appliesToStaticAsset()) {
-          taxonomyBySource[TenantAdminMapFilterSource.staticAsset]!.add(option);
-        }
-        if (taxonomy.appliesToEvent()) {
-          taxonomyBySource[TenantAdminMapFilterSource.event]!.add(option);
-        }
-      }
-    }
-
-    for (final source in taxonomyBySource.keys) {
-      taxonomyBySource[source] =
-          List<TenantAdminMapFilterTaxonomyTermOption>.from(
-        taxonomyBySource[source]!,
-      )..sort((left, right) {
-              final group = left.taxonomyLabel.compareTo(right.taxonomyLabel);
-              if (group != 0) {
-                return group;
-              }
-              return left.label.compareTo(right.label);
-            });
-    }
-
-    return TenantAdminMapFilterRuleCatalog(
-      typesBySource: TenantAdminMapFilterTypeOptionsBySourceValue({
-        TenantAdminMapFilterSource.accountProfile:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          accountTypeOptions,
-        ),
-        TenantAdminMapFilterSource.staticAsset:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          staticTypeOptions,
-        ),
-        TenantAdminMapFilterSource.event:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          eventTypeOptions,
-        ),
-      }),
-      taxonomyTermsBySource: TenantAdminMapFilterTaxonomyOptionsBySourceValue({
-        for (final entry in taxonomyBySource.entries)
-          entry.key: List<TenantAdminMapFilterTaxonomyTermOption>.unmodifiable(
-            entry.value,
-          ),
-      }),
     );
   }
 

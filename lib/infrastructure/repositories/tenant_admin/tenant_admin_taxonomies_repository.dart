@@ -201,6 +201,7 @@ class TenantAdminTaxonomiesRepository
   @override
   Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
     required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
   }) async {
     final ids = taxonomyIds
         .map((taxonomyId) => taxonomyId.value.trim())
@@ -214,7 +215,10 @@ class TenantAdminTaxonomiesRepository
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies/terms',
-        queryParameters: {'taxonomy_ids': ids},
+        queryParameters: {
+          'taxonomy_ids': ids,
+          'term_limit': termLimit?.value ?? 200,
+        },
         options: Options(
           headers: _buildHeaders(),
           listFormat: ListFormat.multiCompatible,

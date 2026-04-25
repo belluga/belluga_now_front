@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
-import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -13,7 +11,6 @@ import 'package:belluga_now/domain/repositories/proximity_preferences_repository
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/value_objects/discovery_filters_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -26,16 +23,19 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_controller_mixin.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
+class TenantHomeAgendaController extends Object
+    with PublicDiscoveryFilterControllerMixin
+    implements Disposable, AgendaAppBarController {
   TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
@@ -154,17 +154,21 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<double> _maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  @override
   final discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
     defaultValue: const DiscoveryFilterCatalog(
       surface: _homeEventsFilterSurface,
     ),
   );
+  @override
   final discoveryFilterSelectionStreamValue =
       StreamValue<DiscoveryFilterSelection>(
     defaultValue: const DiscoveryFilterSelection(),
   );
+  @override
   final isDiscoveryFilterPanelVisibleStreamValue =
       StreamValue<bool>(defaultValue: false);
+  @override
   final isDiscoveryFilterCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
 
@@ -175,6 +179,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   double get minRadiusMeters => _resolveMinRadiusMeters();
 
+  @override
   DiscoveryFilterPolicy get discoveryFilterPolicy => _homeEventsFilterPolicy;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -214,6 +219,30 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   List<EventModel>? get displayedEvents =>
       displayStateStreamValue.value?.events;
 
+  @override
+  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
+      _discoveryFiltersRepository;
+
+  @override
+  AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
+      _appDataRepository;
+
+  @override
+  String get publicDiscoveryFilterSurface => _homeEventsFilterSurface;
+
+  @override
+  bool get isPublicDiscoveryFilterDisposed => _isDisposed;
+
+  @override
+  String get publicDiscoveryFilterLogLabel => 'TenantHomeAgendaController';
+
+  @override
+  void onPublicDiscoveryFilterSelectionChanged(
+    DiscoveryFilterSelection selection,
+  ) {
+    unawaited(_refresh(preserveCurrentResults: true));
+  }
+
   void _ifAlive(VoidCallback writer) {
     if (_isDisposed) return;
     writer();
@@ -244,11 +273,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   void _hideDiscoveryFilterPanelWhenScrolled(double pixels) {
-    if (pixels <= _radiusCompactScrollEpsilon ||
-        !isDiscoveryFilterPanelVisibleStreamValue.value) {
-      return;
-    }
-    setDiscoveryFilterPanelVisible(false);
+    updateDiscoveryFilterPanelVisibilityFromScroll(
+      pixels,
+      epsilon: _radiusCompactScrollEpsilon,
+    );
   }
 
   bool _resolveRadiusActionCompactHint({
@@ -315,7 +343,27 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
-    await _loadDiscoveryFilterCatalog();
+    final restoredSelection =
+        await loadPersistedPublicDiscoveryFilterSelection();
+    if (restoredSelection != null &&
+        !samePublicDiscoveryFilterSelection(
+          discoveryFilterSelectionStreamValue.value,
+          restoredSelection,
+        )) {
+      _ifAlive(
+        () => discoveryFilterSelectionStreamValue.addValue(restoredSelection),
+      );
+    }
+    final mustAwaitCatalogBeforeResults = restoredSelection?.isEmpty == false ||
+        discoveryFilterSelectionStreamValue.value.isNotEmpty;
+    final catalogFuture = loadPublicDiscoveryFilterCatalog(
+      restoredSelection: restoredSelection,
+    );
+    if (mustAwaitCatalogBeforeResults) {
+      await catalogFuture;
+    } else {
+      unawaited(catalogFuture);
+    }
 
     final restored = _restoreFromRepositoryCache();
     if (restored) {
@@ -558,34 +606,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _refresh();
   }
 
-  void toggleDiscoveryFilterPanel() {
-    _ifAlive(
-      () => isDiscoveryFilterPanelVisibleStreamValue.addValue(
-        !isDiscoveryFilterPanelVisibleStreamValue.value,
-      ),
-    );
-  }
-
-  void setDiscoveryFilterPanelVisible(bool visible) {
-    if (isDiscoveryFilterPanelVisibleStreamValue.value == visible) {
-      return;
-    }
-    _ifAlive(() => isDiscoveryFilterPanelVisibleStreamValue.addValue(visible));
-  }
-
-  void setDiscoveryFilterSelection(DiscoveryFilterSelection selection) {
-    final repaired = _repairDiscoveryFilterSelection(selection);
-    if (_sameDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
-      repaired,
-    )) {
-      return;
-    }
-    _ifAlive(() => discoveryFilterSelectionStreamValue.addValue(repaired));
-    unawaited(_persistDiscoveryFilterSelection(repaired));
-    unawaited(_refresh(preserveCurrentResults: true));
-  }
-
   void setInviteFilter(InviteFilter filter) {
     _ifAlive(() => inviteFilterStreamValue.addValue(filter));
     _applyFiltersAndPublish();
@@ -800,120 +820,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  Future<void> _loadDiscoveryFilterCatalog() async {
-    final repository = _discoveryFiltersRepository;
-    if (repository == null) {
-      return;
-    }
-
-    _ifAlive(() => isDiscoveryFilterCatalogLoadingStreamValue.addValue(true));
-    try {
-      final catalog = await repository.fetchCatalog(
-        discoveryFiltersRepoText(_homeEventsFilterSurface),
-      );
-      _ifAlive(() => discoveryFilterCatalogStreamValue.addValue(catalog));
-
-      final restoredSelection = await _loadPersistedDiscoveryFilterSelection();
-      final repaired = _repairDiscoveryFilterSelection(
-        restoredSelection ?? discoveryFilterSelectionStreamValue.value,
-        catalogOverride: catalog,
-      );
-      if (!_sameDiscoveryFilterSelection(
-        discoveryFilterSelectionStreamValue.value,
-        repaired,
-      )) {
-        _ifAlive(() => discoveryFilterSelectionStreamValue.addValue(repaired));
-      }
-      if (restoredSelection != null &&
-          !_sameDiscoveryFilterSelection(restoredSelection, repaired)) {
-        unawaited(_persistDiscoveryFilterSelection(repaired));
-      }
-    } catch (error) {
-      debugPrint(
-        'TenantHomeAgendaController._loadDiscoveryFilterCatalog failed: $error',
-      );
-      _ifAlive(
-        () => discoveryFilterCatalogStreamValue.addValue(
-          const DiscoveryFilterCatalog(
-            surface: _homeEventsFilterSurface,
-          ),
-        ),
-      );
-    } finally {
-      _ifAlive(
-        () => isDiscoveryFilterCatalogLoadingStreamValue.addValue(false),
-      );
-    }
-  }
-
-  Future<DiscoveryFilterSelection?>
-      _loadPersistedDiscoveryFilterSelection() async {
-    final stored = await _appDataRepository.getDiscoveryFilterSelection(
-      AppDataDiscoveryFilterTokenValue.fromRaw(_homeEventsFilterSurface),
-    );
-    if (stored == null) {
-      return null;
-    }
-    return _discoveryFilterSelectionFromSnapshot(stored);
-  }
-
-  Future<void> _persistDiscoveryFilterSelection(
-    DiscoveryFilterSelection selection,
-  ) async {
-    try {
-      await _appDataRepository.setDiscoveryFilterSelection(
-        AppDataDiscoveryFilterTokenValue.fromRaw(_homeEventsFilterSurface),
-        _discoveryFilterSelectionSnapshot(selection),
-      );
-    } catch (error) {
-      debugPrint(
-        'TenantHomeAgendaController._persistDiscoveryFilterSelection failed: $error',
-      );
-    }
-  }
-
-  DiscoveryFilterSelection _discoveryFilterSelectionFromSnapshot(
-    AppDataDiscoveryFilterSelectionSnapshot snapshot,
-  ) {
-    return DiscoveryFilterSelection(
-      primaryKeys: snapshot.primaryKeys
-          .map((value) => value.value)
-          .where((value) => value.isNotEmpty)
-          .toSet(),
-      taxonomyTermKeys: <String, Set<String>>{
-        for (final taxonomy in snapshot.taxonomySelections)
-          if (!taxonomy.isEmpty)
-            taxonomy.taxonomyKey.value: taxonomy.termKeys
-                .map((value) => value.value)
-                .where((value) => value.isNotEmpty)
-                .toSet(),
-      },
-    );
-  }
-
-  AppDataDiscoveryFilterSelectionSnapshot _discoveryFilterSelectionSnapshot(
-    DiscoveryFilterSelection selection,
-  ) {
-    return AppDataDiscoveryFilterSelectionSnapshot(
-      primaryKeys: selection.primaryKeys
-          .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-          .where((value) => value.value.isNotEmpty)
-          .toList(growable: false),
-      taxonomySelections: selection.taxonomyTermKeys.entries
-          .map(
-            (entry) => AppDataDiscoveryFilterTaxonomySelection(
-              taxonomyKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
-              termKeys: entry.value
-                  .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-                  .where((value) => value.value.isNotEmpty)
-                  .toList(growable: false),
-            ),
-          )
-          .where((selection) => !selection.isEmpty)
-          .toList(growable: false),
-    );
-  }
-
   List<ScheduleRepoString>? _selectedEventCategories() {
     final payload = DiscoveryFilterQueryPayload.compile(
       catalog: discoveryFilterCatalogStreamValue.value,
@@ -948,48 +854,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       );
     }
     return taxonomy.isEmpty ? null : taxonomy;
-  }
-
-  DiscoveryFilterSelection _repairDiscoveryFilterSelection(
-    DiscoveryFilterSelection selection, {
-    DiscoveryFilterCatalog? catalogOverride,
-  }) {
-    final catalog = catalogOverride ?? discoveryFilterCatalogStreamValue.value;
-    return const DiscoveryFilterSelectionRepair()
-        .repair(
-          selection: selection,
-          catalog: catalog.filters,
-          catalogEnvelope: catalog,
-          policy: _homeEventsFilterPolicy,
-        )
-        .selection;
-  }
-
-  bool _sameDiscoveryFilterSelection(
-    DiscoveryFilterSelection left,
-    DiscoveryFilterSelection right,
-  ) {
-    return _sameStringSet(left.primaryKeys, right.primaryKeys) &&
-        _sameTaxonomySelection(left.taxonomyTermKeys, right.taxonomyTermKeys);
-  }
-
-  bool _sameTaxonomySelection(
-    Map<String, Set<String>> left,
-    Map<String, Set<String>> right,
-  ) {
-    if (!setEquals(left.keys.toSet(), right.keys.toSet())) {
-      return false;
-    }
-    for (final key in left.keys) {
-      if (!_sameStringSet(left[key] ?? const {}, right[key] ?? const {})) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool _sameStringSet(Set<String> left, Set<String> right) {
-    return setEquals(left, right);
   }
 
   void _listenForStatusChanges() {

@@ -129,6 +129,8 @@ void main() {
           'music_styles': <String, Object?>{
             'key': 'music_styles',
             'label': 'Estilos musicais',
+            'terms_truncated': true,
+            'terms_limit': 200,
             'terms': <Object?>[
               <String, Object?>{
                 'value': 'rock',
@@ -150,6 +152,9 @@ void main() {
     );
     expect(catalog.taxonomyOptionsByKey['music_styles']?.label,
         'Estilos musicais');
+    expect(
+        catalog.taxonomyOptionsByKey['music_styles']?.termsTruncated, isTrue);
+    expect(catalog.taxonomyOptionsByKey['music_styles']?.termsLimit, 200);
     expect(
       catalog.taxonomyOptionsByKey['music_styles']?.terms.single.value,
       'rock',
@@ -300,6 +305,122 @@ void main() {
     expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
       'cuisine': <String>{'japanese'},
     });
+  });
+
+  test('repair preserves selected terms when taxonomy catalog is truncated',
+      () {
+    const policy = DiscoveryFilterPolicy(
+      primarySelectionMode: DiscoveryFilterSelectionMode.single,
+      taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    );
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'shows',
+          label: 'Shows',
+          entities: <String>{'event'},
+          typesByEntity: <String, Set<String>>{
+            'event': <String>{'show'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'event': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'show',
+            label: 'Show',
+            allowedTaxonomyKeys: <String>{'music_styles'},
+          ),
+        ],
+      },
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music_styles': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music_styles',
+          label: 'Estilos',
+          termsTruncated: true,
+          termsLimit: 200,
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+          ],
+        ),
+      },
+    );
+
+    final result = const DiscoveryFilterSelectionRepair().repair(
+      selection: const DiscoveryFilterSelection(
+        primaryKeys: <String>{'shows'},
+        taxonomyTermKeys: <String, Set<String>>{
+          'music_styles': <String>{'rock', 'rare-valid-term'},
+        },
+      ),
+      catalog: catalog.filters,
+      catalogEnvelope: catalog,
+      policy: policy,
+    );
+
+    expect(result.changed, isFalse);
+    expect(result.selection.taxonomyTermKeys, <String, Set<String>>{
+      'music_styles': <String>{'rock', 'rare-valid-term'},
+    });
+    expect(result.droppedTaxonomyTerms, isEmpty);
+  });
+
+  test(
+      'repair drops selected terms when taxonomy catalog is known empty and not truncated',
+      () {
+    const policy = DiscoveryFilterPolicy(
+      primarySelectionMode: DiscoveryFilterSelectionMode.single,
+      taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    );
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'shows',
+          label: 'Shows',
+          entities: <String>{'event'},
+          typesByEntity: <String, Set<String>>{
+            'event': <String>{'show'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'event': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'show',
+            label: 'Show',
+            allowedTaxonomyKeys: <String>{'music_styles'},
+          ),
+        ],
+      },
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music_styles': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music_styles',
+          label: 'Estilos',
+          terms: <DiscoveryFilterTaxonomyTermOption>[],
+        ),
+      },
+    );
+
+    final result = const DiscoveryFilterSelectionRepair().repair(
+      selection: const DiscoveryFilterSelection(
+        primaryKeys: <String>{'shows'},
+        taxonomyTermKeys: <String, Set<String>>{
+          'music_styles': <String>{'stale-term'},
+        },
+      ),
+      catalog: catalog.filters,
+      catalogEnvelope: catalog,
+      policy: policy,
+    );
+
+    expect(result.changed, isTrue);
+    expect(result.selection.taxonomyTermKeys, isEmpty);
+    expect(
+      result.droppedTaxonomyTerms['music_styles'],
+      <String>{'stale-term'},
+    );
   });
 
   test(

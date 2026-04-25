@@ -27,35 +27,41 @@ class ImmersiveTabBar extends StatelessWidget {
         children: List.generate(tabs.length, (index) {
           final isSelected = index == selectedIndex;
           return Semantics(
+            container: true,
             label: tabs[index],
             button: true,
             selected: isSelected,
-            child: GestureDetector(
+            onTap: () => onTabTapped(index),
+            child: InkWell(
               key: Key('immersiveTab_$index'),
+              excludeFromSemantics: true,
               onTap: () => onTabTapped(index),
-              child: Container(
-                key: Key(
-                  isSelected
-                      ? 'immersiveTabSelected_$index'
-                      : 'immersiveTabUnselected_$index',
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected ? selectedColor : Colors.transparent,
-                      width: 2,
+              child: ExcludeSemantics(
+                child: Container(
+                  key: Key(
+                    isSelected
+                        ? 'immersiveTabSelected_$index'
+                        : 'immersiveTabUnselected_$index',
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isSelected ? selectedColor : Colors.transparent,
+                        width: 2,
+                      ),
                     ),
                   ),
-                ),
-                child: Text(
-                  key: Key('immersiveTabLabel_$index'),
-                  tabs[index],
-                  style: TextStyle(
-                    color: isSelected ? selectedColor : unselectedColor,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ).merge(textStyle),
+                  child: Text(
+                    key: Key('immersiveTabLabel_$index'),
+                    tabs[index],
+                    style: TextStyle(
+                      color: isSelected ? selectedColor : unselectedColor,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                    ).merge(textStyle),
+                  ),
                 ),
               ),
             ),

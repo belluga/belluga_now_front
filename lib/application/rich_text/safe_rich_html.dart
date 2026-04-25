@@ -26,6 +26,10 @@ class SafeRichHtml {
     return compact.isEmpty;
   }
 
+  static String sanitizeMarkupFragment(String html) {
+    return _sanitizeMarkup(html);
+  }
+
   static String _canonicalizeMarkup(String html) {
     final sanitized = _sanitizeMarkup(html).trim();
     if (sanitized.isEmpty) {
@@ -68,38 +72,6 @@ class SafeRichHtml {
         )
         .replaceAll(
           RegExp(r'<style\b[^>]*>[\s\S]*?<\/style>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<iframe\b[^>]*>[\s\S]*?<\/iframe>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<object\b[^>]*>[\s\S]*?<\/object>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<embed\b[^>]*>[\s\S]*?<\/embed>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<svg\b[^>]*>[\s\S]*?<\/svg>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<audio\b[^>]*>[\s\S]*?<\/audio>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<video\b[^>]*>[\s\S]*?<\/video>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<picture\b[^>]*>[\s\S]*?<\/picture>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<img\b[^>]*\/?>', caseSensitive: false),
           '',
         );
 

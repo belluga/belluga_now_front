@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
@@ -44,6 +45,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_discovery_filter_rule_catalog_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
@@ -733,6 +735,7 @@ void main() {
       );
       final controller = TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       );
 
       final loadFuture = controller.loadSettings();
@@ -772,6 +775,7 @@ void main() {
     );
     final controller = TenantAdminDiscoveryFiltersController(
       settingsRepository: settingsRepository,
+      ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
     );
 
     await controller.init();
@@ -795,17 +799,23 @@ void main() {
       final taxonomiesRepository = _FakeDiscoveryFilterTaxonomiesRepository();
       final controller = TenantAdminDiscoveryFiltersController(
         settingsRepository: _FakeTenantAdminSettingsRepository(),
-        accountProfilesRepository:
-            _FakeDiscoveryFilterAccountProfilesRepository(),
-        staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
-        taxonomiesRepository: taxonomiesRepository,
-        eventsRepository: _FakeDiscoveryFilterEventsRepository(),
+        ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
+          accountProfilesRepository:
+              _FakeDiscoveryFilterAccountProfilesRepository(),
+          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+          taxonomiesRepository: taxonomiesRepository,
+          eventsRepository: _FakeDiscoveryFilterEventsRepository(
+            allowedTaxonomies: ['genre', 'cuisine'],
+          ),
+        ),
       );
 
       await controller.loadRuleCatalog();
 
       expect(taxonomiesRepository.loadAllTermsCallCount, 0);
       expect(taxonomiesRepository.batchTermsCallCount, 1);
+      expect(taxonomiesRepository.batchTaxonomyIdGroups, hasLength(1));
+      expect(taxonomiesRepository.batchTermLimits, <int>[200]);
       expect(
         taxonomiesRepository.lastBatchTaxonomyIds,
         containsAll(<String>['genre-id', 'cuisine-id']),
@@ -822,6 +832,43 @@ void main() {
     },
   );
 
+  test(
+    'discovery filters rule catalog bounds taxonomy term batch requests',
+    () async {
+      final taxonomiesRepository = _FakeDiscoveryFilterTaxonomiesRepository(
+        generatedTaxonomyCount: 101,
+      );
+      final allowedTaxonomies = List<String>.generate(
+        101,
+        (index) => 'generated_${index.toString().padLeft(3, '0')}',
+      );
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: _FakeTenantAdminSettingsRepository(),
+        ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
+          accountProfilesRepository:
+              _FakeDiscoveryFilterAccountProfilesRepository(),
+          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+          taxonomiesRepository: taxonomiesRepository,
+          eventsRepository: _FakeDiscoveryFilterEventsRepository(
+            allowedTaxonomies: allowedTaxonomies,
+          ),
+        ),
+      );
+
+      await controller.loadRuleCatalog();
+
+      expect(taxonomiesRepository.loadAllTermsCallCount, 0);
+      expect(taxonomiesRepository.batchTermsCallCount, 1);
+      expect(
+        taxonomiesRepository.batchTaxonomyIdGroups.map((group) => group.length),
+        <int>[20],
+      );
+      expect(taxonomiesRepository.batchTermLimits, <int>[200]);
+
+      await controller.onDispose();
+    },
+  );
+
   testWidgets('canonical map filter row exposes rule and visual actions',
       (tester) async {
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -831,6 +878,7 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
       TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       ),
     );
 
@@ -920,6 +968,7 @@ void main() {
       GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
         TenantAdminDiscoveryFiltersController(
           settingsRepository: settingsRepository,
+          ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
         ),
       );
 
@@ -990,6 +1039,7 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
       TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       ),
     );
 
@@ -1076,6 +1126,7 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
       TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       ),
     );
 
@@ -2440,9 +2491,26 @@ class _FakeDiscoveryFilterStaticAssetsRepository
 
 class _FakeDiscoveryFilterEventsRepository
     extends TenantAdminEventsRepositoryContract {
+  _FakeDiscoveryFilterEventsRepository({
+    this.allowedTaxonomies = const <String>[],
+  });
+
+  final List<String> allowedTaxonomies;
+
   @override
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
-    return const <TenantAdminEventType>[];
+    if (allowedTaxonomies.isEmpty) {
+      return const <TenantAdminEventType>[];
+    }
+    return [
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Event'),
+        slugValue: tenantAdminRequiredText('event'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+          allowedTaxonomies,
+        ),
+      ),
+    ];
   }
 
   @override
@@ -2452,24 +2520,41 @@ class _FakeDiscoveryFilterEventsRepository
 class _FakeDiscoveryFilterTaxonomiesRepository
     extends TenantAdminTaxonomiesRepositoryContract
     implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  _FakeDiscoveryFilterTaxonomiesRepository({
+    int generatedTaxonomyCount = 0,
+  })  : _generatedTaxonomyCount = generatedTaxonomyCount,
+        _taxonomies = generatedTaxonomyCount > 0
+            ? List<TenantAdminTaxonomyDefinition>.generate(
+                generatedTaxonomyCount,
+                (index) => _taxonomyDefinition(
+                  id: 'generated-${index.toString().padLeft(3, '0')}',
+                  slug: 'generated_${index.toString().padLeft(3, '0')}',
+                  name: 'Generated ${index.toString().padLeft(3, '0')}',
+                  appliesTo: ['event'],
+                ),
+              )
+            : [
+                _taxonomyDefinition(
+                  id: 'genre-id',
+                  slug: 'genre',
+                  name: 'Gênero Musical',
+                  appliesTo: ['event'],
+                ),
+                _taxonomyDefinition(
+                  id: 'cuisine-id',
+                  slug: 'cuisine',
+                  name: 'Cozinha',
+                  appliesTo: ['event'],
+                ),
+              ];
+
+  final int _generatedTaxonomyCount;
+  final List<TenantAdminTaxonomyDefinition> _taxonomies;
   int loadAllTermsCallCount = 0;
   int batchTermsCallCount = 0;
   List<String> lastBatchTaxonomyIds = const <String>[];
-
-  final List<TenantAdminTaxonomyDefinition> _taxonomies = [
-    _taxonomyDefinition(
-      id: 'genre-id',
-      slug: 'genre',
-      name: 'Gênero Musical',
-      appliesTo: ['event'],
-    ),
-    _taxonomyDefinition(
-      id: 'cuisine-id',
-      slug: 'cuisine',
-      name: 'Cozinha',
-      appliesTo: ['event'],
-    ),
-  ];
+  List<List<String>> batchTaxonomyIdGroups = const <List<String>>[];
+  List<int> batchTermLimits = const <int>[];
 
   final Map<String, List<TenantAdminTaxonomyTermDefinition>> _termsById = {
     'genre-id': [
@@ -2515,17 +2600,35 @@ class _FakeDiscoveryFilterTaxonomiesRepository
   @override
   Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
     required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
   }) async {
     batchTermsCallCount += 1;
     lastBatchTaxonomyIds = taxonomyIds.map((entry) => entry.value).toList();
+    batchTaxonomyIdGroups = [
+      ...batchTaxonomyIdGroups,
+      lastBatchTaxonomyIds,
+    ];
+    batchTermLimits = [
+      ...batchTermLimits,
+      termLimit?.value ?? 200,
+    ];
 
     return TenantAdminTaxonomyTermsByTaxonomyId(
       entries: [
         for (final taxonomyId in taxonomyIds)
           TenantAdminTaxonomyTermsForTaxonomyId(
             taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
-            terms: _termsById[taxonomyId.value] ??
-                const <TenantAdminTaxonomyTermDefinition>[],
+            terms: _generatedTaxonomyCount > 0
+                ? [
+                    _taxonomyTermDefinition(
+                      id: '${taxonomyId.value}-term',
+                      taxonomyId: taxonomyId.value,
+                      slug: 'term',
+                      name: 'Term',
+                    ),
+                  ]
+                : _termsById[taxonomyId.value] ??
+                    const <TenantAdminTaxonomyTermDefinition>[],
           ),
       ],
     );
@@ -2965,6 +3068,14 @@ class _SlowDiscoveryFiltersSettingsRepository
       fetchDiscoveryFiltersSettings() {
     fetchCount += 1;
     return fetchCompleter.future;
+  }
+}
+
+class _EmptyDiscoveryFilterRuleCatalogRepository
+    implements TenantAdminDiscoveryFilterRuleCatalogRepositoryContract {
+  @override
+  Future<TenantAdminMapFilterRuleCatalog> fetchRuleCatalog() async {
+    return const TenantAdminMapFilterRuleCatalog.empty();
   }
 }
 

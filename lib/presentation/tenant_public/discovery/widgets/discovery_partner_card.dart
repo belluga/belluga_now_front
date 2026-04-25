@@ -29,42 +29,50 @@ class DiscoveryPartnerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(26),
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'Abrir perfil ${partner.name}',
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _CardImage(
-            partner: partner,
-            resolvedVisual: resolvedVisual,
-            isFavorite: isFavorite,
-            isFavoritable: isFavoritable,
-            onFavoriteTap: onFavoriteTap,
-          ),
-          if (showDetails)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-              child: AccountProfileIdentityBlock(
-                name: partner.name,
-                avatarUrl: resolvedVisual.identityAvatarUrl,
-                typeVisual: resolvedVisual.typeVisual,
-                identityAvatarKey: const Key('discoveryPartnerIdentityAvatar'),
-                typeAvatarKey: const Key('discoveryPartnerTypeAvatar'),
-                avatarSize: 44,
-                avatarSpacing: 10,
-                typeAvatarSize: 26,
-                typeAvatarIconSize: 15,
-                titleSpacing: 8,
-                supportingSpacing: 10,
-                titleStyle: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                supporting:
-                    partner.tags.isEmpty ? null : _CardTags(partner: partner),
-              ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        excludeFromSemantics: true,
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CardImage(
+              partner: partner,
+              resolvedVisual: resolvedVisual,
+              isFavorite: isFavorite,
+              isFavoritable: isFavoritable,
+              onFavoriteTap: onFavoriteTap,
             ),
-        ],
+            if (showDetails)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+                child: AccountProfileIdentityBlock(
+                  name: partner.name,
+                  avatarUrl: resolvedVisual.identityAvatarUrl,
+                  typeVisual: resolvedVisual.typeVisual,
+                  identityAvatarKey:
+                      const Key('discoveryPartnerIdentityAvatar'),
+                  typeAvatarKey: const Key('discoveryPartnerTypeAvatar'),
+                  avatarSize: 44,
+                  avatarSpacing: 10,
+                  typeAvatarSize: 26,
+                  typeAvatarIconSize: 15,
+                  titleSpacing: 8,
+                  supportingSpacing: 10,
+                  titleStyle: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  supporting:
+                      partner.tags.isEmpty ? null : _CardTags(partner: partner),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

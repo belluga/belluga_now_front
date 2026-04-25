@@ -53,6 +53,51 @@ void main() {
     expect(find.text('samba'), findsOneWidget);
   });
 
+  testWidgets('DiscoveryPartnerCard exposes a named semantic navigation button',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final partner = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439026',
+        name: 'Ananda Torres',
+        slug: 'ananda-torres',
+        type: 'artist',
+      );
+      var tapCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 240,
+              child: DiscoveryPartnerCard(
+                partner: partner,
+                isFavorite: false,
+                isFavoritable: true,
+                onFavoriteTap: () {},
+                onTap: () => tapCount += 1,
+                resolvedVisual: AccountProfileVisualResolver.resolve(
+                  accountProfile: partner,
+                  registry: registry,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final action =
+          find.bySemanticsLabel(RegExp('Abrir perfil Ananda Torres'));
+      expect(action, findsOneWidget);
+
+      await tester.tap(action);
+      expect(tapCount, 1);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets(
       'DiscoveryPartnerCard uses type visuals as fallback avatar when no avatar exists even if cover exists',
       (tester) async {
@@ -125,6 +170,47 @@ void main() {
 
     expect(find.byIcon(Icons.storefront), findsNothing);
     expect(find.byIcon(Icons.music_note), findsWidgets);
+  });
+
+  testWidgets('DiscoveryNearbyRow exposes named semantic navigation buttons',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final items = <AccountProfileModel>[
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439027',
+          name: 'Com Avatar',
+          slug: 'com-avatar',
+          type: 'artist',
+        ),
+      ];
+      var tappedSlug = '';
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiscoveryNearbyRow(
+              items: items,
+              onTap: (item) => tappedSlug = item.slug,
+              resolvedVisualForItem: (item) =>
+                  AccountProfileVisualResolver.resolve(
+                accountProfile: item,
+                registry: registry,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final action = find.bySemanticsLabel(RegExp('Abrir perfil Com Avatar'));
+      expect(action, findsOneWidget);
+
+      await tester.tap(action);
+      expect(tappedSlug, 'com-avatar');
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets(
