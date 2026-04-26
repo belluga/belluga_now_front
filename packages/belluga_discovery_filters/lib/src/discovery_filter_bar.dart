@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'discovery_filter_catalog.dart';
@@ -110,14 +112,20 @@ class DiscoveryFilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => _PrimaryFilterChip(
-          item: filters[index],
-          isActive: selection.primaryKeys.contains(filters[index].key),
-          isLoading:
-              isLoading && selection.primaryKeys.contains(filters[index].key),
-          iconBuilder: iconBuilder,
-          onToggle: _togglePrimary,
-        ),
+        itemBuilder: (context, index) {
+          final item = filters[index];
+          final isActive = selection.primaryKeys.contains(item.key);
+          return _AutoRevealSelectedChip(
+            selected: isActive,
+            child: _PrimaryFilterChip(
+              item: item,
+              isActive: isActive,
+              isLoading: isLoading && isActive,
+              iconBuilder: iconBuilder,
+              onToggle: _togglePrimary,
+            ),
+          );
+        },
       ),
     );
   }
@@ -346,6 +354,101 @@ class _PrimaryFilterChip extends StatelessWidget {
   }
 }
 
+class _AutoRevealSelectedChip extends StatefulWidget {
+  const _AutoRevealSelectedChip({
+    required this.selected,
+    required this.child,
+  });
+
+  final bool selected;
+  final Widget child;
+
+  @override
+  State<_AutoRevealSelectedChip> createState() =>
+      _AutoRevealSelectedChipState();
+}
+
+class _AutoRevealSelectedChipState extends State<_AutoRevealSelectedChip> {
+  bool _isRevealScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleRevealIfSelected();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutoRevealSelectedChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) {
+      _scheduleRevealIfSelected();
+    }
+  }
+
+  void _scheduleRevealIfSelected() {
+    if (!widget.selected || _isRevealScheduled) {
+      return;
+    }
+    _isRevealScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isRevealScheduled = false;
+      if (!mounted || !widget.selected) {
+        return;
+      }
+      _revealHorizontallyIfNeeded(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+void _revealHorizontallyIfNeeded(BuildContext context) {
+  final scrollable = Scrollable.maybeOf(context);
+  if (scrollable == null) {
+    return;
+  }
+
+  final targetBox = context.findRenderObject();
+  final viewportBox = scrollable.context.findRenderObject();
+  if (targetBox is! RenderBox || viewportBox is! RenderBox) {
+    return;
+  }
+
+  final targetOffset = targetBox.localToGlobal(
+    Offset.zero,
+    ancestor: viewportBox,
+  );
+  final targetRect = targetOffset & targetBox.size;
+  final viewportWidth = viewportBox.size.width;
+  const edgePadding = 8.0;
+
+  double scrollDelta = 0;
+  if (targetRect.left < edgePadding) {
+    scrollDelta = targetRect.left - edgePadding;
+  } else if (targetRect.right > viewportWidth - edgePadding) {
+    scrollDelta = targetRect.right - viewportWidth + edgePadding;
+  }
+
+  if (scrollDelta == 0) {
+    return;
+  }
+
+  final position = scrollable.position;
+  final targetPixels = (position.pixels + scrollDelta)
+      .clamp(position.minScrollExtent, position.maxScrollExtent)
+      .toDouble();
+  if ((targetPixels - position.pixels).abs() < 0.5) {
+    return;
+  }
+
+  unawaited(position.animateTo(
+    targetPixels,
+    duration: const Duration(milliseconds: 180),
+    curve: Curves.easeOutCubic,
+  ));
+}
+
 class _TaxonomyGroupBlock extends StatelessWidget {
   const _TaxonomyGroupBlock({
     required this.group,
@@ -396,17 +499,24 @@ class _TaxonomyGroupBlock extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: group.option.terms.length,
               separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) => _TaxonomyTermChip(
-                group: group,
-                term: group.option.terms[index],
-                isSelected:
+              itemBuilder: (context, index) {
+                final term = group.option.terms[index];
+                final isSelected =
                     selection.taxonomyTermKeys[group.option.key]?.contains(
-                          group.option.terms[index].value,
+                          term.value,
                         ) ??
-                        false,
-                isLoading: isLoading,
-                onToggle: onToggle,
-              ),
+                        false;
+                return _AutoRevealSelectedChip(
+                  selected: isSelected,
+                  child: _TaxonomyTermChip(
+                    group: group,
+                    term: term,
+                    isSelected: isSelected,
+                    isLoading: isLoading,
+                    onToggle: onToggle,
+                  ),
+                );
+              },
             ),
           ),
       ],

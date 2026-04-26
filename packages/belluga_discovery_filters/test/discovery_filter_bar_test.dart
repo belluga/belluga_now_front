@@ -385,6 +385,77 @@ void main() {
     expect(find.text('Term 99'), findsNothing);
   });
 
+  testWidgets('row primary layout reveals the selected chip inside viewport',
+      (tester) async {
+    await tester.pumpWidget(
+      _NarrowHarness(
+        width: 180,
+        child: DiscoveryFilterBar(
+          catalog: _widePrimaryCatalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'theatre'},
+          ),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final viewportRect =
+        tester.getRect(find.byKey(const ValueKey<String>('narrowHarness')));
+    final selectedRect = tester.getRect(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterSelectedPrimary_theatre'),
+      ),
+    );
+
+    expect(selectedRect.left, greaterThanOrEqualTo(viewportRect.left - 0.1));
+    expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 0.1));
+  });
+
+  testWidgets('row taxonomy layout reveals the selected term inside viewport',
+      (tester) async {
+    await tester.pumpWidget(
+      _NarrowHarness(
+        width: 180,
+        child: DiscoveryFilterBar(
+          catalog: _scrollingTaxonomyCatalog,
+          selection: const DiscoveryFilterSelection(
+            primaryKeys: <String>{'events'},
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'samba'},
+            },
+          ),
+          policy: const DiscoveryFilterPolicy(
+            taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+            taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final viewportRect =
+        tester.getRect(find.byKey(const ValueKey<String>('narrowHarness')));
+    final selectedRect = tester.getRect(
+      find.byKey(
+        const ValueKey<String>(
+          'discoveryFilterSelectedTaxonomy_music_styles_samba',
+        ),
+      ),
+    );
+
+    expect(selectedRect.left, greaterThanOrEqualTo(viewportRect.left - 0.1));
+    expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 0.1));
+  });
+
   test('horizontal primary row does not prebuild unused chip widgets', () {
     final source = File(
       'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
@@ -430,6 +501,66 @@ void main() {
     expect(capturedForeground, labelText.style?.color);
   });
 }
+
+const _widePrimaryCatalog = DiscoveryFilterCatalog(
+  surface: 'home.events',
+  filters: <DiscoveryFilterCatalogItem>[
+    DiscoveryFilterCatalogItem(
+      key: 'music',
+      label: 'Música',
+      target: 'event_occurrence',
+      entities: <String>{'event'},
+    ),
+    DiscoveryFilterCatalogItem(
+      key: 'food',
+      label: 'Comida',
+      target: 'event_occurrence',
+      entities: <String>{'event'},
+    ),
+    DiscoveryFilterCatalogItem(
+      key: 'theatre',
+      label: 'Teatro',
+      target: 'event_occurrence',
+      entities: <String>{'event'},
+    ),
+  ],
+);
+
+const _scrollingTaxonomyCatalog = DiscoveryFilterCatalog(
+  surface: 'home.events',
+  filters: <DiscoveryFilterCatalogItem>[
+    DiscoveryFilterCatalogItem(
+      key: 'events',
+      label: 'Eventos',
+      target: 'event_occurrence',
+      entities: <String>{'event'},
+      typesByEntity: <String, Set<String>>{
+        'event': <String>{'show'},
+      },
+    ),
+  ],
+  typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+    'event': <DiscoveryFilterTypeOption>[
+      DiscoveryFilterTypeOption(
+        value: 'show',
+        label: 'Show',
+        allowedTaxonomyKeys: <String>{'music_styles'},
+      ),
+    ],
+  },
+  taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+    'music_styles': DiscoveryFilterTaxonomyGroupOption(
+      key: 'music_styles',
+      label: 'Estilos musicais',
+      terms: <DiscoveryFilterTaxonomyTermOption>[
+        DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+        DiscoveryFilterTaxonomyTermOption(value: 'jazz', label: 'Jazz'),
+        DiscoveryFilterTaxonomyTermOption(value: 'mpb', label: 'MPB'),
+        DiscoveryFilterTaxonomyTermOption(value: 'samba', label: 'Samba'),
+      ],
+    ),
+  },
+);
 
 DiscoveryFilterCatalog _largeTaxonomyCatalog() {
   return DiscoveryFilterCatalog(
@@ -596,6 +727,32 @@ class _Harness extends StatelessWidget {
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _NarrowHarness extends StatelessWidget {
+  const _NarrowHarness({
+    required this.width,
+    required this.child,
+  });
+
+  final double width;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            key: const ValueKey<String>('narrowHarness'),
+            width: width,
+            child: child,
+          ),
         ),
       ),
     );

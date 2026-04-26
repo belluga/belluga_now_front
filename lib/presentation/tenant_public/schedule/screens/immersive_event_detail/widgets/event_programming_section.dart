@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
+import 'package:belluga_now/presentation/shared/widgets/auto_reveal_horizontal_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -120,16 +121,19 @@ class _ProgrammingDateSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 86,
+      height: 66,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: occurrences.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final occurrence = occurrences[index];
-          return _ProgrammingDateChip(
-            occurrence: occurrence,
-            onTap: () => onOccurrenceTap(occurrence),
+          return AutoRevealHorizontalItem(
+            selected: occurrence.isSelected,
+            child: _ProgrammingDateChip(
+              occurrence: occurrence,
+              onTap: () => onOccurrenceTap(occurrence),
+            ),
           );
         },
       ),
@@ -205,8 +209,8 @@ class _ProgrammingDateChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          constraints: const BoxConstraints(minWidth: 132),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          constraints: const BoxConstraints(minWidth: 132, minHeight: 62),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: isSelected
                 ? colorScheme.primaryContainer
@@ -231,9 +235,11 @@ class _ProgrammingDateChip extends StatelessWidget {
                 ),
               ),
               if (weekdayLabel.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   weekdayLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: isSelected
                         ? colorScheme.onPrimaryContainer
