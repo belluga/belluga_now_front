@@ -8,6 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+typedef ImmersiveHeroContentBuilder = Widget Function(
+  BuildContext context,
+  ValueChanged<int> activateTab,
+);
+
 /// Generic immersive detail screen with hero content, tabs, and dynamic footer.
 ///
 /// This widget provides a reusable structure for immersive detail pages
@@ -19,7 +24,8 @@ import 'package:visibility_detector/visibility_detector.dart';
 /// - Automatic scroll snapping to sections
 class ImmersiveDetailScreen extends StatefulWidget {
   const ImmersiveDetailScreen({
-    required this.heroContent,
+    this.heroContent,
+    this.heroContentBuilder,
     required this.title,
     required this.tabs,
     required this.backPolicy,
@@ -34,10 +40,17 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.onSharePressed,
     this.shareIcon = Icons.share,
     super.key,
-  });
+  }) : assert(
+          heroContent != null || heroContentBuilder != null,
+          'Either heroContent or heroContentBuilder must be provided.',
+        );
 
   /// Widget displayed in the hero area (typically an image or custom content)
-  final Widget heroContent;
+  final Widget? heroContent;
+
+  /// Optional hero builder for hero content that needs to activate one of the
+  /// configured tabs from an in-page affordance.
+  final ImmersiveHeroContentBuilder? heroContentBuilder;
 
   /// Title displayed in the AppBar when collapsed
   final String title;
@@ -122,9 +135,26 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     if (index <= 0) {
       return;
     }
+    _scheduleTabActivation(index);
+  }
+
+  void _scheduleTabActivation(int index) {
+    if (index < 0) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
       _controller.onTabTapped(index);
     });
+  }
+
+  void _activateTab(int index) {
+    if (index < 0) {
+      return;
+    }
+    _controller.onTabTapped(index);
   }
 
   @override
@@ -218,7 +248,9 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         background: Stack(
                           fit: StackFit.expand,
                           children: [
-                            widget.heroContent,
+                            widget.heroContentBuilder
+                                    ?.call(context, _activateTab) ??
+                                widget.heroContent!,
                             // Scrim gradient for icon visibility
                             Positioned(
                               top: 0,

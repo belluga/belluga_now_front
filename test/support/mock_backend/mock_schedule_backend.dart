@@ -53,7 +53,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -121,16 +121,17 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
     await Future.delayed(const Duration(seconds: 1));
 
-    final startIndex = (page - 1) * pageSize;
+    final effectivePageSize = pageSize ?? 10;
+    final startIndex = (page - 1) * effectivePageSize;
     if (startIndex >= confirmedFiltered.length) {
       return EventPageDTO(events: const [], hasMore: false);
     }
 
     final pageEvents = confirmedFiltered
         .skip(startIndex)
-        .take(pageSize)
+        .take(effectivePageSize)
         .toList(growable: false);
-    final hasMore = startIndex + pageSize < confirmedFiltered.length;
+    final hasMore = startIndex + effectivePageSize < confirmedFiltered.length;
 
     return EventPageDTO(events: pageEvents, hasMore: hasMore);
   }
