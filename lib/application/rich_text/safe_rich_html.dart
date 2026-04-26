@@ -15,7 +15,10 @@ class SafeRichHtml {
     return isEffectivelyEmpty(html) ? '' : html;
   }
 
-  static bool looksLikeHtml(String value) => RegExp(r'<[^>]+>').hasMatch(value);
+  static bool looksLikeHtml(String value) => RegExp(
+        r'</?(?:a|blockquote|body|br|div|em|h[1-6]|html|iframe|img|li|ol|p|s|script|span|strong|style|u|ul)(?:\s[^>]*)?/?>',
+        caseSensitive: false,
+      ).hasMatch(value);
 
   static bool isEffectivelyEmpty(String html) {
     final compact = html

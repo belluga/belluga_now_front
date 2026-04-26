@@ -41,6 +41,33 @@ void main() {
     expect(filter['query']['taxonomy']['music_genre'], <String>['rock']);
   });
 
+  test('decoder preserves explicit empty canonical map filters', () {
+    final settings = decoder.decodeDiscoveryFiltersSettings(
+      {
+        'data': {
+          'map_ui': {
+            'filters': [
+              {'key': 'legacy', 'label': 'Legacy'},
+            ],
+          },
+          'discovery_filters': {
+            'surfaces': {
+              'public_map.primary': {
+                'target': 'map_poi',
+                'filters': const [],
+              },
+            },
+          },
+        },
+      },
+      tenantOrigin: Uri.parse('https://tenant.test'),
+    );
+
+    final surfaces = settings.rawDiscoveryFilters.value['surfaces'] as Map;
+    final publicMap = surfaces['public_map.primary'] as Map;
+    expect(publicMap['filters'], isEmpty);
+  });
+
   test('decoder canonicalizes flat discovery filter surface response', () {
     final settings = decoder.decodeDiscoveryFiltersSettings(
       {

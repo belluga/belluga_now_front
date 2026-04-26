@@ -16,9 +16,7 @@ class TenantAdminDiscoveryFiltersSettingsCanonicalizer {
     final next = _normalizeSurfaces(discoveryFilters);
     final surfaces = _mutableMap(next['surfaces']);
     final mapSurface = _mutableMap(surfaces['public_map.primary']);
-    final rawMapFilters = mapSurface['filters'];
-    final hasCanonicalMapFilters =
-        rawMapFilters is Iterable && rawMapFilters.isNotEmpty;
+    final hasCanonicalMapFilters = mapSurface.containsKey('filters');
     final legacyFilters = legacyMapUi?['filters'];
     if (!hasCanonicalMapFilters && legacyFilters is Iterable) {
       mapSurface['target'] = 'map_poi';

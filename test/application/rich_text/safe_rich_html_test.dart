@@ -45,6 +45,15 @@ void main() {
     );
   });
 
+  test('escapes angle-bracketed placeholders instead of treating them as html',
+      () {
+    expect(SafeRichHtml.looksLikeHtml('Use <token> here'), isFalse);
+    expect(
+      SafeRichHtml.canonicalize('Use <token> here'),
+      '<p>Use &lt;token&gt; here</p>',
+    );
+  });
+
   test('preserves the approved safe subset and strips unsupported markup', () {
     final html = SafeRichHtml.canonicalize(
       '<h2>Título seguro</h2>'
