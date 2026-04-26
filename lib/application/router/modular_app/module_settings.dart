@@ -25,6 +25,7 @@ import 'package:belluga_now/domain/repositories/favorite_repository_contract.dar
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_public_instances_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
@@ -59,6 +60,7 @@ import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/landlord_known_public_instances_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
@@ -340,6 +342,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<LandlordTenantsRepositoryContract>(
       () => LandlordTenantsRepository(),
+    );
+    _registerIfAbsent<LandlordPublicInstancesRepositoryContract>(
+      () => LandlordKnownPublicInstancesRepository(),
     );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
