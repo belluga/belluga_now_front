@@ -543,6 +543,151 @@ void main() {
   });
 
   testWidgets(
+      'event hero compacts many linked profiles and opens first profile type tab',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    final linkedProfiles = List<EventLinkedAccountProfile>.generate(
+      4,
+      (index) {
+        final position = index + 1;
+        return _buildLinkedAccountProfile(
+          id: 'artist-$position',
+          displayName: 'Artista $position',
+          profileType: 'artist',
+          slug: 'artista-$position',
+        );
+      },
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(linkedProfiles: linkedProfiles),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-2')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('eventHeroMoreProfilesChip')), findsOneWidget);
+    expect(find.text('e mais 3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+  });
+
+  testWidgets(
+      'event hero keeps three linked profiles expanded and opens first profile type tab',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    final linkedProfiles = List<EventLinkedAccountProfile>.generate(
+      3,
+      (index) {
+        final position = index + 1;
+        return _buildLinkedAccountProfile(
+          id: 'artist-$position',
+          displayName: 'Artista $position',
+          profileType: 'artist',
+          slug: 'artista-$position',
+        );
+      },
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(linkedProfiles: linkedProfiles),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-3')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('eventHeroMoreProfilesChip')), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+  });
+
+  testWidgets(
       'event detail uses Sobre html content, Como Chegar naming, and hero summary metadata',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();

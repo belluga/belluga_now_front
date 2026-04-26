@@ -797,7 +797,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -831,7 +830,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }) async =>
       _fetchPage(
         page: 1,
-        pageSize: 25,
         showPastOnly: showPastOnly,
         searchQuery: searchQuery,
         confirmedOnly: confirmedOnly,
@@ -851,7 +849,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }) async =>
       _fetchPage(
         page: (lastRequestedPage ?? 0) + 1,
-        pageSize: 25,
         showPastOnly: showPastOnly,
         searchQuery: searchQuery,
         confirmedOnly: confirmedOnly,
@@ -874,7 +871,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }) async {
     final events = await _fetchPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
       liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
       originLat: originLat,

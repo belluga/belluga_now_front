@@ -332,7 +332,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
