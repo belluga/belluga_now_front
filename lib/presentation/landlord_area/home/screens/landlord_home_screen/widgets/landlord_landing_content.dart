@@ -348,28 +348,51 @@ class _SolutionSection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 900;
-        final phones = [
-          _ShowcasePhone(
+        final items = [
+          _ShowcaseFeatureCard(
             brand: brand,
-            title: 'Agenda viva',
+            title: 'Foco Hiperlocal',
+            body:
+                'Agenda centralizada por geolocalização. Saiba exatamente o que está acontecendo perto de você agora ou amanhã, sem depender de algoritmos.',
             icon: Icons.event_available,
             glowColor: Colors.blue,
             screenshotAssetPath: _phoneHomeScreenshot,
           ),
-          _ShowcasePhone(
+          _ShowcaseFeatureCard(
             brand: brand,
-            title: 'Mapa inteligente',
+            title: 'A Cidade na Palma da Mão',
+            body:
+                'Visualização de atrativos e de todo o trade turístico numa visualização do Mapa da região.',
             icon: Icons.map_outlined,
             glowColor: brand.accent,
-            lift: isDesktop,
             screenshotAssetPath: _phoneMapScreenshot,
           ),
-          _ShowcasePhone(
+          _ShowcaseFeatureCard(
             brand: brand,
-            title: 'Rede local',
+            title: 'Descubra!',
+            body:
+                'Pesquisa por categoria de artistas, artesãos, restaurantes e de todo o trade cadastrado no APP, com destaque para eventos acontecendo em tempo real e nos Perfis mais próximos do usuário.',
             icon: Icons.groups_2_outlined,
             glowColor: brand.primary,
             screenshotAssetPath: _phoneDiscoveryScreenshot,
+          ),
+          _ShowcaseFeatureCard(
+            brand: brand,
+            title: 'Motor Viral',
+            body:
+                'O usuário tem papel ativo convidando amigos e promovendo os eventos, artistas e locais que prefere. Planos pagos (SaaS) permitem que o Trade também envie convites a quem os segue na plataforma.',
+            icon: Icons.notifications_active_outlined,
+            glowColor: brand.secondary,
+            screenContent: _InvitePhonePreview(brand: brand),
+          ),
+          _ShowcaseFeatureCard(
+            brand: brand,
+            title: 'Não Basta ter Clientes',
+            body:
+                'No mundo digital é preciso construir sua própria micro comunidade de apoiadores e fãs, e gerenciar adequadamente. E entregamos uma plataforma única para isso, o nosso FRM - Fanbase Relationship Manager.',
+            icon: Icons.analytics_outlined,
+            glowColor: brand.slate,
+            screenContent: _FanbaseManagerPhonePreview(brand: brand),
           ),
         ];
         return _SectionShell(
@@ -385,24 +408,21 @@ class _SolutionSection extends StatelessWidget {
               ),
               const SizedBox(height: 46),
               isDesktop
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: phones
-                          .map(
-                            (phone) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: phone,
-                            ),
-                          )
+                  ? Wrap(
+                      alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
+                      spacing: 28,
+                      runSpacing: 44,
+                      children: items
+                          .map((item) => SizedBox(width: 348, child: item))
                           .toList(growable: false),
                     )
                   : Column(
-                      children: phones
+                      children: items
                           .map(
-                            (phone) => Padding(
-                              padding: const EdgeInsets.only(bottom: 28),
-                              child: phone,
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 34),
+                              child: item,
                             ),
                           )
                           .toList(growable: false),
@@ -415,64 +435,612 @@ class _SolutionSection extends StatelessWidget {
   }
 }
 
-class _ShowcasePhone extends StatelessWidget {
-  const _ShowcasePhone({
+class _ShowcaseFeatureCard extends StatelessWidget {
+  const _ShowcaseFeatureCard({
     required this.brand,
     required this.title,
+    required this.body,
     required this.icon,
     required this.glowColor,
-    this.lift = false,
-    required this.screenshotAssetPath,
+    this.screenshotAssetPath,
+    this.screenContent,
   });
 
   final LandlordLandingBrand brand;
   final String title;
+  final String body;
   final IconData icon;
   final Color glowColor;
-  final bool lift;
-  final String screenshotAssetPath;
+  final String? screenshotAssetPath;
+  final Widget? screenContent;
 
   @override
   Widget build(BuildContext context) {
-    final child = Stack(
-      alignment: Alignment.center,
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
       children: [
-        Container(
-          width: 270,
-          height: 270,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                glowColor.withValues(alpha: 0.34),
-                glowColor.withValues(alpha: 0),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 270,
+              height: 270,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    glowColor.withValues(alpha: 0.34),
+                    glowColor.withValues(alpha: 0),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: glowColor.withValues(alpha: 0.28),
+                    blurRadius: 48,
+                    spreadRadius: 10,
+                  ),
+                ],
+              ),
+            ),
+            Transform.scale(
+              scale: 0.72,
+              child: LandlordPhoneMockup(
+                brand: brand,
+                title: title,
+                accentIcon: icon,
+                screenshotAssetPath: screenshotAssetPath,
+                screenContent: screenContent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: textTheme.titleLarge?.copyWith(
+                color: brand.slate,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+              ) ??
+              TextStyle(
+                color: brand.slate,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          body,
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(
+                color: brand.slate.withValues(alpha: 0.68),
+                height: 1.42,
+              ) ??
+              TextStyle(
+                color: brand.slate.withValues(alpha: 0.68),
+                height: 1.42,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InvitePhonePreview extends StatelessWidget {
+  const _InvitePhonePreview({required this.brand});
+
+  final LandlordLandingBrand brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF6F281B), Color(0xFF111827)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 54, 18, 20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: brand.secondary.withValues(alpha: 0.82),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.16),
+                width: 6,
+              ),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Bóora?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Yuri Dias te convidou para sair hoje!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sunset Jazz',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _InviteInfoRow(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Hoje, 17:00',
+                  color: brand.primary,
+                ),
+                const SizedBox(height: 4),
+                const _InviteInfoRow(
+                  icon: Icons.location_on_outlined,
+                  label: 'Praia de Meaípe',
+                  color: Colors.white70,
+                ),
               ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: glowColor.withValues(alpha: 0.28),
-                blurRadius: 48,
-                spreadRadius: 10,
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              const Expanded(
+                child: _InviteActionButton(
+                  icon: Icons.close_rounded,
+                  label: 'RECUSAR',
+                  color: Color(0xFFC94B4B),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _InviteActionButton(
+                  icon: Icons.check_rounded,
+                  label: 'ACEITAR',
+                  color: brand.primary,
+                ),
               ),
             ],
           ),
-        ),
-        Transform.scale(
-          scale: 0.72,
-          child: LandlordPhoneMockup(
-            brand: brand,
-            title: title,
-            accentIcon: icon,
-            screenshotAssetPath: screenshotAssetPath,
+        ],
+      ),
+    );
+  }
+}
+
+class _InviteInfoRow extends StatelessWidget {
+  const _InviteInfoRow({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 13),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
     );
+  }
+}
 
-    if (!lift) {
-      return child;
-    }
-    return Transform.translate(offset: const Offset(0, -48), child: child);
+class _InviteActionButton extends StatelessWidget {
+  const _InviteActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 78,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FanbaseManagerPhonePreview extends StatelessWidget {
+  const _FanbaseManagerPhonePreview({required this.brand});
+
+  final LandlordLandingBrand brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF0F1B2E),
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Painel B2B',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: brand.secondary.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'EM BREVE',
+                  style: TextStyle(
+                    color: brand.secondary,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Fanbase Relationship Manager',
+            style: TextStyle(
+              color: brand.secondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _FanbaseMetricCard(
+                  label: 'Comunidade',
+                  value: '4.2k',
+                  delta: '+12% semana',
+                  accent: brand.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _FanbaseMetricCard(
+                  label: 'Check-ins',
+                  value: '850',
+                  delta: 'Alta temporada',
+                  accent: brand.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Center(
+            child: Text(
+              'AÇÕES RÁPIDAS',
+              style: TextStyle(
+                color: Color(0xFFC8D7EA),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [brand.secondary, brand.accent]),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.notifications_none_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Disparar Convite Push',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.white),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _FanbaseMiniAction(
+                  icon: Icons.group_outlined,
+                  label: 'Minha Loja',
+                  color: brand.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: _FanbaseMiniAction(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Analytics',
+                  color: Colors.blueAccent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Center(
+            child: Text(
+              'ATIVIDADE RECENTE',
+              style: TextStyle(
+                color: Color(0xFFC8D7EA),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          _FanbaseActivity(
+            icon: Icons.check_rounded,
+            title: '12 convites aceitos',
+            subtitle: 'Há 5 min',
+            color: brand.primary,
+          ),
+          const SizedBox(height: 6),
+          const _FanbaseActivity(
+            icon: Icons.share_rounded,
+            title: 'Evento compartilhado 45x',
+            subtitle: 'Há 2 horas',
+            color: Colors.blueAccent,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FanbaseMetricCard extends StatelessWidget {
+  const _FanbaseMetricCard({
+    required this.label,
+    required this.value,
+    required this.delta,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final String delta;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 74,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFC8D7EA),
+              fontSize: 8,
+              height: 1,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            delta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: accent,
+              fontSize: 7,
+              height: 1,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FanbaseMiniAction extends StatelessWidget {
+  const _FanbaseMiniAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FanbaseActivity extends StatelessWidget {
+  const _FanbaseActivity({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 14),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF7D8BA2),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

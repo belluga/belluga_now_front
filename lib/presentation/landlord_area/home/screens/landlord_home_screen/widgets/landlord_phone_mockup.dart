@@ -9,6 +9,7 @@ class LandlordPhoneMockup extends StatelessWidget {
     this.title = 'Hoje na cidade',
     this.accentIcon = Icons.explore_outlined,
     this.screenshotAssetPath,
+    this.screenContent,
   });
 
   final LandlordLandingBrand brand;
@@ -16,6 +17,7 @@ class LandlordPhoneMockup extends StatelessWidget {
   final String title;
   final IconData accentIcon;
   final String? screenshotAssetPath;
+  final Widget? screenContent;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class LandlordPhoneMockup extends StatelessWidget {
                   title: title,
                   accentIcon: accentIcon,
                   screenshotAssetPath: screenshotAssetPath,
+                  screenContent: screenContent,
                 ),
               ),
             ),
@@ -93,15 +96,22 @@ class _PhoneScreen extends StatelessWidget {
     required this.title,
     required this.accentIcon,
     this.screenshotAssetPath,
+    this.screenContent,
   });
 
   final LandlordLandingBrand brand;
   final String title;
   final IconData accentIcon;
   final String? screenshotAssetPath;
+  final Widget? screenContent;
 
   @override
   Widget build(BuildContext context) {
+    final screenContent = this.screenContent;
+    if (screenContent != null) {
+      return screenContent;
+    }
+
     final screenshotAssetPath = this.screenshotAssetPath;
     if (screenshotAssetPath != null) {
       return Image.asset(
