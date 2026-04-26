@@ -130,6 +130,7 @@ class TenantAdminProfileTypesController implements Disposable {
   StreamSubscription<TenantAdminAccountProfilesRepoString?>?
   _typesErrorSubscription;
   String? _lastTenantDomain;
+  List<String> _initialAllowedTaxonomies = const <String>[];
 
   void _bindRepositoryStreams() {
     hasMoreTypesStreamValue.addValue(
@@ -219,6 +220,13 @@ class TenantAdminProfileTypesController implements Disposable {
         hasEvents: TenantAdminFlagValue(capabilities.hasEvents),
       ),
     );
+    _initialAllowedTaxonomies = List<String>.unmodifiable(
+      (definition?.allowedTaxonomies ?? const <String>[])
+          .map((entry) => entry.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false),
+    );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
     setAllowedTaxonomies(definition?.allowedTaxonomies ?? const []);
@@ -251,6 +259,7 @@ class TenantAdminProfileTypesController implements Disposable {
     labelController.clear();
     taxonomiesController.clear();
     selectedAllowedTaxonomiesStreamValue.addValue(const []);
+    _initialAllowedTaxonomies = const <String>[];
     poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.icon);
     poiVisualImageSourceStreamValue.addValue(
       TenantAdminPoiVisualImageSource.avatar,
@@ -450,7 +459,7 @@ class TenantAdminProfileTypesController implements Disposable {
             );
       availableTaxonomiesStreamValue.addValue(filtered);
       taxonomiesErrorStreamValue.addValue(null);
-      _sanitizeSelectedTaxonomies();
+      _reconcileSelectedTaxonomies();
     } catch (error) {
       if (_isDisposed) return;
       availableTaxonomiesStreamValue.addValue(const []);
@@ -487,6 +496,32 @@ class TenantAdminProfileTypesController implements Disposable {
   void setAllowedTaxonomies(List<String> slugs) {
     _setSelectedAllowedTaxonomies(slugs);
     _sanitizeSelectedTaxonomies();
+  }
+
+  Future<void> hydrateFormDefinition(String type) async {
+    final normalizedType = type.trim();
+    if (_isDisposed || normalizedType.isEmpty) {
+      return;
+    }
+    try {
+      await _repository.loadAllProfileTypes();
+      if (_isDisposed) {
+        return;
+      }
+      final types = typesStreamValue.value ?? const <TenantAdminProfileTypeDefinition>[];
+      TenantAdminProfileTypeDefinition? match;
+      for (final entry in types) {
+        if (entry.type == normalizedType) {
+          match = entry;
+          break;
+        }
+      }
+      if (match != null) {
+        initForm(match);
+      }
+    } catch (_) {
+      // Keep the route payload as fallback when hydration cannot complete.
+    }
   }
 
   Future<void> loadNextTypesPage() async {
@@ -842,6 +877,14 @@ class TenantAdminProfileTypesController implements Disposable {
         .where(availableSlugs.contains)
         .toList(growable: false);
     _setSelectedAllowedTaxonomies(sanitized);
+  }
+
+  void _reconcileSelectedTaxonomies() {
+    if (selectedAllowedTaxonomiesStreamValue.value.isEmpty &&
+        _initialAllowedTaxonomies.isNotEmpty) {
+      _setSelectedAllowedTaxonomies(_initialAllowedTaxonomies);
+    }
+    _sanitizeSelectedTaxonomies();
   }
 
   void _setSelectedAllowedTaxonomies(List<String> slugs) {

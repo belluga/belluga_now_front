@@ -5,7 +5,7 @@ import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 
 class MockAuthBackend extends AuthBackendContract {
   static const String _mockUserId = '507f1f77bcf86cd799439011';
-  static const String _mockPassword = '765432e1';
+  static const String _mockPassword = 'mock-password-123';
   static const String _mockToken = 'mock-token';
 
   UserDto get _mockUser => UserDto(

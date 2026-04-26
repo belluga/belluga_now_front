@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_category.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -27,6 +28,7 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/marker_core.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
@@ -127,46 +129,55 @@ void main() {
     }
   }
 
-  Finder _mainFabFinder() {
-    return find.byWidgetPredicate(
-      (widget) =>
-          widget is FloatingActionButton && widget.heroTag == 'map-fab-main',
-    );
-  }
-
-  Finder _mapExpandedActionFinder() {
-    return find.byWidgetPredicate((widget) {
-      if (widget is! FloatingActionButton) {
-        return false;
-      }
-      final heroTag = widget.heroTag?.toString() ?? '';
-      return heroTag.startsWith('expanded-');
-    });
-  }
-
-  bool _containsMyLocationIcon(Element root) {
-    var found = false;
-
-    void visit(Element element) {
-      if (found) {
-        return;
-      }
-      final widget = element.widget;
-      if (widget is Icon && widget.icon == Icons.my_location) {
-        found = true;
-        return;
-      }
-      element.visitChildren(visit);
-    }
-
-    visit(root);
-    return found;
-  }
-
   Future<void> _clearAuthStorage() async {
     await AuthRepository.storage.delete(key: userTokenKey);
     await AuthRepository.storage.delete(key: userIdKey);
     await AuthRepository.storage.delete(key: deviceIdKey);
+  }
+
+  Finder _compactFilterChipFinder(String key) {
+    return find.byKey(ValueKey<String>('map-compact-filter-chip-$key'));
+  }
+
+  bool _isEventFilterCategory(PoiFilterCategory category) {
+    bool looksLikeEvent(String? raw) {
+      final normalized = raw?.trim().toLowerCase() ?? '';
+      return normalized == 'event' ||
+          normalized == 'events' ||
+          normalized == 'event_occurrence' ||
+          normalized == 'event_occurrences' ||
+          normalized.contains('event');
+    }
+
+    final query = category.serverQuery;
+    return looksLikeEvent(category.key) ||
+        looksLikeEvent(query?.sourceValue?.value) ||
+        query?.typeValues.any((value) => looksLikeEvent(value.value)) == true ||
+        query?.categoryKeyValues.any((value) => looksLikeEvent(value.value)) ==
+            true;
+  }
+
+  Future<PoiFilterCategory> _waitForEventFilterCategory(
+    WidgetTester tester, {
+    Duration timeout = const Duration(seconds: 40),
+    Duration step = const Duration(milliseconds: 300),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(step);
+      final controller = GetIt.I.isRegistered<MapScreenController>()
+          ? GetIt.I.get<MapScreenController>()
+          : null;
+      final categories =
+          controller?.filterOptionsStreamValue.value?.sortedCategories ??
+              const <PoiFilterCategory>[];
+      for (final category in categories) {
+        if (_isEventFilterCategory(category)) {
+          return category;
+        }
+      }
+    }
+    throw TestFailure('Timed out waiting for event filter category.');
   }
 
   testWidgets(
@@ -234,59 +245,80 @@ void main() {
       await _pumpFor(tester, const Duration(seconds: 1));
       await _dismissLocationGateIfNeeded(tester);
       await _waitForFinder(tester, find.byType(MapScreen));
-      await _waitForFinder(tester, _mainFabFinder());
-
-      final expandedActions = _mapExpandedActionFinder();
-      var hasExpandedActions = await _waitForMaybeFinder(
+      await _waitForFinder(
         tester,
-        expandedActions,
-        timeout: const Duration(seconds: 3),
+        find.byKey(const ValueKey<String>('map-bottom-controls-slide')),
       );
-      if (!hasExpandedActions) {
-        await tester.tap(_mainFabFinder());
-        await _pumpFor(tester, const Duration(seconds: 1));
-        hasExpandedActions = await _waitForMaybeFinder(
-          tester,
-          expandedActions,
-          timeout: const Duration(seconds: 3),
-        );
-      }
+
+      final eventCategory = await _waitForEventFilterCategory(tester);
+      final eventFilterChip = _compactFilterChipFinder(eventCategory.key);
       var hasCarousel = false;
-      if (hasExpandedActions) {
-        final expandedWidgets =
-            expandedActions.evaluate().toList(growable: false);
-        final filterCandidates = expandedWidgets
-            .where((element) => !_containsMyLocationIcon(element))
-            .toList(growable: false);
 
-        if (filterCandidates.isNotEmpty) {
-          final categoryFilter = find.byWidget(
-            filterCandidates.last.widget,
-            skipOffstage: false,
-          );
-          await tester.tap(categoryFilter.first);
-          await _pumpFor(tester, const Duration(seconds: 1));
-          hasCarousel = await _waitForMaybeFinder(
-            tester,
-            find.byType(CarouselCard),
-            timeout: const Duration(seconds: 10),
-          );
-          if (hasCarousel) {
-            expect(find.byType(CarouselCard), findsWidgets);
-            final detailsButton = find.widgetWithText(FilledButton, 'Detalhes');
-            if (await _waitForMaybeFinder(tester, detailsButton)) {
-              await tester.tap(detailsButton.first);
+      await _waitForFinder(tester, eventFilterChip);
+      await tester.tap(eventFilterChip.first);
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+      );
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey<String>('map-filter-results-scroll')),
+      );
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey<String>('map-selected-filter-clear')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey<String>('map-selected-filter-clear')).first,
+      );
+      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForFinder(tester, eventFilterChip);
+      expect(
+        find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+        findsNothing,
+      );
+
+      await tester.tap(eventFilterChip.first);
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+      );
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey<String>('map-filter-results-scroll')),
+      );
+
+      final firstResult = find.descendant(
+        of: find.byKey(const ValueKey<String>('map-filter-results-scroll')),
+        matching: find.byType(InkWell),
+      );
+      if (await _waitForMaybeFinder(
+        tester,
+        firstResult,
+        timeout: const Duration(seconds: 10),
+      )) {
+        await tester.tap(firstResult.first);
+        await _pumpFor(tester, const Duration(seconds: 1));
+        hasCarousel = await _waitForMaybeFinder(
+          tester,
+          find.byType(CarouselCard),
+          timeout: const Duration(seconds: 10),
+        );
+        if (hasCarousel) {
+          expect(find.byType(CarouselCard), findsWidgets);
+          final detailsButton = find.widgetWithText(FilledButton, 'Detalhes');
+          if (await _waitForMaybeFinder(tester, detailsButton)) {
+            await tester.tap(detailsButton.first);
+            await _pumpFor(tester, const Duration(seconds: 1));
+            await _waitForFinder(
+              tester,
+              find.byType(ImmersiveEventDetailScreen),
+            );
+
+            final barrier = find.byType(ModalBarrier);
+            if (barrier.evaluate().isNotEmpty) {
+              await tester.tap(barrier.first);
               await _pumpFor(tester, const Duration(seconds: 1));
-              await _waitForFinder(
-                tester,
-                find.byType(ImmersiveEventDetailScreen),
-              );
-
-              final barrier = find.byType(ModalBarrier);
-              if (barrier.evaluate().isNotEmpty) {
-                await tester.tap(barrier.first);
-                await _pumpFor(tester, const Duration(seconds: 1));
-              }
             }
           }
         }
@@ -307,16 +339,6 @@ void main() {
         final decoration = containerWidget.decoration as BoxDecoration;
         expect(decoration.border, isNull);
       }
-
-      await tester.tap(_mainFabFinder());
-      await _pumpFor(tester, const Duration(seconds: 1));
-      if (hasCarousel) {
-        expect(find.byType(CarouselCard), findsNothing);
-      }
-
-      await tester.tap(_mainFabFinder());
-      await _pumpFor(tester, const Duration(seconds: 1));
-      expect(find.byIcon(Icons.tune), findsOneWidget);
     },
   );
 }

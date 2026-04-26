@@ -43,10 +43,16 @@ TenantAdminTaxonomyDefinition tenantAdminTaxonomyDefinitionFromRaw({
 TenantAdminTaxonomyTerm tenantAdminTaxonomyTermFromRaw({
   required Object? type,
   required Object? value,
+  Object? name,
+  Object? taxonomyName,
+  Object? label,
 }) {
   return TenantAdminTaxonomyTerm(
     typeValue: tenantAdminRequiredText(type),
     valueField: tenantAdminRequiredText(value),
+    nameValue: tenantAdminOptionalText(name),
+    taxonomyNameValue: tenantAdminOptionalText(taxonomyName),
+    labelValue: tenantAdminOptionalText(label),
   );
 }
 

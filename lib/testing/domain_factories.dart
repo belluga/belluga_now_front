@@ -195,6 +195,7 @@ VenueEventResume buildVenueEventResume({
   required String location,
   String? eventTypeLabel,
   String? venueTitle,
+  String? selectedOccurrenceId,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<String> tags = const <String>[],
   CityCoordinate? coordinate,
@@ -219,6 +220,8 @@ VenueEventResume buildVenueEventResume({
     ..parse(eventTypeLabel ?? '');
   final venueTitleValue = VenueEventOptionalTextValue()
     ..parse(venueTitle ?? '');
+  final selectedOccurrenceIdValue = VenueEventOptionalTextValue()
+    ..parse(selectedOccurrenceId ?? '');
   final linkedAccountProfiles = _artistResumesToLinkedProfiles(artists);
 
   return VenueEventResume(
@@ -231,6 +234,7 @@ VenueEventResume buildVenueEventResume({
     locationValue: locationValue,
     eventTypeLabelValue: eventTypeValue,
     venueTitleValue: venueTitleValue,
+    selectedOccurrenceIdValue: selectedOccurrenceIdValue,
     linkedAccountProfiles: linkedAccountProfiles,
     tagValues:
         tags.map((tag) => VenueEventTagValue(tag)).toList(growable: false),

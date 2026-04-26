@@ -97,6 +97,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
       initialTabIndex: widget.initialTabIndex,
       tabItems: widget.tabs,
     );
+    _scheduleInitialTabActivation(widget.initialTabIndex);
   }
 
   @override
@@ -112,6 +113,18 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     if (tabsChanged) {
       _controller.updateTabs(widget.tabs);
     }
+    if (oldWidget.initialTabIndex != widget.initialTabIndex) {
+      _scheduleInitialTabActivation(widget.initialTabIndex);
+    }
+  }
+
+  void _scheduleInitialTabActivation(int index) {
+    if (index <= 0) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.onTabTapped(index);
+    });
   }
 
   @override

@@ -15,6 +15,9 @@ import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'support/integration_test_bootstrap.dart';
 
+// Fake-harness integration test: validates widget navigation and controller
+// lifecycle, not real backend authentication. Real backend login coverage lives
+// in the credential-gated tenant admin login flow.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
@@ -94,7 +97,7 @@ void main() {
     );
   }
 
-  testWidgets('Admin login via real credentials opens admin shell',
+  testWidgets('Admin login fake-harness flow opens admin shell',
       (tester) async {
     await _resetContainer();
 
@@ -148,8 +151,8 @@ void main() {
     await _waitForFinder(tester, emailField);
     await _waitForFinder(tester, passwordField);
 
-    await tester.enterText(emailField, 'admin@bellugasolutions.com.br');
-    await tester.enterText(passwordField, '765432e1');
+    await tester.enterText(emailField, 'admin@example.invalid');
+    await tester.enterText(passwordField, 'mock-password-123');
     await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
@@ -215,8 +218,8 @@ void main() {
       await _waitForFinder(tester, emailField);
       await _waitForFinder(tester, passwordField);
 
-      await tester.enterText(emailField, 'admin@bellugasolutions.com.br');
-      await tester.enterText(passwordField, '765432e1');
+      await tester.enterText(emailField, 'admin@example.invalid');
+      await tester.enterText(passwordField, 'mock-password-123');
       await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 

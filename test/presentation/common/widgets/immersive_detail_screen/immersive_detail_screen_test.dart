@@ -78,6 +78,137 @@ void main() {
   );
 
   testWidgets(
+    'tabs expose named semantic button targets that activate sections',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await _pumpImmersiveScreen(
+          tester,
+          ImmersiveDetailScreen(
+            title: 'Profile',
+            collapsedToolbarHeight: 72,
+            backPolicy: _FakeBackPolicy(),
+            heroContent: Container(color: Colors.black),
+            tabs: [
+              ImmersiveTabItem(
+                title: 'Sobre',
+                content: const SizedBox(height: 400, child: Text('Sobre body')),
+              ),
+              ImmersiveTabItem(
+                title: 'Como Chegar',
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      key: const Key('semanticTabSectionStart'),
+                      padding: const EdgeInsets.all(16),
+                      child: const Text('Como Chegar body'),
+                    ),
+                    Container(height: 600, color: Colors.blue),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        final tabAction = find.bySemanticsLabel(RegExp('Como Chegar')).first;
+        expect(tabAction, findsOneWidget);
+        expect(
+          tester.getSemantics(tabAction),
+          matchesSemantics(
+            label: 'Como Chegar',
+            isButton: true,
+            isFocusable: true,
+            hasSelectedState: true,
+            hasTapAction: true,
+            hasFocusAction: true,
+          ),
+        );
+
+        await tester.tap(tabAction);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pumpAndSettle();
+
+        final tabBottom = tester
+            .getBottomLeft(find.byKey(const Key('immersiveTabSelected_1')))
+            .dy;
+        final sectionStartTop = tester
+            .getTopLeft(find.byKey(const Key('semanticTabSectionStart')))
+            .dy;
+
+        expect(sectionStartTop, greaterThanOrEqualTo(tabBottom - 1));
+        expect(sectionStartTop, lessThanOrEqualTo(tabBottom + 8));
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'initial tab index scrolls to the requested section after first layout',
+    (tester) async {
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Event',
+          collapsedToolbarHeight: 72,
+          initialTabIndex: 1,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('initialFirstSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Initial Section 1 Start'),
+                  ),
+                  Container(height: 900, color: Colors.red),
+                ],
+              ),
+            ),
+            ImmersiveTabItem(
+              title: 'Programação',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('initialSecondSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Initial Section 2 Start'),
+                  ),
+                  Container(height: 600, color: Colors.blue),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      final tabBottom = tester
+          .getBottomLeft(find.byKey(const Key('immersiveTabSelected_1')))
+          .dy;
+      final sectionStartTop = tester
+          .getTopLeft(find.byKey(const Key('initialSecondSectionStart')))
+          .dy;
+
+      expect(sectionStartTop, greaterThanOrEqualTo(tabBottom - 1));
+      expect(sectionStartTop, lessThanOrEqualTo(tabBottom + 8));
+    },
+  );
+
+  testWidgets(
     'returning to first tab resets immersive scroll to the real top',
     (tester) async {
       await _pumpImmersiveScreen(

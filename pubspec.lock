@@ -104,6 +104,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  belluga_discovery_filters:
+    dependency: "direct main"
+    description:
+      path: "packages/belluga_discovery_filters"
+      relative: true
+    source: path
+    version: "0.0.1"
   belluga_form_validation:
     dependency: "direct main"
     description:

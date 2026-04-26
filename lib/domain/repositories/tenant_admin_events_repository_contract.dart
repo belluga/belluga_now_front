@@ -204,6 +204,7 @@ abstract class TenantAdminEventsRepositoryContract {
     required TenantAdminEventsRepoString name,
     required TenantAdminEventsRepoString slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) {
     throw UnimplementedError();
   }
@@ -212,6 +213,7 @@ abstract class TenantAdminEventsRepositoryContract {
     required TenantAdminEventsRepoString name,
     required TenantAdminEventsRepoString slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
   }) {
@@ -223,6 +225,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) {
     throw UnimplementedError();
   }
@@ -232,6 +235,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminEventsRepoBool? removeTypeAsset,
@@ -629,6 +633,7 @@ mixin TenantAdminEventsPaginationMixin
     required TenantAdminEventsRepoString name,
     required TenantAdminEventsRepoString slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) {
     throw UnimplementedError();
   }
@@ -639,6 +644,7 @@ mixin TenantAdminEventsPaginationMixin
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) {
     throw UnimplementedError();
   }

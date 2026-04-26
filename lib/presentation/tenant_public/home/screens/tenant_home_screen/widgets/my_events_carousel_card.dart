@@ -44,7 +44,10 @@ class MyEventsCarouselCard extends StatelessWidget {
           onTap: () {
             if (event.slug.isEmpty) return;
             context.router.push(
-              ImmersiveEventDetailRoute(eventSlug: event.slug),
+              ImmersiveEventDetailRoute(
+                eventSlug: event.slug,
+                occurrenceId: event.selectedOccurrenceId,
+              ),
             );
           },
           child: CarouselCard(

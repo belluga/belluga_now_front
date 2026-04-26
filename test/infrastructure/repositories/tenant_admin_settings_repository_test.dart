@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
@@ -67,7 +68,7 @@ void main() {
     expect(settings.from, 'Belluga <noreply@belluga.space>');
     expect(
       _recipientStrings(settings.to),
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
     expect(
       _recipientStrings(settings.cc),
@@ -122,7 +123,7 @@ void main() {
       settings: TenantAdminResendEmailSettings(
         token: _optionalTextValue('re_live_token'),
         from: _optionalTextValue('Belluga <noreply@belluga.space>'),
-        toRecipients: _recipients(['admin@bellugasolutions.com.br']),
+        toRecipients: _recipients(['admin@example.com']),
         ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
         bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
         replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
@@ -136,7 +137,7 @@ void main() {
     expect(payload['from'], 'Belluga <noreply@belluga.space>');
     expect(
       payload['to'],
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
     expect(
       payload['cc'],
@@ -153,8 +154,56 @@ void main() {
     expect(updated.from, 'Belluga <noreply@belluga.space>');
     expect(
       _recipientStrings(updated.to),
-      equals(['admin@bellugasolutions.com.br']),
+      equals(['admin@example.com']),
     );
+  });
+
+  test('updateDiscoveryFiltersSettings preserves dotted surface keys',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateDiscoveryFiltersSettings(
+      settings: TenantAdminDiscoveryFiltersSettingsValue(
+        TenantAdminDynamicMapValue({
+          'surfaces': {
+            'public_map.primary': {
+              'target': 'map_poi',
+              'primary_selection_mode': 'single',
+              'filters': [
+                {
+                  'key': 'assets',
+                  'label': 'Assets',
+                  'image_uri': 'https://tenant-a.test/filter.png',
+                  'query': {
+                    'entities': ['static_asset'],
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/discovery_filters');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload.containsKey('surfaces.public_map.primary.filters'), isFalse);
+    final requestSurfaces = payload['surfaces'] as Map<String, dynamic>;
+    expect(requestSurfaces.containsKey('public_map.primary'), isTrue);
+
+    final updatedSurfaces =
+        updated.rawDiscoveryFilters['surfaces'] as Map<String, dynamic>;
+    final publicMap =
+        updatedSurfaces['public_map.primary'] as Map<String, dynamic>;
+    final filters = publicMap['filters'] as List<dynamic>;
+    expect(filters.single['image_uri'], 'https://tenant-a.test/filter.png');
   });
 
   test('fetchMapUiSettings parses default origin from settings values',
@@ -801,7 +850,8 @@ void main() {
         'public_web_metadata': {
           'default_title': 'Guarappari Home',
           'default_description': 'Fallback institucional da home.',
-          'default_image': 'https://tenant-a.test/storage/public-web-updated.jpg',
+          'default_image':
+              'https://tenant-a.test/storage/public-web-updated.jpg',
         },
         'logo_settings': {
           'pwa_icon': {
@@ -905,7 +955,8 @@ void main() {
     expect(updated.primarySeedColor, '#112233');
     expect(updated.secondarySeedColor, '#445566');
     expect(updated.publicWebDefaultTitle, 'Guarappari Home');
-    expect(updated.publicWebDefaultDescription, 'Fallback institucional da home.');
+    expect(
+        updated.publicWebDefaultDescription, 'Fallback institucional da home.');
     expect(
       updated.publicWebDefaultImageUrl,
       'https://tenant-a.test/storage/public-web-updated.jpg',
@@ -1624,7 +1675,7 @@ class _RoutingAdapter implements HttpClientAdapter {
                 'resend_email': {
                   'token': 're_live_token',
                   'from': 'Belluga <noreply@belluga.space>',
-                  'to': ['admin@bellugasolutions.com.br'],
+                  'to': ['admin@example.com'],
                   'cc': ['ops@bellugasolutions.com.br'],
                   'bcc': ['audit@bellugasolutions.com.br'],
                   'reply_to': ['reply@bellugasolutions.com.br'],
@@ -1763,6 +1814,16 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'map_ui': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/discovery_filters') &&
+        method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'discovery_filters': request,
         },
       });
     }

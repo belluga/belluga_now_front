@@ -164,11 +164,11 @@ class CityMapRepository extends CityMapRepositoryContract {
         ),
       );
     }
-
     return PoiFilterOptions(
       categories: List<PoiFilterCategory>.unmodifiable(categories),
     );
   }
+
   @override
   Future<List<MapRegionDefinition>> fetchRegions() async {
     return const <MapRegionDefinition>[];

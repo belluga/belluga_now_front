@@ -125,6 +125,37 @@ void main() {
     expect(params.containsKey('max_distance_meters'), isFalse);
   });
 
+  test('fetchEventsPage serializes category and taxonomy query filters',
+      () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+      categories: const ['show'],
+      taxonomy: const [
+        {'type': 'music_styles', 'value': 'rock'},
+      ],
+    );
+
+    final params = adapter.lastOptions?.queryParameters;
+    expect(params?['categories'], const ['show']);
+    expect(params?['taxonomy[0][type]'], 'music_styles');
+    expect(params?['taxonomy[0][value]'], 'rock');
+  });
+
   test('fetchEventsPage bootstraps auth when token is empty', () async {
     final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
         as _FakeAuthRepository;
@@ -304,8 +335,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 AppData _buildAppData() {

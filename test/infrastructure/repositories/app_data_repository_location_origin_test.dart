@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -57,13 +59,13 @@ void main() {
       LocationOriginReason.outsideRange,
     );
     expect(
-      reloadedRepository.locationOriginSettings?.fixedLocationReference
-          ?.latitude,
+      reloadedRepository
+          .locationOriginSettings?.fixedLocationReference?.latitude,
       closeTo(-20.671339, 0.000001),
     );
     expect(
-      reloadedRepository.locationOriginSettings?.fixedLocationReference
-          ?.longitude,
+      reloadedRepository
+          .locationOriginSettings?.fixedLocationReference?.longitude,
       closeTo(-40.495395, 0.000001),
     );
   });
@@ -98,6 +100,88 @@ void main() {
     );
     expect(
       reloadedRepository.locationOriginSettings?.fixedLocationReference,
+      isNull,
+    );
+  });
+
+  test('persists discovery filter selections by tenant and surface', () async {
+    final backend = _FakeAppDataBackend();
+    final localInfoSource = _FakeAppDataLocalInfoSource();
+    final firstRepository = AppDataRepository(
+      backend: backend,
+      localInfoSource: localInfoSource,
+    );
+
+    await firstRepository.init();
+    await firstRepository.setDiscoveryFilterSelection(
+      AppDataDiscoveryFilterTokenValue.fromRaw('home.events'),
+      AppDataDiscoveryFilterSelectionSnapshot(
+        primaryKeys: [
+          AppDataDiscoveryFilterTokenValue.fromRaw('shows'),
+        ],
+        taxonomySelections: [
+          AppDataDiscoveryFilterTaxonomySelection(
+            taxonomyKey:
+                AppDataDiscoveryFilterTokenValue.fromRaw('music_styles'),
+            termKeys: [
+              AppDataDiscoveryFilterTokenValue.fromRaw('rock'),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final reloadedRepository = AppDataRepository(
+      backend: backend,
+      localInfoSource: localInfoSource,
+    );
+    await reloadedRepository.init();
+
+    final restoredSelection =
+        await reloadedRepository.getDiscoveryFilterSelection(
+      AppDataDiscoveryFilterTokenValue.fromRaw('home.events'),
+    );
+    expect(
+      restoredSelection?.primaryKeys
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['shows'],
+    );
+    expect(
+      restoredSelection?.taxonomySelections.single.taxonomyKey.value,
+      'music_styles',
+    );
+    expect(
+      restoredSelection?.taxonomySelections.single.termKeys
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['rock'],
+    );
+    expect(
+      await reloadedRepository.getDiscoveryFilterSelection(
+        AppDataDiscoveryFilterTokenValue.fromRaw(
+          'discovery.account_profiles',
+        ),
+      ),
+      isNull,
+    );
+  });
+
+  test('ignores malformed persisted discovery filter selections', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'discovery_filter_selection_tenant.test_home.events': '{not-json',
+    });
+    final repository = AppDataRepository(
+      backend: _FakeAppDataBackend(),
+      localInfoSource: _FakeAppDataLocalInfoSource(),
+    );
+
+    await repository.init();
+
+    expect(
+      await repository.getDiscoveryFilterSelection(
+        AppDataDiscoveryFilterTokenValue.fromRaw('home.events'),
+      ),
       isNull,
     );
   });

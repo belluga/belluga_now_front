@@ -68,16 +68,16 @@ class AppDataDTO {
     Map<String, dynamic>? firebase,
     Map<String, dynamic>? push,
     Map<String, dynamic>? settings,
-  }) : profileTypes = List.unmodifiable(profileTypes ?? const []),
-       domains = List.unmodifiable(domains ?? const []),
-       appDomains = List.unmodifiable(appDomains ?? const []),
-       telemetry = telemetry == null ? null : Map.unmodifiable(telemetry),
-       telemetryContext = telemetryContext == null
-           ? null
-           : Map.unmodifiable(telemetryContext),
-       firebase = firebase == null ? null : Map.unmodifiable(firebase),
-       push = push == null ? null : Map.unmodifiable(push),
-       settings = settings == null ? null : Map.unmodifiable(settings);
+  })  : profileTypes = List.unmodifiable(profileTypes ?? const []),
+        domains = List.unmodifiable(domains ?? const []),
+        appDomains = List.unmodifiable(appDomains ?? const []),
+        telemetry = telemetry == null ? null : Map.unmodifiable(telemetry),
+        telemetryContext = telemetryContext == null
+            ? null
+            : Map.unmodifiable(telemetryContext),
+        firebase = firebase == null ? null : Map.unmodifiable(firebase),
+        push = push == null ? null : Map.unmodifiable(push),
+        settings = settings == null ? null : Map.unmodifiable(settings);
 
   final String? tenantId;
   final String name;
@@ -233,17 +233,14 @@ class AppDataDTO {
       ..parse(DomainValue.coerceRaw(mainDomain));
     final tenantIdValue = TenantIdValue()..parse(tenantId?.toString());
 
-    final resolvedPlatform =
-        localInfo.platformTypeValue.value ??
+    final resolvedPlatform = localInfo.platformTypeValue.value ??
         localInfo.platformTypeValue.defaultValue ??
         AppType.mobile;
     final isWeb = resolvedPlatform == AppType.web;
-    final resolvedHostname = isWeb
-        ? localInfo.hostname
-        : mainDomainValue.value.host;
-    final resolvedHref = isWeb
-        ? localInfo.href
-        : mainDomainValue.value.toString();
+    final resolvedHostname =
+        isWeb ? localInfo.hostname : mainDomainValue.value.host;
+    final resolvedHref =
+        isWeb ? localInfo.href : mainDomainValue.value.toString();
 
     return AppData(
       platformType: localInfo.platformTypeValue,
@@ -339,9 +336,8 @@ class AppDataDTO {
 
   static Map<String, dynamic>? _normalizeTelemetry(Object? raw) {
     if (raw is Map) {
-      final map = raw is Map<String, dynamic>
-          ? raw
-          : Map<String, dynamic>.from(raw);
+      final map =
+          raw is Map<String, dynamic> ? raw : Map<String, dynamic>.from(raw);
       if (map['trackers'] is List) {
         final trackers = (map['trackers'] as List)
             .whereType<Map>()
@@ -377,19 +373,18 @@ class AppDataDTO {
           : const <String, dynamic>{};
       final singularLabel =
           labelsMap['singular']?.toString().trim().isNotEmpty == true
-          ? labelsMap['singular']?.toString().trim()
-          : label;
+              ? labelsMap['singular']?.toString().trim()
+              : label;
       final pluralLabel =
           labelsMap['plural']?.toString().trim().isNotEmpty == true
-          ? labelsMap['plural']?.toString().trim()
-          : singularLabel;
+              ? labelsMap['plural']?.toString().trim()
+              : singularLabel;
       final capabilitiesRaw = rawType['capabilities'];
       final capabilitiesMap = capabilitiesRaw is Map
           ? Map<String, dynamic>.from(capabilitiesRaw)
           : const <String, dynamic>{};
       final isPoiEnabled = capabilitiesMap['is_poi_enabled'] == true;
-      final isReferenceLocationEnabled =
-          isPoiEnabled &&
+      final isReferenceLocationEnabled = isPoiEnabled &&
           capabilitiesMap['is_reference_location_enabled'] == true;
 
       types.add(
@@ -403,8 +398,8 @@ class AppDataDTO {
           pluralLabelValue: ProfileTypeLabelValue(
             pluralLabel == null || pluralLabel.isEmpty
                 ? (singularLabel == null || singularLabel.isEmpty
-                      ? type
-                      : singularLabel)
+                    ? type
+                    : singularLabel)
                 : pluralLabel,
           ),
           visual: _buildProfileTypeVisual(
@@ -555,9 +550,9 @@ class AppDataDTO {
     final brightnessValue = BrightnessValue()
       ..parse(themeSettings['brightness_default'] as String?);
     final primarySeedColor =
-        (themeSettings['primary_seed_color'] as String?) ?? '#4FA0E3';
+        (themeSettings['primary_seed_color'] as String?) ?? '#10B981';
     final secondarySeedColor =
-        (themeSettings['secondary_seed_color'] as String?) ?? '#E80D5D';
+        (themeSettings['secondary_seed_color'] as String?) ?? '#F97316';
 
     return ThemeDataSettings(
       darkSchemeData: _buildColorSchemeData(
@@ -664,13 +659,12 @@ class AppDataDTO {
       return null;
     }
 
-    final parsedEnabled = raw['enabled'] is bool
-        ? raw['enabled'] as bool
-        : false;
+    final parsedEnabled =
+        raw['enabled'] is bool ? raw['enabled'] as bool : false;
     final parsedTypes = (raw['types'] is List)
         ? (raw['types'] as List)
-              .map((entry) => entry.toString())
-              .toList(growable: false)
+            .map((entry) => entry.toString())
+            .toList(growable: false)
         : const <String>[];
     final parsedThrottles = raw['throttles'] is Map<String, dynamic>
         ? Map<String, dynamic>.unmodifiable(
@@ -701,7 +695,7 @@ class AppDataDTO {
   }
 
   static ({double minMeters, double defaultMeters, double maxMeters})
-  _resolveRadiusBounds(Map<String, dynamic>? rawSettings) {
+      _resolveRadiusBounds(Map<String, dynamic>? rawSettings) {
     final settings = rawSettings ?? const <String, dynamic>{};
     final mapUi = settings['map_ui'] is Map
         ? Map<String, dynamic>.from(settings['map_ui'] as Map)
@@ -741,11 +735,9 @@ class AppDataDTO {
         ? Map<String, dynamic>.from(mapUi['default_origin'] as Map)
         : const <String, dynamic>{};
 
-    final lat =
-        _parseDouble(defaultOrigin['lat']) ??
+    final lat = _parseDouble(defaultOrigin['lat']) ??
         _parseDouble(mapUi['default_origin.lat']);
-    final lng =
-        _parseDouble(defaultOrigin['lng']) ??
+    final lng = _parseDouble(defaultOrigin['lng']) ??
         _parseDouble(mapUi['default_origin.lng']);
     if (lat == null || lng == null) {
       return null;
@@ -835,7 +827,7 @@ class AppDataDTO {
   }
 
   static TelemetryLocationFreshnessValue
-  _buildLocationFreshnessValueFromMinutes(int minutes) {
+      _buildLocationFreshnessValueFromMinutes(int minutes) {
     final value = TelemetryLocationFreshnessValue(
       defaultValue: const Duration(
         minutes: TelemetryContextSettings.defaultLocationFreshnessMinutes,
@@ -865,9 +857,8 @@ class AppDataDTO {
   }
 
   static double _parsePositiveDouble(Object? raw, double fallback) {
-    final value = raw is num
-        ? raw.toDouble()
-        : double.tryParse(raw?.toString() ?? '');
+    final value =
+        raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
     if (value == null || value <= 0) {
       return fallback;
     }

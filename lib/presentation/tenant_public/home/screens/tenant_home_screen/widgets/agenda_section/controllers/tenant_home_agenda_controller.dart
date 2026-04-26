@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -21,19 +23,23 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_controller_mixin.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
+class TenantHomeAgendaController extends Object
+    with PublicDiscoveryFilterControllerMixin
+    implements Disposable, AgendaAppBarController {
   TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
+    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
@@ -49,6 +55,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _discoveryFiltersRepository = discoveryFiltersRepository ??
+            (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
+                ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
+                : null),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
@@ -78,6 +88,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
+  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -97,6 +108,14 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
   static const Duration _preservedFirstPageEmptyRetryDelay =
       Duration(milliseconds: 250);
+  static const String _homeEventsFilterSurface = 'home.events';
+  static const DiscoveryFilterPolicy _homeEventsFilterPolicy =
+      DiscoveryFilterPolicy(
+    primarySelectionMode: DiscoveryFilterSelectionMode.single,
+    taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+    taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+  );
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
       'Buscando eventos perto de você...';
@@ -135,6 +154,23 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<double> _maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  @override
+  final discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
+    defaultValue: const DiscoveryFilterCatalog(
+      surface: _homeEventsFilterSurface,
+    ),
+  );
+  @override
+  final discoveryFilterSelectionStreamValue =
+      StreamValue<DiscoveryFilterSelection>(
+    defaultValue: const DiscoveryFilterSelection(),
+  );
+  @override
+  final isDiscoveryFilterPanelVisibleStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final isDiscoveryFilterCatalogLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
@@ -142,6 +178,9 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   @override
   double get minRadiusMeters => _resolveMinRadiusMeters();
+
+  @override
+  DiscoveryFilterPolicy get discoveryFilterPolicy => _homeEventsFilterPolicy;
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -180,6 +219,30 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   List<EventModel>? get displayedEvents =>
       displayStateStreamValue.value?.events;
 
+  @override
+  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
+      _discoveryFiltersRepository;
+
+  @override
+  AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
+      _appDataRepository;
+
+  @override
+  String get publicDiscoveryFilterSurface => _homeEventsFilterSurface;
+
+  @override
+  bool get isPublicDiscoveryFilterDisposed => _isDisposed;
+
+  @override
+  String get publicDiscoveryFilterLogLabel => 'TenantHomeAgendaController';
+
+  @override
+  void onPublicDiscoveryFilterSelectionChanged(
+    DiscoveryFilterSelection selection,
+  ) {
+    unawaited(_refresh(preserveCurrentResults: true));
+  }
+
   void _ifAlive(VoidCallback writer) {
     if (_isDisposed) return;
     writer();
@@ -196,6 +259,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       current: _outerScrollCompactHint,
       pixels: pixels,
     );
+    _hideDiscoveryFilterPanelWhenScrolled(pixels);
     _publishRadiusActionCompactState();
   }
 
@@ -204,7 +268,15 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       current: _innerScrollCompactHint,
       pixels: pixels,
     );
+    _hideDiscoveryFilterPanelWhenScrolled(pixels);
     _publishRadiusActionCompactState();
+  }
+
+  void _hideDiscoveryFilterPanelWhenScrolled(double pixels) {
+    updateDiscoveryFilterPanelVisibilityFromScroll(
+      pixels,
+      epsilon: _radiusCompactScrollEpsilon,
+    );
   }
 
   bool _resolveRadiusActionCompactHint({
@@ -271,6 +343,27 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
+    final restoredSelection =
+        await loadPersistedPublicDiscoveryFilterSelection();
+    if (restoredSelection != null &&
+        !samePublicDiscoveryFilterSelection(
+          discoveryFilterSelectionStreamValue.value,
+          restoredSelection,
+        )) {
+      _ifAlive(
+        () => discoveryFilterSelectionStreamValue.addValue(restoredSelection),
+      );
+    }
+    final mustAwaitCatalogBeforeResults = restoredSelection?.isEmpty == false ||
+        discoveryFilterSelectionStreamValue.value.isNotEmpty;
+    final catalogFuture = loadPublicDiscoveryFilterCatalog(
+      restoredSelection: restoredSelection,
+    );
+    if (mustAwaitCatalogBeforeResults) {
+      await catalogFuture;
+    } else {
+      unawaited(catalogFuture);
+    }
 
     final restored = _restoreFromRepositoryCache();
     if (restored) {
@@ -441,6 +534,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       final originLng = _toNullableScheduleDouble(_effectiveOriginLng);
       final maxDistanceMeters =
           _toScheduleDouble(radiusMetersStreamValue.value);
+      final categories = _selectedEventCategories();
+      final taxonomy = _selectedEventTaxonomyEntries();
       final previousCanonicalEventCount = previousCanonicalEvents.isNotEmpty
           ? previousCanonicalEvents.length
           : _currentCanonicalEvents().length;
@@ -454,6 +549,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
           originLat: originLat,
           originLng: originLng,
           maxDistanceMeters: maxDistanceMeters,
+          categories: categories,
+          taxonomy: taxonomy,
         );
       } else {
         resolvedEvents = await _scheduleRepository.loadMoreHomeAgenda(
@@ -463,6 +560,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
           originLat: originLat,
           originLng: originLng,
           maxDistanceMeters: maxDistanceMeters,
+          categories: categories,
+          taxonomy: taxonomy,
         );
       }
 
@@ -481,6 +580,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
           originLat: originLat,
           originLng: originLng,
           maxDistanceMeters: maxDistanceMeters,
+          categories: categories,
+          taxonomy: taxonomy,
         );
         if (resolvedEvents.isEmpty) {
           return;
@@ -659,6 +760,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       originLat: _toNullableScheduleDouble(cacheOrigin?.latitude),
       originLng: _toNullableScheduleDouble(cacheOrigin?.longitude),
       maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
+      categories: _selectedEventCategories(),
+      taxonomy: _selectedEventTaxonomyEntries(),
     );
     if (cache == null) {
       return false;
@@ -715,6 +818,42 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       return '${meters.round()} m';
     }
     return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  List<ScheduleRepoString>? _selectedEventCategories() {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: discoveryFilterSelectionStreamValue.value,
+    );
+    final categories = payload.typesForEntity('event');
+    if (categories.isEmpty) {
+      return null;
+    }
+    return categories
+        .map(_toScheduleText)
+        .where((value) => value.value.trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
+  ScheduleRepoTaxonomyEntries? _selectedEventTaxonomyEntries() {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: discoveryFilterSelectionStreamValue.value,
+    );
+    final entries = payload.taxonomyEntries;
+    if (entries.isEmpty) {
+      return null;
+    }
+    final taxonomy = ScheduleRepoTaxonomyEntries();
+    for (final entry in entries) {
+      taxonomy.add(
+        ScheduleRepoTaxonomyEntry(
+          type: _toScheduleText(entry.type),
+          term: _toScheduleText(entry.value),
+        ),
+      );
+    }
+    return taxonomy.isEmpty ? null : taxonomy;
   }
 
   void _listenForStatusChanges() {
@@ -1009,6 +1148,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     showHistoryStreamValue.dispose();
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
+    discoveryFilterCatalogStreamValue.dispose();
+    discoveryFilterSelectionStreamValue.dispose();
+    isDiscoveryFilterPanelVisibleStreamValue.dispose();
+    isDiscoveryFilterCatalogLoadingStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
     isRadiusActionCompactStreamValue.dispose();

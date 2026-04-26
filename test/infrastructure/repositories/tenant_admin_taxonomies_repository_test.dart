@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,6 +95,45 @@ void main() {
       readError: () => repository.termsErrorStreamValue.value?.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
+    );
+  });
+
+  test('fetchTermsByTaxonomyIds uses one batch endpoint request', () async {
+    final adapter = _TaxonomiesRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminTaxonomiesRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.fetchTermsByTaxonomyIds(
+      taxonomyIds: [
+        tenantAdminTaxRepoString('tax-1'),
+        tenantAdminTaxRepoString('tax-2'),
+      ],
+    );
+
+    expect(result.termsForId(tenantAdminRequiredText('tax-1')).single.slug,
+        'samba');
+    expect(result.termsForId(tenantAdminRequiredText('tax-2')).single.slug,
+        'italian');
+    expect(adapter.requests, hasLength(1));
+    expect(
+      adapter.requests.single.path,
+      'https://tenant-a.test/admin/api/v1/taxonomies/terms',
+    );
+    expect(adapter.requests.single.queryParameters['taxonomy_ids'], [
+      'tax-1',
+      'tax-2',
+    ]);
+    expect(adapter.requests.single.queryParameters['term_limit'], 200);
+    expect(adapter.requests.single.listFormat, ListFormat.multiCompatible);
+    expect(
+      adapter.requests.where(
+        (request) => request.path.contains('/tax-1/terms'),
+      ),
+      isEmpty,
     );
   });
 
@@ -205,6 +245,29 @@ class _TaxonomiesRoutingAdapter implements HttpClientAdapter {
               'last_page': 2,
             };
       return _jsonResponse(payload);
+    }
+
+    if (options.path.endsWith('/v1/taxonomies/terms')) {
+      return _jsonResponse({
+        'data': {
+          'tax-1': [
+            {
+              'id': 'term-1',
+              'taxonomy_id': 'tax-1',
+              'slug': 'samba',
+              'name': 'Samba',
+            },
+          ],
+          'tax-2': [
+            {
+              'id': 'term-2',
+              'taxonomy_id': 'tax-2',
+              'slug': 'italian',
+              'name': 'Italian',
+            },
+          ],
+        },
+      });
     }
 
     if (options.path.contains('/v1/taxonomies/tax-1/terms')) {

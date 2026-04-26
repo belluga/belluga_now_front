@@ -94,6 +94,7 @@ class AgendaAppBar extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
+            if (!isSearchActive) ...actions.leadingActions,
             if (!isSearchActive && actions.showRadius)
               StreamValueBuilder<bool>(
                 streamValue: controller.isRadiusRefreshLoadingStreamValue,

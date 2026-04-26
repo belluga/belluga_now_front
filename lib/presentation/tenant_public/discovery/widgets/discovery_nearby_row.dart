@@ -48,71 +48,79 @@ class DiscoveryNearbyRow extends StatelessWidget {
               final distanceLabel = _distanceLabel(item.distanceMeters);
               return SizedBox(
                 width: 108,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                child: Semantics(
+                  container: true,
+                  button: true,
+                  label: 'Abrir perfil ${item.name}',
                   onTap: () => onTap(item),
-                  child: Column(
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          SizedBox(
-                            width: 72,
-                            height: 72,
-                            child: ClipOval(
-                              child: _NearbyAvatar(
-                                item: item,
-                                resolvedVisual: resolvedVisual,
-                              ),
-                            ),
-                          ),
-                          if (distanceLabel != null)
-                            Positioned(
-                              right: -4,
-                              bottom: 2,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: colorScheme.tertiary,
-                                  border: Border.all(
-                                    color: colorScheme.surface,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  child: Text(
-                                    distanceLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: colorScheme.onTertiary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    excludeFromSemantics: true,
+                    onTap: () => onTap(item),
+                    child: Column(
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            SizedBox(
+                              width: 72,
+                              height: 72,
+                              child: ClipOval(
+                                child: _NearbyAvatar(
+                                  item: item,
+                                  resolvedVisual: resolvedVisual,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        item.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
+                            if (distanceLabel != null)
+                              Positioned(
+                                right: -4,
+                                bottom: 2,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.tertiary,
+                                    border: Border.all(
+                                      color: colorScheme.surface,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 3,
+                                    ),
+                                    child: Text(
+                                      distanceLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: colorScheme.onTertiary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          item.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

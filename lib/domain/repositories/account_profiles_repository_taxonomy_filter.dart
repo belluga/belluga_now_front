@@ -1,0 +1,1 @@
+export 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';

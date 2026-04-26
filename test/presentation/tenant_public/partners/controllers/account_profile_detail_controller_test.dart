@@ -168,6 +168,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     return pagedAccountProfilesResultFromRaw(
       profiles: _profiles,
@@ -190,6 +192,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async =>
       _profiles;
 

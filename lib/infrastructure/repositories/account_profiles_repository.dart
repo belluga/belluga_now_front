@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
@@ -56,6 +57,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final favoritableTypes = _favoritableEnabledTypes();
     if (favoritableTypes.isEmpty) {
@@ -65,10 +68,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       );
     }
 
-    final normalizedTypeFilter = typeFilter?.value.trim();
-    if (normalizedTypeFilter != null &&
-        normalizedTypeFilter.isNotEmpty &&
-        !favoritableTypes.any((type) => type.value == normalizedTypeFilter)) {
+    final normalizedTypeFilters = _normalizeTypeFilters(
+      singleTypeFilter: typeFilter,
+      typeFilters: typeFilters,
+    );
+    if (normalizedTypeFilters.isNotEmpty &&
+        !normalizedTypeFilters.every(
+          (filter) => favoritableTypes.any((type) => type.value == filter),
+        )) {
       return pagedAccountProfilesResultFromRaw(
         profiles: <AccountProfileModel>[],
         hasMore: false,
@@ -79,7 +86,12 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       page: page.value,
       pageSize: pageSize.value,
       query: query?.value,
-      typeFilter: normalizedTypeFilter,
+      typeFilter: normalizedTypeFilters.length == 1
+          ? normalizedTypeFilters.single
+          : null,
+      typeFilters:
+          normalizedTypeFilters.length > 1 ? normalizedTypeFilters : null,
+      taxonomyFilters: _normalizeTaxonomyFilters(taxonomyFilters),
     );
     final filtered = _filterByRegistry(result.profiles);
     return pagedAccountProfilesResultFromRaw(
@@ -91,6 +103,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final effectivePageSize = pageSize ??
         _toIntValue(
@@ -99,6 +113,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         );
     final profiles = await _backend.fetchNearbyAccountProfiles(
       pageSize: effectivePageSize.value,
+      typeFilters: _normalizeTypeFilters(typeFilters: typeFilters),
+      taxonomyFilters: _normalizeTaxonomyFilters(taxonomyFilters),
     );
     return _filterByRegistry(profiles);
   }
@@ -217,6 +233,35 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         .enabledAccountProfileTypes()
         .where(registry.isFavoritableFor)
         .toList(growable: false);
+  }
+
+  List<String> _normalizeTypeFilters({
+    AccountProfilesRepositoryContractPrimString? singleTypeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+  }) {
+    return <String>{
+      if (singleTypeFilter != null && singleTypeFilter.value.trim().isNotEmpty)
+        singleTypeFilter.value.trim(),
+      for (final filter in typeFilters ?? const [])
+        if (filter.value.trim().isNotEmpty) filter.value.trim(),
+    }.toList(growable: false);
+  }
+
+  List<AccountProfilesRepositoryTaxonomyFilter> _normalizeTaxonomyFilters(
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
+  ) {
+    final seen = <String>{};
+    final normalized = <AccountProfilesRepositoryTaxonomyFilter>[];
+    for (final filter in taxonomyFilters ?? const []) {
+      if (!filter.isValid) {
+        continue;
+      }
+      final key = '${filter.type.value}:${filter.term.value}';
+      if (seen.add(key)) {
+        normalized.add(filter);
+      }
+    }
+    return normalized;
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

@@ -28,6 +28,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -209,6 +210,92 @@ void main() {
     saveCompleter.complete(existingType);
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+      'event type edit preloads allowed taxonomies and preserves them when saving unrelated visual changes',
+      (tester) async {
+    final taxonomyA = TenantAdminTaxonomyDefinition(
+      idValue: tenantAdminRequiredText('taxonomy-a'),
+      slugValue: tenantAdminRequiredText('genre'),
+      nameValue: tenantAdminRequiredText('Genero Musical'),
+      appliesToValue: tenantAdminTrimmedStringList(const ['event']),
+      iconValue: tenantAdminOptionalText('music_note'),
+      colorValue: tenantAdminOptionalText('#AA5500'),
+    );
+    final taxonomyB = TenantAdminTaxonomyDefinition(
+      idValue: tenantAdminRequiredText('taxonomy-b'),
+      slugValue: tenantAdminRequiredText('cuisine'),
+      nameValue: tenantAdminRequiredText('Cozinha'),
+      appliesToValue: tenantAdminTrimmedStringList(const ['event']),
+      iconValue: tenantAdminOptionalText('restaurant'),
+      colorValue: tenantAdminOptionalText('#225588'),
+    );
+    final existingType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('type-1'),
+      nameValue: tenantAdminRequiredText('Festival'),
+      slugValue: tenantAdminRequiredText('festival'),
+      allowedTaxonomiesValue:
+          tenantAdminTrimmedStringList(const ['genre', 'cuisine']),
+      visual: TenantAdminPoiVisual.icon(
+        iconValue: TenantAdminRequiredTextValue()..parse('celebration'),
+        colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+      ),
+    );
+    final repository = _RecordingEventsRepository(
+      updateEventTypeWithVisualResult: Future<TenantAdminEventType>.value(
+        existingType,
+      ),
+    );
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _SeededTaxonomiesRepository(
+        taxonomies: [taxonomyA, taxonomyB],
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: TenantAdminEventTypeFormScreen(existingType: existingType),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Taxonomias permitidas'), findsOneWidget);
+    expect(
+      controller.selectedEventTypeAllowedTaxonomies,
+      ['genre', 'cuisine'],
+    );
+    await tester.ensureVisible(find.text('Genero Musical (genre)'));
+    await tester.pumpAndSettle();
+    final taxonomySemantics = tester
+        .getSemantics(
+          find.byKey(
+            const ValueKey<String>(
+              'tenantAdminEventTypeAllowedTaxonomySemantics_genre',
+            ),
+          ),
+        )
+        .getSemanticsData();
+    expect(taxonomySemantics.hasAction(SemanticsAction.tap), isTrue);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Cor do marcador'),
+      '#123456',
+    );
+    final saveButton = find.text('Salvar alterações');
+    await tester.ensureVisible(saveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.updateEventTypeWithVisualCallCount, 1);
+    expect(
+      repository.lastUpdateAllowedTaxonomies,
+      ['genre', 'cuisine'],
+    );
+  });
 }
 
 Widget _buildRoutedTestApp({
@@ -245,6 +332,28 @@ Widget _buildRoutedTestApp({
 
 class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
+  @override
+  Future<TenantAdminEventType> createEventType({
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminEventType> createEventTypeWithVisual({
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
+    TenantAdminPoiVisual? visual,
+    TenantAdminMediaUpload? typeAssetUpload,
+  }) {
+    throw UnimplementedError();
+  }
+
   @override
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
     throw UnimplementedError();
@@ -344,6 +453,17 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
   }) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<TenantAdminEventType> updateEventType({
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
+  }) {
+    throw UnimplementedError();
+  }
 }
 
 class _NoopTaxonomiesRepository
@@ -438,6 +558,31 @@ class _NoopTaxonomiesRepository
   }
 }
 
+class _SeededTaxonomiesRepository extends _NoopTaxonomiesRepository {
+  _SeededTaxonomiesRepository({
+    required this.taxonomies,
+  });
+
+  final List<TenantAdminTaxonomyDefinition> taxonomies;
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return List<TenantAdminTaxonomyDefinition>.unmodifiable(taxonomies);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required TenantAdminTaxRepoInt page,
+    required TenantAdminTaxRepoInt pageSize,
+  }) async {
+    return tenantAdminPagedResultFromRaw(
+      items: taxonomies,
+      hasMore: false,
+    );
+  }
+}
+
 class _RecordingEventsRepository extends _NoopEventsRepository {
   _RecordingEventsRepository({
     required this.updateEventTypeWithVisualResult,
@@ -445,6 +590,7 @@ class _RecordingEventsRepository extends _NoopEventsRepository {
 
   final Future<TenantAdminEventType> updateEventTypeWithVisualResult;
   int updateEventTypeWithVisualCallCount = 0;
+  List<String>? lastUpdateAllowedTaxonomies;
 
   @override
   Future<TenantAdminEventType> updateEventTypeWithVisual({
@@ -452,11 +598,15 @@ class _RecordingEventsRepository extends _NoopEventsRepository {
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminEventsRepoBool? removeTypeAsset,
   }) {
     updateEventTypeWithVisualCallCount += 1;
+    lastUpdateAllowedTaxonomies = allowedTaxonomies
+        ?.map((entry) => entry.value)
+        .toList(growable: false);
     return updateEventTypeWithVisualResult;
   }
 }

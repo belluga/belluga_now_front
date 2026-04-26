@@ -444,6 +444,18 @@ final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
     sectionRootRoute: const TenantAdminStaticAssetsListRoute(),
     sectionPath: '/admin/assets',
   ),
+  CanonicalRouteFamily.tenantAdminFiltersRoot: _adminSectionRootDescriptor(
+    family: CanonicalRouteFamily.tenantAdminFiltersRoot,
+    section: AdminShellSection.filters,
+    sectionRootRoute: const TenantAdminDiscoveryFiltersRoute(),
+    sectionPath: '/admin/filters',
+  ),
+  CanonicalRouteFamily.tenantAdminFiltersInternal: _adminInternalDescriptor(
+    family: CanonicalRouteFamily.tenantAdminFiltersInternal,
+    section: AdminShellSection.filters,
+    sectionRootRoute: const TenantAdminDiscoveryFiltersRoute(),
+    sectionPath: '/admin/filters',
+  ),
   CanonicalRouteFamily.tenantAdminSettingsRoot: _adminSectionRootDescriptor(
     family: CanonicalRouteFamily.tenantAdminSettingsRoot,
     section: AdminShellSection.settings,

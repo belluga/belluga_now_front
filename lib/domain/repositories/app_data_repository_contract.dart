@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_theme_mode_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +45,17 @@ abstract class AppDataRepositoryContract {
   ) async {
     _locationOriginSettingsStreamValue.addValue(settings);
   }
+
+  Future<AppDataDiscoveryFilterSelectionSnapshot?> getDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+  ) async {
+    return null;
+  }
+
+  Future<void> setDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+    AppDataDiscoveryFilterSelectionSnapshot selection,
+  ) async {}
 
   Future<void> useUserLiveLocationOrigin() async {
     await setLocationOriginSettings(

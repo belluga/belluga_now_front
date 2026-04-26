@@ -1,3 +1,4 @@
+import 'package:belluga_now/presentation/shared/widgets/auto_reveal_horizontal_item.dart';
 import 'package:flutter/material.dart';
 
 class ImmersiveTabBar extends StatelessWidget {
@@ -26,33 +27,49 @@ class ImmersiveTabBar extends StatelessWidget {
       child: Row(
         children: List.generate(tabs.length, (index) {
           final isSelected = index == selectedIndex;
-          return GestureDetector(
-            key: Key('immersiveTab_$index'),
-            onTap: () => onTabTapped(index),
-            child: Container(
-              key: Key(
-                isSelected
-                    ? 'immersiveTabSelected_$index'
-                    : 'immersiveTabUnselected_$index',
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isSelected
-                        ? selectedColor
-                        : Colors.transparent,
-                    width: 2,
+          return AutoRevealHorizontalItem(
+            selected: isSelected,
+            child: Semantics(
+              container: true,
+              label: tabs[index],
+              button: true,
+              selected: isSelected,
+              onTap: () => onTabTapped(index),
+              child: InkWell(
+                key: Key('immersiveTab_$index'),
+                excludeFromSemantics: true,
+                onTap: () => onTabTapped(index),
+                child: ExcludeSemantics(
+                  child: Container(
+                    key: Key(
+                      isSelected
+                          ? 'immersiveTabSelected_$index'
+                          : 'immersiveTabUnselected_$index',
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color:
+                              isSelected ? selectedColor : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      key: Key('immersiveTabLabel_$index'),
+                      tabs[index],
+                      style: TextStyle(
+                        color: isSelected ? selectedColor : unselectedColor,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ).merge(textStyle),
+                    ),
                   ),
                 ),
-              ),
-              child: Text(
-                key: Key('immersiveTabLabel_$index'),
-                tabs[index],
-                style: TextStyle(
-                  color: isSelected ? selectedColor : unselectedColor,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                ).merge(textStyle),
               ),
             ),
           );

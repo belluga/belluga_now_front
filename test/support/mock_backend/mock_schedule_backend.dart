@@ -36,7 +36,10 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
     final events = await _loadEvents();
     final normalized = _slugify(eventIdOrSlug);
     for (final event in events) {

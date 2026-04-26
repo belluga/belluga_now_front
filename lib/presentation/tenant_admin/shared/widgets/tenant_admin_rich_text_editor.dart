@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
@@ -16,6 +17,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
     this.placeholder,
     this.minHeight = 180,
     this.errorText,
+    this.maxContentBytes,
+    this.warningThreshold = 0.90,
   });
 
   final TextEditingController controller;
@@ -23,6 +26,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
   final String? placeholder;
   final double minHeight;
   final String? errorText;
+  final int? maxContentBytes;
+  final double warningThreshold;
 
   @override
   State<TenantAdminRichTextEditor> createState() =>
@@ -88,6 +93,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         );
         _syncHtmlControllerFromDocument();
       }
+      _requestRebuild();
     });
   }
 
@@ -168,7 +174,9 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return Document()..insert(0, '\n');
     }
     try {
-      final delta = HtmlToDelta().convert(_sanitizeMarkup(trimmed));
+      final delta = HtmlToDelta().convert(
+        SafeRichHtml.sanitizeMarkupFragment(trimmed),
+      );
       if (delta.isEmpty) {
         return Document()..insert(0, '\n');
       }
@@ -202,10 +210,10 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       ConverterOptions.forEmail(),
     );
     final html = converter.convert().trim();
-    if (_isBlankHtml(html)) {
+    if (SafeRichHtml.isEffectivelyEmpty(html)) {
       return '';
     }
-    return _sanitizeMarkup(html);
+    return SafeRichHtml.sanitizeMarkupFragment(html);
   }
 
   void _rebuildCanonicalDocument({int? selectionOffset}) {
@@ -316,79 +324,36 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     return value;
   }
 
-  bool _isBlankHtml(String html) {
-    final compact = html
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('\u00a0', ' ')
-        .trim();
-    return compact.isEmpty;
-  }
-
-  String _sanitizeMarkup(String html) {
-    if (!RegExp(r'<[^>]+>').hasMatch(html)) {
-      return html;
-    }
-
-    var sanitized = html
-        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), '')
-        .replaceAll(
-          RegExp(r'<script\b[^>]*>[\s\S]*?<\/script>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<style\b[^>]*>[\s\S]*?<\/style>', caseSensitive: false),
-          '',
-        );
-
-    sanitized = sanitized.replaceAllMapped(
-      RegExp(r'</?([a-zA-Z0-9]+)(?:\s[^>]*)?>'),
-      (match) {
-        final rawTag = match.group(1)?.toLowerCase() ?? '';
-        final isClosing = match.group(0)?.startsWith('</') ?? false;
-
-        if (rawTag == 'br') {
-          return '<br />';
-        }
-
-        if (!_allowedTags.contains(rawTag)) {
-          return '';
-        }
-
-        if (isClosing) {
-          return '</$rawTag>';
-        }
-
-        return '<$rawTag>';
-      },
-    );
-
-    return sanitized;
-  }
-
   String _deltaJson(Delta delta) => jsonEncode(delta.toJson());
 
   String _normalizeHtml(String html) {
     return html.trim();
   }
 
-  static const Set<String> _allowedTags = {
-    'blockquote',
-    'br',
-    'em',
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6',
-    'li',
-    'ol',
-    'p',
-    's',
-    'strong',
-    'ul',
-  };
+  int get _currentContentBytes => utf8.encode(widget.controller.text).length;
+
+  String _formatByteCount(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+    final kilobytes = bytes / 1024;
+    final hasFraction = kilobytes.truncateToDouble() != kilobytes;
+    return hasFraction
+        ? '${kilobytes.toStringAsFixed(1)} KB'
+        : '${kilobytes.toStringAsFixed(0)} KB';
+  }
+
+  String _formatPercentage(double fraction) {
+    return '${(fraction * 100).round()}%';
+  }
+
+  bool get _shouldShowLimitWarning {
+    final maxBytes = widget.maxContentBytes;
+    if (maxBytes == null || maxBytes <= 0) {
+      return false;
+    }
+    return _currentContentBytes >= maxBytes * widget.warningThreshold;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,6 +362,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         ? colorScheme.outlineVariant
         : colorScheme.error;
     final locale = Localizations.maybeLocaleOf(context) ?? const Locale('en');
+    final maxContentBytes = widget.maxContentBytes;
     return Localizations.override(
       context: context,
       locale: locale,
@@ -471,6 +437,39 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     color: colorScheme.error,
                   ),
             ),
+          ],
+          if (maxContentBytes != null && maxContentBytes > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Limite: ${_formatByteCount(maxContentBytes)} por campo. '
+              'O backend valida o envio final.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_formatByteCount(_currentContentBytes)} / '
+              '${_formatByteCount(maxContentBytes)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _shouldShowLimitWarning
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            if (_shouldShowLimitWarning) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Este campo já passou de '
+                '${_formatPercentage(widget.warningThreshold)} do limite de '
+                '${_formatByteCount(maxContentBytes)}.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ],
         ],
       ),

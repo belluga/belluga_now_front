@@ -31,11 +31,11 @@ void main() {
 
   const adminEmailDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_EMAIL',
-    defaultValue: 'admin@bellugasolutions.com.br',
+    defaultValue: '',
   );
   const adminPasswordDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_PASSWORD',
-    defaultValue: '765432e1',
+    defaultValue: '',
   );
   const tenantDomainDefine = String.fromEnvironment(
     'TENANT_ADMIN_TEST_DOMAIN',
@@ -444,7 +444,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   final AppData _appData;
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000));
+      StreamValue<DistanceInMetersValue>(
+          defaultValue:
+              DistanceInMetersValue.fromRaw(50000, defaultValue: 50000));
   final StreamValue<ThemeMode?> _themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
 
@@ -459,7 +461,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
       _maxRadiusMetersStreamValue;
 
   @override
-  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
+  DistanceInMetersValue get maxRadiusMeters =>
+      _maxRadiusMetersStreamValue.value;
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;

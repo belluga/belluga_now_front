@@ -257,8 +257,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _NoopBackend extends BackendContract {
@@ -302,6 +301,8 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
@@ -313,6 +314,8 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) =>
       throw UnimplementedError();
 }
@@ -382,7 +385,10 @@ class _NoopVenueEventBackend extends VenueEventBackendContract {
 
 class _NoopScheduleBackend extends ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) =>
       throw UnimplementedError();
 
   @override

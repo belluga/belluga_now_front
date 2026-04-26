@@ -47,10 +47,10 @@ class MapFilterCategoryIcon extends StatelessWidget {
       }
     }
 
-    final legacyImageUri = category.imageUri?.trim() ?? '';
-    if (legacyImageUri.isNotEmpty) {
+    final filterImageUri = category.imageUri?.trim() ?? '';
+    if (filterImageUri.isNotEmpty) {
       return _ImageFallbackIcon(
-        imageUri: legacyImageUri,
+        imageUri: filterImageUri,
         fallbackIcon: fallbackIcon,
         fallbackColor: fallbackColor,
         size: size + 2,

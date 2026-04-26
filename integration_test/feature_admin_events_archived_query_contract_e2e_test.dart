@@ -24,11 +24,11 @@ import 'support/integration_test_bootstrap.dart';
 
 const adminEmailDefine = String.fromEnvironment(
   'LANDLORD_ADMIN_EMAIL',
-  defaultValue: 'admin@bellugasolutions.com.br',
+  defaultValue: '',
 );
 const adminPasswordDefine = String.fromEnvironment(
   'LANDLORD_ADMIN_PASSWORD',
-  defaultValue: '765432e1',
+  defaultValue: '',
 );
 const tenantDomainDefine = String.fromEnvironment(
   'TENANT_ADMIN_TEST_DOMAIN',
