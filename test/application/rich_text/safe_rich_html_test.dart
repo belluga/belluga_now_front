@@ -6,11 +6,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('matches the shared cross-stack sanitizer fixtures', () {
-    final fixtures = jsonDecode(
-      File(
-        '../laravel-app/tests/Fixtures/shared_rich_text/safe_rich_html_fixtures.json',
-      ).readAsStringSync(),
-    ) as List<dynamic>;
+    final localFixture = File(
+      'test/fixtures/shared_rich_text/safe_rich_html_fixtures.json',
+    );
+    final backendFixture = File(
+      '../laravel-app/tests/Fixtures/shared_rich_text/safe_rich_html_fixtures.json',
+    );
+
+    expect(localFixture.existsSync(), isTrue);
+    if (backendFixture.existsSync()) {
+      expect(
+        localFixture.readAsStringSync(),
+        backendFixture.readAsStringSync(),
+        reason: 'Flutter and Laravel rich-text fixtures must stay in sync.',
+      );
+    }
+
+    final fixtures =
+        jsonDecode(localFixture.readAsStringSync()) as List<dynamic>;
 
     for (final fixture in fixtures.cast<Map<String, dynamic>>()) {
       expect(

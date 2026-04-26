@@ -30,7 +30,7 @@ class LandlordLandingAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 768;
+        final isDesktop = constraints.maxWidth >= 920;
         final elevated = state.isScrolled || state.isMobileMenuOpen;
         final foreground = elevated ? state.brand.slate : Colors.white;
         final appBar = ClipRect(
