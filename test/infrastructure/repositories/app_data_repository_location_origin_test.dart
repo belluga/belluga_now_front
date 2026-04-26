@@ -166,6 +166,25 @@ void main() {
       isNull,
     );
   });
+
+  test('ignores malformed persisted discovery filter selections', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'discovery_filter_selection_tenant.test_home.events': '{not-json',
+    });
+    final repository = AppDataRepository(
+      backend: _FakeAppDataBackend(),
+      localInfoSource: _FakeAppDataLocalInfoSource(),
+    );
+
+    await repository.init();
+
+    expect(
+      await repository.getDiscoveryFilterSelection(
+        AppDataDiscoveryFilterTokenValue.fromRaw('home.events'),
+      ),
+      isNull,
+    );
+  });
 }
 
 class _FakeAppDataBackend implements AppDataBackendContract {

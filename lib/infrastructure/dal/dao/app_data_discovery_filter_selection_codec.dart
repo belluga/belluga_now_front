@@ -10,7 +10,12 @@ class AppDataDiscoveryFilterSelectionCodec {
     if (raw == null || raw.trim().isEmpty) {
       return null;
     }
-    final decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return null;
+    }
     if (decoded is! Map) {
       return null;
     }
