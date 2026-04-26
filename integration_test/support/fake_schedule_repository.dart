@@ -50,6 +50,8 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) {
     final state = _resolveHomeAgendaState(
       showPastOnly: showPastOnly,
@@ -184,6 +186,8 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     final pageEvents = _sliceQueryEvents(
       page: 1,
@@ -218,6 +222,8 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     final current = _resolveHomeAgendaState(
       showPastOnly: showPastOnly,
@@ -261,7 +267,10 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  }) async {
     final resolver = _slugResolver;
     if (resolver != null) {
       return resolver(seededEvents: _seededEvents, slug: slug.value);

@@ -118,10 +118,9 @@ class _TenantAdminSettingsLocalPreferencesScreenState
       return;
     }
 
-    final filter = settings.filters.elementAt(index);
     final result = await showTenantAdminMapFilterRuleSheet(
       context: context,
-      filter: filter,
+      filter: settings.filters.elementAt(index),
       catalog: catalog,
     );
 
@@ -137,10 +136,9 @@ class _TenantAdminSettingsLocalPreferencesScreenState
       return;
     }
 
-    final filter = settings.filters.elementAt(index);
     final result = await showTenantAdminMapFilterVisualSheet(
       context: context,
-      filter: filter,
+      filter: settings.filters.elementAt(index),
     );
     if (result == null) {
       return;

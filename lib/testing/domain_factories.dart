@@ -21,8 +21,12 @@ import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_valu
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -134,8 +138,7 @@ PartnerEventView buildPartnerEventView({
     ..parse(resolvedStart.toIso8601String());
   final endValue = endDateTime == null
       ? null
-      : (DateTimeValue(isRequired: true)
-        ..parse(endDateTime.toIso8601String()));
+      : (DateTimeValue(isRequired: true)..parse(endDateTime.toIso8601String()));
   ThumbUriValue? imageValue;
   if (imageUri != null) {
     imageValue = ThumbUriValue(defaultValue: imageUri, isRequired: true)
@@ -143,8 +146,9 @@ PartnerEventView buildPartnerEventView({
   }
 
   return PartnerEventView(
-    eventIdValue: MongoIDValue(defaultValue: normalizedEventId, isRequired: true)
-      ..parse(normalizedEventId),
+    eventIdValue:
+        MongoIDValue(defaultValue: normalizedEventId, isRequired: true)
+          ..parse(normalizedEventId),
     occurrenceIdValue:
         MongoIDValue(defaultValue: normalizedOccurrenceId, isRequired: true)
           ..parse(normalizedOccurrenceId),
@@ -163,16 +167,16 @@ PartnerEventView buildPartnerEventView({
     venueTitleValue:
         venueTitle == null ? null : partnerProjectionOptionalText(venueTitle),
     imageUriValue: imageValue,
-    artists: artistNames
+    linkedAccountProfiles: artistNames
         .asMap()
         .entries
         .map(
           (entry) => PartnerSupportedEntityView(
             idValue: entry.key < artistIds.length
                 ? (MongoIDValue(
-                  defaultValue: _coerceMongoId(artistIds[entry.key]),
-                  isRequired: true,
-                )..parse(_coerceMongoId(artistIds[entry.key])))
+                    defaultValue: _coerceMongoId(artistIds[entry.key]),
+                    isRequired: true,
+                  )..parse(_coerceMongoId(artistIds[entry.key])))
                 : null,
             titleValue: partnerProjectionRequiredText(entry.value),
           ),
@@ -191,6 +195,7 @@ VenueEventResume buildVenueEventResume({
   required String location,
   String? eventTypeLabel,
   String? venueTitle,
+  String? selectedOccurrenceId,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<String> tags = const <String>[],
   CityCoordinate? coordinate,
@@ -209,13 +214,15 @@ VenueEventResume buildVenueEventResume({
     ..parse(startDateTime.toIso8601String());
   final endValue = endDateTime == null
       ? null
-      : (DateTimeValue(isRequired: true)
-        ..parse(endDateTime.toIso8601String()));
+      : (DateTimeValue(isRequired: true)..parse(endDateTime.toIso8601String()));
   final locationValue = DescriptionValue(minLenght: 1)..parse(location);
   final eventTypeValue = VenueEventOptionalTextValue()
     ..parse(eventTypeLabel ?? '');
   final venueTitleValue = VenueEventOptionalTextValue()
     ..parse(venueTitle ?? '');
+  final selectedOccurrenceIdValue = VenueEventOptionalTextValue()
+    ..parse(selectedOccurrenceId ?? '');
+  final linkedAccountProfiles = _artistResumesToLinkedProfiles(artists);
 
   return VenueEventResume(
     idValue: idValue,
@@ -227,11 +234,53 @@ VenueEventResume buildVenueEventResume({
     locationValue: locationValue,
     eventTypeLabelValue: eventTypeValue,
     venueTitleValue: venueTitleValue,
-    artists: List<ArtistResume>.unmodifiable(artists),
+    selectedOccurrenceIdValue: selectedOccurrenceIdValue,
+    linkedAccountProfiles: linkedAccountProfiles,
     tagValues:
         tags.map((tag) => VenueEventTagValue(tag)).toList(growable: false),
     coordinate: coordinate,
   );
+}
+
+List<EventLinkedAccountProfile> _artistResumesToLinkedProfiles(
+  List<ArtistResume> artists,
+) {
+  final linkedProfiles = <EventLinkedAccountProfile>[];
+  for (final artist in artists) {
+    final id = artist.id.trim();
+    final displayName = artist.displayName.trim();
+    if (id.isEmpty || displayName.isEmpty) {
+      continue;
+    }
+
+    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
+    for (final genre in artist.genres) {
+      final value = genre.value.trim();
+      if (value.isEmpty) continue;
+      taxonomyTerms.addTerm(
+        typeValue: AccountProfileTagValue('genre'),
+        valueValue: AccountProfileTagValue(value),
+        nameValue: AccountProfileTagValue(value),
+      );
+    }
+
+    final avatar = artist.avatarUri?.toString().trim();
+    linkedProfiles.add(
+      EventLinkedAccountProfile(
+        idValue: EventLinkedAccountProfileTextValue(id),
+        displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+        profileTypeValue: AccountProfileTypeValue('artist'),
+        slugValue: SlugValue()..parse(id),
+        avatarUrlValue: avatar == null || avatar.isEmpty
+            ? null
+            : (ThumbUriValue(defaultValue: Uri.parse(avatar), isRequired: true)
+              ..parse(avatar)),
+        taxonomyTerms: taxonomyTerms,
+      ),
+    );
+  }
+
+  return List<EventLinkedAccountProfile>.unmodifiable(linkedProfiles);
 }
 
 String _coerceMongoId(String raw) {

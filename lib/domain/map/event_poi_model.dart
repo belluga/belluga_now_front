@@ -104,7 +104,8 @@ class EventPoiModel extends CityPoiModel {
       event.type.slug.value,
       event.type.name.value,
       event.location.value,
-      ...event.artists.map((artist) => artist.nameValue.value),
+      ...event.counterpartProfiles.map((profile) => profile.displayName),
+      ...event.taxonomyTags.map((tag) => tag.value),
     };
 
     return rawTags

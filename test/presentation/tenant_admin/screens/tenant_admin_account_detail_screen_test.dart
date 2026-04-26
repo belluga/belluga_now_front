@@ -164,9 +164,33 @@ void main() {
     expect(find.text('Criar Perfil'), findsNothing);
   });
 
-  test('loadAccountDetail invalidates stale async work after dispose', () async {
+  testWidgets('renders account profile rich text readback faithfully',
+      (tester) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(
+      accountsRepository: accountsRepository,
+      profileBio: 'Primeira linha\nSegunda linha\n\nNovo parágrafo',
+      profileContent: '<p><strong>Conteúdo seguro</strong></p>',
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Primeira linha'), findsOneWidget);
+    expect(find.text('Segunda linha'), findsOneWidget);
+    expect(find.text('Novo parágrafo'), findsOneWidget);
+    expect(find.text('Conteúdo seguro'), findsOneWidget);
+    expect(find.textContaining('<p>'), findsNothing);
+    expect(find.textContaining('<strong>'), findsNothing);
+  });
+
+  test('loadAccountDetail invalidates stale async work after dispose',
+      () async {
     final accountsRepository = _DelayedFetchAccountsRepository();
-    final profilesRepository = _FakeAccountProfilesRepository(withProfile: true);
+    final profilesRepository =
+        _FakeAccountProfilesRepository(withProfile: true);
     final controller = TenantAdminAccountDetailController(
       profilesRepository: profilesRepository,
       accountsRepository: accountsRepository,
@@ -190,9 +214,13 @@ void main() {
 TenantAdminAccountDetailController _registerController({
   required _FakeAccountsRepository accountsRepository,
   bool withProfile = true,
+  String? profileBio,
+  String? profileContent,
 }) {
   final profilesRepository = _FakeAccountProfilesRepository(
     withProfile: withProfile,
+    profileBio: profileBio,
+    profileContent: profileContent,
   );
   final detailController = TenantAdminAccountDetailController(
     profilesRepository: profilesRepository,
@@ -511,9 +539,15 @@ class _DelayedFetchAccountsRepository extends _FakeAccountsRepository {
 class _FakeAccountProfilesRepository
     with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
-  _FakeAccountProfilesRepository({required this.withProfile});
+  _FakeAccountProfilesRepository({
+    required this.withProfile,
+    this.profileBio,
+    this.profileContent,
+  });
 
   final bool withProfile;
+  final String? profileBio;
+  final String? profileContent;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -528,6 +562,8 @@ class _FakeAccountProfilesRepository
         accountId: accountId.value,
         profileType: 'artist',
         displayName: 'Perfil',
+        bio: profileBio,
+        content: profileContent,
       ),
     ];
   }
@@ -575,6 +611,8 @@ class _FakeAccountProfilesRepository
       accountId: 'acc-1',
       profileType: 'artist',
       displayName: 'Perfil',
+      bio: profileBio,
+      content: profileContent,
     );
   }
 

@@ -23,7 +23,7 @@ class DateGroupedEventList extends StatelessWidget {
   });
 
   final List<VenueEventResume> events;
-  final ValueChanged<String> onEventSelected;
+  final ValueChanged<VenueEventResume> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
   final bool? primary;
@@ -243,7 +243,7 @@ class DateGroupedEventList extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 16),
                   child: UpcomingEventCard.fromVenueEventResume(
                     event: event,
-                    onTap: () => onEventSelected(event.slug),
+                    onTap: () => onEventSelected(event),
                     isConfirmed: isConfirmed?.call(event) ?? false,
                     pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
                     distanceLabel: distanceLabel?.call(event),

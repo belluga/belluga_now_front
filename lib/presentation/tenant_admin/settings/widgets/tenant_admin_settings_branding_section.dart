@@ -110,7 +110,8 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      key: TenantAdminSettingsKeys.brandingPublicMetadataTitleField,
+                      key: TenantAdminSettingsKeys
+                          .brandingPublicMetadataTitleField,
                       controller:
                           controller.brandingPublicWebDefaultTitleController,
                       enabled: !isSaving,
@@ -195,6 +196,8 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Imagem de compartilhamento',
+                      selectSemanticsLabel:
+                          'Selecionar imagem de compartilhamento',
                       slot: TenantAdminBrandingAssetSlot.publicWebDefaultImage,
                       controller: controller,
                       isBusy: isSaving ||
@@ -207,6 +210,7 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Logo claro',
+                      selectSemanticsLabel: 'Selecionar logo claro',
                       slot: TenantAdminBrandingAssetSlot.lightLogo,
                       controller: controller,
                       isBusy: isSaving ||
@@ -217,6 +221,7 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Logo escuro',
+                      selectSemanticsLabel: 'Selecionar logo escuro',
                       slot: TenantAdminBrandingAssetSlot.darkLogo,
                       controller: controller,
                       isBusy: isSaving ||
@@ -227,6 +232,7 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Icone claro',
+                      selectSemanticsLabel: 'Selecionar icone claro',
                       slot: TenantAdminBrandingAssetSlot.lightIcon,
                       controller: controller,
                       isBusy: isSaving ||
@@ -237,6 +243,7 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Icone escuro',
+                      selectSemanticsLabel: 'Selecionar icone escuro',
                       slot: TenantAdminBrandingAssetSlot.darkIcon,
                       controller: controller,
                       isBusy: isSaving ||
@@ -250,10 +257,12 @@ class TenantAdminSettingsBrandingSection extends StatelessWidget {
                       isBusy: isSaving || isFaviconBusy,
                       onPick: onPickFavicon,
                       onClearLocalSelection: onClearFaviconLocalSelection,
+                      selectSemanticsLabel: 'Selecionar favicon',
                     ),
                     const SizedBox(height: 12),
                     TenantAdminSettingsBrandingImageField(
                       title: 'Icone PWA',
+                      selectSemanticsLabel: 'Selecionar icone PWA',
                       slot: TenantAdminBrandingAssetSlot.pwaIcon,
                       controller: controller,
                       isBusy: isSaving ||

@@ -1013,8 +1013,81 @@ void main() {
 
     expect(find.text('Manifesto Singular'), findsOneWidget);
     expect(find.text('Texto de apoio da casa'), findsOneWidget);
+    expect(find.text('Sobre'), findsOneWidget);
+    expect(find.text('Conteúdo'), findsNothing);
     expect(find.textContaining('<p>'), findsNothing);
     expect(find.textContaining('<strong>'), findsNothing);
+  });
+
+  testWidgets(
+      'renders account profile bio and content as independent Sobre blocks',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueWithBioAndContentProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sobre'), findsNWidgets(2));
+    expect(find.text('Conteúdo'), findsOneWidget);
+    expect(find.text('Resumo da casa'), findsOneWidget);
+    expect(find.text('Programação curatorial'), findsOneWidget);
+    expect(find.text('Conteúdo principal do perfil 😄'), findsOneWidget);
+  });
+
+  testWidgets('renders content-only profile without redundant nested heading',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueWithContentOnlyProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sobre'), findsOneWidget);
+    expect(find.text('Conteúdo'), findsNothing);
+    expect(find.text('Conteúdo institucional sem bio'), findsOneWidget);
+  });
+
+  testWidgets('renders legacy plain text newlines faithfully', (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueWithPlainTextBioProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Primeira linha'), findsOneWidget);
+    expect(find.text('Segunda linha'), findsOneWidget);
+    expect(find.text('Novo parágrafo'), findsOneWidget);
   });
 
   testWidgets(
@@ -1360,6 +1433,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     return pagedAccountProfilesResultFromRaw(
       profiles: _profiles,
@@ -1382,6 +1457,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async =>
       _profiles;
 
@@ -1488,6 +1565,38 @@ AccountProfileModel _buildVenueWithBioProfile() {
     type: 'venue',
     bio:
         '<p><strong>Manifesto Singular</strong></p><p>Texto de apoio da casa</p>',
+  );
+}
+
+AccountProfileModel _buildVenueWithBioAndContentProfile() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439024',
+    name: 'Casa de Cultura',
+    slug: 'casa-de-cultura',
+    type: 'venue',
+    bio: '<p><strong>Resumo da casa</strong></p>',
+    content:
+        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>',
+  );
+}
+
+AccountProfileModel _buildVenueWithContentOnlyProfile() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439025',
+    name: 'Ateliê Aberto',
+    slug: 'atelie-aberto',
+    type: 'venue',
+    content: '<p>Conteúdo institucional sem bio</p>',
+  );
+}
+
+AccountProfileModel _buildVenueWithPlainTextBioProfile() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439026',
+    name: 'Casa da Orla',
+    slug: 'casa-da-orla',
+    type: 'venue',
+    bio: 'Primeira linha\nSegunda linha\n\nNovo parágrafo',
   );
 }
 
@@ -1625,6 +1734,7 @@ AppData _buildAppData({
           'is_poi_enabled': true,
           'has_events': true,
           'has_bio': true,
+          'has_content': true,
         },
       },
       {

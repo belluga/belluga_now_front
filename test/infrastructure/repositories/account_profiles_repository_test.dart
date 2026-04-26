@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
@@ -91,7 +92,49 @@ void main() {
     expect(page.profiles, hasLength(2));
   });
 
-  test('init loads favorite ids from backend favorites source without preloading full catalog', () async {
+  test('fetchAccountProfilesPage forwards canonical type and taxonomy filters',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      typeFilters: [
+        AccountProfilesRepositoryContractPrimString.fromRaw('artist'),
+        AccountProfilesRepositoryContractPrimString.fromRaw('venue'),
+      ],
+      taxonomyFilters: [
+        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+          type: 'genre',
+          value: 'rock',
+        ),
+      ],
+    );
+
+    expect(backend.lastTypeFilters, const ['artist', 'venue']);
+    expect(backend.lastTaxonomyFilters.map((filter) => filter.type.value),
+        const ['genre']);
+    expect(backend.lastTaxonomyFilters.map((filter) => filter.term.value),
+        const ['rock']);
+  });
+
+  test(
+      'init loads favorite ids from backend favorites source without preloading full catalog',
+      () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
@@ -384,6 +427,9 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
   List<String>? lastAllowedTypes;
+  List<String>? lastTypeFilters;
+  List<AccountProfilesRepositoryTaxonomyFilter> lastTaxonomyFilters =
+      const <AccountProfilesRepositoryTaxonomyFilter>[];
   int fetchAccountProfilesPageCalls = 0;
   int fetchBySlugCalls = 0;
   int fetchNearbyCalls = 0;
@@ -394,10 +440,15 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
     List<String>? allowedTypes,
   }) async {
     fetchAccountProfilesPageCalls += 1;
     lastAllowedTypes = allowedTypes;
+    lastTypeFilters = typeFilters;
+    lastTaxonomyFilters =
+        List<AccountProfilesRepositoryTaxonomyFilter>.of(taxonomyFilters ?? []);
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
       return pagedAccountProfilesResultFromRaw(
@@ -421,6 +472,8 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     fetchNearbyCalls += 1;
     final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
@@ -566,6 +619,15 @@ AppData _buildAppData() {
         'capabilities': {
           'is_favoritable': true,
           'is_poi_enabled': false,
+        },
+      },
+      {
+        'type': 'venue',
+        'label': 'Venue',
+        'allowed_taxonomies': ['genre'],
+        'capabilities': {
+          'is_favoritable': true,
+          'is_poi_enabled': true,
         },
       },
     ],

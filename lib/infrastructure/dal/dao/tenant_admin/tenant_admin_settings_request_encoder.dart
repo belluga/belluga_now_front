@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 
 class TenantAdminSettingsRequestEncoder {
   const TenantAdminSettingsRequestEncoder();
@@ -7,6 +8,12 @@ class TenantAdminSettingsRequestEncoder {
     TenantAdminMapUiSettings settings,
   ) {
     return encodeSettingsPatchPayload(settings.rawMapUi);
+  }
+
+  Map<String, dynamic> encodeDiscoveryFiltersSettingsPatch(
+    TenantAdminDiscoveryFiltersSettingsValue settings,
+  ) {
+    return Map<String, dynamic>.from(settings.rawDiscoveryFilters);
   }
 
   Map<String, dynamic> encodeAppLinksSettingsPatch(

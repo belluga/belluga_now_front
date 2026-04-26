@@ -394,13 +394,19 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoString name,
     required TenantAdminEventsRepoString slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) async {
     try {
       final normalizedDescription = description?.value.trim();
+      final normalizedAllowedTaxonomies = allowedTaxonomies
+          ?.map((entry) => entry.value.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
       final payload = _requestEncoder.encodeEventTypeCreate(
         name: name.value,
         slug: slug.value,
         description: normalizedDescription,
+        allowedTaxonomies: normalizedAllowedTaxonomies,
       );
       final response = await _dio.post(
         '$_apiBaseUrl/v1/event_types',
@@ -418,15 +424,21 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoString name,
     required TenantAdminEventsRepoString slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
   }) async {
     try {
       final normalizedDescription = description?.value.trim();
+      final normalizedAllowedTaxonomies = allowedTaxonomies
+          ?.map((entry) => entry.value.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
       final payload = _requestEncoder.encodeEventTypeCreate(
         name: name.value,
         slug: slug.value,
         description: normalizedDescription,
+        allowedTaxonomies: normalizedAllowedTaxonomies,
         visual: visual,
         includeVisual: true,
       );
@@ -456,13 +468,19 @@ class TenantAdminEventsRepository
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
   }) async {
     try {
       final normalizedDescription = description?.value.trim();
+      final normalizedAllowedTaxonomies = allowedTaxonomies
+          ?.map((entry) => entry.value.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
       final payload = _requestEncoder.encodeEventTypePatch(
         name: name?.value,
         slug: slug?.value,
         description: normalizedDescription,
+        allowedTaxonomies: normalizedAllowedTaxonomies ?? const <String>[],
         includeDescription: true,
       );
 
@@ -484,16 +502,22 @@ class TenantAdminEventsRepository
     TenantAdminEventsRepoString? name,
     TenantAdminEventsRepoString? slug,
     TenantAdminEventsRepoString? description,
+    List<TenantAdminEventsRepoString>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     TenantAdminEventsRepoBool? removeTypeAsset,
   }) async {
     try {
       final normalizedDescription = description?.value.trim();
+      final normalizedAllowedTaxonomies = allowedTaxonomies
+          ?.map((entry) => entry.value.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
       final payload = _requestEncoder.encodeEventTypePatch(
         name: name?.value,
         slug: slug?.value,
         description: normalizedDescription,
+        allowedTaxonomies: normalizedAllowedTaxonomies ?? const <String>[],
         visual: visual,
         includeDescription: true,
         includeVisual: true,

@@ -66,13 +66,17 @@ class ImmersiveHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
               ],
-              Text(
-                resume.title,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      height: 0.95,
-                    ),
+              Semantics(
+                label: resume.title,
+                header: true,
+                child: Text(
+                  resume.title,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        height: 0.95,
+                      ),
+                ),
               ),
               if (counterparts.isNotEmpty) ...[
                 const SizedBox(height: 10),

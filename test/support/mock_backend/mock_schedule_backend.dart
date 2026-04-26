@@ -36,7 +36,10 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
     final events = await _loadEvents();
     final normalized = _slugify(eventIdOrSlug);
     for (final event in events) {
@@ -89,11 +92,11 @@ class MockScheduleBackend implements ScheduleBackendContract {
       final titleMatch = event.title.toLowerCase().contains(query);
       final contentMatch = event.content.toLowerCase().contains(query);
       final locationMatch = event.location.toLowerCase().contains(query);
-      final artistMatch = event.artists.any(
-        (artist) => artist.name.toLowerCase().contains(query),
+      final counterpartMatch = event.linkedAccountProfiles.any(
+        (profile) => profile.displayName.toLowerCase().contains(query),
       );
 
-      return titleMatch || contentMatch || locationMatch || artistMatch;
+      return titleMatch || contentMatch || locationMatch || counterpartMatch;
     }).toList();
 
     final filteredByCategory = _filterByCategories(timeFiltered, categories);

@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart';
 import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
@@ -13,6 +17,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
     this.placeholder,
     this.minHeight = 180,
     this.errorText,
+    this.maxContentBytes,
+    this.warningThreshold = 0.90,
   });
 
   final TextEditingController controller;
@@ -20,6 +26,8 @@ class TenantAdminRichTextEditor extends StatefulWidget {
   final String? placeholder;
   final double minHeight;
   final String? errorText;
+  final int? maxContentBytes;
+  final double warningThreshold;
 
   @override
   State<TenantAdminRichTextEditor> createState() =>
@@ -40,6 +48,11 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     _quillController = _buildQuillController(widget.controller.text);
     widget.controller.addListener(_handleExternalHtmlChange);
     _bindDocumentChanges();
+    if (_syncHtmlControllerFromDocument()) {
+      _replaceQuillController(
+        _buildQuillController(widget.controller.text),
+      );
+    }
   }
 
   @override
@@ -53,6 +66,11 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     _replaceQuillController(
       _buildQuillController(widget.controller.text),
     );
+    if (_syncHtmlControllerFromDocument()) {
+      _replaceQuillController(
+        _buildQuillController(widget.controller.text),
+      );
+    }
   }
 
   @override
@@ -66,9 +84,16 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
 
   void _bindDocumentChanges() {
     _documentChangesSubscription?.cancel();
-    _documentChangesSubscription =
-        _quillController.document.changes.listen((_) {
-      _syncHtmlControllerFromDocument();
+    _documentChangesSubscription = _quillController.document.changes.listen((
+      _,
+    ) {
+      if (_syncHtmlControllerFromDocument()) {
+        _rebuildCanonicalDocument(
+          selectionOffset: _quillController.selection.baseOffset,
+        );
+        _syncHtmlControllerFromDocument();
+      }
+      _requestRebuild();
     });
   }
 
@@ -91,8 +116,8 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return;
     }
     final targetHtml = widget.controller.text;
-    final currentHtml = _deltaToHtml(_quillController);
-    if (_normalizeHtml(targetHtml) == _normalizeHtml(currentHtml)) {
+    if (_normalizeHtml(targetHtml) ==
+        _normalizeHtml(_deltaToHtml(_quillController))) {
       return;
     }
     _syncingFromHtmlController = true;
@@ -102,16 +127,20 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         fallbackSelectionOffset: _quillController.selection.baseOffset,
       ),
     );
+    _rebuildCanonicalDocument(
+      selectionOffset: _quillController.selection.baseOffset,
+    );
     _syncingFromHtmlController = false;
+    _syncHtmlControllerFromDocument();
   }
 
-  void _syncHtmlControllerFromDocument() {
+  bool _syncHtmlControllerFromDocument() {
     if (_syncingFromHtmlController) {
-      return;
+      return false;
     }
     final html = _deltaToHtml(_quillController);
     if (_normalizeHtml(widget.controller.text) == _normalizeHtml(html)) {
-      return;
+      return false;
     }
     _syncingToHtmlController = true;
     widget.controller.value = widget.controller.value.copyWith(
@@ -120,6 +149,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       composing: TextRange.empty,
     );
     _syncingToHtmlController = false;
+    return true;
   }
 
   QuillController _buildQuillController(
@@ -144,12 +174,25 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return Document()..insert(0, '\n');
     }
     try {
-      final delta = HtmlToDelta().convert(trimmed);
+      final delta = HtmlToDelta().convert(
+        SafeRichHtml.sanitizeMarkupFragment(trimmed),
+      );
       if (delta.isEmpty) {
         return Document()..insert(0, '\n');
       }
-      return Document.fromDelta(delta);
-    } catch (error) {
+      final canonicalDelta = _canonicalizeDelta(delta);
+      if (_deltaJson(delta) == _deltaJson(canonicalDelta)) {
+        return Document.fromDelta(delta);
+      }
+      return Document.fromDelta(canonicalDelta);
+    } catch (error, stackTrace) {
+      unawaited(
+        SentryErrorReporter.captureRecoverable(
+          origin: 'tenant_admin.rich_text_editor.html_to_delta',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
       debugPrint(
         '[TenantAdminRichTextEditor] Failed to parse HTML into delta: $error',
       );
@@ -161,15 +204,108 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     if (controller.document.toPlainText().trim().isEmpty) {
       return '';
     }
+    final canonicalDelta = _canonicalizeDelta(controller.document.toDelta());
     final converter = QuillDeltaToHtmlConverter(
-      controller.document.toDelta().toJson(),
+      canonicalDelta.toJson(),
       ConverterOptions.forEmail(),
     );
     final html = converter.convert().trim();
-    if (_isBlankHtml(html)) {
+    if (SafeRichHtml.isEffectivelyEmpty(html)) {
       return '';
     }
-    return html;
+    return SafeRichHtml.sanitizeMarkupFragment(html);
+  }
+
+  void _rebuildCanonicalDocument({int? selectionOffset}) {
+    final currentDelta = _quillController.document.toDelta();
+    final canonicalDelta = _canonicalizeDelta(currentDelta);
+    if (_deltaJson(currentDelta) == _deltaJson(canonicalDelta)) {
+      return;
+    }
+
+    final canonicalDocument = canonicalDelta.isEmpty
+        ? (Document()..insert(0, '\n'))
+        : Document.fromDelta(canonicalDelta);
+    final requestedOffset =
+        selectionOffset ?? _quillController.selection.baseOffset;
+    final safeOffset = _clampSelectionOffset(
+      requestedOffset,
+      maxOffset: canonicalDocument.length - 1,
+    );
+
+    _replaceQuillController(
+      QuillController(
+        document: canonicalDocument,
+        selection: TextSelection.collapsed(offset: safeOffset),
+      ),
+    );
+  }
+
+  Delta _canonicalizeDelta(Delta delta) {
+    final canonical = Delta();
+    for (final op in delta.toJson()) {
+      final insert = op['insert'];
+      if (insert is! String) {
+        continue;
+      }
+      final attributes = _canonicalizeAttributes(
+        op['attributes'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(op['attributes'] as Map)
+            : null,
+        insert,
+      );
+      canonical.insert(insert, attributes);
+    }
+
+    return canonical;
+  }
+
+  Map<String, dynamic>? _canonicalizeAttributes(
+    Map<String, dynamic>? attributes,
+    String insert,
+  ) {
+    if (attributes == null || attributes.isEmpty) {
+      return null;
+    }
+
+    final canonical = <String, dynamic>{};
+    if (insert == '\n') {
+      final header = _normalizeHeader(attributes['header']);
+      if (header != null) {
+        canonical['header'] = header;
+      }
+
+      final list = attributes['list'];
+      if (list == 'ordered' || list == 'bullet') {
+        canonical['list'] = list;
+      }
+
+      if (attributes['blockquote'] == true) {
+        canonical['blockquote'] = true;
+      }
+
+      return canonical.isEmpty ? null : canonical;
+    }
+
+    if (attributes['bold'] == true) {
+      canonical['bold'] = true;
+    }
+    if (attributes['italic'] == true) {
+      canonical['italic'] = true;
+    }
+    if (attributes['strike'] == true) {
+      canonical['strike'] = true;
+    }
+
+    return canonical.isEmpty ? null : canonical;
+  }
+
+  num? _normalizeHeader(dynamic value) {
+    final parsed = value is num ? value.toInt() : int.tryParse('$value');
+    if (parsed == null || parsed < 1 || parsed > 6) {
+      return null;
+    }
+    return parsed;
   }
 
   int _clampSelectionOffset(
@@ -188,17 +324,35 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     return value;
   }
 
-  bool _isBlankHtml(String html) {
-    final compact = html
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('\u00a0', ' ')
-        .trim();
-    return compact.isEmpty;
-  }
+  String _deltaJson(Delta delta) => jsonEncode(delta.toJson());
 
   String _normalizeHtml(String html) {
     return html.trim();
+  }
+
+  int get _currentContentBytes => utf8.encode(widget.controller.text).length;
+
+  String _formatByteCount(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+    final kilobytes = bytes / 1024;
+    final hasFraction = kilobytes.truncateToDouble() != kilobytes;
+    return hasFraction
+        ? '${kilobytes.toStringAsFixed(1)} KB'
+        : '${kilobytes.toStringAsFixed(0)} KB';
+  }
+
+  String _formatPercentage(double fraction) {
+    return '${(fraction * 100).round()}%';
+  }
+
+  bool get _shouldShowLimitWarning {
+    final maxBytes = widget.maxContentBytes;
+    if (maxBytes == null || maxBytes <= 0) {
+      return false;
+    }
+    return _currentContentBytes >= maxBytes * widget.warningThreshold;
   }
 
   @override
@@ -208,6 +362,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
         ? colorScheme.outlineVariant
         : colorScheme.error;
     final locale = Localizations.maybeLocaleOf(context) ?? const Locale('en');
+    final maxContentBytes = widget.maxContentBytes;
     return Localizations.override(
       context: context,
       locale: locale,
@@ -238,7 +393,8 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     showFontFamily: false,
                     showFontSize: false,
                     showSmallButton: false,
-                    showStrikeThrough: false,
+                    showUnderLineButton: false,
+                    showStrikeThrough: true,
                     showInlineCode: false,
                     showColorButton: false,
                     showBackgroundColorButton: false,
@@ -251,6 +407,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     showCodeBlock: false,
                     showQuote: true,
                     showIndent: false,
+                    showLink: false,
                     showSearchButton: false,
                     showSubscript: false,
                     showSuperscript: false,
@@ -280,6 +437,39 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     color: colorScheme.error,
                   ),
             ),
+          ],
+          if (maxContentBytes != null && maxContentBytes > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Limite: ${_formatByteCount(maxContentBytes)} por campo. '
+              'O backend valida o envio final.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${_formatByteCount(_currentContentBytes)} / '
+              '${_formatByteCount(maxContentBytes)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _shouldShowLimitWarning
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            if (_shouldShowLimitWarning) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Este campo já passou de '
+                '${_formatPercentage(widget.warningThreshold)} do limite de '
+                '${_formatByteCount(maxContentBytes)}.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ],
         ],
       ),

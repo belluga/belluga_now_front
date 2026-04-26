@@ -3,15 +3,13 @@ import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -22,10 +20,11 @@ import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repo
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
@@ -36,11 +35,13 @@ import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
+import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
-import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
-import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_local_preferences_section.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_surface_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/screens/tenant_admin_discovery_filter_surface_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/tenant_admin_discovery_filters_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
@@ -55,10 +56,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+import 'package:belluga_now/testing/app_data_test_factory.dart';
+
 import 'support/integration_test_bootstrap.dart';
 
 TenantAdminLowercaseTokenValue _tokenValue(String raw) {
   final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminOptionalUrlValue _optionalUrlValue(String raw) {
+  final value = TenantAdminOptionalUrlValue();
   value.parse(raw);
   return value;
 }
@@ -74,11 +83,11 @@ void main() {
 
   const adminEmailDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_EMAIL',
-    defaultValue: 'admin@bellugasolutions.com.br',
+    defaultValue: '',
   );
   const adminPasswordDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_PASSWORD',
-    defaultValue: '765432e1',
+    defaultValue: '',
   );
   const tenantDomainDefine = String.fromEnvironment(
     'TENANT_ADMIN_TEST_DOMAIN',
@@ -138,18 +147,11 @@ void main() {
       final staticAssetsRepository = TenantAdminStaticAssetsRepository(
         tenantScope: tenantScopeRepository,
       );
-      final appDataRepository = _FakeAppDataRepository(
-        _buildAppData(mainDomain: tenantOrigin.toString()),
-      );
-      final settingsController = TenantAdminSettingsController(
-        appDataRepository: appDataRepository,
+      final discoveryFiltersController = TenantAdminDiscoveryFiltersController(
         settingsRepository: settingsRepository,
-        tenantScope: tenantScopeRepository,
-        locationSelectionService: TenantAdminLocationSelectionService(),
-        imageIngestionService: TenantAdminImageIngestionService(),
       );
 
-      TenantAdminMapUiSettings? originalMapUiSettings;
+      TenantAdminDiscoveryFiltersSettingsValue? originalDiscoveryFilters;
       String? createdStaticAssetId;
       var createdStaticProfileType = false;
       MapScreenController? mapController;
@@ -174,7 +176,8 @@ void main() {
         tenantScopeRepository.setAvailableTenants(tenants);
         tenantScopeRepository.selectTenant(tenantOption);
 
-        originalMapUiSettings = await settingsRepository.fetchMapUiSettings();
+        originalDiscoveryFilters =
+            await settingsRepository.fetchDiscoveryFiltersSettings();
 
         await staticAssetsRepository.createStaticProfileType(
           type: TenantAdminStaticAssetsRepoString.fromRaw(assetType),
@@ -204,52 +207,128 @@ void main() {
         );
         createdStaticAssetId = createdAsset.id;
 
-        await settingsController.loadMapUiSettings();
-        settingsController.addMapFilterItem();
-        settingsController.updateMapFilterItemKey(0, assetFilterKey);
-        settingsController.updateMapFilterItemLabel(0, assetFilterLabel);
-        settingsController.updateMapFilterItemRule(
+        const mapSurface = TenantAdminDiscoveryFilterSurfaceDefinition.map;
+        await discoveryFiltersController.init();
+        discoveryFiltersController.addFilterItem(mapSurface);
+        discoveryFiltersController.updateFilterKey(
+          mapSurface,
           0,
-          settingsController.mapUiSettingsStreamValue.value.filters
+          assetFilterKey,
+        );
+        discoveryFiltersController.updateFilterLabel(
+          mapSurface,
+          0,
+          assetFilterLabel,
+        );
+        discoveryFiltersController.updateFilterRule(
+          mapSurface,
+          0,
+          discoveryFiltersController
+              .filtersForSurface(mapSurface)
               .elementAt(0)
               .copyWith(
-                query: TenantAdminMapFilterQuery(
-                  source: TenantAdminMapFilterSource.staticAsset,
-                  typeValues: [_tokenValue(assetType)],
+                query: TenantAdminDiscoveryFilterQuery(
+                  entityValues: [_tokenValue('static_asset')],
+                  typeValuesByEntity: {
+                    'static_asset': [_tokenValue(assetType)],
+                  },
                 ),
               ),
         );
-        settingsController.addMapFilterItem();
-        settingsController.updateMapFilterItemKey(1, eventFilterKey);
-        settingsController.updateMapFilterItemLabel(1, eventFilterLabel);
-        settingsController.updateMapFilterItemRule(
+        discoveryFiltersController.addFilterItem(mapSurface);
+        discoveryFiltersController.updateFilterKey(
+          mapSurface,
           1,
-          settingsController.mapUiSettingsStreamValue.value.filters
+          eventFilterKey,
+        );
+        discoveryFiltersController.updateFilterLabel(
+          mapSurface,
+          1,
+          eventFilterLabel,
+        );
+        discoveryFiltersController.updateFilterRule(
+          mapSurface,
+          1,
+          discoveryFiltersController
+              .filtersForSurface(mapSurface)
               .elementAt(1)
               .copyWith(
-                query: TenantAdminMapFilterQuery(
-                  source: TenantAdminMapFilterSource.event,
+                query: TenantAdminDiscoveryFilterQuery(
+                  entityValues: [_tokenValue('event')],
                 ),
               ),
         );
-        await settingsController.saveMapFilters();
 
+        final imageIngestionService = TenantAdminImageIngestionService();
+
+        final firstUpload = await _buildMapFilterUpload(
+          imageIngestionService: imageIngestionService,
+          file: _buildImageFile(
+            name: 'map_filter_first.png',
+            color: img.ColorRgb8(120, 45, 180),
+          ),
+        );
+        final firstImageUri = await settingsRepository.uploadMapFilterImage(
+          key: _tokenValue(assetFilterKey),
+          upload: firstUpload,
+        );
+
+        expect(
+          firstImageUri,
+          contains('/api/v1/media/map-filters/$assetFilterKey'),
+        );
+        final firstImageBytes = await fetchImageBytes(firstImageUri);
+
+        discoveryFiltersController.updateFilterVisual(
+          mapSurface,
+          0,
+          discoveryFiltersController
+              .filtersForSurface(mapSurface)
+              .elementAt(0)
+              .copyWith(imageUriValue: _optionalUrlValue(firstImageUri)),
+        );
+
+        final secondUpload = await _buildMapFilterUpload(
+          imageIngestionService: imageIngestionService,
+          file: _buildImageFile(
+            name: 'map_filter_second.png',
+            color: img.ColorRgb8(20, 140, 220),
+          ),
+        );
+        final secondImageUri = await settingsRepository.uploadMapFilterImage(
+          key: _tokenValue(assetFilterKey),
+          upload: secondUpload,
+        );
+        expect(secondImageUri, isNot(equals(firstImageUri)));
+        final secondImageBytes = await fetchImageBytes(secondImageUri);
+        expect(secondImageBytes, isNot(equals(firstImageBytes)));
+
+        discoveryFiltersController.updateFilterVisual(
+          mapSurface,
+          0,
+          discoveryFiltersController
+              .filtersForSurface(mapSurface)
+              .elementAt(0)
+              .copyWith(imageUriValue: _optionalUrlValue(secondImageUri)),
+        );
+        await discoveryFiltersController.saveFilters(mapSurface);
+        expect(discoveryFiltersController.remoteErrorStreamValue.value, '');
+        expect(
+          discoveryFiltersController
+              .filtersForSurface(mapSurface)
+              .elementAt(0)
+              .imageUri,
+          secondImageUri,
+        );
+
+        GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+          discoveryFiltersController,
+        );
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: Scaffold(
-              body: SingleChildScrollView(
-                child: TenantAdminSettingsLocalPreferencesSection(
-                  controller: settingsController,
-                  onOpenDefaultOriginPicker: () async {},
-                  onAddMapFilter: settingsController.addMapFilterItem,
-                  onEditMapFilterKey: (_) async {},
-                  onEditMapFilterLabel: (_) async {},
-                  onEditMapFilterRule: (_) async {},
-                  onEditMapFilterVisual: (_) async {},
-                  onRemoveMapFilter: settingsController.removeMapFilterItem,
-                  onMoveMapFilterUp: settingsController.moveMapFilterItemUp,
-                  onMoveMapFilterDown: settingsController.moveMapFilterItemDown,
-                ),
+              body: TenantAdminDiscoveryFilterSurfaceScreen(
+                surface: mapSurface,
               ),
             ),
           ),
@@ -257,95 +336,58 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
+          find.byKey(
+            TenantAdminDiscoveryFiltersKeys.filterRow(
+              'public_map.primary',
+              0,
+            ),
+          ),
           findsOneWidget,
         );
         expect(
-          find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(1)),
+          find.byKey(
+            TenantAdminDiscoveryFiltersKeys.filterRow(
+              'public_map.primary',
+              1,
+            ),
+          ),
           findsOneWidget,
         );
         expect(find.text(assetFilterLabel), findsOneWidget);
         expect(find.text(eventFilterLabel), findsOneWidget);
-
-        final firstUpload = _buildImageFile(
-          name: 'map_filter_first.png',
-          color: img.ColorRgb8(120, 45, 180),
-        );
-        await settingsController.uploadMapFilterItemImage(
-          index: 0,
-          file: firstUpload,
-        );
-        await tester.pumpAndSettle();
-
-        final firstImageUri = settingsController
-            .mapUiSettingsStreamValue.value.filters.first.imageUri;
-        expect(firstImageUri, isNotNull);
+        final filterAfterPreviewPump =
+            discoveryFiltersController.filtersForSurface(mapSurface).elementAt(
+                  0,
+                );
         expect(
-          firstImageUri,
-          contains('/api/v1/media/map-filters/$assetFilterKey'),
+          filterAfterPreviewPump.imageUri,
+          secondImageUri,
+          reason:
+              'admin preview controller filter after pump: ${filterAfterPreviewPump.toJson(
+                    surface: mapSurface.key,
+                    target: mapSurface.target,
+                    primarySelectionMode: mapSurface.primarySelectionMode,
+                  ).value}',
         );
-        final firstImageBytes = await fetchImageBytes(firstImageUri!);
 
-        final previewFinder = find.descendant(
-          of: find
-              .byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
-          matching: find.byType(Image),
-        );
-        expect(previewFinder, findsOneWidget);
-        final firstPreviewImage = tester.widget<Image>(previewFinder.first);
-        expect((firstPreviewImage.image as NetworkImage).url, firstImageUri);
-
-        final secondUpload = _buildImageFile(
-          name: 'map_filter_second.png',
-          color: img.ColorRgb8(20, 140, 220),
-        );
-        await settingsController.uploadMapFilterItemImage(
-          index: 0,
-          file: secondUpload,
-        );
-        await tester.pumpAndSettle();
-
-        final secondImageUri = settingsController
-            .mapUiSettingsStreamValue.value.filters.first.imageUri;
-        expect(secondImageUri, isNotNull);
-        expect(secondImageUri, isNot(equals(firstImageUri)));
-        final secondImageBytes = await fetchImageBytes(secondImageUri!);
-        expect(secondImageBytes, isNot(equals(firstImageBytes)));
-
-        final secondPreviewImage = tester.widget<Image>(previewFinder.first);
-        expect((secondPreviewImage.image as NetworkImage).url, secondImageUri);
-
-        await settingsController.saveMapFilters();
-        final persistedSettings = await waitForMapUiSettings(
+        final persistedSettings = await waitForDiscoveryFiltersSettings(
           repository: settingsRepository,
           predicate: (settings) {
-            if (settings.filters.length < 2) {
+            final filters = _readSurfaceFilters(settings);
+            if (filters.length < 2) {
               return false;
             }
-            final assetFilter = settings.filters.firstWhere(
-              (item) => item.key == assetFilterKey,
-              orElse: () => TenantAdminMapFilterCatalogItem(
-                keyValue: TenantAdminLowercaseTokenValue(),
-                labelValue: TenantAdminRequiredTextValue(),
-              ),
-            );
-            final eventFilter = settings.filters.firstWhere(
-              (item) => item.key == eventFilterKey,
-              orElse: () => TenantAdminMapFilterCatalogItem(
-                keyValue: TenantAdminLowercaseTokenValue(),
-                labelValue: TenantAdminRequiredTextValue(),
-              ),
-            );
-            return assetFilter.imageUri == secondImageUri &&
-                assetFilter.label == assetFilterLabel &&
-                eventFilter.label == eventFilterLabel;
+            final assetFilter = _findSurfaceFilter(filters, assetFilterKey);
+            final eventFilter = _findSurfaceFilter(filters, eventFilterKey);
+            return assetFilter?['image_uri'] == secondImageUri &&
+                assetFilter?['label'] == assetFilterLabel &&
+                eventFilter?['label'] == eventFilterLabel;
           },
-          expectationLabel: 'persisted map filter catalog',
+          expectationLabel: 'persisted discovery filter catalog',
         );
         expect(
-          persistedSettings.filters
-              .firstWhere((item) => item.key == assetFilterKey)
-              .imageUri,
+          _readSurfaceFilters(persistedSettings)
+              .firstWhere((item) => item['key'] == assetFilterKey)['image_uri'],
           secondImageUri,
         );
 
@@ -368,13 +410,22 @@ void main() {
             ),
           ),
         );
+        final userLocationRepository = _StaticUserLocationRepository(
+          latitude: -20.611121,
+          longitude: -40.498617,
+        );
+        final appData = _buildTenantAppData(tenantOrigin);
+        final appDataRepository = _MapIntegrationAppDataRepository(appData);
         mapController = MapScreenController(
           poiRepository: poiRepository,
-          userLocationRepository: _StaticUserLocationRepository(
-            latitude: -20.611121,
-            longitude: -40.498617,
-          ),
+          userLocationRepository: userLocationRepository,
           telemetryRepository: _NoopTelemetryRepository(),
+          appData: appData,
+          appDataRepository: appDataRepository,
+          locationOriginService: LocationOriginService(
+            appDataRepository: appDataRepository,
+            userLocationRepository: userLocationRepository,
+          ),
         );
 
         final boundsQuery = _buildBoundsQuery(
@@ -412,15 +463,17 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 200));
 
-        expect(find.text(assetFilterLabel), findsOneWidget);
-        expect(find.text(eventFilterLabel), findsOneWidget);
-        expect(find.text(assetFilterKey), findsNothing);
-
-        final assetChipFinder = find.ancestor(
-          of: find.text(assetFilterLabel),
-          matching: find.byType(InkWell),
+        final assetChipFinder = find.byKey(
+          ValueKey<String>('map-compact-filter-chip-$assetFilterKey'),
+        );
+        final eventChipFinder = find.byKey(
+          ValueKey<String>('map-compact-filter-chip-$eventFilterKey'),
         );
         expect(assetChipFinder, findsOneWidget);
+        expect(eventChipFinder, findsOneWidget);
+        expect(find.text(assetFilterLabel), findsNothing);
+        expect(find.text(eventFilterLabel), findsNothing);
+        expect(find.text(assetFilterKey), findsNothing);
 
         final assetImageFinder = find.byKey(ValueKey<String>(secondImageUri));
         expect(assetImageFinder, findsOneWidget);
@@ -436,9 +489,10 @@ void main() {
           assetDisplayName: assetDisplayName,
         );
 
+        expect(find.text(assetFilterLabel), findsOneWidget);
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
-        expect(mapController.activeFilterLabelStreamValue.value,
-            assetFilterLabel);
+        expect(
+            mapController.activeFilterLabelStreamValue.value, assetFilterLabel);
         expect(
           (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[])
               .map((poi) => poi.name)
@@ -449,12 +503,12 @@ void main() {
         if (mapController != null) {
           await mapController.onDispose();
         }
-        settingsController.onDispose();
+        await discoveryFiltersController.onDispose();
 
-        if (originalMapUiSettings != null) {
+        if (originalDiscoveryFilters != null) {
           try {
-            await settingsRepository.updateMapUiSettings(
-              settings: originalMapUiSettings,
+            await settingsRepository.updateDiscoveryFiltersSettings(
+              settings: originalDiscoveryFilters,
             );
           } catch (_) {}
         }
@@ -538,18 +592,20 @@ LandlordTenantOption resolveTenantByDomain(
   );
 }
 
-Future<TenantAdminMapUiSettings> waitForMapUiSettings({
+Future<TenantAdminDiscoveryFiltersSettingsValue>
+    waitForDiscoveryFiltersSettings({
   required TenantAdminSettingsRepository repository,
-  required bool Function(TenantAdminMapUiSettings value) predicate,
+  required bool Function(TenantAdminDiscoveryFiltersSettingsValue value)
+      predicate,
   required String expectationLabel,
   Duration timeout = const Duration(seconds: 40),
   Duration step = const Duration(seconds: 2),
 }) async {
   final deadline = DateTime.now().add(timeout);
-  TenantAdminMapUiSettings? lastRead;
+  TenantAdminDiscoveryFiltersSettingsValue? lastRead;
 
   while (DateTime.now().isBefore(deadline)) {
-    final current = await repository.fetchMapUiSettings();
+    final current = await repository.fetchDiscoveryFiltersSettings();
     lastRead = current;
     if (predicate(current)) {
       return current;
@@ -559,8 +615,54 @@ Future<TenantAdminMapUiSettings> waitForMapUiSettings({
 
   throw TestFailure(
     'Timed out waiting for $expectationLabel. '
-    'Last read: ${lastRead?.rawMapUi}',
+    'Last read: ${lastRead?.rawDiscoveryFilters.value}',
   );
+}
+
+List<Map<String, dynamic>> _readSurfaceFilters(
+  TenantAdminDiscoveryFiltersSettingsValue settings,
+) {
+  final raw = settings.rawDiscoveryFilters.value;
+  final surfaces = raw['surfaces'];
+  if (surfaces is! Map) {
+    return const <Map<String, dynamic>>[];
+  }
+  final surface = surfaces['public_map.primary'];
+  if (surface is! Map) {
+    return const <Map<String, dynamic>>[];
+  }
+  final filters = surface['filters'];
+  if (filters is! Iterable) {
+    return const <Map<String, dynamic>>[];
+  }
+  return filters
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList(growable: false);
+}
+
+Map<String, dynamic>? _findSurfaceFilter(
+  List<Map<String, dynamic>> filters,
+  String key,
+) {
+  for (final filter in filters) {
+    if (filter['key'] == key) {
+      return filter;
+    }
+  }
+  return null;
+}
+
+Future<TenantAdminMediaUpload> _buildMapFilterUpload({
+  required TenantAdminImageIngestionService imageIngestionService,
+  required XFile file,
+}) async {
+  final upload = await imageIngestionService.buildUpload(
+    file,
+    slot: TenantAdminImageSlot.mapFilter,
+  );
+  expect(upload, isNotNull);
+  return upload!;
 }
 
 Future<List<int>> fetchImageBytes(String imageUri) async {
@@ -639,6 +741,53 @@ CityCoordinate _buildCoordinate(double latitude, double longitude) {
   return CityCoordinate(
     latitudeValue: latitudeValue,
     longitudeValue: longitudeValue,
+  );
+}
+
+AppData _buildTenantAppData(Uri tenantOrigin) {
+  final remoteData = {
+    'name': 'Guarappari',
+    'type': 'tenant',
+    'profile_types': const [],
+    'domains': [tenantOrigin.host],
+    'app_domains': const ['com.guarappari.app'],
+    'theme_data_settings': const {
+      'brightness_default': 'light',
+      'primary_seed_color': '#009688',
+      'secondary_seed_color': '#3F51B5',
+    },
+    'main_color': '#009688',
+    'main_domain': tenantOrigin.toString(),
+    'tenant_id': 'tenant-integration',
+    'telemetry': const {'trackers': []},
+    'telemetry_context': const {'location_freshness_minutes': 5},
+    'settings': const {
+      'map_ui': {
+        'distance_bounds': {
+          'min_meters': 1000,
+          'default_meters': 15000,
+          'max_meters': 50000,
+        },
+        'default_origin': {
+          'lat': -20.611121,
+          'lng': -40.498617,
+          'label': 'Guarappari',
+        },
+      },
+    },
+    'firebase': null,
+    'push': null,
+  };
+  final localInfo = {
+    'platformType': 'mobile',
+    'hostname': tenantOrigin.host,
+    'href': tenantOrigin.toString(),
+    'port': tenantOrigin.hasPort ? tenantOrigin.port.toString() : null,
+    'device': 'integration-test-device',
+  };
+  return buildAppDataFromInitialization(
+    remoteData: remoteData,
+    localInfo: localInfo,
   );
 }
 
@@ -727,98 +876,6 @@ XFile _buildImageFile({
   );
 }
 
-AppData _buildAppData({
-  required String mainDomain,
-}) {
-  final origin = requireOriginUri(mainDomain);
-  final remoteData = {
-    'name': 'Tenant Test',
-    'type': 'tenant',
-    'profile_types': [],
-    'domains': [mainDomain],
-    'app_domains': ['com.guarappari.app'],
-    'theme_data_settings': {
-      'brightness_default': 'light',
-      'primary_seed_color': '#009688',
-      'secondary_seed_color': '#3F51B5',
-    },
-    'main_color': '#009688',
-    'main_domain': mainDomain,
-    'tenant_id': 'tenant-1',
-    'telemetry': {
-      'trackers': [],
-    },
-    'telemetry_context': {'location_freshness_minutes': 5},
-    'firebase': {
-      'apiKey': 'apikey',
-      'appId': 'appid',
-      'projectId': 'project-test',
-      'messagingSenderId': 'sender',
-      'storageBucket': 'bucket',
-    },
-    'push': {
-      'enabled': true,
-      'types': ['event'],
-      'throttles': {'max_per_hour': 20},
-    },
-  };
-
-  final localInfo = {
-    'platformType': PlatformTypeValue()..parse('mobile'),
-    'hostname': origin.host,
-    'href': origin.toString(),
-    'port': origin.hasPort ? origin.port.toString() : null,
-    'device': 'integration-test-device',
-  };
-
-  return buildAppDataFromInitialization(
-    remoteData: remoteData,
-    localInfo: localInfo,
-  );
-}
-
-class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository(this._appData);
-
-  final AppData _appData;
-  final StreamValue<ThemeMode?> _themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
-  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
-
-  @override
-  AppData get appData => _appData;
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
-
-  @override
-  ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.system;
-
-  @override
-  Future<void> setThemeMode(AppThemeModeValue mode) async {
-    _themeModeStreamValue.addValue(mode.value);
-  }
-
-  @override
-  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
-      _maxRadiusMetersStreamValue;
-
-  @override
-  DistanceInMetersValue get maxRadiusMeters => _maxRadiusMetersStreamValue.value;
-
-  @override
-  bool get hasPersistedMaxRadiusPreference => false;
-
-  @override
-  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
-    _maxRadiusMetersStreamValue.addValue(meters);
-  }
-}
-
 class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
   _StubAuthRepository(this._token);
 
@@ -881,8 +938,7 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _StaticUserLocationRepository implements UserLocationRepositoryContract {
@@ -948,6 +1004,44 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> warmUpIfPermitted() async => false;
+}
+
+class _MapIntegrationAppDataRepository extends AppDataRepositoryContract {
+  _MapIntegrationAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+
+  @override
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+  );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    maxRadiusMetersStreamValue.addValue(meters);
+  }
 }
 
 class _NoopTelemetryRepository implements TelemetryRepositoryContract {

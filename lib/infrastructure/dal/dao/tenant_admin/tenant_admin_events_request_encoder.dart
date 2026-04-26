@@ -9,6 +9,7 @@ class TenantAdminEventsRequestEncoder {
     String? name,
     String? slug,
     String? description,
+    List<String>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     bool includeDescription = false,
     bool includeVisual = false,
@@ -24,6 +25,9 @@ class TenantAdminEventsRequestEncoder {
     if (includeDescription || description != null) {
       payload['description'] = description;
     }
+    if (allowedTaxonomies != null) {
+      payload['allowed_taxonomies'] = List<String>.from(allowedTaxonomies);
+    }
     if (includeVisual) {
       payload['visual'] = visual?.toJson();
       payload['poi_visual'] = visual?.toJson();
@@ -38,6 +42,7 @@ class TenantAdminEventsRequestEncoder {
     required String name,
     required String slug,
     String? description,
+    List<String>? allowedTaxonomies,
     TenantAdminPoiVisual? visual,
     bool includeVisual = false,
   }) {
@@ -46,6 +51,8 @@ class TenantAdminEventsRequestEncoder {
       'slug': slug,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
+      if (allowedTaxonomies != null)
+        'allowed_taxonomies': List<String>.from(allowedTaxonomies),
       if (includeVisual) 'visual': visual?.toJson(),
       if (includeVisual) 'poi_visual': visual?.toJson(),
     };
@@ -66,15 +73,7 @@ class TenantAdminEventsRequestEncoder {
         if (draft.type.color != null) 'color': draft.type.color,
       },
       'occurrences': draft.occurrences
-          .map((occurrence) => <String, dynamic>{
-                'date_time_start': TimezoneConverter.localToUtc(
-                  occurrence.dateTimeStart,
-                ).toIso8601String(),
-                if (occurrence.dateTimeEnd != null)
-                  'date_time_end': TimezoneConverter.localToUtc(
-                    occurrence.dateTimeEnd!,
-                  ).toIso8601String(),
-              })
+          .map((occurrence) => _encodeOccurrence(occurrence))
           .toList(growable: false),
       'publication': <String, dynamic>{
         'status': draft.publication.status,
@@ -94,8 +93,7 @@ class TenantAdminEventsRequestEncoder {
           .toList(growable: false);
     }
 
-    payload['event_parties'] =
-        draft.relatedAccountProfileIds.map((profileId) {
+    payload['event_parties'] = draft.relatedAccountProfileIds.map((profileId) {
       return <String, dynamic>{
         'party_ref_id': profileId.value,
         'permissions': <String, dynamic>{
@@ -116,28 +114,7 @@ class TenantAdminEventsRequestEncoder {
 
     final location = draft.location;
     if (location != null) {
-      final locationPayload = <String, dynamic>{
-        'mode': location.mode,
-      };
-      final includesPhysicalGeometry =
-          location.mode == 'physical' || location.mode == 'hybrid';
-      if (includesPhysicalGeometry &&
-          location.latitude != null &&
-          location.longitude != null) {
-        locationPayload['geo'] = <String, dynamic>{
-          'type': 'Point',
-          'coordinates': <double>[location.longitude!, location.latitude!],
-        };
-      }
-      if (location.online != null) {
-        locationPayload['online'] = <String, dynamic>{
-          'url': location.online!.url,
-          if (location.online!.platform != null)
-            'platform': location.online!.platform,
-          if (location.online!.label != null) 'label': location.online!.label,
-        };
-      }
-      payload['location'] = locationPayload;
+      payload['location'] = _encodeLocation(location);
     }
 
     if (draft.placeRef != null) {
@@ -150,5 +127,78 @@ class TenantAdminEventsRequestEncoder {
     }
 
     return payload;
+  }
+
+  Map<String, dynamic> _encodeOccurrence(
+    TenantAdminEventOccurrence occurrence,
+  ) {
+    final payload = <String, dynamic>{
+      'date_time_start': TimezoneConverter.localToUtc(
+        occurrence.dateTimeStart,
+      ).toIso8601String(),
+      if (occurrence.dateTimeEnd != null)
+        'date_time_end': TimezoneConverter.localToUtc(
+          occurrence.dateTimeEnd!,
+        ).toIso8601String(),
+    };
+
+    if (occurrence.relatedAccountProfileIds.isNotEmpty) {
+      payload['event_parties'] =
+          occurrence.relatedAccountProfileIds.map((profileId) {
+        return <String, dynamic>{
+          'party_ref_id': profileId.value,
+          'permissions': <String, dynamic>{
+            'can_edit': true,
+          },
+        };
+      }).toList(growable: false);
+    }
+
+    if (occurrence.programmingItems.isNotEmpty) {
+      payload['programming_items'] = occurrence.programmingItems
+          .map(
+            (item) => <String, dynamic>{
+              'time': item.time,
+              if (item.title != null) 'title': item.title,
+              if (item.accountProfileIds.isNotEmpty)
+                'account_profile_ids': item.accountProfileIds
+                    .map((profileId) => profileId.value)
+                    .toList(growable: false),
+              if (item.placeRef != null)
+                'place_ref': <String, dynamic>{
+                  'type': item.placeRef!.type,
+                  'id': item.placeRef!.id,
+                },
+            },
+          )
+          .toList(growable: false);
+    }
+
+    return payload;
+  }
+
+  Map<String, dynamic> _encodeLocation(TenantAdminEventLocation location) {
+    final locationPayload = <String, dynamic>{
+      'mode': location.mode,
+    };
+    final includesPhysicalGeometry =
+        location.mode == 'physical' || location.mode == 'hybrid';
+    if (includesPhysicalGeometry &&
+        location.latitude != null &&
+        location.longitude != null) {
+      locationPayload['geo'] = <String, dynamic>{
+        'type': 'Point',
+        'coordinates': <double>[location.longitude!, location.latitude!],
+      };
+    }
+    if (location.online != null) {
+      locationPayload['online'] = <String, dynamic>{
+        'url': location.online!.url,
+        if (location.online!.platform != null)
+          'platform': location.online!.platform,
+        if (location.online!.label != null) 'label': location.online!.label,
+      };
+    }
+    return locationPayload;
   }
 }

@@ -8,7 +8,7 @@ class UpcomingEventParticipants extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!event.hasArtists) {
+    if (!event.hasCounterparts) {
       return const SizedBox.shrink();
     }
 
@@ -23,7 +23,7 @@ class UpcomingEventParticipants extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            event.artistNamesLabel,
+            event.counterpartNamesLabel,
             style: textTheme.bodySmall,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

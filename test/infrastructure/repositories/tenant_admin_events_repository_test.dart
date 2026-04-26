@@ -240,6 +240,93 @@ void main() {
     expect(formData.files.map((entry) => entry.key), contains('cover'));
   });
 
+  test(
+      'createEvent multipart preserves occurrence-owned profiles and programming payload',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEvent(
+      draft: _buildDraft(
+        coverUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([7, 8, 9]),
+          fileName: 'event-cover.png',
+          mimeType: 'image/png',
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
+          ),
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 6, 17)),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('507f1f77bcf86cd799439021'),
+            ],
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('17:00'),
+                titleValue: tenantAdminOptionalText('Show com a banda'),
+                accountProfileIdValues: [
+                  TenantAdminAccountProfileIdValue('507f1f77bcf86cd799439021'),
+                ],
+                placeRef: TenantAdminEventPlaceRef(
+                  typeValue: tenantAdminRequiredText('account_profile'),
+                  idValue: tenantAdminRequiredText('507f1f77bcf86cd799439031'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+
+    bool hasField(String key, String value) {
+      return formData.fields.any(
+        (entry) => entry.key == key && entry.value == value,
+      );
+    }
+
+    expect(
+      hasField('occurrences[1][event_parties][0][party_ref_id]',
+          '507f1f77bcf86cd799439021'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][programming_items][0][time]', '17:00'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][programming_items][0][title]',
+          'Show com a banda'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][programming_items][0][account_profile_ids][]',
+          '507f1f77bcf86cd799439021'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][programming_items][0][place_ref][type]',
+          'account_profile'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][programming_items][0][place_ref][id]',
+          '507f1f77bcf86cd799439031'),
+      isTrue,
+    );
+  });
+
   test('updateEvent sends remove_cover as multipart patch override', () async {
     final adapter = _EventsRoutingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -935,6 +1022,55 @@ void main() {
     });
   });
 
+  test('createEventTypeWithVisual uses multipart when type_asset upload exists',
+      () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEventTypeWithVisual(
+      name: _repoText('Festival'),
+      slug: _repoText('festival'),
+      visual: TenantAdminPoiVisual.image(
+        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+      ),
+      typeAssetUpload: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([7, 8, 9]),
+        fileName: 'festival-type.png',
+        mimeType: 'image/png',
+      ),
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'POST' &&
+          candidate.path.endsWith('/admin/api/v1/event_types'),
+    );
+
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'visual[image_source]' && entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) =>
+            entry.key == 'poi_visual[image_source]' &&
+            entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+  });
+
   test('updateEventTypeWithVisual uses multipart when type_asset upload exists',
       () async {
     final adapter = _EventTypeMutationsAdapter();
@@ -994,6 +1130,7 @@ TenantAdminEventDraft _buildDraft({
   TenantAdminMediaUpload? coverUpload,
   bool removeCover = false,
   List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
+  List<TenantAdminEventOccurrence>? occurrences,
 }) {
   return TenantAdminEventDraft(
     titleValue: tenantAdminRequiredText('My event'),
@@ -1002,11 +1139,12 @@ TenantAdminEventDraft _buildDraft({
       nameValue: tenantAdminRequiredText('Show'),
       slugValue: tenantAdminRequiredText('show'),
     ),
-    occurrences: [
-      TenantAdminEventOccurrence(
-        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
-      ),
-    ],
+    occurrences: occurrences ??
+        [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
+          ),
+        ],
     publication: TenantAdminEventPublication(
       statusValue: tenantAdminRequiredText('draft'),
     ),

@@ -191,6 +191,82 @@ void main() {
     expect(count, 42);
     expect(assetsRepository.lastProjectionImpactType, 'beach');
   });
+
+  test(
+      'hydrateFormDefinition loads off-page static profile type definitions with persisted allowed taxonomies',
+      () async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      types: List<TenantAdminStaticProfileTypeDefinition>.generate(
+        24,
+        (index) => tenantAdminStaticProfileTypeDefinitionFromRaw(
+          type: 'type-$index',
+          label: 'Type $index',
+          allowedTaxonomies: index == 23 ? ['kitchen'] : [],
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(index == 23),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+          ),
+        ),
+      ),
+    );
+    final controller = TenantAdminStaticProfileTypesController(
+      repository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: const []),
+    );
+
+    await controller.loadTypes();
+    expect(controller.typesStreamValue.value?.length, 20);
+
+    await controller.hydrateFormDefinition('type-23');
+
+    expect(controller.typeController.text, 'type-23');
+    expect(controller.selectedTaxonomiesStreamValue.value, {'kitchen'});
+  });
+
+  test(
+      'loadTaxonomies reapplies persisted allowed taxonomies when edit state was cleared before catalog hydration',
+      () async {
+    final controller = TenantAdminStaticProfileTypesController(
+      repository: _FakeStaticAssetsRepository(types: const []),
+      taxonomiesRepository: _FakeTaxonomiesRepository(
+        taxonomies: [
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-kitchen',
+            slug: 'kitchen',
+            name: 'Kitchen',
+            appliesTo: ['static_asset'],
+            icon: null,
+            color: null,
+          ),
+        ],
+      ),
+    );
+
+    controller.initForm(
+      tenantAdminStaticProfileTypeDefinitionFromRaw(
+        type: 'restaurant',
+        label: 'Restaurant',
+        allowedTaxonomies: ['kitchen'],
+        capabilities: TenantAdminStaticProfileTypeCapabilities(
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+    controller.selectedTaxonomiesStreamValue.addValue(const <String>{});
+
+    await controller.loadTaxonomies();
+
+    expect(controller.selectedTaxonomiesStreamValue.value, {'kitchen'});
+  });
 }
 
 class _FakeStaticAssetsRepository

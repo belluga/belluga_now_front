@@ -20,13 +20,19 @@ class MarkerCore extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUri?.toString();
+    final primaryCounterpart = event.counterpartProfiles.isNotEmpty
+        ? event.counterpartProfiles.first
+        : null;
+    final avatarUri = primaryCounterpart?.avatarUrl;
+    final coverUri = primaryCounterpart?.coverUrl;
     final fallbackUri = event.thumb?.thumbUri.value.toString();
     final hasAvatar = avatarUri?.isNotEmpty ?? false;
+    final hasCover = coverUri?.isNotEmpty ?? false;
     final imageUrl = hasAvatar
         ? avatarUri
-        : ((fallbackUri?.isNotEmpty ?? false) ? fallbackUri : null);
+        : (hasCover
+            ? coverUri
+            : ((fallbackUri?.isNotEmpty ?? false) ? fallbackUri : null));
 
     final decoration = BoxDecoration(
       shape: BoxShape.circle,

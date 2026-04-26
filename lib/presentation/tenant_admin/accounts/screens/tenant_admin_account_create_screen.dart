@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
@@ -676,6 +677,8 @@ class _TenantAdminAccountCreateScreenState
                     placeholder: 'Escreva a bio do perfil',
                     minHeight: 160,
                     errorText: errorText,
+                    maxContentBytes: accountProfileRichTextMaxBytes,
+                    warningThreshold: accountProfileRichTextWarningThreshold,
                   );
                 },
               ),
@@ -696,6 +699,8 @@ class _TenantAdminAccountCreateScreenState
                     placeholder: 'Escreva o conteudo estendido do perfil',
                     minHeight: 220,
                     errorText: errorText,
+                    maxContentBytes: accountProfileRichTextMaxBytes,
+                    warningThreshold: accountProfileRichTextWarningThreshold,
                   );
                 },
               ),

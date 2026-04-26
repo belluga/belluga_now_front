@@ -31,6 +31,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
@@ -136,6 +137,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminSettingsController>(
       () => TenantAdminSettingsController(),
+    );
+    registerLazySingleton<TenantAdminDiscoveryFiltersController>(
+      () => TenantAdminDiscoveryFiltersController(),
     );
     registerLazySingleton<TenantAdminStaticAssetsController>(
       () => TenantAdminStaticAssetsController(),
@@ -479,6 +483,21 @@ class TenantAdminModule extends ModuleContract {
               meta: canonicalRouteMeta(
                 family: CanonicalRouteFamily.tenantAdminAssetsInternal,
                 chromeMode: RouteChromeMode.fullscreen,
+              ),
+            ),
+            AutoRoute(
+              path: 'filters',
+              page: TenantAdminDiscoveryFiltersRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminFiltersRoot,
+              ),
+            ),
+            AutoRoute(
+              path: 'filters/surface',
+              page: TenantAdminDiscoveryFilterSurfaceRoute.page,
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminFiltersInternal,
+                chromeMode: RouteChromeMode.scopedSectionAppBar,
               ),
             ),
             AutoRoute(

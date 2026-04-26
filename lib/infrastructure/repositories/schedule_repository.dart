@@ -45,6 +45,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) {
     final state = _homeAgendaState;
     if (state == null) {
@@ -70,6 +72,12 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       state: state,
       requestedMaxDistanceMeters: maxDistanceMeters?.value,
     )) {
+      return null;
+    }
+    if (state.categoriesKey != _categoriesKey(categories)) {
+      return null;
+    }
+    if (state.taxonomyKey != _taxonomyKey(taxonomy)) {
       return null;
     }
     return state.events;
@@ -123,6 +131,32 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         0.001;
   }
 
+  String _categoriesKey(List<ScheduleRepoString>? categories) {
+    final values = (categories ?? const <ScheduleRepoString>[])
+        .map((entry) => entry.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    values.sort();
+
+    return values.join('|');
+  }
+
+  String _taxonomyKey(ScheduleRepoTaxonomyEntries? taxonomy) {
+    final values = (taxonomy ?? const ScheduleRepoTaxonomyEntries.empty())
+        .map((entry) {
+          final type = entry.type.value.trim();
+          final value = entry.term.value.trim();
+          return type.isEmpty || value.isEmpty ? '' : '$type:$value';
+        })
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    values.sort();
+
+    return values.join('|');
+  }
+
   _HomeAgendaState? _resolveHomeAgendaState({
     required ScheduleRepoBool showPastOnly,
     required ScheduleRepoString searchQuery,
@@ -130,6 +164,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) {
     final state = _homeAgendaState;
     if (state == null) {
@@ -155,6 +191,12 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       state: state,
       requestedMaxDistanceMeters: maxDistanceMeters?.value,
     )) {
+      return null;
+    }
+    if (state.categoriesKey != _categoriesKey(categories)) {
+      return null;
+    }
+    if (state.taxonomyKey != _taxonomyKey(taxonomy)) {
       return null;
     }
     return state;
@@ -234,6 +276,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     final firstSlice = await _fetchEventsPageSlice(
       page: 1,
@@ -244,6 +288,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
+      categories: categories,
+      taxonomy: taxonomy,
     );
 
     final state = _HomeAgendaState(
@@ -256,6 +302,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       originLat: originLat?.value,
       originLng: originLng?.value,
       maxDistanceMeters: maxDistanceMeters?.value,
+      categoriesKey: _categoriesKey(categories),
+      taxonomyKey: _taxonomyKey(taxonomy),
     );
     _publishHomeAgendaState(state);
     return state.events;
@@ -269,6 +317,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     final current = _resolveHomeAgendaState(
       showPastOnly: showPastOnly,
@@ -277,6 +327,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
+      categories: categories,
+      taxonomy: taxonomy,
     );
     if (current == null || !current.hasMore) {
       return current?.events ?? const <EventModel>[];
@@ -291,6 +343,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
+      categories: categories,
+      taxonomy: taxonomy,
     );
 
     final state = _HomeAgendaState(
@@ -306,6 +360,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       originLat: originLat?.value,
       originLng: originLng?.value,
       maxDistanceMeters: maxDistanceMeters?.value,
+      categoriesKey: _categoriesKey(categories),
+      taxonomyKey: _taxonomyKey(taxonomy),
     );
     _publishHomeAgendaState(state);
     return state.events;
@@ -320,16 +376,22 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  }) async {
     final slugValue = slug.value;
-    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slugValue);
+    final dto = await _backend.fetchEventDetail(
+      eventIdOrSlug: slugValue,
+      occurrenceId: occurrenceId?.value,
+    );
     return dto?.toDomain();
   }
 
   Map<String, String> _encodeTaxonomyEntry(ScheduleRepoTaxonomyEntry entry) {
     return <String, String>{
       'type': entry.type.value,
-      'term': entry.term.value,
+      'value': entry.term.value,
     };
   }
 
@@ -534,6 +596,8 @@ class _HomeAgendaState {
     required this.originLat,
     required this.originLng,
     required this.maxDistanceMeters,
+    required this.categoriesKey,
+    required this.taxonomyKey,
   });
 
   final List<EventModel> events;
@@ -545,6 +609,8 @@ class _HomeAgendaState {
   final double? originLat;
   final double? originLng;
   final double? maxDistanceMeters;
+  final String categoriesKey;
+  final String taxonomyKey;
 }
 
 class _RepositoryQueryState {

@@ -112,6 +112,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       TenantAdminStaticProfileTypesListRoute.name => 'Tipos de ativo',
       TenantAdminTaxonomiesListRoute.name => 'Taxonomias',
       TenantAdminEventTypesRoute.name => 'Tipos de evento',
+      TenantAdminDiscoveryFilterSurfaceRoute.name => 'Filtros',
       _ => null,
     };
   }

@@ -405,6 +405,8 @@ class _FakeAccountProfilesRepository
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) {
     throw UnimplementedError();
   }
@@ -412,6 +414,8 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     return const <AccountProfileModel>[];
   }
@@ -494,6 +498,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) {
     return homeAgendaStreamValue.value;
   }
@@ -514,6 +520,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     throw UnimplementedError();
   }
@@ -526,12 +534,17 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async {
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  }) async {
     requestedSlugs.add(slug.value);
     return eventsBySlug[slug.value];
   }
@@ -839,8 +852,8 @@ CityPoiModel _buildPoi({
   final distanceMetersValue = distanceMeters == null
       ? null
       : (DistanceInMetersValue()..parse(distanceMeters.toString()));
-  final isHappeningNowValue =
-      PoiBooleanValue()..parse(isHappeningNow.toString());
+  final isHappeningNowValue = PoiBooleanValue()
+    ..parse(isHappeningNow.toString());
   final timeStartValue = timeStart == null
       ? null
       : (PoiTimeStartValue()..parse(timeStart.toUtc().toIso8601String()));
@@ -2515,8 +2528,8 @@ void main() {
     });
 
     test(
-      'deck poi selection hydrates event imagery from the canonical cover fallback chain',
-      () async {
+        'deck poi selection hydrates event imagery from the canonical cover fallback chain',
+        () async {
       final localScheduleRepository = _FakeScheduleRepository();
       final fakeMapHandle = _FakeMapHandle();
       final localController = _buildMapController(
@@ -5272,8 +5285,9 @@ Future<void> _pumpMapScreen(
       name: isPoiDetail ? PoiDetailsRoute.name : CityMapRoute.name,
       fullPath: isPoiDetail ? '/mapa/poi' : '/mapa',
       meta: canonicalRouteMeta(
-        family:
-            isPoiDetail ? CanonicalRouteFamily.poiDetail : CanonicalRouteFamily.cityMap,
+        family: isPoiDetail
+            ? CanonicalRouteFamily.poiDetail
+            : CanonicalRouteFamily.cityMap,
       ),
       pageRouteInfo:
           isPoiDetail ? PoiDetailsRoute(poi: initialPoiQuery) : CityMapRoute(),

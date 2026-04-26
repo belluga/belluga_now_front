@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:auto_route/src/router/controller/navigation_history/navigation_history_base.dart'
+    as auto_route_history;
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -110,6 +112,48 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+      'discovery visible back uses canonical Home fallback instead of stale managed browser history',
+      (tester) async {
+    late _RecordingNavigationHistory navigationHistory;
+    final router = _RecordingRootStackRouter(
+      currentPath: '/descobrir',
+      canPopResult: false,
+      navigationHistoryBuilder: (router) {
+        navigationHistory = _RecordingNavigationHistory(
+          router: router,
+          canNavigateBackValue: true,
+        );
+        return navigationHistory;
+      },
+    );
+    late RouteBackPolicy policy;
+
+    await tester.pumpWidget(
+      _buildPolicyHarness(
+        router: router,
+        routeData: _buildRouteData(
+          router: router,
+          routeName: DiscoveryRoute.name,
+          fullPath: '/descobrir',
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
+          pageRouteInfo: const DiscoveryRoute(),
+        ),
+        onPolicyReady: (value) => policy = value,
+      ),
+    );
+
+    policy.handleBack();
+    await tester.pump();
+
+    expect(router.canPopCallCount, 1);
+    expect(router.popCallCount, 0);
+    expect(navigationHistory.backCallCount, 0);
+    expect(router.replaceAllRoutes, hasLength(1));
+    expect(
+        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
+  });
 
   testWidgets(
       'explicit route data policy resolves the active child route even when the ambient shell route is unclassified',
@@ -473,7 +517,8 @@ final List<_PolicyCase> _policyCases = <_PolicyCase>[
     routeName: AccountWorkspaceCreateEventRoute.name,
     fullPath: '/workspace/account-alpha/eventos/criar',
     currentPath: '/workspace/account-alpha/eventos/criar',
-    pageRouteInfo: AccountWorkspaceCreateEventRoute(accountSlug: 'account-alpha'),
+    pageRouteInfo:
+        AccountWorkspaceCreateEventRoute(accountSlug: 'account-alpha'),
     noHistoryBehavior: _NoHistoryBehavior.replaceAll,
     expectedRouteName: AccountWorkspaceHomeRoute.name,
   ),
@@ -573,10 +618,15 @@ class _RecordingRootStackRouter extends Fake implements RootStackRouter {
   _RecordingRootStackRouter({
     required this.currentPath,
     required this.canPopResult,
-  });
+    _RecordingNavigationHistory Function(StackRouter router)?
+        navigationHistoryBuilder,
+  }) {
+    _navigationHistory = navigationHistoryBuilder?.call(this);
+  }
 
   @override
   final String currentPath;
+  late final _RecordingNavigationHistory? _navigationHistory;
 
   final bool canPopResult;
   int canPopCallCount = 0;
@@ -590,6 +640,17 @@ class _RecordingRootStackRouter extends Fake implements RootStackRouter {
 
   @override
   RootStackRouter get root => this;
+
+  @override
+  auto_route_history.NavigationHistory get navigationHistory {
+    final history = _navigationHistory;
+    if (history != null) {
+      return history;
+    }
+    return super.noSuchMethod(
+      Invocation.getter(#navigationHistory),
+    ) as auto_route_history.NavigationHistory;
+  }
 
   @override
   bool canPop({
@@ -656,6 +717,39 @@ class _RecordingRootStackRouter extends Fake implements RootStackRouter {
         return null;
     }
   }
+}
+
+class _RecordingNavigationHistory extends auto_route_history.NavigationHistory {
+  _RecordingNavigationHistory({
+    required this.router,
+    required this.canNavigateBackValue,
+  });
+
+  @override
+  final StackRouter router;
+
+  final bool canNavigateBackValue;
+  int backCallCount = 0;
+
+  @override
+  bool get canNavigateBack => canNavigateBackValue;
+
+  @override
+  int get length => canNavigateBackValue ? 2 : 1;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  void back() {
+    backCallCount += 1;
+  }
+
+  @override
+  void forward() {}
+
+  @override
+  void pushPathState(Object? state) {}
 }
 
 class _FakeRouteMatch extends Fake implements RouteMatch {

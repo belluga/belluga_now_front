@@ -148,9 +148,12 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                                       ),
                                     )
                                   : null,
-                              onEventSelected: (slug) {
+                              onEventSelected: (event) {
                                 context.router.push(
-                                  ImmersiveEventDetailRoute(eventSlug: slug),
+                                  ImmersiveEventDetailRoute(
+                                    eventSlug: event.slug,
+                                    occurrenceId: event.selectedOccurrenceId,
+                                  ),
                                 );
                               },
                             ),

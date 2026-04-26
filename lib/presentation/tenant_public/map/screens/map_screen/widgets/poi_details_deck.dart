@@ -73,7 +73,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
               streamValue: _controller.poiDeckHeightRevisionStreamValue,
               builder: (_, __) {
                 final selectedPoi = poi!;
-                final deckPois = _controller.deckPoisForSelectedPoi(selectedPoi);
+                final deckPois =
+                    _controller.deckPoisForSelectedPoi(selectedPoi);
                 final useFilteredDeck = deckPois.length > 1;
                 final deckIndex = _controller.deckIndexForSelectedPoi(
                   selectedPoi,
@@ -106,12 +107,15 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                 onRoute: _handleRoute,
                                 onClose: _controller.clearSelectedPoi,
                                 onChanged: (index) => unawaited(
-                                  _controller.handleFilteredDeckPageChanged(index),
+                                  _controller
+                                      .handleFilteredDeckPageChanged(index),
                                 ),
                                 deckHeight: resolvedDeckHeight,
                                 onCardHeightChanged: (poiId, height) =>
-                                    _handleMeasuredHeight(context, poiId, height),
-                                deckMeasurementPadding: _kDeckMeasurementPadding,
+                                    _handleMeasuredHeight(
+                                        context, poiId, height),
+                                deckMeasurementPadding:
+                                    _kDeckMeasurementPadding,
                               ),
                             ],
                           )
@@ -137,7 +141,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                     height,
                                   ),
                                   deckHeight: resolvedDeckHeight,
-                                  deckMeasurementPadding: _kDeckMeasurementPadding,
+                                  deckMeasurementPadding:
+                                      _kDeckMeasurementPadding,
                                 ),
                               ],
                             ),
@@ -179,7 +184,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     if (_isEventPoi(poi)) {
       final eventSlug = _resolveEventSlug(poi);
       if (eventSlug.isNotEmpty) {
-        context.router.push(ImmersiveEventDetailRoute(eventSlug: eventSlug));
+        final occurrenceId =
+            _controller.hydratedEventForPoi(poi)?.selectedOccurrenceId;
+        context.router.push(
+          ImmersiveEventDetailRoute(
+            eventSlug: eventSlug,
+            occurrenceId: occurrenceId,
+          ),
+        );
         return;
       }
       _controller.statusMessageStreamValue.addValue(

@@ -2,16 +2,19 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_public_instances_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
-import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/landlord_home_screen.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,15 +40,31 @@ void main() {
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: false),
     );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      _FakeAppDataRepository(
-        domains: ['tenant-one.example.com', 'tenant-two.example.com'],
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        environmentType: EnvironmentType.landlord,
+        name: 'Bóora!',
+        domain: 'belluga.space',
       ),
     );
+    final publicInstancesRepository = _FakeLandlordPublicInstancesRepository([
+      _buildAppData(
+        environmentType: EnvironmentType.tenant,
+        name: 'Tenant One',
+        domain: 'tenant-one.example.com',
+      ),
+      _buildAppData(
+        environmentType: EnvironmentType.tenant,
+        name: 'Tenant Two',
+        domain: 'tenant-two.example.com',
+      ),
+    ]);
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     final controller = LandlordHomeScreenController(
       adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
       landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
-      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+      appDataRepository: appDataRepository,
+      publicInstancesRepository: publicInstancesRepository,
     );
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
     final router = _RecordingStackRouter();
@@ -55,11 +74,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Bóora! Control Center'), findsOneWidget);
+    expect(find.text('O que tem para fazer hoje?'), findsOneWidget);
+    expect(find.text('Tenant One'), findsOneWidget);
     expect(find.text('tenant-one.example.com'), findsOneWidget);
+    expect(find.text('Tenant Two'), findsOneWidget);
     expect(find.text('tenant-two.example.com'), findsOneWidget);
-    expect(find.text('Entrar como Admin'), findsOneWidget);
-    expect(find.text('Acessar área admin'), findsNothing);
+    expect(find.text('Entrar'), findsOneWidget);
   });
 
   testWidgets('shows admin CTA when landlord session and mode are active',
@@ -70,15 +90,26 @@ void main() {
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: true),
     );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      _FakeAppDataRepository(
-        domains: ['tenant-one.example.com'],
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        environmentType: EnvironmentType.landlord,
+        name: 'Bóora!',
+        domain: 'belluga.space',
       ),
     );
+    final publicInstancesRepository = _FakeLandlordPublicInstancesRepository([
+      _buildAppData(
+        environmentType: EnvironmentType.tenant,
+        name: 'Tenant One',
+        domain: 'tenant-one.example.com',
+      ),
+    ]);
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     final controller = LandlordHomeScreenController(
       adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
       landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
-      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+      appDataRepository: appDataRepository,
+      publicInstancesRepository: publicInstancesRepository,
     );
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
     final router = _RecordingStackRouter();
@@ -88,8 +119,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Acessar área admin'), findsOneWidget);
-    expect(find.text('Entrar como Admin'), findsNothing);
+    expect(controller.canAccessAdminArea, isTrue);
+    expect(find.text('Tenant One'), findsOneWidget);
+    expect(find.text('Entrar'), findsOneWidget);
   });
 
   testWidgets('landlord home system back delegates to SystemNavigator.pop',
@@ -100,15 +132,26 @@ void main() {
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: false),
     );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      _FakeAppDataRepository(
-        domains: ['tenant-one.example.com'],
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        environmentType: EnvironmentType.landlord,
+        name: 'Bóora!',
+        domain: 'belluga.space',
       ),
     );
+    final publicInstancesRepository = _FakeLandlordPublicInstancesRepository([
+      _buildAppData(
+        environmentType: EnvironmentType.tenant,
+        name: 'Tenant One',
+        domain: 'tenant-one.example.com',
+      ),
+    ]);
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     final controller = LandlordHomeScreenController(
       adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
       landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
-      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+      appDataRepository: appDataRepository,
+      publicInstancesRepository: publicInstancesRepository,
     );
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
     final router = _RecordingStackRouter();
@@ -259,38 +302,8 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
-class _FakeAppData extends Fake implements AppData {
-  _FakeAppData({
-    required List<String> domains,
-  }) : _domains = domains
-            .map(
-              (domain) =>
-                  DomainValue()..parse(_normalizeDomainValueInput(domain)),
-            )
-            .toList(growable: false);
-
-  final List<DomainValue> _domains;
-
-  @override
-  List<DomainValue> get domains => _domains;
-
-  @override
-  List<AppDomainValue>? get appDomains => const [];
-
-  @override
-  String get hostname => 'landlord.example.com';
-
-  static String _normalizeDomainValueInput(String domain) {
-    if (domain.contains('://')) {
-      return domain;
-    }
-    return 'https://$domain';
-  }
-}
-
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository({required List<String> domains})
-      : _appData = _FakeAppData(domains: domains);
+  _FakeAppDataRepository({required AppData appData}) : _appData = appData;
 
   final AppData _appData;
 
@@ -325,4 +338,51 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   @override
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
+}
+
+class _FakeLandlordPublicInstancesRepository
+    implements LandlordPublicInstancesRepositoryContract {
+  const _FakeLandlordPublicInstancesRepository(this.instances);
+
+  final List<AppData> instances;
+
+  @override
+  Future<List<AppData>> fetchFeaturedInstances() async => instances;
+}
+
+AppData _buildAppData({
+  required EnvironmentType environmentType,
+  required String name,
+  required String domain,
+  String mainColor = '#10B981',
+}) {
+  final platformType = PlatformTypeValue()..parse(AppType.web.name);
+  final normalizedDomain = domain.contains('://') ? domain : 'https://$domain';
+  final uri = Uri.parse(normalizedDomain);
+  final host = uri.host.trim().isEmpty ? domain : uri.host.trim();
+
+  return buildAppDataFromInitialization(
+    remoteData: {
+      'name': name,
+      'type': environmentType.name,
+      'main_domain': normalizedDomain,
+      'domains': [normalizedDomain],
+      'app_domains': const [],
+      'theme_data_settings': {
+        'primary_seed_color': mainColor,
+        'secondary_seed_color': '#F97316',
+        'brightness_default': 'light',
+      },
+      'main_color': mainColor,
+      'tenant_id': '${environmentType.name}-$host',
+      'telemetry': {'trackers': []},
+    },
+    localInfo: {
+      'platformType': platformType,
+      'hostname': host,
+      'href': normalizedDomain,
+      'port': null,
+      'device': 'test-device',
+    },
+  );
 }

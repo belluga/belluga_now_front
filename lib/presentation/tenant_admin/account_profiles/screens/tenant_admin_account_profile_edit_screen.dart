@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -969,6 +970,8 @@ class _TenantAdminAccountProfileEditScreenState
               label: 'Bio',
               placeholder: 'Edite a bio do perfil',
               minHeight: 160,
+              maxContentBytes: accountProfileRichTextMaxBytes,
+              warningThreshold: accountProfileRichTextWarningThreshold,
             ),
           ],
           if (hasContent) ...[
@@ -978,6 +981,8 @@ class _TenantAdminAccountProfileEditScreenState
               label: 'Conteudo',
               placeholder: 'Edite o conteudo estendido do perfil',
               minHeight: 220,
+              maxContentBytes: accountProfileRichTextMaxBytes,
+              warningThreshold: accountProfileRichTextWarningThreshold,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[

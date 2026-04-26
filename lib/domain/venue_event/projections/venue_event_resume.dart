@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -31,13 +30,16 @@ class VenueEventResume {
     required this.locationValue,
     VenueEventOptionalTextValue? eventTypeLabelValue,
     VenueEventOptionalTextValue? venueTitleValue,
-    required this.artists,
+    VenueEventOptionalTextValue? selectedOccurrenceIdValue,
+    required this.linkedAccountProfiles,
     required this.tagValues,
     this.coordinate,
     this.mission,
   })  : eventTypeLabelValue =
             eventTypeLabelValue ?? VenueEventOptionalTextValue(),
-        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue();
+        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue(),
+        selectedOccurrenceIdValue =
+            selectedOccurrenceIdValue ?? VenueEventOptionalTextValue();
 
   final MongoIDValue idValue;
   final SlugValue slugValue;
@@ -48,7 +50,8 @@ class VenueEventResume {
   final DescriptionValue locationValue;
   final VenueEventOptionalTextValue eventTypeLabelValue;
   final VenueEventOptionalTextValue venueTitleValue;
-  final List<ArtistResume> artists;
+  final VenueEventOptionalTextValue selectedOccurrenceIdValue;
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
   final MissionResume? mission;
@@ -86,13 +89,30 @@ class VenueEventResume {
     return value.isEmpty ? null : value;
   }
 
+  VenueEventResumePrimString? get selectedOccurrenceId {
+    final value = selectedOccurrenceIdValue.value.trim();
+    return value.isEmpty ? null : value;
+  }
+
   CityCoordinate? get coordinateValue => coordinate;
-  VenueEventResumePrimBool get hasArtists => artists.isNotEmpty;
-  ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
+  List<EventLinkedAccountProfile> get counterpartProfiles =>
+      List<EventLinkedAccountProfile>.unmodifiable(
+        linkedAccountProfiles.where((profile) {
+          final partyType = profile.partyType?.trim().toLowerCase();
+          final profileType = profile.profileType.trim().toLowerCase();
+          return partyType != 'venue' && profileType != 'venue';
+        }),
+      );
+  VenueEventResumePrimBool get hasCounterparts =>
+      counterpartProfiles.isNotEmpty;
+  EventLinkedAccountProfile? get primaryCounterpart =>
+      hasCounterparts ? counterpartProfiles.first : null;
   List<VenueEventTagValue> get tags =>
       List<VenueEventTagValue>.unmodifiable(tagValues);
-  VenueEventResumePrimString get artistNamesLabel =>
-      artists.map((artist) => artist.displayName).join(', ');
+  VenueEventResumePrimString get counterpartNamesLabel => counterpartProfiles
+      .map((profile) => profile.displayName.trim())
+      .where((name) => name.isNotEmpty)
+      .join(', ');
 
   static VenueEventResumePrimString slugify(TitleValue value) {
     final rawValue = value.value;
@@ -194,7 +214,9 @@ class VenueEventResume {
         ..parse(event.type.name.value),
       venueTitleValue: VenueEventOptionalTextValue()
         ..parse(event.venue?.displayName ?? ''),
-      artists: event.artists,
+      selectedOccurrenceIdValue: VenueEventOptionalTextValue()
+        ..parse(event.selectedOccurrenceId ?? ''),
+      linkedAccountProfiles: event.linkedAccountProfiles,
       tagValues: event.taxonomyTags,
       coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available

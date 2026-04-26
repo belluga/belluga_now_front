@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -7,11 +8,14 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_controller_mixin.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:flutter/material.dart';
@@ -23,10 +27,14 @@ enum FavoriteToggleOutcome {
   requiresAuthentication,
 }
 
-class DiscoveryScreenController implements Disposable {
+class DiscoveryScreenController extends Object
+    with PublicDiscoveryFilterControllerMixin
+    implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
     AuthRepositoryContract? authRepository,
+    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
+    AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
   })  : _accountProfilesRepository = accountProfilesRepository ??
@@ -35,16 +43,36 @@ class DiscoveryScreenController implements Disposable {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _discoveryFiltersRepository = discoveryFiltersRepository ??
+            (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
+                ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
+                : null),
+        _appDataRepository = appDataRepository ??
+            (GetIt.I.isRegistered<AppDataRepositoryContract>()
+                ? GetIt.I.get<AppDataRepositoryContract>()
+                : null),
         _scheduleRepository = scheduleRepository,
         _locationOriginService = locationOriginService ??
             GetIt.I.get<LocationOriginServiceContract>();
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
+  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
+  final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
   final LocationOriginServiceContract _locationOriginService;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
+  static const String _discoveryAccountProfilesSurface =
+      'discovery.account_profiles';
+  static const DiscoveryFilterPolicy _discoveryAccountProfilesFilterPolicy =
+      DiscoveryFilterPolicy(
+    primarySelectionMode: DiscoveryFilterSelectionMode.single,
+    taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+    primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+    taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+  );
+  static const double _filterPanelScrollHideEpsilon = 0.5;
 
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteIdsSubscription;
@@ -65,6 +93,23 @@ class DiscoveryScreenController implements Disposable {
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<String?>();
+  @override
+  final discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
+    defaultValue: const DiscoveryFilterCatalog(
+      surface: _discoveryAccountProfilesSurface,
+    ),
+  );
+  @override
+  final discoveryFilterSelectionStreamValue =
+      StreamValue<DiscoveryFilterSelection>(
+    defaultValue: const DiscoveryFilterSelection(),
+  );
+  @override
+  final isDiscoveryFilterPanelVisibleStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final isDiscoveryFilterCatalogLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final availableTypesStreamValue =
       StreamValue<List<String>>(defaultValue: const []);
   final favoriteIdsStreamValue =
@@ -84,6 +129,30 @@ class DiscoveryScreenController implements Disposable {
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
+
+  @override
+  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
+      _discoveryFiltersRepository;
+
+  @override
+  AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
+      _appDataRepository;
+
+  @override
+  String get publicDiscoveryFilterSurface => _discoveryAccountProfilesSurface;
+
+  @override
+  bool get isPublicDiscoveryFilterDisposed => _isDisposed;
+
+  @override
+  String get publicDiscoveryFilterLogLabel => 'DiscoveryScreenController';
+
+  @override
+  void onPublicDiscoveryFilterSelectionChanged(
+    DiscoveryFilterSelection selection,
+  ) {
+    _scheduleReload(immediate: true);
+  }
 
   Future<void> init() async {
     if (_initialized) {
@@ -118,6 +187,25 @@ class DiscoveryScreenController implements Disposable {
     );
     await _loadFavoriteIds();
     _hydrateFromRepositoryCache();
+    final restoredSelection =
+        await loadPersistedPublicDiscoveryFilterSelection();
+    if (restoredSelection != null &&
+        !samePublicDiscoveryFilterSelection(
+          discoveryFilterSelectionStreamValue.value,
+          restoredSelection,
+        )) {
+      discoveryFilterSelectionStreamValue.addValue(restoredSelection);
+    }
+    final mustAwaitCatalogBeforeResults = restoredSelection?.isEmpty == false ||
+        discoveryFilterSelectionStreamValue.value.isNotEmpty;
+    final catalogFuture = loadPublicDiscoveryFilterCatalog(
+      restoredSelection: restoredSelection,
+    );
+    if (mustAwaitCatalogBeforeResults) {
+      await catalogFuture;
+    } else {
+      unawaited(catalogFuture);
+    }
     await _reloadPartners(showFullScreenLoader: false);
   }
 
@@ -132,13 +220,17 @@ class DiscoveryScreenController implements Disposable {
     if (_scrollListenerAttached) return;
     _scrollListenerAttached = true;
     scrollController.addListener(() {
+      if (!scrollController.hasClients) {
+        return;
+      }
+      updateDiscoveryFilterPanelVisibilityFromScroll(
+        scrollController.position.pixels,
+        epsilon: _filterPanelScrollHideEpsilon,
+      );
       if (_isFetchingPage ||
           isLoadingStreamValue.value ||
           isRefreshingStreamValue.value ||
           !hasMoreStreamValue.value) {
-        return;
-      }
-      if (!scrollController.hasClients) {
         return;
       }
       const threshold = 280.0;
@@ -239,6 +331,8 @@ class DiscoveryScreenController implements Disposable {
     try {
       final query = searchQueryStreamValue.value.trim();
       final selectedType = selectedTypeFilterStreamValue.value;
+      final typeFilters = _selectedAccountProfileTypeFilters();
+      final taxonomyFilters = _selectedAccountProfileTaxonomyFilters();
       final shouldLoadFirstPage = isInitial ||
           _accountProfilesRepository.currentPagedAccountProfilesPage.value <= 0;
       if (shouldLoadFirstPage) {
@@ -251,6 +345,8 @@ class DiscoveryScreenController implements Disposable {
               : AccountProfilesRepositoryContractPrimString.fromRaw(
                   selectedType,
                 ),
+          typeFilters: typeFilters,
+          taxonomyFilters: taxonomyFilters,
         );
       } else {
         await _accountProfilesRepository.loadNextAccountProfilesPage(
@@ -262,6 +358,8 @@ class DiscoveryScreenController implements Disposable {
               : AccountProfilesRepositoryContractPrimString.fromRaw(
                   selectedType,
                 ),
+          typeFilters: typeFilters,
+          taxonomyFilters: taxonomyFilters,
         );
       }
 
@@ -285,7 +383,12 @@ class DiscoveryScreenController implements Disposable {
       hasMoreStreamValue.addValue(pageResult.hasMore);
 
       _updateAvailableTypes();
-      if (_shouldSyncNearby(query: query, selectedType: selectedType)) {
+      if (_shouldSyncNearby(
+        query: query,
+        selectedType: selectedType,
+        typeFilters: typeFilters,
+        taxonomyFilters: taxonomyFilters,
+      )) {
         await _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles();
       }
     } finally {
@@ -314,9 +417,16 @@ class DiscoveryScreenController implements Disposable {
     _scheduleReload(immediate: true);
   }
 
+  @override
+  DiscoveryFilterPolicy get discoveryFilterPolicy =>
+      _discoveryAccountProfilesFilterPolicy;
+
   bool get hasActiveFilterState {
     final selectedType = selectedTypeFilterStreamValue.value;
     if (selectedType != null && selectedType.isNotEmpty) {
+      return true;
+    }
+    if (discoveryFilterSelectionStreamValue.value.isNotEmpty) {
       return true;
     }
     return searchQueryStreamValue.value.trim().isNotEmpty;
@@ -340,6 +450,13 @@ class DiscoveryScreenController implements Disposable {
       changed = true;
     }
 
+    if (discoveryFilterSelectionStreamValue.value.isNotEmpty) {
+      const emptySelection = DiscoveryFilterSelection();
+      discoveryFilterSelectionStreamValue.addValue(emptySelection);
+      unawaited(persistPublicDiscoveryFilterSelection(emptySelection));
+      changed = true;
+    }
+
     if (searchQueryStreamValue.value.isNotEmpty) {
       searchQueryStreamValue.addValue('');
       changed = true;
@@ -351,6 +468,9 @@ class DiscoveryScreenController implements Disposable {
 
     if (isSearchingStreamValue.value) {
       isSearchingStreamValue.addValue(false);
+    }
+    if (isDiscoveryFilterPanelVisibleStreamValue.value) {
+      isDiscoveryFilterPanelVisibleStreamValue.addValue(false);
     }
 
     if (changed) {
@@ -387,6 +507,9 @@ class DiscoveryScreenController implements Disposable {
     if (next) {
       if (selectedTypeFilterStreamValue.value != null) {
         setTypeFilter(null);
+      }
+      if (discoveryFilterSelectionStreamValue.value.isNotEmpty) {
+        setDiscoveryFilterSelection(const DiscoveryFilterSelection());
       }
       return;
     }
@@ -514,8 +637,53 @@ class DiscoveryScreenController implements Disposable {
   bool _shouldSyncNearby({
     required String query,
     required String? selectedType,
+    required List<AccountProfilesRepositoryContractPrimString> typeFilters,
+    required List<AccountProfilesRepositoryTaxonomyFilter> taxonomyFilters,
   }) {
-    return query.isEmpty && (selectedType == null || selectedType.isEmpty);
+    return query.isEmpty &&
+        (selectedType == null || selectedType.isEmpty) &&
+        discoveryFilterSelectionStreamValue.value.isEmpty &&
+        typeFilters.isEmpty &&
+        taxonomyFilters.isEmpty;
+  }
+
+  List<AccountProfilesRepositoryContractPrimString>
+      _selectedAccountProfileTypeFilters() {
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: selection,
+    );
+    final values = <String>{
+      ...payload.typesForEntity('account_profile'),
+    };
+
+    return values
+        .map(
+          (value) => AccountProfilesRepositoryContractPrimString.fromRaw(
+            value,
+            defaultValue: value,
+          ),
+        )
+        .where((value) => value.value.trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
+  List<AccountProfilesRepositoryTaxonomyFilter>
+      _selectedAccountProfileTaxonomyFilters() {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: discoveryFilterSelectionStreamValue.value,
+    );
+    return payload.taxonomyEntries
+        .map(
+          (entry) => AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+            type: entry.type,
+            value: entry.value,
+          ),
+        )
+        .where((entry) => entry.isValid)
+        .toList(growable: false);
   }
 
   void _updateAvailableTypes() {
@@ -564,8 +732,8 @@ class DiscoveryScreenController implements Disposable {
   }
 
   double? _resolveDiscoveryMaxDistanceMeters() {
-    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
-      final repository = GetIt.I.get<AppDataRepositoryContract>();
+    final repository = _appDataRepository;
+    if (repository != null) {
       final preferred = repository.maxRadiusMetersStreamValue.value;
       if (preferred.value > 0) {
         return preferred.value;
@@ -630,6 +798,10 @@ class DiscoveryScreenController implements Disposable {
     _lastKnownLocationSubscription?.cancel();
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
+    discoveryFilterCatalogStreamValue.dispose();
+    discoveryFilterSelectionStreamValue.dispose();
+    isDiscoveryFilterPanelVisibleStreamValue.dispose();
+    isDiscoveryFilterCatalogLoadingStreamValue.dispose();
     availableTypesStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
     isRefreshingStreamValue.dispose();

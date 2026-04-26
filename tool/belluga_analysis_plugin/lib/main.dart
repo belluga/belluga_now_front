@@ -15,6 +15,7 @@ import 'package:belluga_analysis_plugin/src/rules/domain_json_factory_forbidden_
 import 'package:belluga_analysis_plugin/src/rules/domain_paged_result_type_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/domain_primitive_field_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/dto_mapper_pass_through_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/flutter_sentry_unreported_debug_print_catch_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/global_ui_controller_naming_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/location_origin_canonical_resolution_required_rule.dart';
@@ -154,6 +155,9 @@ class BellugaAnalysisPlugin extends Plugin {
     );
     registry.registerWarningRule(
       LocationOriginCanonicalResolutionRequiredRule(),
+    );
+    registry.registerWarningRule(
+      FlutterSentryUnreportedDebugPrintCatchForbiddenRule(),
     );
   }
 }

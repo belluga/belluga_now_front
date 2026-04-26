@@ -114,10 +114,46 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     final params = options!.queryParameters;
+    expect(
+      params.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     expect(params['search'], 'Sola');
     expect(params.containsKey('origin_lat'), isFalse);
     expect(params.containsKey('origin_lng'), isFalse);
     expect(params.containsKey('max_distance_meters'), isFalse);
+  });
+
+  test('fetchEventsPage serializes category and taxonomy query filters',
+      () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+      categories: const ['show'],
+      taxonomy: const [
+        {'type': 'music_styles', 'value': 'rock'},
+      ],
+    );
+
+    final params = adapter.lastOptions?.queryParameters;
+    expect(params?['categories'], const ['show']);
+    expect(params?['taxonomy[0][type]'], 'music_styles');
+    expect(params?['taxonomy[0][value]'], 'rock');
   });
 
   test('fetchEventsPage bootstraps auth when token is empty', () async {
@@ -145,6 +181,11 @@ void main() {
     );
 
     expect(authRepository.initCallCount, 1);
+    expect(
+      adapter.lastOptions?.queryParameters.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
   });
@@ -173,6 +214,11 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     expect(options!.queryParameters['live_now_only'], 1);
+    expect(
+      options.queryParameters.containsKey('page_size'),
+      isFalse,
+      reason: 'Public agenda transport must rely on the API default page size.',
+    );
     expect(options.queryParameters.containsKey('past_only'), isFalse);
   });
 }
@@ -289,8 +335,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 AppData _buildAppData() {

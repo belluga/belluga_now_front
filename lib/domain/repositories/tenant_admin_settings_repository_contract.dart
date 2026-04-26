@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
@@ -35,6 +36,20 @@ abstract class TenantAdminSettingsRepositoryContract {
   Future<TenantAdminMapUiSettings> updateMapUiSettings({
     required TenantAdminMapUiSettings settings,
   });
+
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() {
+    return Future<TenantAdminDiscoveryFiltersSettingsValue>.value(
+      TenantAdminDiscoveryFiltersSettingsValue(),
+    );
+  }
+
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      updateDiscoveryFiltersSettings({
+    required TenantAdminDiscoveryFiltersSettingsValue settings,
+  }) {
+    return Future<TenantAdminDiscoveryFiltersSettingsValue>.value(settings);
+  }
 
   Future<TenantAdminAppLinksSettings> fetchAppLinksSettings();
 

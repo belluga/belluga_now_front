@@ -2,6 +2,7 @@
 
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/platform_type.dart';
@@ -42,6 +43,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:push_handler/push_handler.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
@@ -67,6 +69,7 @@ void main() {
   });
 
   tearDown(() async {
+    SentryErrorReporter.resetForTesting();
     await GetIt.I.reset();
   });
 
@@ -151,6 +154,41 @@ void main() {
     expect(capture.factoryCalled, isFalse);
     expect(capture.initCalled, isFalse);
   });
+
+  test('ApplicationContract reports recoverable push init failures to Sentry',
+      () async {
+    final sentryCaptures = <_SentryCapture>[];
+    SentryErrorReporter.overrideCaptureExceptionForTesting(
+      (throwable, {stackTrace, hint, message, withScope}) async {
+        sentryCaptures.add(
+          _SentryCapture(
+            throwable: throwable,
+            stackTrace: stackTrace,
+            withScope: withScope,
+          ),
+        );
+        return SentryId.empty();
+      },
+    );
+    final authRepository =
+        _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
+    GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+    final app = _TestApplication();
+    GetIt.I.registerSingleton<ApplicationContract>(app);
+
+    final capture = _RepositoryCapture(throwOnInit: true);
+    await app.initializePushHandlerForTesting(
+      isWebOverride: false,
+      repositoryFactory: capture.factory,
+    );
+
+    expect(capture.factoryCalled, isTrue);
+    expect(capture.initCalled, isTrue);
+    expect(sentryCaptures, hasLength(1));
+    expect(sentryCaptures.single.throwable, isA<StateError>());
+    expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
+  });
 }
 
 class _TestApplication extends ApplicationContract {
@@ -161,6 +199,9 @@ class _TestApplication extends ApplicationContract {
 }
 
 class _RepositoryCapture {
+  _RepositoryCapture({this.throwOnInit = false});
+
+  final bool throwOnInit;
   bool factoryCalled = false;
   bool initCalled = false;
   PushTransportConfig? transportConfig;
@@ -198,9 +239,26 @@ class _RepositoryCapture {
       stepValidator: stepValidator,
       onCustomAction: onCustomAction,
       onPushEvent: onPushEvent,
-      onInit: () => initCalled = true,
+      onInit: () {
+        initCalled = true;
+        if (throwOnInit) {
+          throw StateError('push init failed');
+        }
+      },
     );
   }
+}
+
+class _SentryCapture {
+  _SentryCapture({
+    required this.throwable,
+    required this.stackTrace,
+    required this.withScope,
+  });
+
+  final dynamic throwable;
+  final dynamic stackTrace;
+  final ScopeCallback? withScope;
 }
 
 class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
@@ -375,9 +433,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       throw UnimplementedError();
 
   @override
-  Future<void> updateUser(
-          UserCustomData data) =>
-      throw UnimplementedError();
+  Future<void> updateUser(UserCustomData data) => throw UnimplementedError();
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
@@ -469,6 +525,8 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
@@ -480,6 +538,8 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) =>
       throw UnimplementedError();
 }
@@ -551,7 +611,10 @@ class _NoopVenueEventBackend extends VenueEventBackendContract {
 
 class _NoopScheduleBackend extends ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) =>
       throw UnimplementedError();
 
   @override

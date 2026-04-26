@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
@@ -44,6 +46,9 @@ class _TenantAdminStaticProfileTypeFormScreenState
     super.initState();
     _controller.initForm(widget.definition);
     _controller.loadTaxonomies();
+    if (_isEdit) {
+      unawaited(_controller.hydrateFormDefinition(widget.definition!.type));
+    }
     if (!_isEdit) {
       _controller.labelController.addListener(_syncSlugFromLabel);
       _syncSlugFromLabel();
@@ -456,18 +461,39 @@ class _TenantAdminStaticProfileTypeFormScreenState
                       spacing: 8,
                       runSpacing: 8,
                       children: taxonomies
-                          .map(
-                            (taxonomy) => FilterChip(
-                              label: Text(taxonomy.name),
-                              selected: selected.contains(taxonomy.slug),
-                              onSelected: (enabled) {
-                                _controller.toggleTaxonomySelection(
-                                  taxonomy.slug,
-                                  enabled,
-                                );
-                              },
-                            ),
-                          )
+                          .map((taxonomy) {
+                            final label = taxonomy.name;
+                            final isSelected =
+                                selected.contains(taxonomy.slug);
+                            return Semantics(
+                              key: ValueKey<String>(
+                                'tenantAdminStaticProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                              ),
+                              container: true,
+                              label: label,
+                              button: true,
+                              focusable: true,
+                              toggled: isSelected,
+                              selected: isSelected,
+                              onTap: () => _controller
+                                  .toggleTaxonomySelection(
+                                    taxonomy.slug,
+                                    !isSelected,
+                                  ),
+                              child: ExcludeSemantics(
+                                child: FilterChip(
+                                  label: Text(label),
+                                  selected: isSelected,
+                                  onSelected: (enabled) {
+                                    _controller.toggleTaxonomySelection(
+                                      taxonomy.slug,
+                                      enabled,
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          })
                           .toList(growable: false),
                     ),
                 ],

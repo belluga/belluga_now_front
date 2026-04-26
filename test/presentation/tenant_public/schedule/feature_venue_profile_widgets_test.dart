@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_val
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import '../../../support/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
@@ -59,7 +58,7 @@ void main() {
       dateTimeStart: DateTime.now().toIso8601String(),
       dateTimeEnd:
           DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
-      artists: <EventArtistDTO>[],
+      linkedAccountProfiles: const [],
       tags: const [],
     );
     final event = dto.toDomain();
@@ -75,8 +74,8 @@ void main() {
 
   testWidgets('Venue card shows profile button', (tester) async {
     final venue = PartnerResume(
-      idValue:
-          MongoIDValue()..parse(MockScheduleBackend.generateMongoId('test-venue')),
+      idValue: MongoIDValue()
+        ..parse(MockScheduleBackend.generateMongoId('test-venue')),
       nameValue: InvitePartnerNameValue()..parse('Test Venue'),
       slugValue: SlugValue()..parse('test-venue'),
       type: InviteAccountProfileType.mercadoProducer,

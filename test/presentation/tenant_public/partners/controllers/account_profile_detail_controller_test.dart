@@ -70,7 +70,7 @@ void main() {
     final events = agendaData! as List<PartnerEventView>;
     expect(events, hasLength(2));
     expect(events.first.slug, 'jazz-na-orla');
-    expect(events.first.primaryArtist?.title, 'Marco Aurélio');
+    expect(events.first.primaryCounterpart?.title, 'Marco Aurélio');
     expect(events.first.uniqueId, isNot(equals(events.last.uniqueId)));
   });
 
@@ -168,6 +168,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     return pagedAccountProfilesResultFromRaw(
       profiles: _profiles,
@@ -190,6 +192,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async =>
       _profiles;
 
@@ -320,7 +324,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       const <SentInviteStatus>[];
 
   @override
-  Future<List<InviteContactMatch>> importContacts(InviteContacts contacts) async =>
+  Future<List<InviteContactMatch>> importContacts(
+          InviteContacts contacts) async =>
       const <InviteContactMatch>[];
 
   @override

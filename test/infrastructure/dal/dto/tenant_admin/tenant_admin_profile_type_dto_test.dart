@@ -9,10 +9,7 @@ void main() {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'restaurant',
         'label': 'Restaurant',
-        'labels': {
-          'singular': 'Restaurant',
-          'plural': 'Restaurants',
-        },
+        'labels': {'singular': 'Restaurant', 'plural': 'Restaurants'},
         'allowed_taxonomies': const ['cuisine'],
         'visual': {
           'mode': 'icon',
@@ -20,10 +17,7 @@ void main() {
           'color': '#EB2528',
           'icon_color': '#FFFFFF',
         },
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': true,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
       });
 
       final definition = dto.toDomain();
@@ -41,12 +35,8 @@ void main() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': const [],
-        'poi_visual': {
-          'image_source': 'avatar',
-        },
-        'capabilities': {
-          'has_avatar': true,
-        },
+        'poi_visual': {'image_source': 'avatar'},
+        'capabilities': {'has_avatar': true},
       });
 
       final definition = dto.toDomain();
@@ -63,14 +53,8 @@ void main() {
         'type': 'beach',
         'label': 'Beach',
         'allowed_taxonomies': const ['region'],
-        'visual': {
-          'mode': 'image',
-          'image_source': 'cover',
-        },
-        'capabilities': {
-          'is_poi_enabled': true,
-          'has_cover': true,
-        },
+        'visual': {'mode': 'image', 'image_source': 'cover'},
+        'capabilities': {'is_poi_enabled': true, 'has_cover': true},
       });
 
       final definition = dto.toDomain();
@@ -82,8 +66,7 @@ void main() {
       );
     });
 
-    test('parses canonical type_asset image payload for account profile types',
-        () {
+    test('parses canonical type_asset image payload for account profile types', () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'restaurant',
         'label': 'Restaurant',
@@ -96,9 +79,7 @@ void main() {
         },
         'type_asset_url':
             'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
-        'capabilities': {
-          'is_poi_enabled': true,
-        },
+        'capabilities': {'is_poi_enabled': true},
       });
 
       final definition = dto.toDomain();
@@ -111,6 +92,36 @@ void main() {
       expect(
         definition.visual?.imageUrl,
         'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
+      );
+    });
+
+    test('normalizes reference location capability behind poi capability', () {
+      final disabledDto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'hotel',
+        'label': 'Hotel',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_poi_enabled': false,
+          'is_reference_location_enabled': true,
+        },
+      });
+      final enabledDto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'hotel',
+        'label': 'Hotel',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_poi_enabled': true,
+          'is_reference_location_enabled': true,
+        },
+      });
+
+      expect(
+        disabledDto.toDomain().capabilities.isReferenceLocationEnabled,
+        isFalse,
+      );
+      expect(
+        enabledDto.toDomain().capabilities.isReferenceLocationEnabled,
+        isTrue,
       );
     });
   });
