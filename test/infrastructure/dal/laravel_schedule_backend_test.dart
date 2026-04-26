@@ -86,6 +86,37 @@ void main() {
     expect(uri.queryParameters.containsKey('max_distance_meters'), isFalse);
   });
 
+  test('fetchEventsPage omits page_size by default for public agenda batches',
+      () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 2,
+      showPastOnly: false,
+      originLat: -20.0,
+      originLng: -40.0,
+      maxDistanceMeters: 50000,
+    );
+
+    final params = adapter.lastOptions?.queryParameters;
+    expect(params?['page'], 2);
+    expect(params?.containsKey('page_size'), isFalse);
+    expect(params?['origin_lat'], -20.0);
+    expect(params?['origin_lng'], -40.0);
+    expect(params?['max_distance_meters'], 50000);
+  });
+
   test('fetchEventsPage forwards search and omits geo params when searching',
       () async {
     final adapter = _NoopAdapter(
@@ -103,7 +134,6 @@ void main() {
 
     await backend.fetchEventsPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: false,
       searchQuery: 'Sola',
       originLat: -20.0,
@@ -114,11 +144,7 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     final params = options!.queryParameters;
-    expect(
-      params.containsKey('page_size'),
-      isFalse,
-      reason: 'Public agenda transport must rely on the API default page size.',
-    );
+    expect(params.containsKey('page_size'), isFalse);
     expect(params['search'], 'Sola');
     expect(params.containsKey('origin_lat'), isFalse);
     expect(params.containsKey('origin_lng'), isFalse);
@@ -142,7 +168,6 @@ void main() {
 
     await backend.fetchEventsPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: false,
       categories: const ['show'],
       taxonomy: const [
@@ -176,7 +201,6 @@ void main() {
 
     await backend.fetchEventsPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: false,
     );
 
@@ -184,7 +208,6 @@ void main() {
     expect(
       adapter.lastOptions?.queryParameters.containsKey('page_size'),
       isFalse,
-      reason: 'Public agenda transport must rely on the API default page size.',
     );
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
@@ -206,7 +229,6 @@ void main() {
 
     await backend.fetchEventsPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: false,
       liveNowOnly: true,
     );
@@ -214,11 +236,7 @@ void main() {
     final options = adapter.lastOptions;
     expect(options, isNotNull);
     expect(options!.queryParameters['live_now_only'], 1);
-    expect(
-      options.queryParameters.containsKey('page_size'),
-      isFalse,
-      reason: 'Public agenda transport must rely on the API default page size.',
-    );
+    expect(options.queryParameters.containsKey('page_size'), isFalse);
     expect(options.queryParameters.containsKey('past_only'), isFalse);
   });
 }

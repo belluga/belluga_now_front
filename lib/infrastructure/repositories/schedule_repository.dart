@@ -14,10 +14,6 @@ import 'package:stream_value/core/stream_value.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract {
   static const double _homeAgendaCacheReuseMaxOriginJumpMeters = 1000.0;
-  static const int _homeAgendaPageSize = 25;
-  static const int _eventSearchPageSize = 25;
-  static const int _discoveryLiveNowPageSize = 10;
-  static const int _confirmedEventsPageSize = 10;
   static const int _maxConfirmedEventsPages = 30;
 
   ScheduleRepository({
@@ -227,7 +223,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   Future<_SchedulePageSlice> _fetchEventsPageSlice({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
@@ -281,7 +277,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }) async {
     final firstSlice = await _fetchEventsPageSlice(
       page: 1,
-      pageSize: _homeAgendaPageSize,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -336,7 +331,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
     final nextSlice = await _fetchEventsPageSlice(
       page: current.nextPage,
-      pageSize: _homeAgendaPageSize,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -414,7 +408,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     );
     final firstSlice = await _fetchEventsPageSlice(
       page: 1,
-      pageSize: _eventSearchPageSize,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -453,7 +446,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
     final nextSlice = await _fetchEventsPageSlice(
       page: state.nextPage,
-      pageSize: _eventSearchPageSize,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -479,7 +471,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     while (hasMore && currentPage <= _maxConfirmedEventsPages) {
       final pageSlice = await _fetchEventsPageSlice(
         page: currentPage,
-        pageSize: _confirmedEventsPageSize,
         showPastOnly: showPastOnly,
         confirmedOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
       );
@@ -499,7 +490,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }) async {
     final liveNowSlice = await _fetchEventsPageSlice(
       page: 1,
-      pageSize: _discoveryLiveNowPageSize,
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
       liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
       originLat: originLat,

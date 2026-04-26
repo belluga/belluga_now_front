@@ -78,7 +78,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -94,8 +94,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       'page': page,
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
-    // Public agenda pagination defaults are API-owned. The client only drives
-    // the page cursor and filter semantics so transport does not pin page size.
+    if (pageSize != null) {
+      params['page_size'] = pageSize;
+    }
     if (liveNowOnly) {
       params['live_now_only'] = 1;
     } else {
