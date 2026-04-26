@@ -10,11 +10,13 @@ class ImmersiveHero extends StatelessWidget {
   const ImmersiveHero({
     required this.event,
     required this.fallbackImageUri,
+    this.onCounterpartTap,
     super.key,
   });
 
   final EventModel event;
   final Uri fallbackImageUri;
+  final ValueChanged<EventLinkedAccountProfile>? onCounterpartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +82,9 @@ class ImmersiveHero extends StatelessWidget {
               ),
               if (counterparts.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: counterparts
-                      .map((profile) => _CounterpartChip(profile: profile))
-                      .toList(growable: false),
+                _CounterpartStrip(
+                  profiles: counterparts,
+                  onCounterpartTap: onCounterpartTap,
                 ),
               ],
               const SizedBox(height: 12),
@@ -181,37 +180,150 @@ class ImmersiveHero extends StatelessWidget {
   }
 }
 
+class _CounterpartStrip extends StatelessWidget {
+  const _CounterpartStrip({
+    required this.profiles,
+    required this.onCounterpartTap,
+  });
+
+  static const int _compactThreshold = 3;
+
+  final List<EventLinkedAccountProfile> profiles;
+  final ValueChanged<EventLinkedAccountProfile>? onCounterpartTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = profiles.length > _compactThreshold;
+    final visibleProfiles = compact
+        ? profiles.take(1).toList(growable: false)
+        : profiles.toList(growable: false);
+    final hiddenCount = profiles.length - visibleProfiles.length;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ...visibleProfiles.map(
+          (profile) => _CounterpartChip(
+            profile: profile,
+            onTap: onCounterpartTap == null
+                ? null
+                : () => onCounterpartTap!(profile),
+          ),
+        ),
+        if (compact)
+          _MoreCounterpartChip(
+            hiddenCount: hiddenCount,
+            onTap: onCounterpartTap == null
+                ? null
+                : () => onCounterpartTap!(profiles.first),
+          ),
+      ],
+    );
+  }
+}
+
 class _CounterpartChip extends StatelessWidget {
-  const _CounterpartChip({required this.profile});
+  const _CounterpartChip({
+    required this.profile,
+    required this.onTap,
+  });
 
   final EventLinkedAccountProfile profile;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final avatarUrl = profile.avatarUrl?.trim();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final maxChipWidth = (MediaQuery.sizeOf(context).width - 32)
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    final chip = Container(
+      key: Key('eventHeroCounterpartChip_${profile.id}'),
+      constraints: BoxConstraints(maxWidth: maxChipWidth),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _CounterpartAvatar(avatarUrl: avatarUrl),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                profile.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (onTap == null) {
+      return chip;
+    }
+
+    return Semantics(
+      button: true,
+      label: profile.displayName,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: chip,
+      ),
+    );
+  }
+}
+
+class _MoreCounterpartChip extends StatelessWidget {
+  const _MoreCounterpartChip({
+    required this.hiddenCount,
+    required this.onTap,
+  });
+
+  final int hiddenCount;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = Container(
+      key: const Key('eventHeroMoreProfilesChip'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _CounterpartAvatar(avatarUrl: avatarUrl),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              profile.displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
+      child: Text(
+        'e mais $hiddenCount',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
             ),
-          ),
-        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return chip;
+    }
+
+    return Semantics(
+      button: true,
+      label: 'e mais $hiddenCount',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: chip,
       ),
     );
   }

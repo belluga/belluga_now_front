@@ -2815,7 +2815,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     lastTaxonomy = _taxonomyLabels(taxonomy);
     final events = await _fetchPage(
       page: 1,
-      pageSize: 25,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -2825,7 +2824,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     writeHomeAgendaCache(
       events: events,
-      hasMore: events.length >= 25,
+      hasMore: false,
       nextPage: 2,
       showPastOnly: showPastOnly.value,
       searchQuery: searchQuery.value,
@@ -2864,7 +2863,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     final nextPage = current?.nextPage ?? 1;
     final events = await _fetchPage(
       page: nextPage,
-      pageSize: 25,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
@@ -2878,7 +2876,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ];
     writeHomeAgendaCache(
       events: nextEvents,
-      hasMore: events.length >= 25,
+      hasMore: false,
       nextPage: nextPage + 1,
       showPastOnly: showPastOnly.value,
       searchQuery: searchQuery.value,
@@ -2899,7 +2897,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -2953,7 +2950,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }) async =>
       _fetchPage(
         page: 1,
-        pageSize: 25,
         showPastOnly: showPastOnly,
         searchQuery: searchQuery,
         confirmedOnly: confirmedOnly,
@@ -2987,7 +2983,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }) async {
     final events = await _fetchPage(
       page: 1,
-      pageSize: 10,
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
       liveNowOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
       originLat: originLat,
@@ -3072,7 +3067,6 @@ class _FailingScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -3091,7 +3085,6 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -3117,7 +3110,6 @@ class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -3143,7 +3135,6 @@ class _FailAfterDisposeScheduleRepository extends _FakeScheduleRepository {
   @override
   Future<List<EventModel>> _fetchPage({
     required int page,
-    required int pageSize,
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
@@ -3169,7 +3160,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3257,7 +3248,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3364,7 +3355,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3443,7 +3434,7 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3489,7 +3480,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3593,7 +3584,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -3680,7 +3671,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,

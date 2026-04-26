@@ -222,10 +222,20 @@ class _ImmersiveEventDetailScreenState
                             colorScheme: colorScheme,
                           ),
                           child: ImmersiveDetailScreen(
-                            heroContent: ImmersiveHero(
+                            heroContentBuilder: (context, activateTab) =>
+                                ImmersiveHero(
                               event: resolvedEvent,
                               fallbackImageUri:
                                   _controller.defaultEventImageUri,
+                              onCounterpartTap: (profile) {
+                                final targetIndex = _linkedProfileTabIndex(
+                                  resolvedEvent,
+                                  profile.profileType,
+                                );
+                                if (targetIndex != null) {
+                                  activateTab(targetIndex);
+                                }
+                              },
                             ),
                             title: resolvedEvent.title.value,
                             betweenHeroAndTabs: topBanner,
@@ -281,35 +291,12 @@ class _ImmersiveEventDetailScreenState
     required EventModel event,
     required Set<String> favoriteAccountProfileIds,
   }) {
-    final venueId = event.venue?.id;
-    final groupedProfiles = <String, List<EventLinkedAccountProfile>>{};
-    final orderedTypes = <String>[];
+    final groupedProfiles = _groupLinkedProfilesByType(event);
 
-    for (final profile in event.linkedAccountProfiles) {
-      if (profile.id == venueId) {
-        continue;
-      }
-
-      final type = profile.profileType.trim();
-      if (type.isEmpty) {
-        continue;
-      }
-
-      if (!groupedProfiles.containsKey(type)) {
-        groupedProfiles[type] = <EventLinkedAccountProfile>[];
-        orderedTypes.add(type);
-      }
-
-      final bucket = groupedProfiles[type]!;
-      if (bucket.any((existing) => existing.id == profile.id)) {
-        continue;
-      }
-      bucket.add(profile);
-    }
-
-    return orderedTypes
-        .map((type) {
-          final profiles = groupedProfiles[type] ?? const [];
+    return groupedProfiles.entries
+        .map((entry) {
+          final type = entry.key;
+          final profiles = entry.value;
           if (profiles.isEmpty) {
             return null;
           }
@@ -336,6 +323,58 @@ class _ImmersiveEventDetailScreenState
         })
         .whereType<ImmersiveTabItem>()
         .toList(growable: false);
+  }
+
+  Map<String, List<EventLinkedAccountProfile>> _groupLinkedProfilesByType(
+    EventModel event,
+  ) {
+    final venueId = event.venue?.id;
+    final groupedProfiles = <String, List<EventLinkedAccountProfile>>{};
+
+    for (final profile in event.linkedAccountProfiles) {
+      if (profile.id == venueId) {
+        continue;
+      }
+
+      final type = profile.profileType.trim();
+      if (type.isEmpty) {
+        continue;
+      }
+
+      final bucket = groupedProfiles.putIfAbsent(
+        type,
+        () => <EventLinkedAccountProfile>[],
+      );
+      if (bucket.any((existing) => existing.id == profile.id)) {
+        continue;
+      }
+      bucket.add(profile);
+    }
+
+    return groupedProfiles;
+  }
+
+  int? _linkedProfileTabIndex(EventModel event, String profileType) {
+    final type = profileType.trim();
+    if (type.isEmpty) {
+      return null;
+    }
+
+    final dynamicTypes = _groupLinkedProfilesByType(event).keys.toList();
+    final typeOffset = dynamicTypes.indexOf(type);
+    if (typeOffset < 0) {
+      return null;
+    }
+
+    var firstDynamicTabIndex = 0;
+    if (_hasAboutContent(event)) {
+      firstDynamicTabIndex += 1;
+    }
+    if (event.hasAnyProgrammingItems) {
+      firstDynamicTabIndex += 1;
+    }
+
+    return firstDynamicTabIndex + typeOffset;
   }
 
   String _humanizeTypeKey(String raw) {

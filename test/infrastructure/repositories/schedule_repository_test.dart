@@ -91,6 +91,12 @@ void main() {
       '507f1f77bcf86cd799439091',
       '507f1f77bcf86cd799439093',
     ]);
+    expect(backend.requests.map((request) => request.page), [1, 2]);
+    expect(
+      backend.requests.map((request) => request.pageSize),
+      [null, null],
+      reason: 'Home agenda follows backend default batch size.',
+    );
     expect(
         repository
             .readHomeAgenda(
@@ -334,7 +340,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
-    required int pageSize,
+    int? pageSize,
     required bool showPastOnly,
     bool liveNowOnly = false,
     String? searchQuery,
@@ -350,6 +356,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     requests.add(
       _AgendaRequestSample(
         page: page,
+        pageSize: pageSize,
         liveNowOnly: liveNowOnly,
         originLat: originLat,
         originLng: originLng,
@@ -393,6 +400,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
+    required this.pageSize,
     required this.liveNowOnly,
     required this.originLat,
     required this.originLng,
@@ -401,6 +409,7 @@ class _AgendaRequestSample {
   });
 
   final int page;
+  final int? pageSize;
   final bool liveNowOnly;
   final double? originLat;
   final double? originLng;
