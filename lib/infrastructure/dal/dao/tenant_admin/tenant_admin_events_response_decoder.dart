@@ -336,6 +336,7 @@ class TenantAdminEventsResponseDecoder {
     final ownProfileIds = ownParties.isNotEmpty
         ? _mapPartyProfileIds(ownParties)
         : ownProfiles
+            .where((profile) => profile.profileType.trim() != 'venue')
             .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
             .toList(growable: false);
 

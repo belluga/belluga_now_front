@@ -393,4 +393,54 @@ void main() {
     expect(occurrence.programmingItems.first.placeRef?.type, 'account_profile');
     expect(occurrence.programmingItems.first.placeRef?.id, 'venue-1');
   });
+
+  test('excludes venue profile ids when occurrence own parties are missing',
+      () {
+    final event = decoder.decodeEventItem({
+      'data': {
+        'event_id': 'evt-occurrence-legacy-linked',
+        'slug': 'evento-occurrence-legacy-linked',
+        'title': 'Evento occurrence legacy linked',
+        'content': 'Conteudo',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+        },
+        'date_time_start': '2026-04-05T20:00:00+00:00',
+        'publication': {'status': 'draft'},
+        'occurrences': [
+          {
+            'occurrence_id': 'occ-1',
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+            'own_linked_account_profiles': [
+              {
+                'id': 'venue-1',
+                'account_id': 'venue-1',
+                'display_name': 'Casa Solar',
+                'profile_type': 'venue',
+              },
+              {
+                'id': 'artist-1',
+                'account_id': 'artist-1',
+                'display_name': 'Coral XYZ',
+                'profile_type': 'artist',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      event.occurrences.single.relatedAccountProfileIds
+          .map((value) => value.value),
+      ['artist-1'],
+    );
+    expect(
+      event.occurrences.single.relatedAccountProfiles
+          .map((profile) => profile.id),
+      ['venue-1', 'artist-1'],
+    );
+  });
 }

@@ -80,6 +80,23 @@ void main() {
     expect(find.text('Tenant Two'), findsOneWidget);
     expect(find.text('tenant-two.example.com'), findsOneWidget);
     expect(find.text('Entrar'), findsOneWidget);
+    expect(find.text('Foco Hiperlocal'), findsOneWidget);
+    expect(find.text('A Cidade na Palma da Mão'), findsOneWidget);
+    expect(find.text('Descubra!'), findsOneWidget);
+    expect(find.text('Motor Viral'), findsOneWidget);
+    expect(find.text('Não Basta ter Clientes'), findsOneWidget);
+    expect(
+      find.text(
+        'Agenda centralizada por geolocalização. Saiba exatamente o que está acontecendo perto de você agora ou amanhã, sem depender de algoritmos.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'O usuário tem papel ativo convidando amigos e promovendo os eventos, artistas e locais que prefere. Planos pagos (SaaS) permitem que o Trade também envie convites a quem os segue na plataforma.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows admin CTA when landlord session and mode are active',
