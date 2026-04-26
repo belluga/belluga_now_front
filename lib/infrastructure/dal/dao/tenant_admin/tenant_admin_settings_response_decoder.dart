@@ -1,9 +1,11 @@
+import 'package:belluga_now/application/tenant_admin/settings/tenant_admin_discovery_filters_settings_canonicalizer.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -34,6 +36,32 @@ class TenantAdminSettingsResponseDecoder {
     return _mapMapUiSettings(
       mapUi,
       tenantOrigin: tenantOrigin,
+    );
+  }
+
+  TenantAdminDiscoveryFiltersSettingsValue decodeDiscoveryFiltersSettings(
+    Object? rawResponse, {
+    required Uri tenantOrigin,
+  }) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'discovery_filters settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    final discoveryFilters = _extractNamedMap(
+      payload,
+      namespace: 'discovery_filters',
+    );
+    final legacyMapUi = _extractNamedMap(payload, namespace: 'map_ui');
+    return TenantAdminDiscoveryFiltersSettingsValue(
+      TenantAdminDynamicMapValue(
+        Map<String, dynamic>.unmodifiable(
+          const TenantAdminDiscoveryFiltersSettingsCanonicalizer().canonicalize(
+            discoveryFilters: discoveryFilters,
+            legacyMapUi: legacyMapUi,
+          ),
+        ),
+      ),
     );
   }
 
@@ -288,6 +316,29 @@ class TenantAdminSettingsResponseDecoder {
       throw Exception('Unexpected map_ui payload shape.');
     }
     return Map<String, dynamic>.from(payload);
+  }
+
+  Map<String, dynamic> _extractNamedMap(
+    Map<String, dynamic> payload, {
+    required String namespace,
+  }) {
+    final raw = payload[namespace];
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    if (raw == null && payload.containsKey(namespace)) {
+      return const <String, dynamic>{};
+    }
+    if (raw is List && raw.isEmpty) {
+      return const <String, dynamic>{};
+    }
+    if (payload.containsKey(namespace)) {
+      throw Exception('Unexpected $namespace payload shape.');
+    }
+    return payload.containsKey('surfaces') ||
+            payload.keys.any((key) => key.startsWith('surfaces.'))
+        ? Map<String, dynamic>.from(payload)
+        : const <String, dynamic>{};
   }
 
   Map<String, dynamic> _extractAppLinksPayload(Object? raw) {

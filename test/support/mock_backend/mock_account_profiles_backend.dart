@@ -15,6 +15,8 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
@@ -45,6 +47,8 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) async {
     await Future.delayed(const Duration(milliseconds: 50));
     final all = _database.allAccountProfiles;

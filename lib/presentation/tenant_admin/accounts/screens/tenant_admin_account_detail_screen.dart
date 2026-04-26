@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -14,6 +15,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -605,12 +607,9 @@ class _TenantAdminAccountDetailScreenState
                                                                 .isNotEmpty) ...[
                                                           const SizedBox(
                                                               height: 8),
-                                                          _buildRow(
+                                                          _buildRichTextRow(
                                                             'Bio',
-                                                            _stripHtml(
-                                                              profile.bio!
-                                                                  .trim(),
-                                                            ),
+                                                            profile.bio!.trim(),
                                                           ),
                                                         ],
                                                         if (profile.content !=
@@ -620,12 +619,10 @@ class _TenantAdminAccountDetailScreenState
                                                                 .isNotEmpty) ...[
                                                           const SizedBox(
                                                               height: 8),
-                                                          _buildRow(
+                                                          _buildRichTextRow(
                                                             'Conteúdo',
-                                                            _stripHtml(
-                                                              profile.content!
-                                                                  .trim(),
-                                                            ),
+                                                            profile.content!
+                                                                .trim(),
                                                           ),
                                                         ],
                                                         const SizedBox(
@@ -687,6 +684,84 @@ class _TenantAdminAccountDetailScreenState
     );
   }
 
+  Widget _buildRichTextRow(String label, String value) {
+    final html = SafeRichHtml.canonicalize(value);
+    if (html.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(
+          child: SafeRichHtml.looksLikeHtml(value)
+              ? _richHtmlPreview(html)
+              : _plainRichTextPreview(value),
+        ),
+      ],
+    );
+  }
+
+  Widget _richHtmlPreview(String html) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Html(
+      data: html,
+      style: {
+        'body': Style(
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          color: colorScheme.onSurface,
+          fontSize: FontSize(
+            Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14,
+          ),
+          lineHeight: const LineHeight(1.35),
+        ),
+        'p': Style(
+          margin: Margins.only(bottom: 8),
+        ),
+        'strong': Style(
+          fontWeight: FontWeight.w800,
+        ),
+        'br': Style(
+          display: Display.block,
+        ),
+      },
+    );
+  }
+
+  Widget _plainRichTextPreview(String value) {
+    final normalized =
+        value.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    final paragraphs = normalized
+        .split(RegExp(r'\n\s*\n+'))
+        .where((paragraph) => paragraph.trim().isNotEmpty)
+        .toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var paragraphIndex = 0;
+            paragraphIndex < paragraphs.length;
+            paragraphIndex++) ...[
+          if (paragraphIndex > 0) const SizedBox(height: 8),
+          for (final line in paragraphs[paragraphIndex].split('\n'))
+            if (line.trim().isNotEmpty)
+              Text(
+                line.trimRight(),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.35,
+                    ),
+              ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildEditableRow({
     required String label,
     required String value,
@@ -710,13 +785,5 @@ class _TenantAdminAccountDetailScreenState
         ),
       ],
     );
-  }
-
-  String _stripHtml(String value) {
-    return value
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 }

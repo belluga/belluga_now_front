@@ -60,12 +60,16 @@ abstract class AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   });
 
   Future<void> loadAccountProfilesPage({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final effectivePageSize = pageSize ??
         AccountProfilesRepositoryContractPrimInt.fromRaw(
@@ -83,6 +87,8 @@ abstract class AccountProfilesRepositoryContract {
       pageSize: effectivePageSize,
       query: query,
       typeFilter: typeFilter,
+      typeFilters: typeFilters,
+      taxonomyFilters: taxonomyFilters,
     );
   }
 
@@ -90,6 +96,8 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimInt? pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final effectivePageSize = pageSize ??
         AccountProfilesRepositoryContractPrimInt.fromRaw(
@@ -107,6 +115,8 @@ abstract class AccountProfilesRepositoryContract {
       pageSize: effectivePageSize,
       query: query,
       typeFilter: typeFilter,
+      typeFilters: typeFilters,
+      taxonomyFilters: taxonomyFilters,
     );
   }
 
@@ -122,10 +132,14 @@ abstract class AccountProfilesRepositoryContract {
 
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   });
 
   Future<void> syncDiscoveryNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final effectivePageSize = pageSize ??
         AccountProfilesRepositoryContractPrimInt.fromRaw(
@@ -134,6 +148,8 @@ abstract class AccountProfilesRepositoryContract {
         );
     final profiles = await fetchNearbyAccountProfiles(
       pageSize: effectivePageSize,
+      typeFilters: typeFilters,
+      taxonomyFilters: taxonomyFilters,
     );
     discoveryNearbyAccountProfilesStreamValue.addValue(
       _filterDiscoveryMvpProfiles(profiles)
@@ -178,6 +194,8 @@ abstract class AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
     AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     if (_paginationState.isFetching.value) return;
     if (page.value > 1 && !_paginationState.hasMore.value) return;
@@ -201,6 +219,8 @@ abstract class AccountProfilesRepositoryContract {
         pageSize: pageSize,
         query: query,
         typeFilter: typeFilter,
+        typeFilters: typeFilters,
+        taxonomyFilters: taxonomyFilters,
       );
       final accumulatedProfiles = page.value <= 1
           ? List<AccountProfileModel>.from(result.profiles)

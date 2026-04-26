@@ -3,6 +3,10 @@ import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -33,7 +37,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
@@ -69,8 +73,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: HomeAgendaSectionView(
-            controller: harness.homeController,
+          body: HomeAgendaSection(
             builder: (context, slots) {
               return NestedScrollView(
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -151,11 +154,7 @@ void main() {
     final harness = _AgendaFiltersHarness();
     await harness.register(forAgendaScreen: true);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: EventSearchScreen(),
-      ),
-    );
+    await _pumpEventSearchScreen(tester);
 
     await _pumpFor(tester);
     debugPrint('Agenda screen test: widget pumped');
@@ -1003,4 +1002,97 @@ Future<void> _waitForDisplayedHomeEvents(
     }
     await _pumpFor(tester);
   }
+}
+
+Future<void> _pumpEventSearchScreen(WidgetTester tester) async {
+  final router = _RecordingStackRouter();
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      name: EventSearchRoute.name,
+      fullPath: '/agenda',
+      meta: canonicalRouteMeta(
+        family: CanonicalRouteFamily.eventSearch,
+      ),
+    ),
+    router: router,
+    stackKey: const ValueKey('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  await tester.pumpWidget(
+    StackRouterScope(
+      controller: router,
+      stateHash: 0,
+      child: MaterialApp(
+        home: RouteDataScope(
+          routeData: routeData,
+          child: const EventSearchScreen(),
+        ),
+      ),
+    ),
+  );
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/agenda');
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return false;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async => false;
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {}
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.name,
+    required this.fullPath,
+    required this.meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
+  }) : pageRouteInfo = pageRouteInfo ?? EventSearchRoute();
+
+  @override
+  final String name;
+
+  @override
+  final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  @override
+  Parameters get queryParams => const Parameters({});
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }

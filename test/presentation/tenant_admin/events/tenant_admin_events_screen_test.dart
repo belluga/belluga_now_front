@@ -72,6 +72,69 @@ void main() {
     expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
   });
 
+  testWidgets('event card exposes accessible edit action', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _EventsRepositoryWithSeedData(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpEventsRouter(tester);
+
+      final editAction = find.bySemanticsLabel('Editar evento Seed Event');
+      expect(editAction, findsOneWidget);
+
+      await tester.tap(editAction);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
+      'event list materializes one card per occurrence and edits selected date',
+      (tester) async {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _MultiOccurrenceEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpEventsRouter(tester);
+
+    expect(find.text('Multi Occurrence Event'), findsNWidgets(2));
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-past'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-future'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-future'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+        find.textContaining(
+            'EDIT-EVENT-ROUTE:Multi Occurrence Event:occ-future'),
+        findsOneWidget);
+  });
+
   testWidgets(
       'compact layout hides filters behind the bottom sheet and shows active-filter badge',
       (tester) async {
@@ -493,7 +556,9 @@ Future<void> _pumpEventsRouter(
           final args = data.argsAs<TenantAdminEventEditRouteArgs>();
           return Scaffold(
             body: Center(
-              child: Text('EDIT-EVENT-ROUTE:${args.event!.title}'),
+              child: Text(
+                'EDIT-EVENT-ROUTE:${args.event!.title}:${args.event!.occurrences.first.occurrenceId}',
+              ),
             ),
           );
         },
@@ -649,6 +714,65 @@ class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
     ],
     publication: TenantAdminEventPublication(
       statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
+}
+
+class _MultiOccurrenceEventsRepository extends _EventsRepositoryWithSeedData {
+  @override
+  Future<List<TenantAdminEvent>> fetchEvents({
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
+    TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
+  }) async {
+    return <TenantAdminEvent>[_multiEvent];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
+    TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
+  }) async {
+    return tenantAdminPagedResultFromRaw(
+      items: page.value > 1
+          ? <TenantAdminEvent>[]
+          : <TenantAdminEvent>[_multiEvent],
+      hasMore: false,
+    );
+  }
+
+  static final TenantAdminEvent _multiEvent = TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText('evt-multi'),
+    slugValue: tenantAdminRequiredText('multi-occurrence-event'),
+    titleValue: tenantAdminRequiredText('Multi Occurrence Event'),
+    contentValue: tenantAdminOptionalText('Content'),
+    type: TenantAdminEventType(
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+    ),
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('occ-past'),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 10, 20)),
+      ),
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('occ-future'),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20, 20)),
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('published'),
     ),
   );
 }

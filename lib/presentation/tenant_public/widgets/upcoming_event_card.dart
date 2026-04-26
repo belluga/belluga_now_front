@@ -44,11 +44,11 @@ class UpcomingEventCard extends StatelessWidget {
         imageUri: event.imageUri,
         headline: event.title,
         metaLabel: _dateLabelFor(event),
-        counterparts: event.artists
+        counterparts: event.counterpartProfiles
             .map(
-              (artist) => (
-                label: artist.displayName,
-                thumbUrl: artist.avatarUri?.toString(),
+              (counterpart) => (
+                label: counterpart.displayName,
+                thumbUrl: counterpart.avatarUrl ?? counterpart.coverUrl,
                 fallbackIcon: Icons.music_note,
               ),
             )
@@ -279,6 +279,7 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final maxLabelWidth = MediaQuery.sizeOf(context).width * 0.42;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -290,12 +291,17 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
         children: [
           _UpcomingEventCounterpartVisual(counterpart: counterpart),
           const SizedBox(width: 6),
-          Text(
-            counterpart.label,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxLabelWidth),
+            child: Text(
+              counterpart.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
@@ -290,7 +291,7 @@ void main() {
                 'display_name': 'Casa Marracini',
                 'hero_image_url': 'https://example.com/casa.jpg',
               },
-              'artists': [
+              'linked_account_profiles': [
                 {
                   'id': '507f1f77bcf86cd799439099',
                   'display_name': 'Marco Aurélio',
@@ -312,7 +313,7 @@ void main() {
                 'id': '507f1f77bcf86cd799439011',
                 'display_name': 'Casa Marracini',
               },
-              'artists': [
+              'linked_account_profiles': [
                 {
                   'id': '507f1f77bcf86cd799439099',
                   'display_name': 'Marco Aurélio',
@@ -336,10 +337,17 @@ void main() {
     expect(profile, isNotNull);
     expect(profile?.agendaEvents, hasLength(2));
     expect(profile?.agendaEvents.first.eventId, '507f1f77bcf86cd799439021');
-    expect(profile?.agendaEvents.first.occurrenceId, '507f1f77bcf86cd799439121');
+    expect(
+        profile?.agendaEvents.first.occurrenceId, '507f1f77bcf86cd799439121');
     expect(profile?.agendaEvents.last.occurrenceId, '507f1f77bcf86cd799439122');
-    expect(profile?.agendaEvents.first.primaryArtist?.id, '507f1f77bcf86cd799439099');
-    expect(profile?.agendaEvents.first.primaryArtist?.title, 'Marco Aurélio');
+    expect(
+      profile?.agendaEvents.first.primaryCounterpart?.id,
+      '507f1f77bcf86cd799439099',
+    );
+    expect(
+      profile?.agendaEvents.first.primaryCounterpart?.title,
+      'Marco Aurélio',
+    );
     expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
     expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');
     expect(profile?.agendaEvents.first.eventTypeLabel, 'Show');
@@ -383,6 +391,53 @@ void main() {
     expect(adapter.lastRequest?.queryParameters.containsKey('profile_type'),
         isFalse);
     expect(adapter.lastRequest?.queryParameters.containsKey('filter'), isFalse);
+  });
+
+  test('fetchAccountProfilesPage sends canonical type and taxonomy filters',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Filtered Artist',
+            'slug': 'filtered-artist',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+        'current_page': 1,
+        'last_page': 1,
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+      typeFilters: const ['artist', 'venue'],
+      taxonomyFilters: [
+        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+          type: 'genre',
+          value: 'rock',
+        ),
+      ],
+    );
+
+    final queryParameters = adapter.lastRequest?.queryParameters;
+    expect(queryParameters?['profile_type'], const ['artist', 'venue']);
+    expect(queryParameters?['filter'], {
+      'profile_type': const ['artist', 'venue'],
+    });
+    expect(queryParameters?['taxonomy[0][type]'], 'genre');
+    expect(queryParameters?['taxonomy[0][value]'], 'rock');
   });
 
   test('fetchAccountProfiles computes distance using tenant default origin',
@@ -511,6 +566,45 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Nearby Venue');
     expect(profiles.first.distanceMeters, closeTo(240.0, 0.001));
+  });
+
+  test('fetchNearbyAccountProfiles sends canonical type and taxonomy filters',
+      () async {
+    _registerAppData(
+      defaultOriginLat: -20.670000,
+      defaultOriginLng: -40.500000,
+    );
+    final adapter = _RecordingAdapter(
+      response: {
+        'page': 1,
+        'page_size': 5,
+        'has_more': false,
+        'data': const [],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    await backend.fetchNearbyAccountProfiles(
+      pageSize: 5,
+      typeFilters: const ['venue'],
+      taxonomyFilters: [
+        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+          type: 'cuisine',
+          value: 'italian',
+        ),
+      ],
+    );
+
+    final queryParameters = adapter.lastRequest?.queryParameters;
+    expect(queryParameters?['profile_type'], 'venue');
+    expect(queryParameters?['taxonomy[0][type]'], 'cuisine');
+    expect(queryParameters?['taxonomy[0][value]'], 'italian');
   });
 
   test(

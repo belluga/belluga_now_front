@@ -13,10 +13,9 @@ class PartnerProfileConfigBuilder {
   }) {
     if (capabilities != null) {
       final tabs = <ProfileTabConfig>[];
-      final hasAgenda = capabilities.hasEvents || partner.agendaEvents.isNotEmpty;
-      if (capabilities.hasBio &&
-          partner.bio != null &&
-          partner.bio!.trim().isNotEmpty) {
+      final hasAgenda =
+          capabilities.hasEvents || partner.agendaEvents.isNotEmpty;
+      if (_hasCapabilityRichText(partner, capabilities)) {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Sobre'),
@@ -54,9 +53,8 @@ class PartnerProfileConfigBuilder {
 
     switch (partner.type) {
       case 'artist':
-        final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
         final tabs = <ProfileTabConfig>[];
-        if (hasBio) {
+        if (_hasAnyRichText(partner)) {
           tabs.add(
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Sobre'),
@@ -79,9 +77,8 @@ class PartnerProfileConfigBuilder {
           tabs: tabs,
         );
       case 'venue':
-        final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
         final tabs = <ProfileTabConfig>[];
-        if (hasBio) {
+        if (_hasAnyRichText(partner)) {
           tabs.add(
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Sobre'),
@@ -193,5 +190,25 @@ class PartnerProfileConfigBuilder {
           tabs: const [],
         );
     }
+  }
+
+  bool _hasCapabilityRichText(
+    AccountProfileModel partner,
+    ProfileTypeCapabilities capabilities,
+  ) {
+    return (capabilities.hasBio && _hasBio(partner)) ||
+        (capabilities.hasContent && _hasContent(partner));
+  }
+
+  bool _hasAnyRichText(AccountProfileModel partner) {
+    return _hasBio(partner) || _hasContent(partner);
+  }
+
+  bool _hasBio(AccountProfileModel partner) {
+    return partner.bioValue?.value.trim().isNotEmpty ?? false;
+  }
+
+  bool _hasContent(AccountProfileModel partner) {
+    return partner.contentValue?.value.trim().isNotEmpty ?? false;
   }
 }

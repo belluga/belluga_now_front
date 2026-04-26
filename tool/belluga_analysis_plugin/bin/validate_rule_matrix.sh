@@ -44,6 +44,7 @@ plugins:
 YAML
 
 mkdir -p "$fixture_dir/integration_test"
+mkdir -p "$fixture_dir/lib/application/observability"
 mkdir -p "$fixture_dir/lib/infrastructure/repositories"
 mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/routes"
 mkdir -p "$fixture_dir/lib/presentation/tenant_public/home/widgets"
@@ -88,6 +89,65 @@ class RepositoryCatchReturnFallbackCase {
 }
 DART
 temp_files+=("$catch_return_case")
+
+sentry_case="$fixture_dir/lib/application/observability/sentry_unreported_debug_print_case.dart"
+cat > "$sentry_case" <<'DART'
+class SentryUnreportedDebugPrintCase {
+  Future<int> loadSilently() async {
+    try {
+      throw Exception('boom');
+    } catch (error) {
+      // expect_lint: flutter_sentry_unreported_debug_print_catch_forbidden
+      debugPrint('failed: $error');
+      return 0;
+    }
+  }
+
+  Future<int> loadReported() async {
+    try {
+      throw Exception('boom');
+    } catch (error, stackTrace) {
+      SentryErrorReporter.captureRecoverable(
+        origin: 'fixture.reported',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      debugPrint('failed: $error');
+      return 0;
+    }
+  }
+
+  Future<int> loadExpectedControlFlow() async {
+    try {
+      throw Exception('optional platform metadata unavailable');
+    } catch (error) {
+      // expected_control_flow: optional metadata can be absent locally.
+      debugPrint('metadata unavailable: $error');
+      return 0;
+    }
+  }
+
+  Future<int> loadPropagated() async {
+    try {
+      throw Exception('boom');
+    } catch (error) {
+      debugPrint('failed: $error');
+      rethrow;
+    }
+  }
+}
+
+void debugPrint(String message) {}
+
+class SentryErrorReporter {
+  static void captureRecoverable({
+    required String origin,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {}
+}
+DART
+temp_files+=("$sentry_case")
 
 route_case="$fixture_dir/lib/presentation/tenant_public/home/routes/route_required_non_url_args_case.dart"
 cat > "$route_case" <<'DART'
@@ -182,6 +242,16 @@ missing_codes="$(comm -23 "$expected_codes_file" "$found_codes_file" || true)"
 if [[ -n "$missing_codes" ]]; then
   echo "[validate_rule_matrix] missing expected lint codes:"
   echo "$missing_codes"
+  echo "[validate_rule_matrix] analyzer output (first 200 lines):"
+  sed -n '1,200p' "$output_file"
+  exit 1
+fi
+
+sentry_lint_count="$(
+  awk -F'|' 'tolower($3) == "flutter_sentry_unreported_debug_print_catch_forbidden" {count++} END {print count + 0}' "$output_file"
+)"
+if [[ "$sentry_lint_count" -ne 1 ]]; then
+  echo "[validate_rule_matrix] expected exactly one sentry debugPrint catch lint, found: $sentry_lint_count"
   echo "[validate_rule_matrix] analyzer output (first 200 lines):"
   sed -n '1,200p' "$output_file"
   exit 1

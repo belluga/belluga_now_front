@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -59,6 +60,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
     List<String>? allowedTypes,
   }) async {
     try {
@@ -70,13 +73,20 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
         queryParameters['search'] = trimmedQuery;
       }
-      final trimmedType = typeFilter?.trim();
-      if (trimmedType != null && trimmedType.isNotEmpty) {
-        queryParameters['profile_type'] = trimmedType;
+      final normalizedTypes = _normalizeTypeFilters(
+        typeFilter: typeFilter,
+        typeFilters: typeFilters,
+      );
+      if (normalizedTypes.isNotEmpty) {
+        final queryValue = normalizedTypes.length == 1
+            ? normalizedTypes.single
+            : normalizedTypes;
+        queryParameters['profile_type'] = queryValue;
         queryParameters['filter'] = <String, dynamic>{
-          'profile_type': trimmedType,
+          'profile_type': queryValue,
         };
       }
+      _appendTaxonomyQueryParameters(queryParameters, taxonomyFilters);
 
       final headers = await _buildHeaders(includeJsonAccept: true);
       final response = await _dio.get(
@@ -116,6 +126,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final origin = await _resolveEffectiveOriginCoordinate();
     if (origin == null) {
@@ -127,12 +139,14 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final headers = await _buildHeaders(includeJsonAccept: true);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles/near',
-        queryParameters: <String, dynamic>{
-          'origin_lat': origin.latitude,
-          'origin_lng': origin.longitude,
-          'page': 1,
-          'page_size': safePageSize,
-        },
+        queryParameters: _nearQueryParameters(
+          originLat: origin.latitude,
+          originLng: origin.longitude,
+          page: 1,
+          pageSize: safePageSize,
+          typeFilters: typeFilters,
+          taxonomyFilters: taxonomyFilters,
+        ),
         options: Options(headers: headers),
       );
       final raw = response.data;
@@ -151,6 +165,65 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         '(${error.requestOptions.uri}): '
         '${data ?? error.message}',
       );
+    }
+  }
+
+  Map<String, dynamic> _nearQueryParameters({
+    required double originLat,
+    required double originLng,
+    required int page,
+    required int pageSize,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
+  }) {
+    final queryParameters = <String, dynamic>{
+      'origin_lat': originLat,
+      'origin_lng': originLng,
+      'page': page,
+      'page_size': pageSize,
+    };
+    final normalizedTypes = _normalizeTypeFilters(typeFilters: typeFilters);
+    if (normalizedTypes.isNotEmpty) {
+      queryParameters['profile_type'] = normalizedTypes.length == 1
+          ? normalizedTypes.single
+          : normalizedTypes;
+    }
+    _appendTaxonomyQueryParameters(queryParameters, taxonomyFilters);
+
+    return queryParameters;
+  }
+
+  List<String> _normalizeTypeFilters({
+    String? typeFilter,
+    List<String>? typeFilters,
+  }) {
+    return <String>{
+      if (typeFilter != null && typeFilter.trim().isNotEmpty) typeFilter.trim(),
+      for (final filter in typeFilters ?? const <String>[])
+        if (filter.trim().isNotEmpty) filter.trim(),
+    }.toList(growable: false);
+  }
+
+  void _appendTaxonomyQueryParameters(
+    Map<String, dynamic> queryParameters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
+  ) {
+    final normalized = <AccountProfilesRepositoryTaxonomyFilter>[];
+    final seen = <String>{};
+    for (final filter in taxonomyFilters ?? const []) {
+      if (!filter.isValid) {
+        continue;
+      }
+      final key = '${filter.type.value}:${filter.term.value}';
+      if (seen.add(key)) {
+        normalized.add(filter);
+      }
+    }
+
+    for (var index = 0; index < normalized.length; index += 1) {
+      final filter = normalized[index];
+      queryParameters['taxonomy[$index][type]'] = filter.type.value;
+      queryParameters['taxonomy[$index][value]'] = filter.term.value;
     }
   }
 
@@ -310,8 +383,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     final tags = <String>[];
     for (final entry in raw) {
       if (entry is Map) {
-        final value =
-            entry['name']?.toString() ??
+        final value = entry['name']?.toString() ??
             entry['label']?.toString() ??
             entry['value']?.toString();
         if (value != null && value.trim().isNotEmpty) {
@@ -355,8 +427,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final eventTypeLabel = _extractAgendaEventTypeLabel(json);
       final locationLabel =
           _extractAgendaLocationLabel(json) ?? venueTitle ?? '';
+      final linkedAccountProfiles =
+          _extractAgendaLinkedAccountProfiles(json['linked_account_profiles']);
       ThumbUriValue? imageUriValue;
-      final imageUrl = _extractAgendaImageUrl(json);
+      final imageUrl = _extractAgendaImageUrl(
+        json,
+        linkedAccountProfiles,
+      );
       if (imageUrl != null && imageUrl.isNotEmpty) {
         imageUriValue = ThumbUriValue(defaultValue: Uri.parse(imageUrl))
           ..parse(imageUrl);
@@ -374,36 +451,38 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           startDateTimeValue: startDateTimeValue,
           endDateTimeValue: endDateTimeValue,
           locationValue: partnerProjectionRequiredText(locationLabel),
-          venueIdValue: venueId == null ? null : (MongoIDValue()..parse(venueId)),
-          venueTitleValue:
-              venueTitle == null ? null : partnerProjectionOptionalText(venueTitle),
+          venueIdValue:
+              venueId == null ? null : (MongoIDValue()..parse(venueId)),
+          venueTitleValue: venueTitle == null
+              ? null
+              : partnerProjectionOptionalText(venueTitle),
           imageUriValue: imageUriValue,
-          artists: _extractAgendaArtists(json['artists']),
+          linkedAccountProfiles: linkedAccountProfiles,
         ),
       );
     }
     return agendaEvents;
   }
 
-  List<PartnerSupportedEntityView> _extractAgendaArtists(dynamic raw) {
+  List<PartnerSupportedEntityView> _extractAgendaLinkedAccountProfiles(
+    dynamic raw,
+  ) {
     if (raw is! List) {
       return const [];
     }
 
-    final artists = <PartnerSupportedEntityView>[];
+    final linkedAccountProfiles = <PartnerSupportedEntityView>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
-      final displayName = (json['display_name'] ?? json['name'])
-              ?.toString()
-              .trim() ??
-          '';
+      final displayName =
+          (json['display_name'] ?? json['name'])?.toString().trim() ?? '';
       if (displayName.isEmpty) {
         continue;
       }
 
       final thumb = json['avatar_url']?.toString().trim();
-      artists.add(
+      linkedAccountProfiles.add(
         PartnerSupportedEntityView(
           idValue: (() {
             final id = json['id']?.toString().trim();
@@ -420,7 +499,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       );
     }
 
-    return artists;
+    return linkedAccountProfiles;
   }
 
   String? _extractAgendaVenueId(Map<String, dynamic> json) {
@@ -459,9 +538,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     final type = Map<String, dynamic>.from(rawType);
-    final value = (type['label'] ?? type['name'] ?? type['title'])
-        ?.toString()
-        .trim();
+    final value =
+        (type['label'] ?? type['name'] ?? type['title'])?.toString().trim();
     if (value == null || value.isEmpty) {
       return null;
     }
@@ -496,7 +574,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return null;
   }
 
-  String? _extractAgendaImageUrl(Map<String, dynamic> json) {
+  String? _extractAgendaImageUrl(
+    Map<String, dynamic> json,
+    List<PartnerSupportedEntityView> linkedAccountProfiles,
+  ) {
     final rawThumb = json['thumb'];
     if (rawThumb is Map) {
       final thumb = Map<String, dynamic>.from(rawThumb);
@@ -509,14 +590,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
     }
 
-    final artists = json['artists'];
-    if (artists is List) {
-      for (final entry in artists) {
-        if (entry is! Map) continue;
-        final imageUrl = entry['avatar_url']?.toString().trim();
-        if (imageUrl != null && imageUrl.isNotEmpty) {
-          return imageUrl;
-        }
+    for (final counterpart in linkedAccountProfiles) {
+      final imageUrl = counterpart.thumb?.trim();
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        return imageUrl;
       }
     }
 

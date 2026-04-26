@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
@@ -87,6 +88,43 @@ class TenantAdminSettingsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'update map_ui settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeDiscoveryFiltersSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load discovery_filters settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      updateDiscoveryFiltersSettings({
+    required TenantAdminDiscoveryFiltersSettingsValue settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'discovery_filters'),
+        data: _requestEncoder.encodeDiscoveryFiltersSettingsPatch(settings),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeDiscoveryFiltersSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update discovery_filters settings');
     }
   }
 

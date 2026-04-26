@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
@@ -5,6 +6,7 @@ import 'package:belluga_now/application/router/support/canonical_route_meta.dart
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -12,18 +14,29 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_discovery_filter_rule_catalog_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
@@ -31,7 +44,17 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_discovery_filter_rule_catalog_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_item.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_catalog_items.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_surface_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filters_settings.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/screens/tenant_admin_discovery_filter_surface_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/tenant_admin_discovery_filters_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
@@ -50,6 +73,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
@@ -107,6 +131,36 @@ TenantAdminDomainStatusValue _domainStatus(String raw) {
   return value;
 }
 
+TenantAdminTaxonomyDefinition _taxonomyDefinition({
+  required String id,
+  required String slug,
+  required String name,
+  required List<String> appliesTo,
+}) {
+  return TenantAdminTaxonomyDefinition(
+    idValue: _requiredText(id),
+    slugValue: _requiredText(slug),
+    nameValue: _requiredText(name),
+    appliesToValue: TenantAdminTrimmedStringListValue(appliesTo),
+    iconValue: TenantAdminOptionalTextValue(),
+    colorValue: TenantAdminOptionalTextValue(),
+  );
+}
+
+TenantAdminTaxonomyTermDefinition _taxonomyTermDefinition({
+  required String id,
+  required String taxonomyId,
+  required String slug,
+  required String name,
+}) {
+  return TenantAdminTaxonomyTermDefinition(
+    idValue: _requiredText(id),
+    taxonomyIdValue: _requiredText(taxonomyId),
+    slugValue: _requiredText(slug),
+    nameValue: _requiredText(name),
+  );
+}
+
 TenantAdminDomainEntry _domainEntry({
   required String id,
   required String path,
@@ -136,16 +190,6 @@ EmailAddressValue _emailAddressValue(String raw) {
   return value;
 }
 
-TenantAdminMapFilterCatalogItems _mapFilterCatalogItems(
-  Iterable<TenantAdminMapFilterCatalogItem> items,
-) {
-  final collection = TenantAdminMapFilterCatalogItems();
-  for (final item in items) {
-    collection.add(item);
-  }
-  return collection;
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -157,6 +201,7 @@ void main() {
   });
 
   tearDown(() async {
+    SentryErrorReporter.resetForTesting();
     await GetIt.I.reset();
   });
 
@@ -206,7 +251,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.text('Toque para editar preferências e filtros do mapa'),
+      find.text('Toque para editar preferências locais e origem do mapa'),
       findsOneWidget,
     );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
@@ -647,7 +692,7 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
-  testWidgets('adds map filter item and persists catalog on map_ui save',
+  testWidgets('local preferences owns map filter configuration only',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -668,93 +713,209 @@ void main() {
       const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-    );
-    await tester.pumpAndSettle();
-
+    expect(find.text('Filtros do mapa'), findsOneWidget);
     expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
       findsOneWidget,
     );
     expect(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
       findsOneWidget,
     );
-
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
-    );
-    await tester.pumpAndSettle();
-
-    expect(settingsRepository.updatedMapUiSettings, isNotNull);
-    final filters = settingsRepository.updatedMapUiSettings!.filters;
-    expect(filters, hasLength(1));
-    expect(filters.first.key, 'filter_1');
-    expect(filters.first.label, 'Filtro 1');
+    expect(find.text('Filtros públicos'), findsNothing);
   });
 
-  testWidgets(
-      'map filter row exposes explicit Visual action and removes legacy image actions',
+  test(
+    'discovery filters controller ignores load completion after disposal',
+    () async {
+      final fetchCompleter =
+          Completer<TenantAdminDiscoveryFiltersSettingsValue>();
+      final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
+        fetchCompleter: fetchCompleter,
+      );
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
+      );
+
+      final loadFuture = controller.loadSettings();
+      expect(settingsRepository.fetchCount, 1);
+
+      await controller.onDispose();
+      fetchCompleter.complete(TenantAdminDiscoveryFiltersSettingsValue());
+
+      await loadFuture;
+      await controller.onDispose();
+    },
+  );
+
+  test('discovery filters controller init keeps already loaded settings',
+      () async {
+    final fetchCompleter = Completer<TenantAdminDiscoveryFiltersSettingsValue>()
+      ..complete(
+        TenantAdminDiscoveryFiltersSettingsValue(
+          TenantAdminDynamicMapValue({
+            'surfaces': {
+              'public_map.primary': {
+                'target': 'map_poi',
+                'filters': [
+                  {
+                    'key': 'assets',
+                    'label': 'Assets',
+                    'image_uri': 'https://tenant.test/filter.png',
+                  },
+                ],
+              },
+            },
+          }),
+        ),
+      );
+    final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
+      fetchCompleter: fetchCompleter,
+    );
+    final controller = TenantAdminDiscoveryFiltersController(
+      settingsRepository: settingsRepository,
+      ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
+    );
+
+    await controller.init();
+    await controller.init();
+
+    expect(settingsRepository.fetchCount, 1);
+    expect(
+      controller
+          .filtersForSurface(TenantAdminDiscoveryFilterSurfaceDefinition.map)
+          .single
+          .imageUri,
+      'https://tenant.test/filter.png',
+    );
+
+    await controller.onDispose();
+  });
+
+  test(
+    'discovery filters rule catalog fetches taxonomy terms in one batch',
+    () async {
+      final taxonomiesRepository = _FakeDiscoveryFilterTaxonomiesRepository();
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: _FakeTenantAdminSettingsRepository(),
+        ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
+          accountProfilesRepository:
+              _FakeDiscoveryFilterAccountProfilesRepository(),
+          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+          taxonomiesRepository: taxonomiesRepository,
+          eventsRepository: _FakeDiscoveryFilterEventsRepository(
+            allowedTaxonomies: ['genre', 'cuisine'],
+          ),
+        ),
+      );
+
+      await controller.loadRuleCatalog();
+
+      expect(taxonomiesRepository.loadAllTermsCallCount, 0);
+      expect(taxonomiesRepository.batchTermsCallCount, 1);
+      expect(taxonomiesRepository.batchTaxonomyIdGroups, hasLength(1));
+      expect(taxonomiesRepository.batchTermLimits, <int>[200]);
+      expect(
+        taxonomiesRepository.lastBatchTaxonomyIds,
+        containsAll(<String>['genre-id', 'cuisine-id']),
+      );
+      expect(
+        controller.ruleCatalogStreamValue.value
+            .taxonomyForSource(TenantAdminMapFilterSource.event)
+            .map((term) => term.token)
+            .toSet(),
+        containsAll(<String>['genre:rock', 'cuisine:pizza']),
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery filters rule catalog bounds taxonomy term batch requests',
+    () async {
+      final taxonomiesRepository = _FakeDiscoveryFilterTaxonomiesRepository(
+        generatedTaxonomyCount: 101,
+      );
+      final allowedTaxonomies = List<String>.generate(
+        101,
+        (index) => 'generated_${index.toString().padLeft(3, '0')}',
+      );
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: _FakeTenantAdminSettingsRepository(),
+        ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
+          accountProfilesRepository:
+              _FakeDiscoveryFilterAccountProfilesRepository(),
+          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+          taxonomiesRepository: taxonomiesRepository,
+          eventsRepository: _FakeDiscoveryFilterEventsRepository(
+            allowedTaxonomies: allowedTaxonomies,
+          ),
+        ),
+      );
+
+      await controller.loadRuleCatalog();
+
+      expect(taxonomiesRepository.loadAllTermsCallCount, 0);
+      expect(taxonomiesRepository.batchTermsCallCount, 1);
+      expect(
+        taxonomiesRepository.batchTaxonomyIdGroups.map((group) => group.length),
+        <int>[20],
+      );
+      expect(taxonomiesRepository.batchTermLimits, <int>[200]);
+
+      await controller.onDispose();
+    },
+  );
+
+  testWidgets('canonical map filter row exposes rule and visual actions',
       (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       ),
     );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.addFilterButton),
     );
     await tester.pumpAndSettle();
 
     final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
     );
     expect(rowFinder, findsOneWidget);
 
     expect(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Regra'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterRuleButton(
+          'public_map.primary',
+          0,
+        ),
       ),
       findsOneWidget,
     );
     expect(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterVisualButton(
+          'public_map.primary',
+          0,
+        ),
       ),
       findsOneWidget,
     );
@@ -767,74 +928,61 @@ void main() {
       findsNothing,
     );
 
-    final popupFinder = find.descendant(
-      of: rowFinder,
-      matching: find.byType(PopupMenuButton<String>),
-    );
-    expect(popupFinder, findsOneWidget);
-    await tester.tap(popupFinder);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Editar regra'), findsOneWidget);
-    expect(find.text('Editar visual'), findsOneWidget);
     expect(find.text('Imagem'), findsNothing);
     expect(find.text('Limpar imagem'), findsNothing);
   });
 
   testWidgets(
-    'map filter row preview prefers marker override icon+color over legacy image',
+    'canonical map filter row preview prefers marker override icon+color over image',
     (tester) async {
-      final repository = _FakeAppDataRepository(_buildAppData());
-      final settingsRepository = _FakeTenantAdminSettingsRepository(
-        initialMapUiSettings: TenantAdminMapUiSettings(
-          rawMapUiValue: TenantAdminDynamicMapValue(const {
-            'radius': 15000,
-            'default_origin': {
-              'lat': -20.6736,
-              'lng': -40.4976,
-              'label': 'Centro',
-            },
-          }),
-          defaultOrigin: TenantAdminMapDefaultOrigin(
-            lat: _lat(-20.6736),
-            lng: _lng(-40.4976),
-            label: _optionalText('Centro'),
-          ),
-          filters: _mapFilterCatalogItems([
-            TenantAdminMapFilterCatalogItem(
-              keyValue: _token('events'),
-              labelValue: _requiredText('Eventos'),
-              imageUriValue:
-                  _optionalUrl('https://tenant.test/legacy-events.png'),
-              overrideMarkerValue: TenantAdminFlagValue(true),
-              markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-                iconValue: _requiredText('music'),
-                colorValue: _hexColor('#C6141F'),
-                iconColorValue: _hexColor('#FFFFFF'),
-              ),
+      final initialDiscoveryFilters =
+          TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
+        surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        filters: TenantAdminDiscoveryFilterCatalogItems([
+          TenantAdminDiscoveryFilterCatalogItem(
+            keyValue: _token('events'),
+            labelValue: _requiredText('Eventos'),
+            imageUriValue:
+                _optionalUrl('https://tenant.test/legacy-events.png'),
+            overrideMarkerValue: TenantAdminFlagValue(true),
+            markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+              iconValue: _requiredText('music'),
+              colorValue: _hexColor('#C6141F'),
+              iconColorValue: _hexColor('#FFFFFF'),
             ),
-          ]),
+            query: TenantAdminDiscoveryFilterQuery(
+              entityValues: [_token('event')],
+            ),
+          ),
+        ]),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialDiscoveryFiltersSettings:
+            TenantAdminDiscoveryFiltersSettingsValue(
+          initialDiscoveryFilters.rawDiscoveryFilters,
         ),
       );
-      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
       GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
         settingsRepository,
       );
-      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-        TenantAdminImageIngestionService(
-          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+        TenantAdminDiscoveryFiltersController(
+          settingsRepository: settingsRepository,
+          ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
         ),
       );
-      final controller = TenantAdminSettingsController();
-      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+        const Scaffold(
+          body: TenantAdminDiscoveryFilterSurfaceScreen(
+            surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+          ),
+        ),
       );
 
       final rowFinder = find.byKey(
-        TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+        TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
       );
       expect(rowFinder, findsOneWidget);
 
@@ -847,7 +995,10 @@ void main() {
       expect(iconWidget.color, Colors.white);
 
       final previewFinder = find.byKey(
-        TenantAdminSettingsKeys.localPreferencesMapFilterVisualPreview(0),
+        TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
+          'public_map.primary',
+          0,
+        ),
       );
       expect(previewFinder, findsOneWidget);
       final previewContainer = tester.widget<Container>(previewFinder.first);
@@ -859,6 +1010,62 @@ void main() {
       expect(previewColor.a, closeTo(0.22, 0.005));
     },
   );
+
+  testWidgets('canonical map filter row exposes image preview by URL key',
+      (tester) async {
+    const imageUri = 'https://tenant.test/filter-image.png';
+    final initialDiscoveryFilters =
+        TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
+      surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+      filters: TenantAdminDiscoveryFilterCatalogItems([
+        TenantAdminDiscoveryFilterCatalogItem(
+          keyValue: _token('assets'),
+          labelValue: _requiredText('Assets'),
+          imageUriValue: _optionalUrl(imageUri),
+          query: TenantAdminDiscoveryFilterQuery(
+            entityValues: [_token('static_asset')],
+          ),
+        ),
+      ]),
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository(
+      initialDiscoveryFiltersSettings: TenantAdminDiscoveryFiltersSettingsValue(
+        initialDiscoveryFilters.rawDiscoveryFilters,
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
+      ),
+    );
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
+    );
+
+    final rowFinder = find.byKey(
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
+    );
+    expect(rowFinder, findsOneWidget);
+
+    final previewFinder = find.byKey(
+      TenantAdminDiscoveryFiltersKeys.filterVisualPreview(
+        'public_map.primary',
+        0,
+      ),
+    );
+    expect(previewFinder, findsOneWidget);
+    expect(find.byKey(const ValueKey<String>(imageUri)), findsOneWidget);
+  });
 
   testWidgets('map filter rule sheet is query-only (without visual fields)',
       (tester) async {
@@ -912,45 +1119,42 @@ void main() {
 
   testWidgets('Visual sheet owns canonical marker icon-image flow',
       (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
       ),
     );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      const Scaffold(
+        body: TenantAdminDiscoveryFilterSurfaceScreen(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+        ),
+      ),
     );
 
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.addFilterButton),
     );
     await tester.pumpAndSettle();
 
     final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
+      TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
     );
     expect(rowFinder, findsOneWidget);
 
     await tester.tap(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.filterVisualButton(
+          'public_map.primary',
+          0,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -984,26 +1188,29 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.saveFiltersButton),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      find.byKey(TenantAdminDiscoveryFiltersKeys.saveFiltersButton),
     );
     await tester.pumpAndSettle();
 
-    final updated = settingsRepository.updatedMapUiSettings;
+    final updated = settingsRepository.updatedDiscoveryFiltersSettings;
     expect(updated, isNotNull);
-    expect(updated!.filters, hasLength(1));
-    final filter = updated.filters.first;
-    expect(filter.overrideMarker, isTrue);
-    expect(filter.markerOverride, isNotNull);
-    expect(filter.markerOverride!.mode,
-        TenantAdminMapFilterMarkerOverrideMode.image);
+    final raw = updated!.rawDiscoveryFilters.value;
+    final surfaces = raw['surfaces'] as Map;
+    final surface = surfaces['public_map.primary'] as Map;
+    final filters = surface['filters'] as List;
+    expect(filters, hasLength(1));
+    final filter = filters.single as Map;
+    expect(filter['override_marker'], isTrue);
+    final markerOverride = filter['marker_override'] as Map;
+    expect(markerOverride['mode'], 'image');
     expect(
-      filter.markerOverride!.imageUri,
+      markerOverride['image_uri'],
       'https://guarappari.test/storage/filter-image.png',
     );
   });
@@ -1020,45 +1227,17 @@ void main() {
       return latest.toStringShort();
     }
 
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
+    final filter = TenantAdminMapFilterCatalogItem(
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
-    );
-
-    await tester.scrollUntilVisible(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-    );
-    await tester.pumpAndSettle();
-
-    final rowFinder = find.byKey(
-      TenantAdminSettingsKeys.localPreferencesMapFilterRow(0),
-    );
-    expect(rowFinder, findsOneWidget);
-
-    await tester.tap(
-      find.descendant(
-        of: rowFinder,
-        matching: find.widgetWithText(OutlinedButton, 'Visual'),
+      Scaffold(
+        body: TenantAdminMapFilterVisualSheet(
+          filter: filter,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -2001,6 +2180,40 @@ void main() {
     controller.onDispose();
   });
 
+  test('controller reports recoverable app data refresh failures to Sentry',
+      () async {
+    final sentryCaptures = <_SentryCapture>[];
+    SentryErrorReporter.overrideCaptureExceptionForTesting(
+      (throwable, {stackTrace, hint, message, withScope}) async {
+        sentryCaptures.add(
+          _SentryCapture(
+            throwable: throwable,
+            stackTrace: stackTrace,
+            withScope: withScope,
+          ),
+        );
+        return SentryId.empty();
+      },
+    );
+    final repository = _FakeAppDataRepository(
+      _buildAppData(),
+      failInitOnCall: 1,
+    );
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+    controller.domainPathController.text = 'novo.guarappari.test';
+
+    await controller.createDomain();
+
+    expect(sentryCaptures, hasLength(1));
+    expect(sentryCaptures.single.throwable, isA<StateError>());
+    expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
+    controller.onDispose();
+  });
+
   test('controller rehydrates branding colors from repository after save',
       () async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -2253,10 +2466,183 @@ bool _isScaffoldWithBody<T extends Widget>(Widget child) {
   return child is Scaffold && child.body is T;
 }
 
+class _FakeDiscoveryFilterAccountProfilesRepository
+    extends TenantAdminAccountProfilesRepositoryContract {
+  @override
+  Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
+    return const <TenantAdminProfileTypeDefinition>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterStaticAssetsRepository
+    extends TenantAdminStaticAssetsRepositoryContract {
+  @override
+  Future<List<TenantAdminStaticProfileTypeDefinition>>
+      fetchStaticProfileTypes() async {
+    return const <TenantAdminStaticProfileTypeDefinition>[];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterEventsRepository
+    extends TenantAdminEventsRepositoryContract {
+  _FakeDiscoveryFilterEventsRepository({
+    this.allowedTaxonomies = const <String>[],
+  });
+
+  final List<String> allowedTaxonomies;
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    if (allowedTaxonomies.isEmpty) {
+      return const <TenantAdminEventType>[];
+    }
+    return [
+      TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Event'),
+        slugValue: tenantAdminRequiredText('event'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+          allowedTaxonomies,
+        ),
+      ),
+    ];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDiscoveryFilterTaxonomiesRepository
+    extends TenantAdminTaxonomiesRepositoryContract
+    implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
+  _FakeDiscoveryFilterTaxonomiesRepository({
+    int generatedTaxonomyCount = 0,
+  })  : _generatedTaxonomyCount = generatedTaxonomyCount,
+        _taxonomies = generatedTaxonomyCount > 0
+            ? List<TenantAdminTaxonomyDefinition>.generate(
+                generatedTaxonomyCount,
+                (index) => _taxonomyDefinition(
+                  id: 'generated-${index.toString().padLeft(3, '0')}',
+                  slug: 'generated_${index.toString().padLeft(3, '0')}',
+                  name: 'Generated ${index.toString().padLeft(3, '0')}',
+                  appliesTo: ['event'],
+                ),
+              )
+            : [
+                _taxonomyDefinition(
+                  id: 'genre-id',
+                  slug: 'genre',
+                  name: 'Gênero Musical',
+                  appliesTo: ['event'],
+                ),
+                _taxonomyDefinition(
+                  id: 'cuisine-id',
+                  slug: 'cuisine',
+                  name: 'Cozinha',
+                  appliesTo: ['event'],
+                ),
+              ];
+
+  final int _generatedTaxonomyCount;
+  final List<TenantAdminTaxonomyDefinition> _taxonomies;
+  int loadAllTermsCallCount = 0;
+  int batchTermsCallCount = 0;
+  List<String> lastBatchTaxonomyIds = const <String>[];
+  List<List<String>> batchTaxonomyIdGroups = const <List<String>>[];
+  List<int> batchTermLimits = const <int>[];
+
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _termsById = {
+    'genre-id': [
+      _taxonomyTermDefinition(
+        id: 'rock-id',
+        taxonomyId: 'genre-id',
+        slug: 'rock',
+        name: 'Rock',
+      ),
+    ],
+    'cuisine-id': [
+      _taxonomyTermDefinition(
+        id: 'pizza-id',
+        taxonomyId: 'cuisine-id',
+        slug: 'pizza',
+        name: 'Pizza',
+      ),
+    ],
+  };
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return _taxonomies;
+  }
+
+  @override
+  Future<void> loadAllTerms({
+    required TenantAdminTaxRepoString taxonomyId,
+    TenantAdminTaxRepoInt? pageSize,
+  }) async {
+    loadAllTermsCallCount += 1;
+    await super.loadAllTerms(taxonomyId: taxonomyId, pageSize: pageSize);
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required TenantAdminTaxRepoString taxonomyId,
+  }) async {
+    return _termsById[taxonomyId.value] ??
+        const <TenantAdminTaxonomyTermDefinition>[];
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
+  }) async {
+    batchTermsCallCount += 1;
+    lastBatchTaxonomyIds = taxonomyIds.map((entry) => entry.value).toList();
+    batchTaxonomyIdGroups = [
+      ...batchTaxonomyIdGroups,
+      lastBatchTaxonomyIds,
+    ];
+    batchTermLimits = [
+      ...batchTermLimits,
+      termLimit?.value ?? 200,
+    ];
+
+    return TenantAdminTaxonomyTermsByTaxonomyId(
+      entries: [
+        for (final taxonomyId in taxonomyIds)
+          TenantAdminTaxonomyTermsForTaxonomyId(
+            taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
+            terms: _generatedTaxonomyCount > 0
+                ? [
+                    _taxonomyTermDefinition(
+                      id: '${taxonomyId.value}-term',
+                      taxonomyId: taxonomyId.value,
+                      slug: 'term',
+                      name: 'Term',
+                    ),
+                  ]
+                : _termsById[taxonomyId.value] ??
+                    const <TenantAdminTaxonomyTermDefinition>[],
+          ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository(this._appData);
+  _FakeAppDataRepository(this._appData, {this.failInitOnCall});
 
   final AppData _appData;
+  final int? failInitOnCall;
   int initCallCount = 0;
 
   @override
@@ -2287,6 +2673,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   Future<void> init() async {
     initCallCount += 1;
+    if (initCallCount == failInitOnCall) {
+      throw StateError('app data refresh failed');
+    }
   }
 
   @override
@@ -2300,6 +2689,18 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 }
 
+class _SentryCapture {
+  _SentryCapture({
+    required this.throwable,
+    required this.stackTrace,
+    required this.withScope,
+  });
+
+  final dynamic throwable;
+  final dynamic stackTrace;
+  final ScopeCallback? withScope;
+}
+
 class _FakeTenantAdminSettingsRepository
     extends TenantAdminSettingsRepositoryContract {
   _FakeTenantAdminSettingsRepository({
@@ -2309,6 +2710,7 @@ class _FakeTenantAdminSettingsRepository
     bool initialHasDedicatedFavicon = false,
     bool initialUsesPwaFaviconFallback = true,
     TenantAdminMapUiSettings? initialMapUiSettings,
+    TenantAdminDiscoveryFiltersSettingsValue? initialDiscoveryFiltersSettings,
     List<TenantAdminDomainEntry>? initialDomains,
   })  : _brandingSettings = TenantAdminBrandingSettings(
           tenantName: _requiredText('Tenant Test'),
@@ -2347,6 +2749,9 @@ class _FakeTenantAdminSettingsRepository
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
     }
+    if (initialDiscoveryFiltersSettings != null) {
+      _discoveryFiltersSettings = initialDiscoveryFiltersSettings;
+    }
   }
 
   final bool throwOnBrandingFetch;
@@ -2360,6 +2765,7 @@ class _FakeTenantAdminSettingsRepository
   final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
+  TenantAdminDiscoveryFiltersSettingsValue? updatedDiscoveryFiltersSettings;
   TenantAdminAppLinksSettings? updatedAppLinksSettings;
   String? uploadedMapFilterKey;
   TenantAdminMediaUpload? uploadedMapFilterPayload;
@@ -2381,6 +2787,8 @@ class _FakeTenantAdminSettingsRepository
     ),
     filters: TenantAdminMapFilterCatalogItems(),
   );
+  TenantAdminDiscoveryFiltersSettingsValue _discoveryFiltersSettings =
+      TenantAdminDiscoveryFiltersSettingsValue();
   TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
       buildTenantAdminAppLinksSettings(
@@ -2430,6 +2838,22 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminMapUiSettings> fetchMapUiSettings() async {
     return _mapUiSettings;
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() async {
+    return _discoveryFiltersSettings;
+  }
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      updateDiscoveryFiltersSettings({
+    required TenantAdminDiscoveryFiltersSettingsValue settings,
+  }) async {
+    updatedDiscoveryFiltersSettings = settings;
+    _discoveryFiltersSettings = settings;
+    return settings;
   }
 
   @override
@@ -2627,6 +3051,31 @@ class _FakeTenantAdminSettingsRepository
     );
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;
+  }
+}
+
+class _SlowDiscoveryFiltersSettingsRepository
+    extends _FakeTenantAdminSettingsRepository {
+  _SlowDiscoveryFiltersSettingsRepository({
+    required this.fetchCompleter,
+  });
+
+  final Completer<TenantAdminDiscoveryFiltersSettingsValue> fetchCompleter;
+  int fetchCount = 0;
+
+  @override
+  Future<TenantAdminDiscoveryFiltersSettingsValue>
+      fetchDiscoveryFiltersSettings() {
+    fetchCount += 1;
+    return fetchCompleter.future;
+  }
+}
+
+class _EmptyDiscoveryFilterRuleCatalogRepository
+    implements TenantAdminDiscoveryFilterRuleCatalogRepositoryContract {
+  @override
+  Future<TenantAdminMapFilterRuleCatalog> fetchRuleCatalog() async {
+    return const TenantAdminMapFilterRuleCatalog.empty();
   }
 }
 

@@ -77,4 +77,66 @@ void main() {
     expect(payload.containsKey('event_parties'), isTrue);
     expect(payload['event_parties'], isEmpty);
   });
+
+  test('encodes occurrence-owned profiles and programação place refs', () {
+    const encoder = TenantAdminEventsRequestEncoder();
+    final payload = encoder.encodeDraft(
+      TenantAdminEventDraft(
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime(2026, 4, 5, 20),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('artist-1'),
+            ],
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('17:00'),
+                titleValue: tenantAdminOptionalText('Abertura'),
+                accountProfileIdValues: [
+                  TenantAdminAccountProfileIdValue('artist-1'),
+                ],
+                placeRef: TenantAdminEventPlaceRef(
+                  typeValue: tenantAdminRequiredText('account_profile'),
+                  idValue: tenantAdminRequiredText('venue-1'),
+                ),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrence =
+        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
+
+    expect(occurrence['event_parties'], [
+      {
+        'party_ref_id': 'artist-1',
+        'permissions': {'can_edit': true},
+      },
+    ]);
+    expect(occurrence.containsKey('location'), isFalse);
+    expect(occurrence['programming_items'], [
+      {
+        'time': '17:00',
+        'title': 'Abertura',
+        'account_profile_ids': ['artist-1'],
+        'place_ref': {
+          'type': 'account_profile',
+          'id': 'venue-1',
+        },
+      },
+    ]);
+  });
 }

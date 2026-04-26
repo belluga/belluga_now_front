@@ -1,7 +1,8 @@
 export 'value_objects/event_model_values.dart';
 
-import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -29,17 +30,18 @@ typedef EventModelPrimDynamic = dynamic;
 
 class EventModel {
   final MongoIDValue id;
-  final SlugValue slugValue; // Added slugValue
+  final SlugValue slugValue;
   final EventTypeModel type;
   final TitleValue title;
   final HTMLContentValue content;
   final DescriptionValue location;
-  final PartnerResume? venue; // Where the event happens
+  final PartnerResume? venue;
   final ThumbModel? thumb;
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
-  final List<ArtistResume> artists; // Keep for backward compatibility
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventOccurrenceOption> occurrences;
+  final List<EventProgrammingItem> programmingItems;
   final CityCoordinate? coordinate;
   final List<VenueEventTagValue> tagValues;
 
@@ -59,23 +61,62 @@ class EventModel {
 
   EventModelPrimBool get isConfirmed => isConfirmedValue.value;
   EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
-  EventModelPrimString get slug => slugValue.value; // Added getter
+  EventModelPrimString get slug => slugValue.value;
   DateTime? get confirmedAt => confirmedAtValue.value;
   List<VenueEventTagValue> get tags =>
       List<VenueEventTagValue>.unmodifiable(tagValues);
-  List<EventLinkedAccountProfile> get linkedArtistProfiles {
+  EventOccurrenceOption? get selectedOccurrence {
+    for (final occurrence in occurrences) {
+      if (occurrence.isSelected) {
+        return occurrence;
+      }
+    }
+    return occurrences.isEmpty ? null : occurrences.first;
+  }
+
+  EventModelPrimString? get selectedOccurrenceId {
+    final occurrenceId = selectedOccurrence?.occurrenceId.trim();
+    return occurrenceId == null || occurrenceId.isEmpty ? null : occurrenceId;
+  }
+
+  EventModelPrimBool get hasMultipleOccurrences => occurrences.length > 1;
+  EventModelPrimBool get hasProgrammingItems => programmingItems.isNotEmpty;
+  EventModelPrimBool get hasAnyProgrammingItems =>
+      hasProgrammingItems ||
+      occurrences.any(
+        (occurrence) =>
+            occurrence.programmingCount > 0 ||
+            occurrence.programmingItems.isNotEmpty,
+      );
+
+  List<EventProgrammingItem> get allProgrammingItems {
+    final items = <EventProgrammingItem>[
+      ...programmingItems,
+      for (final occurrence in occurrences) ...occurrence.programmingItems,
+    ];
+    return List<EventProgrammingItem>.unmodifiable(items);
+  }
+
+  List<EventLinkedAccountProfile> get counterpartProfiles {
     return List<EventLinkedAccountProfile>.unmodifiable(
       linkedAccountProfiles.where((profile) {
         final normalizedPartyType = profile.partyType?.trim().toLowerCase();
         final normalizedProfileType = profile.profileType.trim().toLowerCase();
-        return normalizedPartyType == 'artist' ||
-            normalizedProfileType == 'artist';
+        return normalizedPartyType != 'venue' &&
+            normalizedProfileType != 'venue';
       }),
     );
   }
 
-  EventLinkedAccountProfile? get primaryLinkedArtist =>
-      linkedArtistProfiles.isEmpty ? null : linkedArtistProfiles.first;
+  bool get hasCounterparts => counterpartProfiles.isNotEmpty;
+
+  EventLinkedAccountProfile? get primaryCounterpart =>
+      hasCounterparts ? counterpartProfiles.first : null;
+
+  EventModelPrimString get counterpartNamesLabel => counterpartProfiles
+      .map((profile) => profile.displayName.trim())
+      .where((name) => name.isNotEmpty)
+      .join(', ');
 
   List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
@@ -86,24 +127,14 @@ class EventModel {
       );
     }
 
-    final linkedTerms = linkedArtistProfiles
+    final linkedTerms = counterpartProfiles
         .expand((profile) => profile.taxonomyTerms)
         .map((term) => term.labelValue.value.trim())
         .where((g) => g.isNotEmpty)
         .toSet()
         .map(VenueEventTagValue.new)
         .toList(growable: false);
-    if (linkedTerms.isNotEmpty) {
-      return linkedTerms;
-    }
-
-    return artists
-        .expand((artist) => artist.genres)
-        .map((genre) => genre.value.trim())
-        .where((g) => g.isNotEmpty)
-        .toSet()
-        .map(VenueEventTagValue.new)
-        .toList(growable: false);
+    return linkedTerms;
   }
 
   EventModel({
@@ -117,8 +148,9 @@ class EventModel {
     required this.thumb,
     required this.dateTimeStart,
     required this.dateTimeEnd,
-    required this.artists,
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<EventOccurrenceOption> occurrences = const [],
+    List<EventProgrammingItem> programmingItems = const [],
     required this.coordinate,
     required List<VenueEventTagValue> tags,
     required this.isConfirmedValue,
@@ -129,6 +161,9 @@ class EventModel {
     required this.totalConfirmedValue,
   })  : linkedAccountProfiles =
             List<EventLinkedAccountProfile>.unmodifiable(linkedAccountProfiles),
+        occurrences = List<EventOccurrenceOption>.unmodifiable(occurrences),
+        programmingItems =
+            List<EventProgrammingItem>.unmodifiable(programmingItems),
         tagValues = List<VenueEventTagValue>.unmodifiable(tags),
         confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

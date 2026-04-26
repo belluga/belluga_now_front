@@ -23,10 +23,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       'profile_type': profileType,
       'display_name': displayName,
       if (location != null)
-        'location': {
-          'lat': location.latitude,
-          'lng': location.longitude,
-        },
+        'location': {'lat': location.latitude, 'lng': location.longitude},
       if (taxonomyTerms.isNotEmpty)
         'taxonomy_terms': taxonomyTerms
             .map((term) => {'type': term.type, 'value': term.value})
@@ -133,6 +130,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     return {
       'is_favoritable': capabilities.isFavoritable,
       'is_poi_enabled': capabilities.isPoiEnabled,
+      'is_reference_location_enabled': capabilities.isReferenceLocationEnabled,
       'has_bio': capabilities.hasBio,
       'has_content': capabilities.hasContent,
       'has_taxonomies': capabilities.hasTaxonomies,

@@ -33,11 +33,12 @@ void main() {
       'longitude': -40.1,
       'date_time_start': '2026-03-03T20:00:00+00:00',
       'date_time_end': '2026-03-03T22:00:00+00:00',
-      'artists': [
+      'linked_account_profiles': [
         {
           'id': 'artist-1',
           'display_name': 'The Band',
           'slug': 'the-band',
+          'profile_type': 'artist',
         },
       ],
       'tags': ['music'],
@@ -49,7 +50,7 @@ void main() {
     expect(dto.location, 'Arena Central');
     expect(dto.dateTimeStart, '2026-03-03T20:00:00+00:00');
     expect(dto.dateTimeEnd, '2026-03-03T22:00:00+00:00');
-    expect(dto.artists, hasLength(1));
+    expect(dto.linkedAccountProfiles, hasLength(1));
     expect(dto.type.id, 'type-1');
   });
 
@@ -67,10 +68,48 @@ void main() {
       'content': '',
       'location': 'Remote',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
     });
 
     expect(dto.id, 'occ-42');
+  });
+
+  test('preserves sanitized rich html content for public event rendering', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439011',
+      'slug': 'evt-rich',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com HTML rico',
+      'content': '<h2>Event Rich Heading 🎉</h2>'
+          '<p><strong>Bold event</strong><br />Second event line</p>'
+          '<p><em>Italic event</em> and <s>strike event</s></p>'
+          '<blockquote>Event quote</blockquote>'
+          '<ul><li>Event bullet</li></ul>'
+          '<ol><li>Event ordered</li></ol>',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': const [],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.content.value, contains('<h2>Event Rich Heading 🎉</h2>'));
+    expect(domain.content.value, contains('<strong>Bold event</strong>'));
+    expect(domain.content.value, contains('<br'));
+    expect(domain.content.value, contains('<em>Italic event</em>'));
+    expect(domain.content.value, contains('<s>strike event</s>'));
+    expect(
+      domain.content.value,
+      contains('<blockquote>Event quote</blockquote>'),
+    );
+    expect(domain.content.value, contains('<ul><li>Event bullet</li></ul>'));
+    expect(domain.content.value, contains('<ol><li>Event ordered</li></ol>'));
+    expect(domain.content.valueText, contains('Event Rich Heading 🎉'));
   });
 
   test(
@@ -95,7 +134,7 @@ void main() {
         },
       },
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
     });
 
     expect(dto.latitude, closeTo(-20.671339, 0.000001));
@@ -144,7 +183,7 @@ void main() {
       'thumb': null,
       'date_time_start': '2026-03-29T01:00:00+00:00',
       'date_time_end': null,
-      'artists': [
+      'linked_account_profiles': [
         {
           'id': '69949486be6cd999250a2507',
           'display_name': 'Ananda Torres',
@@ -169,13 +208,13 @@ void main() {
     expect(dto.location, 'Carvoeiro');
     expect(dto.latitude, closeTo(-20.673704, 0.000001));
     expect(dto.longitude, closeTo(-40.498859, 0.000001));
-    expect(dto.artists, hasLength(1));
+    expect(dto.linkedAccountProfiles, hasLength(1));
     expect(domain.slug, 'karaoke');
     expect(domain.title.value, 'Karaokê');
     expect(domain.location.value, 'Carvoeiro');
     expect(domain.coordinate, isNotNull);
     expect(
-      domain.artists.first.displayName,
+      domain.linkedAccountProfiles.first.displayName,
       'Ananda Torres',
     );
   });
@@ -195,7 +234,6 @@ void main() {
       'content': 'Descricao',
       'location': 'Carvoeiro',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
       'linked_account_profiles': [
         {
           'id': 'artist-1',
@@ -205,7 +243,13 @@ void main() {
           'avatar_url': 'https://tenant.test/artist-avatar.png',
           'cover_url': 'https://tenant.test/artist-cover.png',
           'taxonomy_terms': [
-            {'type': 'genre', 'value': 'samba', 'name': 'Samba'},
+            {
+              'type': 'genre',
+              'value': 'samba',
+              'name': 'Samba',
+              'taxonomy_name': 'Genero musical',
+              'label': 'Legacy Samba',
+            },
           ],
         },
       ],
@@ -216,10 +260,46 @@ void main() {
     expect(domain.linkedAccountProfiles, hasLength(1));
     expect(domain.linkedAccountProfiles.first.profileType, 'artist');
     expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
-    expect(
-      domain.linkedAccountProfiles.first.taxonomyTerms.first.labelValue.value,
-      'Samba',
-    );
+    final term = domain.linkedAccountProfiles.first.taxonomyTerms.first;
+    expect(term.valueValue.value, 'samba');
+    expect(term.taxonomyNameValue.value, 'Genero musical');
+    expect(term.compatibilityLabelValue.value, 'Legacy Samba');
+    expect(term.labelValue.value, 'Samba');
+  });
+
+  test('falls back linked account profile taxonomy labels to value', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909080f',
+      'slug': 'evt-linked-legacy-taxonomy',
+      'type': {
+        'id': '69a77aa3680219d569090810',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com perfis',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'slug': 'ananda-torres',
+          'profile_type': 'artist',
+          'taxonomy_terms': [
+            {'type': 'genre', 'value': 'samba'},
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+    final term = domain.linkedAccountProfiles.first.taxonomyTerms.first;
+
+    expect(term.taxonomyNameValue.value, isEmpty);
+    expect(term.compatibilityLabelValue.value, isEmpty);
+    expect(term.labelValue.value, 'samba');
   });
 
   test('does not synthesize linked account profiles from artists or venue', () {
@@ -241,14 +321,6 @@ void main() {
         'display_name': 'Carvoeiro',
         'slug': 'carvoeiro',
       },
-      'artists': [
-        {
-          'id': 'artist-1',
-          'display_name': 'Ananda Torres',
-          'slug': 'ananda-torres',
-          'profile_type': 'artist',
-        },
-      ],
       'linked_account_profiles': const [],
     });
 
@@ -271,7 +343,6 @@ void main() {
       'content': 'Descricao',
       'location': 'Carvoeiro',
       'date_time_start': '2026-03-03T10:00:00+00:00',
-      'artists': const [],
       'linked_account_profiles': [
         {
           'id': 'artist-1',
@@ -288,7 +359,8 @@ void main() {
     expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
   });
 
-  test('throws when linked account profile slug is missing after enrichment', () {
+  test('throws when linked account profile slug is missing after enrichment',
+      () {
     expect(
       () => EventDTO.fromJson({
         'event_id': '69a77aa3680219d56909081b',
@@ -303,7 +375,6 @@ void main() {
         'content': 'Descricao',
         'location': 'Carvoeiro',
         'date_time_start': '2026-03-03T10:00:00+00:00',
-        'artists': const [],
         'linked_account_profiles': [
           {
             'id': 'artist-1',
@@ -320,5 +391,127 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('parses event detail occurrences and selected programming items', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439081',
+      'occurrence_id': '507f1f77bcf86cd799439083',
+      'slug': 'festival-de-verao',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival de Verao',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439082',
+          'occurrence_slug': 'festival-de-verao-1',
+          'date_time_start': '2026-03-03T17:00:00+00:00',
+          'date_time_end': '2026-03-03T21:00:00+00:00',
+          'is_selected': false,
+          'has_location_override': false,
+          'programming_count': 0,
+        },
+        {
+          'occurrence_id': '507f1f77bcf86cd799439083',
+          'occurrence_slug': 'festival-de-verao-2',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'date_time_end': '2026-03-04T21:00:00+00:00',
+          'is_selected': true,
+          'has_location_override': true,
+          'programming_count': 1,
+        },
+      ],
+      'programming_items': [
+        {
+          'time': '17:00',
+          'title': null,
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Coral XYZ',
+              'slug': 'coral-xyz',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.occurrences, hasLength(2));
+    expect(domain.hasMultipleOccurrences, isTrue);
+    expect(domain.selectedOccurrenceId, '507f1f77bcf86cd799439083');
+    expect(domain.selectedOccurrence!.hasLocationOverride, isTrue);
+    expect(domain.selectedOccurrence!.programmingCount, 1);
+    expect(domain.programmingItems, hasLength(1));
+    expect(domain.programmingItems.first.time, '17:00');
+    expect(domain.programmingItems.first.displayTitle, isEmpty);
+    expect(domain.programmingItems.first.linkedAccountProfiles, hasLength(1));
+  });
+
+  test('maps online occurrence location label into non-empty domain location',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439081',
+      'occurrence_id': '507f1f77bcf86cd799439084',
+      'slug': 'festival-online',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival Online',
+      'content': 'Descricao',
+      'location': {
+        'mode': 'online',
+        'online': {
+          'url': 'https://example.org/live',
+          'label': 'Transmissao ao vivo',
+        },
+      },
+      'place_ref': null,
+      'venue': null,
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439084',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'has_location_override': true,
+          'programming_count': 1,
+        },
+      ],
+      'programming_items': [
+        {
+          'time': '17:00',
+          'title': 'Show com a banda',
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Coral XYZ',
+              'slug': 'coral-xyz',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(dto.location, 'Transmissao ao vivo');
+    expect(domain.location.value, 'Transmissao ao vivo');
+    expect(domain.hasProgrammingItems, isTrue);
   });
 }

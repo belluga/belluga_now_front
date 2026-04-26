@@ -17,6 +17,7 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
   const TenantAdminSettingsBrandingImageField({
     super.key,
     required this.title,
+    required this.selectSemanticsLabel,
     required this.slot,
     required this.controller,
     required this.isBusy,
@@ -25,6 +26,7 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
   });
 
   final String title;
+  final String selectSemanticsLabel;
   final TenantAdminBrandingAssetSlot slot;
   final TenantAdminSettingsController controller;
   final bool isBusy;
@@ -102,10 +104,14 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: isBusy ? null : () => onPick(slot: slot),
-                      icon: const Icon(Icons.upload_outlined),
-                      label: const Text('Selecionar'),
+                    Semantics(
+                      button: true,
+                      label: selectSemanticsLabel,
+                      child: OutlinedButton.icon(
+                        onPressed: isBusy ? null : () => onPick(slot: slot),
+                        icon: const Icon(Icons.upload_outlined),
+                        label: const Text('Selecionar'),
+                      ),
                     ),
                     if (localFile case final _?)
                       TextButton.icon(

@@ -161,7 +161,10 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       null;
 
   @override
@@ -335,13 +338,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue =
-            StreamValue<DistanceInMetersValue>(
-              defaultValue: DistanceInMetersValue.fromRaw(
-                _appData.mapRadiusMaxMeters,
-                defaultValue: _appData.mapRadiusMaxMeters,
-              ),
-            );
+      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+          defaultValue: DistanceInMetersValue.fromRaw(
+            _appData.mapRadiusMaxMeters,
+            defaultValue: _appData.mapRadiusMaxMeters,
+          ),
+        );
 
   final AppData _appData;
 

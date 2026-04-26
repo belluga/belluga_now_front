@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
@@ -30,6 +31,9 @@ class HomeAgendaAppBar extends StatelessWidget {
       controller: controller,
       actions: AgendaAppBarActions(
         showSearch: false,
+        leadingActions: [
+          _HomeAgendaFilterAction(controller: controller),
+        ],
         showRadius: true,
         showInviteFilter: controller.shouldShowInviteFilterAction,
         showHistory: false,
@@ -37,10 +41,91 @@ class HomeAgendaAppBar extends StatelessWidget {
           title: 'Distância Máxima',
           description:
               'Mostraremos apenas eventos acontecendo dentro desse raio a partir de sua localização.',
-          helperText:
-              'Você pode alterar essa preferência quando quiser.',
+          helperText: 'Você pode alterar essa preferência quando quiser.',
           confirmButtonLabel: 'Confirmar raio',
         ),
+      ),
+    );
+  }
+}
+
+class _HomeAgendaFilterAction extends StatelessWidget {
+  const _HomeAgendaFilterAction({
+    required this.controller,
+  });
+
+  final TenantHomeAgendaController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<DiscoveryFilterCatalog>(
+      streamValue: controller.discoveryFilterCatalogStreamValue,
+      builder: (context, catalog) {
+        if (catalog.filters.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return StreamValueBuilder<DiscoveryFilterSelection>(
+          streamValue: controller.discoveryFilterSelectionStreamValue,
+          builder: (context, selection) {
+            final colorScheme = Theme.of(context).colorScheme;
+            final isActive = selection.isNotEmpty;
+            final activeCount = selection.activeCount;
+            return IconButton(
+              key: const ValueKey<String>('home-agenda-filter-button'),
+              tooltip: isActive ? 'Filtros ativos' : 'Filtrar eventos',
+              onPressed: controller.toggleDiscoveryFilterPanel,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    isActive
+                        ? Icons.filter_alt_rounded
+                        : Icons.filter_alt_outlined,
+                    color: isActive
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  if (activeCount > 0)
+                    Positioned(
+                      key: const ValueKey<String>('home-agenda-filter-badge'),
+                      right: -7,
+                      top: -7,
+                      child: _FilterCounterBadge(count: activeCount),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FilterCounterBadge extends StatelessWidget {
+  const _FilterCounterBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 99 ? '99+' : count.toString(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onPrimary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
       ),
     );
   }

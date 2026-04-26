@@ -62,6 +62,8 @@ dependencies:
   vsc_quill_delta_to_html: ^1.0.5
   crop_your_image: ^2.0.0
   belluga_admin_ui: ^0.0.1
+  belluga_discovery_filters:
+    path: packages/belluga_discovery_filters
   belluga_form_validation:
     path: packages/belluga_form_validation
   

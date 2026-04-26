@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -24,6 +25,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/linked_profile_category_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
@@ -68,6 +70,19 @@ class _ImmersiveEventDetailScreenState
   void initState() {
     super.initState();
     _controller.init(widget.event);
+  }
+
+  @override
+  void didUpdateWidget(covariant ImmersiveEventDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_isDifferentSelectedEvent(oldWidget.event, widget.event)) {
+      _controller.init(widget.event);
+    }
+  }
+
+  bool _isDifferentSelectedEvent(EventModel previous, EventModel current) {
+    return previous.id.value != current.id.value ||
+        previous.selectedOccurrenceId != current.selectedOccurrenceId;
   }
 
   @override
@@ -122,6 +137,24 @@ class _ImmersiveEventDetailScreenState
                               content: EventInfoSection(event: resolvedEvent),
                               footer: null,
                             ),
+                          if (resolvedEvent.hasAnyProgrammingItems)
+                            ImmersiveTabItem(
+                              title: 'Programação',
+                              content: EventProgrammingSection(
+                                items: resolvedEvent.programmingItems,
+                                occurrences: resolvedEvent.occurrences,
+                                profileTypeRegistry:
+                                    _controller.profileTypeRegistry,
+                                onOccurrenceTap: (occurrence) =>
+                                    _openOccurrence(
+                                  resolvedEvent,
+                                  occurrence,
+                                  tab: 'programming',
+                                ),
+                                onLocationTap: _openProgrammingLocationMap,
+                              ),
+                              footer: null,
+                            ),
                           ..._buildDynamicProfileTabs(
                             event: resolvedEvent,
                             favoriteAccountProfileIds:
@@ -135,6 +168,7 @@ class _ImmersiveEventDetailScreenState
                               onOpenMap: _canOpenEventMap(resolvedEvent)
                                   ? () => _openEventMap(resolvedEvent)
                                   : null,
+                              onOpenDestinationMap: _openProgrammingLocationMap,
                             ),
                             footer: _canOpenDirections(resolvedEvent)
                                 ? DynamicFooter(
@@ -198,7 +232,8 @@ class _ImmersiveEventDetailScreenState
                             tabs: tabs,
                             canUseTabFooter: (_) => isConfirmed,
                             // Don't auto-navigate, let user scroll naturally
-                            // initialTabIndex defaults to 0
+                            initialTabIndex:
+                                _resolveInitialTabIndex(tabs, context),
                             footer: footer,
                             backPolicy:
                                 buildCanonicalCurrentRouteBackPolicy(context),
@@ -410,6 +445,51 @@ class _ImmersiveEventDetailScreenState
       },
     ).toString();
     context.router.pushPath(path);
+  }
+
+  void _openProgrammingLocationMap(EventLinkedAccountProfile profile) {
+    final profileId = profile.id.trim();
+    if (profileId.isEmpty) {
+      return;
+    }
+    final path = Uri(
+      path: '/mapa',
+      queryParameters: {
+        'poi': 'account_profile:$profileId',
+      },
+    ).toString();
+    context.router.pushPath(path);
+  }
+
+  void _openOccurrence(EventModel event, EventOccurrenceOption occurrence,
+      {String? tab}) {
+    final occurrenceId = occurrence.occurrenceId.trim();
+    if (occurrence.isSelected || occurrenceId.isEmpty) {
+      return;
+    }
+    _controller.selectOccurrence(event, occurrence);
+    final path = Uri(
+      path: '/agenda/evento/${event.slug}',
+      queryParameters: {
+        'occurrence': occurrenceId,
+        if (tab != null && tab.trim().isNotEmpty) 'tab': tab,
+      },
+    ).toString();
+    unawaited(context.router.replacePath(path));
+  }
+
+  int _resolveInitialTabIndex(
+    List<ImmersiveTabItem> tabs,
+    BuildContext context,
+  ) {
+    final requestedTab =
+        context.routeData.queryParams.optString('tab')?.trim().toLowerCase();
+    if (requestedTab != 'programming') {
+      return 0;
+    }
+    final programmingIndex =
+        tabs.indexWhere((tab) => tab.title == 'Programação');
+    return programmingIndex < 0 ? 0 : programmingIndex;
   }
 
   void _presentDirectionsChooser(EventModel event) {

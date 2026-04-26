@@ -2,9 +2,11 @@ export 'tenant_admin_event_form_state.dart';
 export 'tenant_admin_event_type_form_state.dart';
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -20,9 +22,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -35,6 +39,7 @@ class TenantAdminEventsController implements Disposable {
   TenantAdminEventsController({
     TenantAdminEventsRepositoryContract? eventsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
+    TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
     TenantAdminTenantScopeContract? tenantScope,
     LandlordAuthRepositoryContract? landlordAuthRepository,
     TenantAdminImageIngestionService? imageIngestionService,
@@ -42,6 +47,11 @@ class TenantAdminEventsController implements Disposable {
             GetIt.I.get<TenantAdminEventsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+        _batchTermsRepository = _resolveBatchTermsRepository(
+          taxonomiesRepository: taxonomiesRepository ??
+              GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+          batchTermsRepository: batchTermsRepository,
+        ),
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
@@ -59,11 +69,36 @@ class TenantAdminEventsController implements Disposable {
     _bindAccountProfilePickerScroll();
   }
 
+  static const Object _undefinedDateTime = Object();
+
   final TenantAdminEventsRepositoryContract _eventsRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
+  final TenantAdminTaxonomiesBatchTermsRepositoryContract _batchTermsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
   final TenantAdminImageIngestionService _imageIngestionService;
+
+  static TenantAdminTaxonomiesBatchTermsRepositoryContract
+      _resolveBatchTermsRepository({
+    required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
+    TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
+  }) {
+    if (batchTermsRepository != null) {
+      return batchTermsRepository;
+    }
+    final Object batchRepository = taxonomiesRepository;
+    if (batchRepository is TenantAdminTaxonomiesBatchTermsRepositoryContract) {
+      return batchRepository;
+    }
+    if (GetIt.I
+        .isRegistered<TenantAdminTaxonomiesBatchTermsRepositoryContract>()) {
+      return GetIt.I.get<TenantAdminTaxonomiesBatchTermsRepositoryContract>();
+    }
+
+    return TenantAdminTaxonomiesSequentialBatchTermsRepository(
+      taxonomiesRepository,
+    );
+  }
 
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsRepository.eventsStreamValue;
@@ -114,6 +149,12 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<bool> taxonomyLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> taxonomyErrorStreamValue = StreamValue<String?>();
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>>
+      _taxonomyTermsCacheBySlug =
+      <String, List<TenantAdminTaxonomyTermDefinition>>{};
+  String? _loadedTaxonomyTermsKey;
+  String? _loadingTaxonomyTermsKey;
+  int _taxonomyTermsLoadSerial = 0;
 
   final StreamValue<List<TenantAdminAccountProfile>>
       venueCandidatesStreamValue =
@@ -218,6 +259,8 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<TenantAdminEventTypeFormState>(
     defaultValue: TenantAdminEventTypeFormState.initial(),
   );
+  final StreamValue<List<String>> eventTypeAllowedTaxonomiesStreamValue =
+      StreamValue<List<String>>(defaultValue: const []);
 
   bool _isDisposed = false;
   bool _submitInFlight = false;
@@ -234,6 +277,8 @@ class TenantAdminEventsController implements Disposable {
   String? _accountProfilePickerAccountSlug;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
+  int _eventFormLocalIdSerial = 0;
+  String? _eventFormInitialFingerprint;
   TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
 
   static const Duration _accountProfilePickerDebounceDuration =
@@ -318,6 +363,15 @@ class TenantAdminEventsController implements Disposable {
       return null;
     }
     return trimmed;
+  }
+
+  bool get isEventFormDirty {
+    final baseline = _eventFormInitialFingerprint;
+    return baseline != null && baseline != _eventFormFingerprint();
+  }
+
+  void markEventFormClean() {
+    _eventFormInitialFingerprint = _eventFormFingerprint();
   }
 
   TenantAdminOptionalUrlValue? _buildOptionalUrlValue(String? value) {
@@ -437,12 +491,25 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminEvent? existingEvent,
   }) {
     final firstOccurrence = existingEvent?.occurrences.firstOrNull;
+    _eventFormLocalIdSerial = 0;
     final selectedTaxonomyTerms = <String, Set<String>>{};
     for (final term in existingEvent?.taxonomyTerms ??
         const TenantAdminTaxonomyTerms.empty()) {
       final bucket =
           selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
+    }
+    final localOccurrences = existingEvent?.occurrences
+            .map(_toLocalOccurrence)
+            .toList(growable: false) ??
+        const <TenantAdminEventOccurrence>[];
+    final occurrenceLocalIds = localOccurrences
+        .map(_eventFormOccurrenceKeyFor)
+        .toList(growable: false);
+    final programmingItemLocalIdsByOccurrenceKey = <String, List<String>>{};
+    for (var index = 0; index < localOccurrences.length; index++) {
+      programmingItemLocalIdsByOccurrenceKey[occurrenceLocalIds[index]] =
+          _newProgrammingItemKeys(localOccurrences[index].programmingItems);
     }
     final nextState = TenantAdminEventFormState(
       startAt: firstOccurrence?.dateTimeStart == null
@@ -463,6 +530,10 @@ class TenantAdminEventsController implements Disposable {
             .where((party) => party.partyType != 'venue')
             .map((party) => party.partyRefId),
       ],
+      occurrences: localOccurrences,
+      occurrenceLocalIds: occurrenceLocalIds,
+      programmingItemLocalIdsByOccurrenceKey:
+          Map.unmodifiable(programmingItemLocalIdsByOccurrenceKey),
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
@@ -482,6 +553,7 @@ class TenantAdminEventsController implements Disposable {
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
+    markEventFormClean();
   }
 
   Future<XFile?> pickImageFromDevice({
@@ -539,11 +611,13 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void updateEventTypeSelection(String? slug) {
-    _replaceEventFormState(
-      eventFormStateStreamValue.value.copyWith(
-        selectedTypeSlug: slug,
-      ),
+    final current = eventFormStateStreamValue.value.copyWith(
+      selectedTypeSlug: slug,
     );
+    _replaceEventFormState(
+      _sanitizeEventTaxonomyTermsForSelectedType(current),
+    );
+    unawaited(_loadTermsForSelectedEventType());
   }
 
   void updateEventPublicationStatus(String status) {
@@ -643,6 +717,9 @@ class TenantAdminEventsController implements Disposable {
     required bool isSelected,
   }) {
     final current = eventFormStateStreamValue.value;
+    if (!_isTaxonomyAllowedForSelectedEventType(taxonomySlug, current)) {
+      return;
+    }
     final next = <String, Set<String>>{
       for (final entry in current.selectedTaxonomyTerms.entries)
         entry.key: {...entry.value},
@@ -667,7 +744,12 @@ class TenantAdminEventsController implements Disposable {
     if (nextEndAt != null && nextEndAt.isBefore(value)) {
       nextEndAt = value;
     }
-    final nextState = current.copyWith(
+    final nextStateWithPrimary = _replacePrimaryOccurrenceInState(
+      current,
+      startAt: value,
+      endAt: nextEndAt,
+    );
+    final nextState = nextStateWithPrimary.copyWith(
       startAt: value,
       endAt: nextEndAt,
     );
@@ -676,15 +758,367 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void applyEventEndAt(DateTime value) {
-    final nextState = eventFormStateStreamValue.value.copyWith(endAt: value);
+    final current = eventFormStateStreamValue.value;
+    final nextState = _replacePrimaryOccurrenceInState(
+      current,
+      startAt: current.startAt,
+      endAt: value,
+    ).copyWith(
+      endAt: value,
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
 
   void clearEventEndAt() {
-    final nextState = eventFormStateStreamValue.value.copyWith(endAt: null);
+    final current = eventFormStateStreamValue.value;
+    final nextState = _replacePrimaryOccurrenceInState(
+      current,
+      startAt: current.startAt,
+      endAt: null,
+    ).copyWith(
+      endAt: null,
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
+  }
+
+  void replacePrimaryOccurrenceDetails({
+    List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
+    List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminEventProgrammingItem>? programmingItems,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final nextState = _replacePrimaryOccurrenceInState(
+      current,
+      startAt: current.startAt,
+      endAt: current.endAt,
+      relatedAccountProfileIdValues: relatedAccountProfileIdValues,
+      relatedAccountProfiles: relatedAccountProfiles,
+      programmingItems: programmingItems,
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  void upsertOccurrence({
+    required int? index,
+    required TenantAdminEventOccurrence occurrence,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final next = current.occurrences.toList(growable: true);
+    final nextKeys = _normalizedOccurrenceKeys(current).toList(growable: true);
+    final nextItemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    String occurrenceKey;
+    if (index == null || index < 0 || index >= next.length) {
+      occurrenceKey = _newEventFormLocalId('occurrence');
+      next.add(occurrence);
+      nextKeys.add(occurrenceKey);
+    } else {
+      occurrenceKey = nextKeys[index];
+      next[index] = occurrence;
+    }
+    nextItemKeysByOccurrenceKey[occurrenceKey] = _reconcileProgrammingItemKeys(
+      currentKeys: nextItemKeysByOccurrenceKey[occurrenceKey],
+      items: occurrence.programmingItems,
+    );
+    final sorted = _sortOccurrenceEntries(
+      occurrences: next,
+      occurrenceKeys: nextKeys,
+    );
+    final primary = sorted.firstOrNull?.occurrence;
+    final nextState = current.copyWith(
+      startAt: primary?.dateTimeStart,
+      endAt: primary?.dateTimeEnd,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+        sorted.map((entry) => entry.occurrence),
+      ),
+      occurrenceLocalIds: List<String>.unmodifiable(
+        sorted.map((entry) => entry.key),
+      ),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        nextItemKeysByOccurrenceKey,
+      ),
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  void removeOccurrenceAt(int index) {
+    final current = eventFormStateStreamValue.value;
+    if (current.occurrences.length <= 1 ||
+        index < 0 ||
+        index >= current.occurrences.length) {
+      return;
+    }
+    final next = current.occurrences.toList(growable: true)..removeAt(index);
+    final nextKeys = _normalizedOccurrenceKeys(current).toList(growable: true);
+    final removedKey = nextKeys.removeAt(index);
+    final nextItemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current)
+          ..remove(removedKey);
+    final primary = next.firstOrNull;
+    final nextState = current.copyWith(
+      startAt: primary?.dateTimeStart,
+      endAt: primary?.dateTimeEnd,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+      occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
+      programmingItemLocalIdsByOccurrenceKey:
+          Map.unmodifiable(nextItemKeysByOccurrenceKey),
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  String createOccurrenceDraft() {
+    final current = eventFormStateStreamValue.value;
+    final fallbackStart = current.occurrences.isNotEmpty
+        ? current.occurrences.last.dateTimeStart.add(const Duration(days: 1))
+        : current.startAt ?? DateTime.now();
+    final fallbackEnd = current.endAt == null || current.startAt == null
+        ? null
+        : fallbackStart.add(current.endAt!.difference(current.startAt!));
+    final occurrence = TenantAdminEventOccurrence(
+      dateTimeStartValue: tenantAdminDateTime(fallbackStart),
+      dateTimeEndValue: tenantAdminOptionalDateTime(fallbackEnd),
+    );
+    final occurrenceKey = _newEventFormLocalId('occurrence');
+    final occurrences = [...current.occurrences, occurrence];
+    final occurrenceKeys = [
+      ..._normalizedOccurrenceKeys(current),
+      occurrenceKey,
+    ];
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    itemKeysByOccurrenceKey[occurrenceKey] = const <String>[];
+    final sorted = _sortOccurrenceEntries(
+      occurrences: occurrences,
+      occurrenceKeys: occurrenceKeys,
+    );
+    final primary = sorted.firstOrNull?.occurrence;
+    _replaceEventFormState(
+      current.copyWith(
+        startAt: primary?.dateTimeStart,
+        endAt: primary?.dateTimeEnd,
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+          sorted.map((entry) => entry.occurrence),
+        ),
+        occurrenceLocalIds: List<String>.unmodifiable(
+          sorted.map((entry) => entry.key),
+        ),
+        programmingItemLocalIdsByOccurrenceKey:
+            Map.unmodifiable(itemKeysByOccurrenceKey),
+      ),
+    );
+    _syncEventDateTimeControllers(eventFormStateStreamValue.value);
+    return occurrenceKey;
+  }
+
+  String? occurrenceKeyAt(int index) {
+    final keys = _normalizedOccurrenceKeys(eventFormStateStreamValue.value);
+    if (index < 0 || index >= keys.length) {
+      return null;
+    }
+    return keys[index];
+  }
+
+  String? primaryOccurrenceKey() {
+    return occurrenceKeyAt(0);
+  }
+
+  String ensurePrimaryOccurrenceDraft() {
+    final existingKey = primaryOccurrenceKey();
+    if (existingKey != null) {
+      return existingKey;
+    }
+    final current = eventFormStateStreamValue.value;
+    final startAt = current.startAt ?? DateTime.now();
+    final occurrence = TenantAdminEventOccurrence(
+      dateTimeStartValue: tenantAdminDateTime(startAt),
+      dateTimeEndValue: tenantAdminOptionalDateTime(current.endAt),
+    );
+    final key = _newEventFormLocalId('occurrence');
+    _replaceEventFormState(
+      current.copyWith(
+        startAt: startAt,
+        occurrences: [occurrence],
+        occurrenceLocalIds: [key],
+        programmingItemLocalIdsByOccurrenceKey: {
+          key: const <String>[],
+        },
+      ),
+    );
+    _syncEventDateTimeControllers(eventFormStateStreamValue.value);
+    return key;
+  }
+
+  TenantAdminEventOccurrence? occurrenceForKey(String occurrenceKey) {
+    final state = eventFormStateStreamValue.value;
+    final index = _occurrenceIndexByKey(state, occurrenceKey);
+    if (index < 0) {
+      return null;
+    }
+    return state.occurrences[index];
+  }
+
+  List<MapEntry<String, TenantAdminEventProgrammingItem>>
+      programmingItemsForOccurrenceKey(String occurrenceKey) {
+    final state = eventFormStateStreamValue.value;
+    final occurrence = occurrenceForKey(occurrenceKey);
+    if (occurrence == null) {
+      return const [];
+    }
+    final itemKeys = _programmingItemKeysForOccurrence(
+      state,
+      occurrenceKey,
+      occurrence.programmingItems,
+    );
+    return [
+      for (var index = 0; index < occurrence.programmingItems.length; index++)
+        MapEntry(itemKeys[index], occurrence.programmingItems[index]),
+    ];
+  }
+
+  void updateOccurrenceStart(String occurrenceKey, DateTime value) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final nextEnd = occurrence.dateTimeEnd != null &&
+              occurrence.dateTimeEnd!.isBefore(value)
+          ? value
+          : occurrence.dateTimeEnd;
+      return _copyOccurrence(
+        occurrence,
+        startAt: value,
+        endAt: nextEnd,
+      );
+    });
+  }
+
+  void updateOccurrenceEnd(String occurrenceKey, DateTime? value) {
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _copyOccurrence(occurrence, endAt: value),
+    );
+  }
+
+  void addOccurrenceRelatedProfile(
+    String occurrenceKey,
+    TenantAdminAccountProfile profile,
+  ) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final relatedIds = occurrence.relatedAccountProfileIds.toList();
+      if (!relatedIds.any((entry) => entry.value == profile.id)) {
+        relatedIds.add(TenantAdminAccountProfileIdValue(profile.id));
+      }
+      final relatedProfiles = occurrence.relatedAccountProfiles
+          .where((entry) => entry.id != profile.id)
+          .toList(growable: true)
+        ..add(profile);
+      return _copyOccurrence(
+        occurrence,
+        relatedAccountProfileIds: relatedIds,
+        relatedAccountProfiles: relatedProfiles,
+      );
+    }, sort: false);
+  }
+
+  void removeOccurrenceRelatedProfile(
+    String occurrenceKey,
+    String profileId,
+  ) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final programmingItems = occurrence.programmingItems
+          .map((item) => _withoutProgrammingProfile(item, profileId))
+          .toList(growable: false);
+      return _copyOccurrence(
+        occurrence,
+        relatedAccountProfileIds: occurrence.relatedAccountProfileIds
+            .where((entry) => entry.value != profileId)
+            .toList(growable: false),
+        relatedAccountProfiles: occurrence.relatedAccountProfiles
+            .where((profile) => profile.id != profileId)
+            .toList(growable: false),
+        programmingItems: programmingItems,
+      );
+    }, sort: false);
+  }
+
+  void addOccurrenceProgrammingItem(
+    String occurrenceKey,
+    TenantAdminEventProgrammingItem item,
+  ) {
+    final current = eventFormStateStreamValue.value;
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    final itemKeys = [
+      ...(itemKeysByOccurrenceKey[occurrenceKey] ?? const <String>[]),
+      _newEventFormLocalId('programming'),
+    ];
+    itemKeysByOccurrenceKey[occurrenceKey] = itemKeys;
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _copyOccurrence(
+        occurrence,
+        programmingItems: [...occurrence.programmingItems, item],
+      ),
+      sort: false,
+      programmingItemLocalIdsByOccurrenceKey: itemKeysByOccurrenceKey,
+    );
+  }
+
+  void updateOccurrenceProgrammingItem({
+    required String occurrenceKey,
+    required String itemKey,
+    required TenantAdminEventProgrammingItem item,
+  }) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final itemKeys = _programmingItemKeysForOccurrence(
+        eventFormStateStreamValue.value,
+        occurrenceKey,
+        occurrence.programmingItems,
+      );
+      final itemIndex = itemKeys.indexOf(itemKey);
+      if (itemIndex < 0 || itemIndex >= occurrence.programmingItems.length) {
+        return occurrence;
+      }
+      final items = occurrence.programmingItems.toList(growable: true);
+      items[itemIndex] = item;
+      return _copyOccurrence(occurrence, programmingItems: items);
+    }, sort: false);
+  }
+
+  void removeOccurrenceProgrammingItem({
+    required String occurrenceKey,
+    required String itemKey,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final occurrence = occurrenceForKey(occurrenceKey);
+    if (occurrence == null) {
+      return;
+    }
+    final itemKeys = _programmingItemKeysForOccurrence(
+      current,
+      occurrenceKey,
+      occurrence.programmingItems,
+    ).toList(growable: true);
+    final itemIndex = itemKeys.indexOf(itemKey);
+    if (itemIndex < 0 || itemIndex >= occurrence.programmingItems.length) {
+      return;
+    }
+    itemKeys.removeAt(itemIndex);
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    itemKeysByOccurrenceKey[occurrenceKey] = List.unmodifiable(itemKeys);
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) {
+        final items = occurrence.programmingItems.toList(growable: true)
+          ..removeAt(itemIndex);
+        return _copyOccurrence(occurrence, programmingItems: items);
+      },
+      sort: false,
+      programmingItemLocalIdsByOccurrenceKey: itemKeysByOccurrenceKey,
+    );
   }
 
   void applyEventPublishAt(DateTime value) {
@@ -700,7 +1134,8 @@ class TenantAdminEventsController implements Disposable {
     _syncEventDateTimeControllers(nextState);
   }
 
-  void hydrateDefaultEventVenue(List<TenantAdminAccountProfile> venues) {
+  void _hydrateDefaultEventVenueFromCandidates() {
+    final venues = venueCandidatesStreamValue.value;
     final current = eventFormStateStreamValue.value;
     if (current.hasHydratedDefaultVenue) {
       return;
@@ -728,27 +1163,115 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  void hydrateDefaultEventType(List<TenantAdminEventType> eventTypes) {
+  void _hydrateDefaultEventTypeFromCatalog() {
+    final eventTypes = eventTypeCatalogStreamValue.value;
     final current = eventFormStateStreamValue.value;
     if (eventTypes.isEmpty) {
-      final selectedTypeSlug = current.selectedTypeSlug?.trim();
-      if (selectedTypeSlug == null || selectedTypeSlug.isEmpty) {
-        return;
-      }
-      _replaceEventFormState(
-        current.copyWith(selectedTypeSlug: null),
-      );
       return;
     }
     final selectedTypeSlug = current.selectedTypeSlug?.trim();
     if (selectedTypeSlug != null &&
         selectedTypeSlug.isNotEmpty &&
         eventTypes.any((type) => type.slug.trim() == selectedTypeSlug)) {
+      final sanitized = _sanitizeEventTaxonomyTermsForSelectedType(current);
+      if (!identical(sanitized, current)) {
+        _replaceEventFormState(sanitized);
+      }
       return;
     }
     _replaceEventFormState(
-      current.copyWith(selectedTypeSlug: eventTypes.first.slug.trim()),
+      _sanitizeEventTaxonomyTermsForSelectedType(
+        current.copyWith(selectedTypeSlug: eventTypes.first.slug.trim()),
+      ),
     );
+  }
+
+  TenantAdminEventFormState _sanitizeEventTaxonomyTermsForSelectedType(
+    TenantAdminEventFormState state,
+  ) {
+    final allowedTaxonomies = _allowedTaxonomiesForEventType(
+      state.selectedTypeSlug,
+    );
+    if (allowedTaxonomies.isEmpty) {
+      if (state.selectedTaxonomyTerms.isEmpty) {
+        return state;
+      }
+      return state
+          .copyWith(selectedTaxonomyTerms: const <String, Set<String>>{});
+    }
+
+    final sanitized = <String, Set<String>>{};
+    for (final entry in state.selectedTaxonomyTerms.entries) {
+      final taxonomySlug = entry.key.trim();
+      if (!allowedTaxonomies.contains(taxonomySlug)) {
+        continue;
+      }
+      final values = entry.value
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet();
+      if (values.isNotEmpty) {
+        sanitized[taxonomySlug] = values;
+      }
+    }
+
+    if (_taxonomyTermMapsEqual(state.selectedTaxonomyTerms, sanitized)) {
+      return state;
+    }
+    return state.copyWith(
+      selectedTaxonomyTerms: Map<String, Set<String>>.unmodifiable(
+        sanitized.map(
+          (key, value) => MapEntry(key, Set<String>.unmodifiable(value)),
+        ),
+      ),
+    );
+  }
+
+  bool _isTaxonomyAllowedForSelectedEventType(
+    String taxonomySlug,
+    TenantAdminEventFormState state,
+  ) {
+    final normalized = taxonomySlug.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+    return _allowedTaxonomiesForEventType(state.selectedTypeSlug)
+        .contains(normalized);
+  }
+
+  Set<String> _allowedTaxonomiesForEventType(String? typeSlug) {
+    final normalizedTypeSlug = typeSlug?.trim();
+    if (normalizedTypeSlug == null || normalizedTypeSlug.isEmpty) {
+      return const <String>{};
+    }
+    for (final type in eventTypeCatalogStreamValue.value) {
+      if (type.slug.trim() != normalizedTypeSlug) {
+        continue;
+      }
+      return type.allowedTaxonomies.value
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet();
+    }
+    return const <String>{};
+  }
+
+  bool _taxonomyTermMapsEqual(
+    Map<String, Set<String>> left,
+    Map<String, Set<String>> right,
+  ) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      final rightValues = right[entry.key];
+      if (rightValues == null ||
+          rightValues.length != entry.value.length ||
+          !rightValues.containsAll(entry.value)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void initEventTypeForm({
@@ -764,6 +1287,9 @@ class TenantAdminEventsController implements Disposable {
     eventTypeSlugController.text = existingType?.slug ?? '';
     eventTypeDescriptionController.text = existingType?.description ?? '';
     _syncEventTypeVisualForm(existingType?.visual);
+    setEventTypeAllowedTaxonomies(
+      existingType?.allowedTaxonomies.value ?? const [],
+    );
 
     final nextState = TenantAdminEventTypeFormState(
       isEdit: isEdit,
@@ -805,10 +1331,38 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  List<String> get selectedEventTypeAllowedTaxonomies =>
+      List<String>.unmodifiable(eventTypeAllowedTaxonomiesStreamValue.value);
+
+  void toggleEventTypeAllowedTaxonomy(String taxonomySlug) {
+    final slug = taxonomySlug.trim();
+    if (slug.isEmpty) {
+      return;
+    }
+    final availableSlugs =
+        taxonomiesStreamValue.value.map((taxonomy) => taxonomy.slug).toSet();
+    if (!availableSlugs.contains(slug)) {
+      return;
+    }
+    final next = <String>[...eventTypeAllowedTaxonomiesStreamValue.value];
+    if (next.contains(slug)) {
+      next.remove(slug);
+    } else {
+      next.add(slug);
+    }
+    _setEventTypeAllowedTaxonomies(next);
+  }
+
+  void setEventTypeAllowedTaxonomies(List<String> slugs) {
+    _setEventTypeAllowedTaxonomies(slugs);
+    _sanitizeEventTypeAllowedTaxonomies();
+  }
+
   Future<TenantAdminEventType> saveEventType({
     required String name,
     required String slug,
     String? description,
+    List<String> allowedTaxonomies = const [],
     TenantAdminPoiVisual? visual,
     TenantAdminMediaUpload? typeAssetUpload,
     bool removeTypeAsset = false,
@@ -826,6 +1380,15 @@ class TenantAdminEventsController implements Disposable {
         (normalizedDescription == null || normalizedDescription.isEmpty)
             ? null
             : normalizedDescription;
+    final allowedTaxonomyValues = allowedTaxonomies
+        .map(
+          (entry) => TenantAdminEventsRepoString.fromRaw(
+            entry,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        )
+        .toList(growable: false);
 
     final eventTypeId = existingType?.id?.trim();
     final isEdit = eventTypeId != null && eventTypeId.isNotEmpty;
@@ -837,6 +1400,7 @@ class TenantAdminEventsController implements Disposable {
                 name: _toEventsText(normalizedName),
                 slug: _toEventsText(normalizedSlug),
                 description: _toNullableEventsText(descriptionForUpdate),
+                allowedTaxonomies: allowedTaxonomyValues,
                 visual: visual,
                 typeAssetUpload: typeAssetUpload,
                 removeTypeAsset: TenantAdminEventsRepoBool.fromRaw(
@@ -849,12 +1413,14 @@ class TenantAdminEventsController implements Disposable {
                 name: _toEventsText(normalizedName),
                 slug: _toEventsText(normalizedSlug),
                 description: _toNullableEventsText(descriptionForUpdate),
+                allowedTaxonomies: allowedTaxonomyValues,
               )
         : includeVisual
             ? await _eventsRepository.createEventTypeWithVisual(
                 name: _toEventsText(normalizedName),
                 slug: _toEventsText(normalizedSlug),
                 description: _toNullableEventsText(descriptionForCreate),
+                allowedTaxonomies: allowedTaxonomyValues,
                 visual: visual,
                 typeAssetUpload: typeAssetUpload,
               )
@@ -862,6 +1428,7 @@ class TenantAdminEventsController implements Disposable {
                 name: _toEventsText(normalizedName),
                 slug: _toEventsText(normalizedSlug),
                 description: _toNullableEventsText(descriptionForCreate),
+                allowedTaxonomies: allowedTaxonomyValues,
               );
 
     await _loadEventTypeCatalog();
@@ -907,6 +1474,7 @@ class TenantAdminEventsController implements Disposable {
     String? accountSlug,
   }) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    final cleanBaselineBeforeLoad = _eventFormInitialFingerprint;
     final tasks = <Future<void>>[
       _loadEventTypeCatalog(),
       _loadTaxonomies(),
@@ -914,6 +1482,16 @@ class TenantAdminEventsController implements Disposable {
     ];
 
     await Future.wait<void>(tasks);
+    if (!_isDisposed) {
+      final canRefreshCleanBaseline = cleanBaselineBeforeLoad != null &&
+          _eventFormFingerprint() == cleanBaselineBeforeLoad;
+      _hydrateDefaultEventVenueFromCandidates();
+      _hydrateDefaultEventTypeFromCatalog();
+      await _loadTermsForSelectedEventType();
+      if (canRefreshCleanBaseline) {
+        markEventFormClean();
+      }
+    }
   }
 
   Future<void> _loadEventTypeCatalog() async {
@@ -946,44 +1524,164 @@ class TenantAdminEventsController implements Disposable {
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToEvent())
           .toList(growable: false);
+      filtered.sort(
+        (left, right) =>
+            left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+      );
       if (_isDisposed) {
         return;
       }
       taxonomiesStreamValue.addValue(filtered);
-
-      final entries =
-          <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
-      for (final taxonomy in filtered) {
-        await _taxonomiesRepository.loadAllTerms(
-            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
-                defaultValue: '', isRequired: true));
-        final terms = _taxonomiesRepository.termsStreamValue.value ??
-            const <TenantAdminTaxonomyTermDefinition>[];
-        entries.add(
-          MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
-            taxonomy.slug,
-            terms,
-          ),
-        );
-      }
-
-      if (_isDisposed) {
-        return;
-      }
-      taxonomyTermsBySlugStreamValue.addValue({
-        for (final entry in entries) entry.key: entry.value,
-      });
+      _sanitizeEventTypeAllowedTaxonomies();
+      _taxonomyTermsCacheBySlug.clear();
+      _loadedTaxonomyTermsKey = null;
+      _loadingTaxonomyTermsKey = null;
+      _taxonomyTermsLoadSerial += 1;
+      taxonomyTermsBySlugStreamValue.addValue(const {});
       taxonomyErrorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) {
         return;
       }
+      taxonomiesStreamValue.addValue(const []);
+      eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
       taxonomyErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
         taxonomyLoadingStreamValue.addValue(false);
       }
     }
+  }
+
+  Future<void> _loadTermsForSelectedEventType() async {
+    final allowedTaxonomySlugs = _allowedTaxonomiesForEventType(
+      eventFormStateStreamValue.value.selectedTypeSlug,
+    );
+    final sortedAllowedSlugs = allowedTaxonomySlugs.toList(growable: false)
+      ..sort();
+    final cacheKey = sortedAllowedSlugs.join('|');
+
+    if (_loadedTaxonomyTermsKey == cacheKey) {
+      if (_loadingTaxonomyTermsKey != null) {
+        _cancelInFlightTaxonomyTermsLoad();
+      }
+      return;
+    }
+
+    if (_loadingTaxonomyTermsKey == cacheKey) {
+      return;
+    }
+
+    final loadSerial = ++_taxonomyTermsLoadSerial;
+
+    if (sortedAllowedSlugs.isEmpty) {
+      _publishTaxonomyTermsLoadResult(
+        cacheKey: cacheKey,
+        termsBySlug: const {},
+      );
+      return;
+    }
+
+    final taxonomyBySlug = {
+      for (final taxonomy in taxonomiesStreamValue.value)
+        taxonomy.slug: taxonomy
+    };
+    if (taxonomyBySlug.isEmpty) {
+      _publishTaxonomyTermsLoadResult(
+        cacheKey: cacheKey,
+        termsBySlug: const {},
+      );
+      return;
+    }
+    final missingDefinitions = <TenantAdminTaxonomyDefinition>[];
+    final scopedTerms = <String, List<TenantAdminTaxonomyTermDefinition>>{};
+    for (final taxonomySlug in sortedAllowedSlugs) {
+      final cachedTerms = _taxonomyTermsCacheBySlug[taxonomySlug];
+      if (cachedTerms != null) {
+        scopedTerms[taxonomySlug] = cachedTerms;
+        continue;
+      }
+      final definition = taxonomyBySlug[taxonomySlug];
+      if (definition != null && definition.id.trim().isNotEmpty) {
+        missingDefinitions.add(definition);
+      }
+    }
+
+    if (missingDefinitions.isEmpty) {
+      _publishTaxonomyTermsLoadResult(
+        cacheKey: cacheKey,
+        termsBySlug: scopedTerms,
+      );
+      return;
+    }
+
+    _loadingTaxonomyTermsKey = cacheKey;
+    taxonomyLoadingStreamValue.addValue(true);
+    try {
+      final fetchedById = await _batchTermsRepository.fetchTermsByTaxonomyIds(
+        taxonomyIds: missingDefinitions
+            .map(
+              (taxonomy) => TenantAdminTaxRepoString.fromRaw(
+                taxonomy.id,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .toList(growable: false),
+      );
+      if (_isDisposed || loadSerial != _taxonomyTermsLoadSerial) {
+        return;
+      }
+      for (final taxonomy in missingDefinitions) {
+        final terms = fetchedById.termsForId(tenantAdminRequiredText(
+          taxonomy.id,
+        ));
+        _taxonomyTermsCacheBySlug[taxonomy.slug] =
+            List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
+        scopedTerms[taxonomy.slug] = _taxonomyTermsCacheBySlug[taxonomy.slug]!;
+      }
+      for (final taxonomySlug in sortedAllowedSlugs) {
+        final cachedTerms = _taxonomyTermsCacheBySlug[taxonomySlug];
+        if (cachedTerms != null) {
+          scopedTerms[taxonomySlug] = cachedTerms;
+        }
+      }
+      _loadedTaxonomyTermsKey = cacheKey;
+      taxonomyTermsBySlugStreamValue.addValue(Map.unmodifiable(scopedTerms));
+      taxonomyErrorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed || loadSerial != _taxonomyTermsLoadSerial) {
+        return;
+      }
+      taxonomyTermsBySlugStreamValue.addValue(const {});
+      taxonomyErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed && loadSerial == _taxonomyTermsLoadSerial) {
+        _loadingTaxonomyTermsKey = null;
+        taxonomyLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void _cancelInFlightTaxonomyTermsLoad() {
+    _taxonomyTermsLoadSerial += 1;
+    _loadingTaxonomyTermsKey = null;
+    taxonomyLoadingStreamValue.addValue(false);
+  }
+
+  void _publishTaxonomyTermsLoadResult({
+    required String cacheKey,
+    required Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug,
+  }) {
+    _loadedTaxonomyTermsKey = cacheKey;
+    _loadingTaxonomyTermsKey = null;
+    taxonomyTermsBySlugStreamValue.addValue(Map.unmodifiable(termsBySlug));
+    taxonomyErrorStreamValue.addValue(null);
+    taxonomyLoadingStreamValue.addValue(false);
+  }
+
+  Future<void> loadEventTypeFormTaxonomies() async {
+    await _loadTaxonomies();
   }
 
   Future<void> prepareAccountProfilePicker({
@@ -1335,6 +2033,7 @@ class TenantAdminEventsController implements Disposable {
         return null;
       }
       submitSuccessMessageStreamValue.addValue('Evento criado com sucesso.');
+      markEventFormClean();
       if (!isAccountScoped) {
         await loadEvents();
       }
@@ -1374,6 +2073,7 @@ class TenantAdminEventsController implements Disposable {
       }
       submitSuccessMessageStreamValue
           .addValue('Evento atualizado com sucesso.');
+      markEventFormClean();
       await loadEvents();
       eventDetailStreamValue.addValue(updated);
       return updated;
@@ -1444,8 +2144,13 @@ class TenantAdminEventsController implements Disposable {
     eventDetailErrorStreamValue.addValue(null);
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
+    _taxonomyTermsCacheBySlug.clear();
+    _loadedTaxonomyTermsKey = null;
+    _loadingTaxonomyTermsKey = null;
+    _taxonomyTermsLoadSerial += 1;
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
+    eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
     eventTypeCatalogStreamValue.addValue(const []);
     venueCandidatesStreamValue.addValue(const []);
     relatedAccountProfileCandidatesStreamValue.addValue(const []);
@@ -1461,6 +2166,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
+    _eventFormInitialFingerprint = null;
     clearSubmitMessages();
   }
 
@@ -1472,6 +2178,390 @@ class TenantAdminEventsController implements Disposable {
     eventStartController.text = _formatDateTime(state.startAt);
     eventEndController.text = _formatDateTime(state.endAt);
     eventPublishAtController.text = _formatDateTime(state.publishAt);
+  }
+
+  TenantAdminEventOccurrence _toLocalOccurrence(
+    TenantAdminEventOccurrence occurrence,
+  ) {
+    return TenantAdminEventOccurrence(
+      occurrenceIdValue: tenantAdminOptionalText(occurrence.occurrenceId),
+      occurrenceSlugValue: tenantAdminOptionalText(occurrence.occurrenceSlug),
+      dateTimeStartValue: tenantAdminDateTime(
+        TimezoneConverter.utcToLocal(occurrence.dateTimeStart),
+      ),
+      dateTimeEndValue: tenantAdminOptionalDateTime(
+        occurrence.dateTimeEnd == null
+            ? null
+            : TimezoneConverter.utcToLocal(occurrence.dateTimeEnd!),
+      ),
+      relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
+      relatedAccountProfiles: occurrence.relatedAccountProfiles,
+      programmingItems: occurrence.programmingItems,
+    );
+  }
+
+  TenantAdminEventFormState _replacePrimaryOccurrenceInState(
+    TenantAdminEventFormState current, {
+    required DateTime? startAt,
+    required DateTime? endAt,
+    List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
+    List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminEventProgrammingItem>? programmingItems,
+  }) {
+    if (startAt == null) {
+      return current;
+    }
+    final existing =
+        current.occurrences.isEmpty ? null : current.occurrences.first;
+    final nextPrimary = _copyOccurrence(
+      existing ??
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(startAt),
+          ),
+      startAt: startAt,
+      endAt: endAt,
+      relatedAccountProfileIds: relatedAccountProfileIdValues,
+      relatedAccountProfiles: relatedAccountProfiles,
+      programmingItems: programmingItems,
+    );
+    final next = current.occurrences.toList(growable: true);
+    final nextKeys = _normalizedOccurrenceKeys(current).toList(growable: true);
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    if (next.isEmpty) {
+      final key = _newEventFormLocalId('occurrence');
+      next.add(nextPrimary);
+      nextKeys.add(key);
+      itemKeysByOccurrenceKey[key] =
+          _newProgrammingItemKeys(nextPrimary.programmingItems);
+    } else {
+      next[0] = nextPrimary;
+      itemKeysByOccurrenceKey[nextKeys[0]] = _reconcileProgrammingItemKeys(
+        currentKeys: itemKeysByOccurrenceKey[nextKeys[0]],
+        items: nextPrimary.programmingItems,
+      );
+    }
+    return current.copyWith(
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+      occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
+      programmingItemLocalIdsByOccurrenceKey:
+          Map.unmodifiable(itemKeysByOccurrenceKey),
+    );
+  }
+
+  void _replaceOccurrenceByKey(
+    String occurrenceKey,
+    TenantAdminEventOccurrence Function(TenantAdminEventOccurrence occurrence)
+        replace, {
+    bool sort = true,
+    Map<String, List<String>>? programmingItemLocalIdsByOccurrenceKey,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final occurrenceIndex = _occurrenceIndexByKey(current, occurrenceKey);
+    if (occurrenceIndex < 0) {
+      return;
+    }
+    final occurrences = current.occurrences.toList(growable: true);
+    occurrences[occurrenceIndex] = replace(occurrences[occurrenceIndex]);
+    final occurrenceKeys = _normalizedOccurrenceKeys(current);
+    final itemKeysByOccurrenceKey = programmingItemLocalIdsByOccurrenceKey ??
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    itemKeysByOccurrenceKey[occurrenceKey] = _reconcileProgrammingItemKeys(
+      currentKeys: itemKeysByOccurrenceKey[occurrenceKey],
+      items: occurrences[occurrenceIndex].programmingItems,
+    );
+
+    final entries = sort
+        ? _sortOccurrenceEntries(
+            occurrences: occurrences,
+            occurrenceKeys: occurrenceKeys,
+          )
+        : [
+            for (var index = 0; index < occurrences.length; index++)
+              (occurrence: occurrences[index], key: occurrenceKeys[index]),
+          ];
+    final primary = entries.firstOrNull?.occurrence;
+    final nextState = current.copyWith(
+      startAt: primary?.dateTimeStart,
+      endAt: primary?.dateTimeEnd,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+        entries.map((entry) => entry.occurrence),
+      ),
+      occurrenceLocalIds: List<String>.unmodifiable(
+        entries.map((entry) => entry.key),
+      ),
+      programmingItemLocalIdsByOccurrenceKey:
+          Map.unmodifiable(itemKeysByOccurrenceKey),
+    );
+    _replaceEventFormState(nextState);
+    _syncEventDateTimeControllers(nextState);
+  }
+
+  TenantAdminEventOccurrence _copyOccurrence(
+    TenantAdminEventOccurrence occurrence, {
+    DateTime? startAt,
+    Object? endAt = _undefinedDateTime,
+    List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIds,
+    List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminEventProgrammingItem>? programmingItems,
+  }) {
+    return TenantAdminEventOccurrence(
+      occurrenceIdValue: tenantAdminOptionalText(occurrence.occurrenceId),
+      occurrenceSlugValue: tenantAdminOptionalText(occurrence.occurrenceSlug),
+      dateTimeStartValue: tenantAdminDateTime(
+        startAt ?? occurrence.dateTimeStart,
+      ),
+      dateTimeEndValue: tenantAdminOptionalDateTime(
+        endAt == _undefinedDateTime
+            ? occurrence.dateTimeEnd
+            : endAt as DateTime?,
+      ),
+      relatedAccountProfileIdValues:
+          relatedAccountProfileIds ?? occurrence.relatedAccountProfileIds,
+      relatedAccountProfiles:
+          relatedAccountProfiles ?? occurrence.relatedAccountProfiles,
+      programmingItems: programmingItems ?? occurrence.programmingItems,
+    );
+  }
+
+  int _occurrenceIndexByKey(
+    TenantAdminEventFormState state,
+    String occurrenceKey,
+  ) {
+    final keys = _normalizedOccurrenceKeys(state);
+    return keys.indexOf(occurrenceKey);
+  }
+
+  List<String> _normalizedOccurrenceKeys(TenantAdminEventFormState state) {
+    if (state.occurrenceLocalIds.length == state.occurrences.length) {
+      return List<String>.unmodifiable(state.occurrenceLocalIds);
+    }
+    return List<String>.unmodifiable(
+      state.occurrences.map(_eventFormOccurrenceKeyFor),
+    );
+  }
+
+  Map<String, List<String>> _normalizedProgrammingItemKeysByOccurrenceKey(
+    TenantAdminEventFormState state,
+  ) {
+    final occurrenceKeys = _normalizedOccurrenceKeys(state);
+    final result = <String, List<String>>{};
+    for (var index = 0; index < state.occurrences.length; index++) {
+      final occurrenceKey = occurrenceKeys[index];
+      result[occurrenceKey] = _programmingItemKeysForOccurrence(
+        state,
+        occurrenceKey,
+        state.occurrences[index].programmingItems,
+      );
+    }
+    return result;
+  }
+
+  List<String> _programmingItemKeysForOccurrence(
+    TenantAdminEventFormState state,
+    String occurrenceKey,
+    List<TenantAdminEventProgrammingItem> items,
+  ) {
+    return _reconcileProgrammingItemKeys(
+      currentKeys: state.programmingItemLocalIdsByOccurrenceKey[occurrenceKey],
+      items: items,
+    );
+  }
+
+  List<String> _reconcileProgrammingItemKeys({
+    required List<String>? currentKeys,
+    required List<TenantAdminEventProgrammingItem> items,
+  }) {
+    final keys = currentKeys?.toList(growable: true) ?? <String>[];
+    while (keys.length < items.length) {
+      keys.add(_newEventFormLocalId('programming'));
+    }
+    if (keys.length > items.length) {
+      keys.removeRange(items.length, keys.length);
+    }
+    return List<String>.unmodifiable(keys);
+  }
+
+  List<String> _newProgrammingItemKeys(
+    List<TenantAdminEventProgrammingItem> items,
+  ) {
+    return [
+      for (var index = 0; index < items.length; index++)
+        _newEventFormLocalId('programming'),
+    ];
+  }
+
+  List<({TenantAdminEventOccurrence occurrence, String key})>
+      _sortOccurrenceEntries({
+    required List<TenantAdminEventOccurrence> occurrences,
+    required List<String> occurrenceKeys,
+  }) {
+    final entries = [
+      for (var index = 0; index < occurrences.length; index++)
+        (occurrence: occurrences[index], key: occurrenceKeys[index]),
+    ];
+    entries.sort(
+      (left, right) => left.occurrence.dateTimeStart.compareTo(
+        right.occurrence.dateTimeStart,
+      ),
+    );
+    return entries;
+  }
+
+  String _eventFormOccurrenceKeyFor(TenantAdminEventOccurrence occurrence) {
+    final occurrenceId = occurrence.occurrenceId?.trim();
+    if (occurrenceId != null && occurrenceId.isNotEmpty) {
+      return 'occurrence-id:$occurrenceId';
+    }
+    final occurrenceSlug = occurrence.occurrenceSlug?.trim();
+    if (occurrenceSlug != null && occurrenceSlug.isNotEmpty) {
+      return 'occurrence-slug:$occurrenceSlug';
+    }
+    return _newEventFormLocalId('occurrence');
+  }
+
+  String _newEventFormLocalId(String prefix) {
+    _eventFormLocalIdSerial += 1;
+    return '$prefix-$_eventFormLocalIdSerial';
+  }
+
+  TenantAdminEventProgrammingItem _withoutProgrammingProfile(
+    TenantAdminEventProgrammingItem item,
+    String profileId,
+  ) {
+    return TenantAdminEventProgrammingItem(
+      timeValue: tenantAdminRequiredText(item.time),
+      titleValue: tenantAdminOptionalText(item.title),
+      accountProfileIdValues: item.accountProfileIds
+          .where((entry) => entry.value != profileId)
+          .toList(growable: false),
+      linkedAccountProfiles: item.linkedAccountProfiles
+          .where((profile) => profile.id != profileId)
+          .toList(growable: false),
+      placeRef: item.placeRef,
+    );
+  }
+
+  String _eventFormFingerprint() {
+    return jsonEncode(<String, Object?>{
+      'title': eventTitleController.text,
+      'content': eventContentController.text,
+      'startText': eventStartController.text,
+      'endText': eventEndController.text,
+      'publishText': eventPublishAtController.text,
+      'onlineUrl': eventOnlineUrlController.text,
+      'onlinePlatform': eventOnlinePlatformController.text,
+      'coverFile': _xFileFingerprint(eventCoverFileStreamValue.value),
+      'coverRemove': eventCoverRemoveStreamValue.value,
+      'formState': _eventFormStateFingerprint(eventFormStateStreamValue.value),
+    });
+  }
+
+  Map<String, Object?>? _xFileFingerprint(XFile? file) {
+    if (file == null) {
+      return null;
+    }
+    return <String, Object?>{
+      'name': file.name,
+      'path': file.path,
+    };
+  }
+
+  Map<String, Object?> _eventFormStateFingerprint(
+    TenantAdminEventFormState state,
+  ) {
+    return <String, Object?>{
+      'startAt': _dateFingerprint(state.startAt),
+      'endAt': _dateFingerprint(state.endAt),
+      'publishAt': _dateFingerprint(state.publishAt),
+      'locationMode': state.locationMode,
+      'publicationStatus': state.publicationStatus,
+      'selectedVenueId': state.selectedVenueId,
+      'selectedTypeSlug': state.selectedTypeSlug,
+      'selectedRelatedProfileIds': state.selectedRelatedAccountProfileIds,
+      'occurrences': [
+        for (final occurrence in state.occurrences)
+          _occurrenceFingerprint(occurrence),
+      ],
+      'taxonomyTerms': _taxonomyTermsFingerprint(state.selectedTaxonomyTerms),
+      'hasHydratedDefaultVenue': state.hasHydratedDefaultVenue,
+    };
+  }
+
+  Map<String, Object?> _occurrenceFingerprint(
+    TenantAdminEventOccurrence occurrence,
+  ) {
+    return <String, Object?>{
+      'id': occurrence.occurrenceId,
+      'slug': occurrence.occurrenceSlug,
+      'startAt': _dateFingerprint(occurrence.dateTimeStart),
+      'endAt': _dateFingerprint(occurrence.dateTimeEnd),
+      'relatedProfileIds': [
+        for (final profileId in occurrence.relatedAccountProfileIds)
+          profileId.value,
+      ],
+      'relatedProfiles': [
+        for (final profile in occurrence.relatedAccountProfiles)
+          _accountProfileFingerprint(profile),
+      ],
+      'programmingItems': [
+        for (final item in occurrence.programmingItems)
+          _programmingItemFingerprint(item),
+      ],
+    };
+  }
+
+  Map<String, Object?> _programmingItemFingerprint(
+    TenantAdminEventProgrammingItem item,
+  ) {
+    return <String, Object?>{
+      'time': item.time,
+      'title': item.title,
+      'accountProfileIds': [
+        for (final profileId in item.accountProfileIds) profileId.value,
+      ],
+      'linkedProfiles': [
+        for (final profile in item.linkedAccountProfiles)
+          _accountProfileFingerprint(profile),
+      ],
+      'placeRef': item.placeRef == null
+          ? null
+          : <String, Object?>{
+              'type': item.placeRef!.type,
+              'id': item.placeRef!.id,
+            },
+    };
+  }
+
+  Map<String, Object?> _accountProfileFingerprint(
+    TenantAdminAccountProfile profile,
+  ) {
+    return <String, Object?>{
+      'id': profile.id,
+      'accountId': profile.accountId,
+      'profileType': profile.profileType,
+      'displayName': profile.displayName,
+      'slug': profile.slug,
+      'avatarUrl': profile.avatarUrl,
+      'coverUrl': profile.coverUrl,
+    };
+  }
+
+  Map<String, List<String>> _taxonomyTermsFingerprint(
+    Map<String, Set<String>> termsByTaxonomy,
+  ) {
+    final normalized = <String, List<String>>{};
+    final taxonomySlugs = termsByTaxonomy.keys.toList(growable: false)..sort();
+    for (final taxonomySlug in taxonomySlugs) {
+      final terms = termsByTaxonomy[taxonomySlug]!.toList(growable: false)
+        ..sort();
+      normalized[taxonomySlug] = List<String>.unmodifiable(terms);
+    }
+    return normalized;
+  }
+
+  String? _dateFingerprint(DateTime? value) {
+    return value?.toIso8601String();
   }
 
   void _syncEventTypeSlugFromName() {
@@ -1487,6 +2577,39 @@ class TenantAdminEventsController implements Disposable {
       text: generated,
       selection: TextSelection.collapsed(offset: generated.length),
       composing: TextRange.empty,
+    );
+  }
+
+  void _setEventTypeAllowedTaxonomies(List<String> slugs) {
+    final normalized = slugs
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .fold<List<String>>(<String>[], (current, entry) {
+      if (!current.contains(entry)) {
+        current.add(entry);
+      }
+      return current;
+    });
+    eventTypeAllowedTaxonomiesStreamValue.addValue(
+      List<String>.unmodifiable(normalized),
+    );
+  }
+
+  void _sanitizeEventTypeAllowedTaxonomies() {
+    final availableSlugs =
+        taxonomiesStreamValue.value.map((taxonomy) => taxonomy.slug).toSet();
+    if (availableSlugs.isEmpty) {
+      return;
+    }
+    final sanitized = eventTypeAllowedTaxonomiesStreamValue.value
+        .where(availableSlugs.contains)
+        .toList(growable: false);
+    if (sanitized.length ==
+        eventTypeAllowedTaxonomiesStreamValue.value.length) {
+      return;
+    }
+    eventTypeAllowedTaxonomiesStreamValue.addValue(
+      List<String>.unmodifiable(sanitized),
     );
   }
 
@@ -1767,6 +2890,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverBusyStreamValue.dispose();
     eventCoverRemoveStreamValue.dispose();
     eventTypeFormStateStreamValue.dispose();
+    eventTypeAllowedTaxonomiesStreamValue.dispose();
     eventTypeNameController.dispose();
     eventTypeSlugController.dispose();
     eventTypeDescriptionController.dispose();

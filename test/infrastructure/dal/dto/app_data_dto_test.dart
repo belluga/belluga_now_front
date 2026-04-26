@@ -9,28 +9,24 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('AppDataDTO profile type visual registry', () {
     test('parses canonical visual payload into public registry', () {
-      final appData = AppDataDTO.fromJson(_basePayload(
-        profileTypes: [
-          {
-            'type': 'venue',
-            'label': 'Venue',
-            'labels': {
-              'singular': 'Venue',
-              'plural': 'Venues',
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: [
+            {
+              'type': 'venue',
+              'label': 'Venue',
+              'labels': {'singular': 'Venue', 'plural': 'Venues'},
+              'visual': {
+                'mode': 'icon',
+                'icon': 'place',
+                'color': '#FF8800',
+                'icon_color': '#101010',
+              },
+              'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
             },
-            'visual': {
-              'mode': 'icon',
-              'icon': 'place',
-              'color': '#FF8800',
-              'icon_color': '#101010',
-            },
-            'capabilities': {
-              'is_favoritable': true,
-              'is_poi_enabled': true,
-            },
-          },
-        ],
-      )).toDomain(localInfo: _localInfo());
+          ],
+        ),
+      ).toDomain(localInfo: _localInfo());
 
       final definition = appData.profileTypeRegistry.byType(
         ProfileTypeKeyValue('venue'),
@@ -46,20 +42,18 @@ void main() {
     });
 
     test('falls back to legacy poi_visual payload in public registry', () {
-      final appData = AppDataDTO.fromJson(_basePayload(
-        profileTypes: [
-          {
-            'type': 'artist',
-            'label': 'Artist',
-            'poi_visual': {
-              'image_source': 'cover',
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: [
+            {
+              'type': 'artist',
+              'label': 'Artist',
+              'poi_visual': {'image_source': 'cover'},
+              'capabilities': {'has_cover': true},
             },
-            'capabilities': {
-              'has_cover': true,
-            },
-          },
-        ],
-      )).toDomain(localInfo: _localInfo());
+          ],
+        ),
+      ).toDomain(localInfo: _localInfo());
 
       final definition = appData.profileTypeRegistry.byType(
         ProfileTypeKeyValue('artist'),
@@ -74,25 +68,25 @@ void main() {
     });
 
     test('parses type_asset image visuals with canonical image url', () {
-      final appData = AppDataDTO.fromJson(_basePayload(
-        profileTypes: [
-          {
-            'type': 'restaurant',
-            'label': 'Restaurant',
-            'visual': {
-              'mode': 'image',
-              'image_source': 'type_asset',
-              'image_url':
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: [
+            {
+              'type': 'restaurant',
+              'label': 'Restaurant',
+              'visual': {
+                'mode': 'image',
+                'image_source': 'type_asset',
+                'image_url':
+                    'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
+              },
+              'type_asset_url':
                   'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
+              'capabilities': {'is_poi_enabled': true},
             },
-            'type_asset_url':
-                'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
-            'capabilities': {
-              'is_poi_enabled': true,
-            },
-          },
-        ],
-      )).toDomain(localInfo: _localInfo());
+          ],
+        ),
+      ).toDomain(localInfo: _localInfo());
 
       final definition = appData.profileTypeRegistry.byType(
         ProfileTypeKeyValue('restaurant'),
@@ -108,6 +102,43 @@ void main() {
         definition.visual?.imageUrl,
         'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
       );
+    });
+
+    test('normalizes reference location capability in public registry', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: [
+            {
+              'type': 'hotel',
+              'label': 'Hotel',
+              'capabilities': {
+                'is_poi_enabled': false,
+                'is_reference_location_enabled': true,
+              },
+            },
+            {
+              'type': 'venue',
+              'label': 'Venue',
+              'capabilities': {
+                'is_poi_enabled': true,
+                'is_reference_location_enabled': true,
+              },
+            },
+          ],
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      final hotel = appData.profileTypeRegistry.byType(
+        ProfileTypeKeyValue('hotel'),
+      );
+      final venue = appData.profileTypeRegistry.byType(
+        ProfileTypeKeyValue('venue'),
+      );
+
+      expect(hotel, isNotNull);
+      expect(hotel!.capabilities.isReferenceLocationEnabled, isFalse);
+      expect(venue, isNotNull);
+      expect(venue!.capabilities.isReferenceLocationEnabled, isTrue);
     });
   });
 }

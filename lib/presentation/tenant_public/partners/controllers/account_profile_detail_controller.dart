@@ -1,5 +1,10 @@
+import 'dart:async';
+
+import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -15,7 +20,6 @@ import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_r
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'dart:async';
 
 enum AccountProfileFavoriteToggleOutcome {
   toggled,
@@ -133,7 +137,12 @@ class AccountProfileDetailController implements Disposable {
       ),
     );
     try {
-      moduleDataStreamValue.addValue(await _buildModuleData(accountProfile));
+      moduleDataStreamValue.addValue(
+        await _buildModuleData(
+          accountProfile,
+          capabilities: capabilities,
+        ),
+      );
     } catch (_) {
       errorMessageStreamValue.addValue('Falha ao preparar o perfil');
       moduleDataStreamValue.addValue(const {});
@@ -256,12 +265,16 @@ class AccountProfileDetailController implements Disposable {
   }
 
   Future<Map<ProfileModuleId, Object?>> _buildModuleData(
-    AccountProfileModel accountProfile,
-  ) async {
+    AccountProfileModel accountProfile, {
+    ProfileTypeCapabilities? capabilities,
+  }) async {
     final modules = <ProfileModuleId, Object?>{};
-    final bio = accountProfile.bio?.trim();
-    if (bio != null && bio.isNotEmpty) {
-      modules[ProfileModuleId.richText] = bio;
+    final richTextBlocks = _buildRichTextModuleData(
+      accountProfile,
+      capabilities: capabilities,
+    );
+    if (richTextBlocks.isNotEmpty) {
+      modules[ProfileModuleId.richText] = richTextBlocks;
     }
     final location = _buildLocationModuleData(accountProfile);
     if (location != null) {
@@ -272,6 +285,36 @@ class AccountProfileDetailController implements Disposable {
       modules[ProfileModuleId.agendaList] = agenda;
     }
     return modules;
+  }
+
+  List<AccountProfileRichTextBlock> _buildRichTextModuleData(
+    AccountProfileModel accountProfile, {
+    ProfileTypeCapabilities? capabilities,
+  }) {
+    final canRenderBio = capabilities?.hasBio ?? true;
+    final canRenderContent = capabilities?.hasContent ?? true;
+    final rawBio = accountProfile.bio?.trim() ?? '';
+    final rawContent = accountProfile.content?.trim() ?? '';
+    final canonicalBio = canRenderBio ? SafeRichHtml.canonicalize(rawBio) : '';
+    final canonicalContent =
+        canRenderContent ? SafeRichHtml.canonicalize(rawContent) : '';
+    final hasBio = canonicalBio.isNotEmpty;
+    final hasContent = canonicalContent.isNotEmpty;
+
+    if (!hasBio && !hasContent) {
+      return const <AccountProfileRichTextBlock>[];
+    }
+
+    if (hasBio && hasContent) {
+      return [
+        AccountProfileRichTextBlock(title: 'Sobre', html: rawBio),
+        AccountProfileRichTextBlock(title: 'Conteúdo', html: rawContent),
+      ];
+    }
+
+    return [
+      AccountProfileRichTextBlock(html: hasBio ? rawBio : rawContent),
+    ];
   }
 
   PartnerLocationView? _buildLocationModuleData(

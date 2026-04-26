@@ -115,24 +115,7 @@ class TenantAdminEventsResponseDecoder {
     final occurrences = occurrencesRaw
         .map(_asMap)
         .where((item) => item.isNotEmpty)
-        .map((item) {
-          final start = _parseDate(item['date_time_start']);
-          if (start == null) {
-            return null;
-          }
-          return TenantAdminEventOccurrence(
-            occurrenceIdValue: tenantAdminOptionalText(
-              _asString(item['occurrence_id']),
-            ),
-            occurrenceSlugValue: tenantAdminOptionalText(
-              _asString(item['occurrence_slug']),
-            ),
-            dateTimeStartValue: tenantAdminDateTime(start),
-            dateTimeEndValue: tenantAdminOptionalDateTime(
-              _parseDate(item['date_time_end']),
-            ),
-          );
-        })
+        .map(_mapOccurrence)
         .whereType<TenantAdminEventOccurrence>()
         .toList(growable: false);
 
@@ -154,11 +137,7 @@ class TenantAdminEventsResponseDecoder {
     final taxonomyTerms = taxonomyTermsRaw
         .map(_asMap)
         .where((term) => term.isNotEmpty)
-        .map((term) {
-          final type = _asString(term['type']) ?? '';
-          final value = _asString(term['value']) ?? '';
-          return tenantAdminTaxonomyTermFromRaw(type: type, value: value);
-        })
+        .map(_mapTaxonomyTerm)
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
         .toList(
           growable: false,
@@ -327,14 +306,113 @@ class TenantAdminEventsResponseDecoder {
   }
 
   TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
-    return TenantAdminEventType(
+    return TenantAdminEventType.withAllowedTaxonomies(
       idValue: tenantAdminOptionalText(_asString(row['id'])),
       nameValue: tenantAdminRequiredText(_asString(row['name']) ?? ''),
       slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
       descriptionValue: tenantAdminOptionalText(_asString(row['description'])),
       iconValue: tenantAdminOptionalText(_asString(row['icon'])),
       colorValue: tenantAdminOptionalText(_asString(row['color'])),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        row['allowed_taxonomies'],
+      ),
       visual: _decodeEventTypeVisual(row),
+    );
+  }
+
+  TenantAdminEventOccurrence? _mapOccurrence(Map<String, dynamic> item) {
+    final start = _parseDate(item['date_time_start']);
+    if (start == null) {
+      return null;
+    }
+    final ownProfiles = _decodeRelatedAccountProfiles(
+      item['own_linked_account_profiles'] ?? item['linked_account_profiles'],
+    );
+    final ownParties =
+        _asList(item['own_event_parties'] ?? item['event_parties'])
+            .map(_asMap)
+            .where((party) => party.isNotEmpty)
+            .toList(growable: false);
+    final ownProfileIds = ownParties.isNotEmpty
+        ? _mapPartyProfileIds(ownParties)
+        : ownProfiles
+            .where((profile) => profile.profileType.trim() != 'venue')
+            .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
+            .toList(growable: false);
+
+    return TenantAdminEventOccurrence(
+      occurrenceIdValue: tenantAdminOptionalText(
+        _asString(item['occurrence_id']),
+      ),
+      occurrenceSlugValue: tenantAdminOptionalText(
+        _asString(item['occurrence_slug']),
+      ),
+      dateTimeStartValue: tenantAdminDateTime(start),
+      dateTimeEndValue: tenantAdminOptionalDateTime(
+        _parseDate(item['date_time_end']),
+      ),
+      relatedAccountProfileIdValues: ownProfileIds,
+      relatedAccountProfiles: ownProfiles,
+      programmingItems: _mapProgrammingItems(item['programming_items']),
+    );
+  }
+
+  List<TenantAdminAccountProfileIdValue> _mapPartyProfileIds(
+    List<Map<String, dynamic>> parties,
+  ) {
+    return parties
+        .where((party) => (_asString(party['party_type']) ?? '') != 'venue')
+        .map((party) => _asString(party['party_ref_id']))
+        .where((value) => value != null && value.isNotEmpty)
+        .cast<String>()
+        .map(TenantAdminAccountProfileIdValue.new)
+        .toList(growable: false);
+  }
+
+  List<TenantAdminEventProgrammingItem> _mapProgrammingItems(Object? raw) {
+    return _asList(raw)
+        .map(_asMap)
+        .where((item) => item.isNotEmpty)
+        .map((item) {
+          final linkedProfiles = _decodeRelatedAccountProfiles(
+            item['linked_account_profiles'],
+          );
+          final profileIds = _asList(item['account_profile_ids']).isNotEmpty
+              ? _asList(item['account_profile_ids'])
+                  .map(_asString)
+                  .where((value) => value != null && value.isNotEmpty)
+                  .cast<String>()
+                  .map(TenantAdminAccountProfileIdValue.new)
+                  .toList(growable: false)
+              : linkedProfiles
+                  .map(
+                      (profile) => TenantAdminAccountProfileIdValue(profile.id))
+                  .toList(growable: false);
+          return TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminRequiredText(_asString(item['time']) ?? ''),
+            titleValue: tenantAdminOptionalText(_asString(item['title'])),
+            accountProfileIdValues: profileIds,
+            linkedAccountProfiles: linkedProfiles,
+            placeRef: _mapProgrammingPlaceRef(item['place_ref']),
+          );
+        })
+        .where((item) => item.time.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  TenantAdminEventPlaceRef? _mapProgrammingPlaceRef(Object? raw) {
+    final row = _asMap(raw);
+    if (row.isEmpty) {
+      return null;
+    }
+    final type = _asString(row['type']) ?? '';
+    final id = _extractPlaceRefId(row) ?? '';
+    if (type.isEmpty || id.isEmpty) {
+      return null;
+    }
+    return TenantAdminEventPlaceRef(
+      typeValue: tenantAdminRequiredText(type),
+      idValue: tenantAdminRequiredText(id),
     );
   }
 
@@ -414,10 +492,7 @@ class TenantAdminEventsResponseDecoder {
     final taxonomyTerms = _asList(row['taxonomy_terms'])
         .map(_asMap)
         .where((term) => term.isNotEmpty)
-        .map((term) => tenantAdminTaxonomyTermFromRaw(
-              type: _asString(term['type']) ?? '',
-              value: _asString(term['value']) ?? '',
-            ))
+        .map(_mapTaxonomyTerm)
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
         .toList(growable: false);
 
@@ -450,10 +525,7 @@ class TenantAdminEventsResponseDecoder {
     final taxonomyTerms = _asList(row['taxonomy_terms'])
         .map(_asMap)
         .where((term) => term.isNotEmpty)
-        .map((term) => tenantAdminTaxonomyTermFromRaw(
-              type: _asString(term['type']) ?? '',
-              value: _asString(term['value']) ?? '',
-            ))
+        .map(_mapTaxonomyTerm)
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
         .toList(growable: false);
 
@@ -496,6 +568,16 @@ class TenantAdminEventsResponseDecoder {
         .whereType<Map>()
         .map((row) => _mapRelatedAccountProfile(Map<String, dynamic>.from(row)))
         .toList(growable: false);
+  }
+
+  TenantAdminTaxonomyTerm _mapTaxonomyTerm(Map<String, dynamic> term) {
+    return tenantAdminTaxonomyTermFromRaw(
+      type: _asString(term['type']) ?? '',
+      value: _asString(term['value']) ?? '',
+      name: _asString(term['name']),
+      taxonomyName: _asString(term['taxonomy_name']),
+      label: _asString(term['label']),
+    );
   }
 
   Map<String, dynamic> _asMap(Object? value) {

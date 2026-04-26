@@ -3,6 +3,9 @@ export 'tenant_admin_branding_asset_slot.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
+import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_discovery_filter_rule_catalog_builder.dart';
+import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomy_terms_by_slug.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -33,7 +36,6 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_branding_asset_slot.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_favicon_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -1712,9 +1714,8 @@ class TenantAdminSettingsController implements Disposable {
         darkIconUrl;
     _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.pwaIcon] =
         pwaIconUrl;
-    _loadedBrandingAssetPreviewUrls[
-            TenantAdminBrandingAssetSlot.publicWebDefaultImage] =
-        publicWebDefaultImageUrl;
+    _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot
+        .publicWebDefaultImage] = publicWebDefaultImageUrl;
     brandingLightLogoUrlStreamValue.addValue(lightLogoUrl);
     brandingDarkLogoUrlStreamValue.addValue(darkLogoUrl);
     brandingLightIconUrlStreamValue.addValue(lightIconUrl);
@@ -1787,108 +1788,13 @@ class TenantAdminSettingsController implements Disposable {
     required Map<String, List<TenantAdminTaxonomyTermDefinition>>
         termsByTaxonomySlug,
   }) {
-    final accountTypeOptions = accountTypes
-        .where((item) => item.type.trim().isNotEmpty)
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.type.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.label.trim().isEmpty ? item.type : item.label.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final staticTypeOptions = staticTypes
-        .where((item) => item.type.trim().isNotEmpty)
-        .map(
-          (item) => TenantAdminMapFilterTypeOption(
-            slugValue: _tokenValue(item.type.trim().toLowerCase()),
-            labelValue: _requiredTextValue(
-              item.label.trim().isEmpty ? item.type : item.label.trim(),
-            ),
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.label.compareTo(right.label));
-
-    final taxonomyBySource = <TenantAdminMapFilterSource,
-        List<TenantAdminMapFilterTaxonomyTermOption>>{
-      TenantAdminMapFilterSource.accountProfile:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-      TenantAdminMapFilterSource.staticAsset:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-      TenantAdminMapFilterSource.event:
-          <TenantAdminMapFilterTaxonomyTermOption>[],
-    };
-
-    for (final taxonomy in taxonomies) {
-      final taxonomySlug = taxonomy.slug.trim().toLowerCase();
-      if (taxonomySlug.isEmpty) {
-        continue;
-      }
-      final taxonomyLabel =
-          taxonomy.name.trim().isEmpty ? taxonomySlug : taxonomy.name.trim();
-      final terms = termsByTaxonomySlug[taxonomy.slug] ?? const [];
-      for (final term in terms) {
-        final termSlug = term.slug.trim().toLowerCase();
-        if (termSlug.isEmpty) {
-          continue;
-        }
-        final option = TenantAdminMapFilterTaxonomyTermOption(
-          tokenValue: _tokenValue('$taxonomySlug:$termSlug'),
-          labelValue: _requiredTextValue(
-            term.name.trim().isEmpty ? term.slug : term.name.trim(),
-          ),
-          taxonomySlugValue: _tokenValue(taxonomySlug),
-          taxonomyLabelValue: _requiredTextValue(taxonomyLabel),
-        );
-        if (taxonomy.appliesToAccountProfile()) {
-          taxonomyBySource[TenantAdminMapFilterSource.accountProfile]!
-              .add(option);
-        }
-        if (taxonomy.appliesToStaticAsset()) {
-          taxonomyBySource[TenantAdminMapFilterSource.staticAsset]!.add(option);
-        }
-        if (taxonomy.appliesToEvent()) {
-          taxonomyBySource[TenantAdminMapFilterSource.event]!.add(option);
-        }
-      }
-    }
-
-    for (final source in taxonomyBySource.keys) {
-      taxonomyBySource[source] =
-          List<TenantAdminMapFilterTaxonomyTermOption>.from(
-        taxonomyBySource[source]!,
-      )..sort((left, right) {
-              final group = left.taxonomyLabel.compareTo(right.taxonomyLabel);
-              if (group != 0) {
-                return group;
-              }
-              return left.label.compareTo(right.label);
-            });
-    }
-
-    return TenantAdminMapFilterRuleCatalog(
-      typesBySource: TenantAdminMapFilterTypeOptionsBySourceValue({
-        TenantAdminMapFilterSource.accountProfile:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          accountTypeOptions,
-        ),
-        TenantAdminMapFilterSource.staticAsset:
-            List<TenantAdminMapFilterTypeOption>.unmodifiable(
-          staticTypeOptions,
-        ),
-        TenantAdminMapFilterSource.event:
-            const <TenantAdminMapFilterTypeOption>[],
-      }),
-      taxonomyTermsBySource: TenantAdminMapFilterTaxonomyOptionsBySourceValue({
-        for (final entry in taxonomyBySource.entries)
-          entry.key: List<TenantAdminMapFilterTaxonomyTermOption>.unmodifiable(
-            entry.value,
-          ),
-      }),
+    return const TenantAdminDiscoveryFilterRuleCatalogBuilder().build(
+      accountTypes: accountTypes,
+      staticTypes: staticTypes,
+      taxonomies: taxonomies,
+      termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(
+        termsByTaxonomySlug,
+      ),
     );
   }
 
@@ -2026,7 +1932,12 @@ class TenantAdminSettingsController implements Disposable {
   Future<void> _refreshAppDataSnapshot() async {
     try {
       await _appDataRepository.init();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      await SentryErrorReporter.captureRecoverable(
+        origin: 'tenant_admin.settings.refresh_app_data_snapshot',
+        error: error,
+        stackTrace: stackTrace,
+      );
       debugPrint(
         'TenantAdminSettingsController._refreshAppDataSnapshot failed: $error',
       );

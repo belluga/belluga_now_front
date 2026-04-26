@@ -208,16 +208,26 @@ class AppDataDTO {
     final mapFilterCatalogKeys = _resolveMapFilterCatalogKeys(settings);
 
     final origin = _resolveOrigin(mainDomain);
-    final mainIconLightResolved =
-        _firstNonEmpty(mainIconLightUrl, '$origin/icon-light.png');
-    final mainIconDarkResolved =
-        _firstNonEmpty(mainIconDarkUrl, '$origin/icon-dark.png');
-    final mainLogoLightResolved =
-        _firstNonEmpty(mainLogoLightUrl, '$origin/logo-light.png');
-    final mainLogoDarkResolved =
-        _firstNonEmpty(mainLogoDarkUrl, '$origin/logo-dark.png');
+    final mainIconLightResolved = _firstNonEmpty(
+      mainIconLightUrl,
+      '$origin/icon-light.png',
+    );
+    final mainIconDarkResolved = _firstNonEmpty(
+      mainIconDarkUrl,
+      '$origin/icon-dark.png',
+    );
+    final mainLogoLightResolved = _firstNonEmpty(
+      mainLogoLightUrl,
+      '$origin/logo-light.png',
+    );
+    final mainLogoDarkResolved = _firstNonEmpty(
+      mainLogoDarkUrl,
+      '$origin/logo-dark.png',
+    );
     final mainColorResolved = _firstNonEmpty(
-        mainColor, themeDataSettings['primary_seed_color'] as String?);
+      mainColor,
+      themeDataSettings['primary_seed_color'] as String?,
+    );
 
     final mainDomainValue = DomainValue()
       ..parse(DomainValue.coerceRaw(mainDomain));
@@ -264,11 +274,13 @@ class AppDataDTO {
       pushSettings: _buildPushSettings(push),
       tenantDefaultOrigin: tenantDefaultOrigin,
       mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
-      mapRadiusDefaultMetersValue:
-          _buildDistanceValue(radiusBounds.defaultMeters),
+      mapRadiusDefaultMetersValue: _buildDistanceValue(
+        radiusBounds.defaultMeters,
+      ),
       mapRadiusMaxMetersValue: _buildDistanceValue(radiusBounds.maxMeters),
-      mapFilterCatalogKeysValue:
-          AppDataMapFilterCatalogKeysValue(mapFilterCatalogKeys),
+      mapFilterCatalogKeysValue: AppDataMapFilterCatalogKeysValue(
+        mapFilterCatalogKeys,
+      ),
       mainIconLightUrl: _parseRequired(
         mainIconLightResolved,
         () => IconUrlValue(isRequired: true),
@@ -331,10 +343,7 @@ class AppDataDTO {
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
-        return {
-          ...map,
-          'trackers': trackers,
-        };
+        return {...map, 'trackers': trackers};
       }
       return Map<String, dynamic>.from(map);
     }
@@ -343,9 +352,7 @@ class AppDataDTO {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
-      return {
-        'trackers': trackers,
-      };
+      return {'trackers': trackers};
     }
     return null;
   }
@@ -368,20 +375,25 @@ class AppDataDTO {
           labelsMap['singular']?.toString().trim().isNotEmpty == true
               ? labelsMap['singular']?.toString().trim()
               : label;
-      final pluralLabel = labelsMap['plural']?.toString().trim().isNotEmpty ==
-              true
-          ? labelsMap['plural']?.toString().trim()
-          : singularLabel;
+      final pluralLabel =
+          labelsMap['plural']?.toString().trim().isNotEmpty == true
+              ? labelsMap['plural']?.toString().trim()
+              : singularLabel;
       final capabilitiesRaw = rawType['capabilities'];
       final capabilitiesMap = capabilitiesRaw is Map
           ? Map<String, dynamic>.from(capabilitiesRaw)
           : const <String, dynamic>{};
+      final isPoiEnabled = capabilitiesMap['is_poi_enabled'] == true;
+      final isReferenceLocationEnabled = isPoiEnabled &&
+          capabilitiesMap['is_reference_location_enabled'] == true;
 
       types.add(
         ProfileTypeDefinition(
           typeValue: ProfileTypeKeyValue(type),
           labelValue: ProfileTypeLabelValue(
-            singularLabel == null || singularLabel.isEmpty ? type : singularLabel,
+            singularLabel == null || singularLabel.isEmpty
+                ? type
+                : singularLabel,
           ),
           pluralLabelValue: ProfileTypeLabelValue(
             pluralLabel == null || pluralLabel.isEmpty
@@ -398,8 +410,9 @@ class AppDataDTO {
             isFavoritableValue: ProfileTypeFlagValue(
               capabilitiesMap['is_favoritable'] == true,
             ),
-            isPoiEnabledValue: ProfileTypeFlagValue(
-              capabilitiesMap['is_poi_enabled'] == true,
+            isPoiEnabledValue: ProfileTypeFlagValue(isPoiEnabled),
+            isReferenceLocationEnabledValue: ProfileTypeFlagValue(
+              isReferenceLocationEnabled,
             ),
             hasBioValue: ProfileTypeFlagValue(
               capabilitiesMap['has_bio'] == true,
@@ -499,8 +512,9 @@ class AppDataDTO {
   static ProfileTypeVisualImageSource? _resolveProfileTypeVisualImageSource(
     Map<String, dynamic> visualMap,
   ) {
-    return switch (
-        _readTrimmedString(visualMap['image_source'])?.toLowerCase()) {
+    return switch (_readTrimmedString(
+      visualMap['image_source'],
+    )?.toLowerCase()) {
       'avatar' => ProfileTypeVisualImageSource.avatar,
       'cover' => ProfileTypeVisualImageSource.cover,
       'type_asset' => ProfileTypeVisualImageSource.typeAsset,
@@ -536,9 +550,9 @@ class AppDataDTO {
     final brightnessValue = BrightnessValue()
       ..parse(themeSettings['brightness_default'] as String?);
     final primarySeedColor =
-        (themeSettings['primary_seed_color'] as String?) ?? '#4FA0E3';
+        (themeSettings['primary_seed_color'] as String?) ?? '#10B981';
     final secondarySeedColor =
-        (themeSettings['secondary_seed_color'] as String?) ?? '#E80D5D';
+        (themeSettings['secondary_seed_color'] as String?) ?? '#F97316';
 
     return ThemeDataSettings(
       darkSchemeData: _buildColorSchemeData(
@@ -564,10 +578,12 @@ class AppDataDTO {
   }) {
     return ColorSchemeData(
       brightnessValue: BrightnessValue()..parse(brightness),
-      primarySeedColorValue:
-          ColorRequiredValue(defaultValue: primarySeedColor.toColor()),
-      secondarySeedColorValue:
-          ColorRequiredValue(defaultValue: secondarySeedColor.toColor()),
+      primarySeedColorValue: ColorRequiredValue(
+        defaultValue: primarySeedColor.toColor(),
+      ),
+      secondarySeedColorValue: ColorRequiredValue(
+        defaultValue: secondarySeedColor.toColor(),
+      ),
     );
   }
 
@@ -583,7 +599,8 @@ class AppDataDTO {
         trackers.add(EventTrackerSettingsModel.fromMap(item));
       } else if (item is Map) {
         trackers.add(
-            EventTrackerSettingsModel.fromMap(Map<String, dynamic>.from(item)));
+          EventTrackerSettingsModel.fromMap(Map<String, dynamic>.from(item)),
+        );
       }
     }
 
@@ -618,8 +635,13 @@ class AppDataDTO {
     final messagingSenderId = raw['messagingSenderId'] as String?;
     final storageBucket = raw['storageBucket'] as String?;
 
-    if ([apiKey, appId, projectId, messagingSenderId, storageBucket]
-        .any((value) => value == null || value.trim().isEmpty)) {
+    if ([
+      apiKey,
+      appId,
+      projectId,
+      messagingSenderId,
+      storageBucket,
+    ].any((value) => value == null || value.trim().isEmpty)) {
       return null;
     }
 
@@ -646,7 +668,8 @@ class AppDataDTO {
         : const <String>[];
     final parsedThrottles = raw['throttles'] is Map<String, dynamic>
         ? Map<String, dynamic>.unmodifiable(
-            raw['throttles'] as Map<String, dynamic>)
+            raw['throttles'] as Map<String, dynamic>,
+          )
         : const <String, dynamic>{};
 
     return PushSettings(
@@ -688,8 +711,10 @@ class AppDataDTO {
     final minKm = _parsePositiveDouble(radius['min_km'], defaultMinRadiusKm);
     final maxKmRaw = _parsePositiveDouble(radius['max_km'], defaultMaxRadiusKm);
     final maxKm = maxKmRaw < minKm ? minKm : maxKmRaw;
-    final defaultKmRaw =
-        _parsePositiveDouble(radius['default_km'], defaultRadiusKm);
+    final defaultKmRaw = _parsePositiveDouble(
+      radius['default_km'],
+      defaultRadiusKm,
+    );
     final defaultKm = defaultKmRaw.clamp(minKm, maxKm).toDouble();
 
     return (
@@ -721,10 +746,7 @@ class AppDataDTO {
     try {
       final latitude = LatitudeValue()..parse(lat.toString());
       final longitude = LongitudeValue()..parse(lng.toString());
-      return CityCoordinate(
-        latitudeValue: latitude,
-        longitudeValue: longitude,
-      );
+      return CityCoordinate(latitudeValue: latitude, longitudeValue: longitude);
     } on Object {
       return null;
     }
@@ -805,9 +827,7 @@ class AppDataDTO {
   }
 
   static TelemetryLocationFreshnessValue
-      _buildLocationFreshnessValueFromMinutes(
-    int minutes,
-  ) {
+      _buildLocationFreshnessValueFromMinutes(int minutes) {
     final value = TelemetryLocationFreshnessValue(
       defaultValue: const Duration(
         minutes: TelemetryContextSettings.defaultLocationFreshnessMinutes,

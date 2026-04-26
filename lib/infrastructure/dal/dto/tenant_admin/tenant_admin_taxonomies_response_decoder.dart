@@ -48,4 +48,27 @@ class TenantAdminTaxonomiesResponseDecoder {
         .map(TenantAdminTaxonomyTermDefinitionDTO.fromJson)
         .toList(growable: false);
   }
+
+  Map<String, List<TenantAdminTaxonomyTermDefinitionDTO>>
+      decodeTermsByTaxonomyId(Object? rawResponse) {
+    final rawMap = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'taxonomy terms by taxonomy',
+      fallbackToRoot: false,
+      emptyWhenDataIsNotMap: true,
+    );
+    return rawMap.map((taxonomyId, rawTerms) {
+      final terms = rawTerms is List
+          ? rawTerms
+              .whereType<Map>()
+              .map(
+                (entry) => TenantAdminTaxonomyTermDefinitionDTO.fromJson(
+                  Map<String, dynamic>.from(entry),
+                ),
+              )
+              .toList(growable: false)
+          : const <TenantAdminTaxonomyTermDefinitionDTO>[];
+      return MapEntry(taxonomyId, terms);
+    });
+  }
 }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/modular_app/modules/home_module.dart';
@@ -68,11 +69,28 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
         _isRadiusActionCompactStreamValue =
             StreamValue<bool>(defaultValue: false),
         _isRadiusRefreshLoadingStreamValue =
+            StreamValue<bool>(defaultValue: false),
+        _discoveryFilterCatalogStreamValue =
+            StreamValue<DiscoveryFilterCatalog>(
+          defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
+        ),
+        _discoveryFilterSelectionStreamValue =
+            StreamValue<DiscoveryFilterSelection>(
+          defaultValue: const DiscoveryFilterSelection(),
+        ),
+        _isDiscoveryFilterCatalogLoadingStreamValue =
+            StreamValue<bool>(defaultValue: false),
+        _isDiscoveryFilterPanelVisibleStreamValue =
             StreamValue<bool>(defaultValue: false);
 
   final StreamValue<UserContract?> _authUserStreamValue;
   final StreamValue<bool> _isRadiusActionCompactStreamValue;
   final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
+  final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
+  final StreamValue<DiscoveryFilterSelection>
+      _discoveryFilterSelectionStreamValue;
+  final StreamValue<bool> _isDiscoveryFilterCatalogLoadingStreamValue;
+  final StreamValue<bool> _isDiscoveryFilterPanelVisibleStreamValue;
 
   @override
   StreamValue<UserContract?>? get authUserStreamValue => _authUserStreamValue;
@@ -84,6 +102,32 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   @override
   StreamValue<bool> get isRadiusRefreshLoadingStreamValue =>
       _isRadiusRefreshLoadingStreamValue;
+
+  @override
+  StreamValue<DiscoveryFilterCatalog> get discoveryFilterCatalogStreamValue =>
+      _discoveryFilterCatalogStreamValue;
+
+  @override
+  StreamValue<DiscoveryFilterSelection>
+      get discoveryFilterSelectionStreamValue =>
+          _discoveryFilterSelectionStreamValue;
+
+  @override
+  StreamValue<bool> get isDiscoveryFilterCatalogLoadingStreamValue =>
+      _isDiscoveryFilterCatalogLoadingStreamValue;
+
+  @override
+  StreamValue<bool> get isDiscoveryFilterPanelVisibleStreamValue =>
+      _isDiscoveryFilterPanelVisibleStreamValue;
+
+  @override
+  DiscoveryFilterPolicy get discoveryFilterPolicy =>
+      const DiscoveryFilterPolicy(
+        primarySelectionMode: DiscoveryFilterSelectionMode.multiple,
+        taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+        primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+        taxonomyLayoutMode: DiscoveryFilterLayoutMode.wrap,
+      );
 
   @override
   bool get shouldShowInviteFilterAction => true;

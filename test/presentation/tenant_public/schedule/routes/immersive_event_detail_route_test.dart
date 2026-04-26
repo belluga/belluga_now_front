@@ -57,6 +57,18 @@ void main() {
     expect(builtScreen, isA<ImagePaletteTheme>());
   });
 
+  test('exposes occurrence query param to the route resolver', () {
+    const route = ImmersiveEventDetailRoutePage(
+      eventSlug: 'show-immersive',
+      occurrenceId: 'occ-2',
+    );
+
+    expect(route.resolverParams, {
+      'slug': 'show-immersive',
+      'occurrence': 'occ-2',
+    });
+  });
+
   testWidgets(
       'returns plain immersive event detail screen when thumb is missing',
       (tester) async {

@@ -279,6 +279,8 @@ class _UnsupportedAccountProfilesBackend
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
   }) =>
       throw UnimplementedError();
 
@@ -288,6 +290,8 @@ class _UnsupportedAccountProfilesBackend
     required int pageSize,
     String? query,
     String? typeFilter,
+    List<String>? typeFilters,
+    List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
   }) =>
       throw UnimplementedError();
@@ -319,7 +323,10 @@ class _UnsupportedVenueEventBackend extends VenueEventBackendContract {
 
 class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) =>
       throw UnimplementedError();
 
   @override

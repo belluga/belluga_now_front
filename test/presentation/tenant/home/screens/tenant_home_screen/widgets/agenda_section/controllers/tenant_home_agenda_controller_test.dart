@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -20,6 +23,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -778,6 +782,258 @@ void main() {
       },
     );
 
+    test(
+      'home agenda canonical filter selection sends categories and taxonomy to backend',
+      () async {
+        final scheduleRepository = _FakeScheduleRepository();
+        final filtersRepository = _FakeDiscoveryFiltersRepository(
+          catalog: _homeEventsFilterCatalog(),
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: filtersRepository,
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(
+            primaryKeys: <String>{'shows'},
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'rock'},
+            },
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(filtersRepository.requestedSurfaces, ['home.events']);
+        expect(scheduleRepository.lastCategories, ['show']);
+        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'home agenda canonical filter keeps one primary type and drops taxonomy-only selection without a primary',
+      () async {
+        final scheduleRepository = _FakeScheduleRepository();
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalogWithMultipleTypes(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(
+            primaryKeys: <String>{'shows', 'fairs'},
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'rock'},
+            },
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(controller.discoveryFilterPolicy.primarySelectionMode,
+            DiscoveryFilterSelectionMode.single);
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            <String>{'shows'});
+        expect(scheduleRepository.lastCategories, ['show']);
+        expect(scheduleRepository.lastTaxonomy, isNull);
+
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(
+            taxonomyTermKeys: <String, Set<String>>{
+              'music_styles': <String>{'rock'},
+            },
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            isEmpty);
+        expect(scheduleRepository.lastCategories, isNull);
+        expect(scheduleRepository.lastTaxonomy, isNull);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'home agenda hides expanded filter panel on scroll without clearing selection',
+      () async {
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalog(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+        controller.setDiscoveryFilterPanelVisible(true);
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+        );
+
+        controller.updateRadiusActionCompactStateFromScroll(24);
+
+        expect(
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            <String>{'shows'});
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'home agenda restores persisted canonical filter selection before first fetch',
+      () async {
+        final scheduleRepository = _FakeScheduleRepository();
+        final appDataRepository = _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 15,
+          ),
+          discoveryFilterSelections: <String,
+              AppDataDiscoveryFilterSelectionSnapshot>{
+            'home.events': _appDataSelectionSnapshot(
+              const DiscoveryFilterSelection(
+                primaryKeys: <String>{'shows'},
+                taxonomyTermKeys: <String, Set<String>>{
+                  'music_styles': <String>{'rock'},
+                },
+              ),
+            ),
+          },
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalog(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+            <String>{'shows'});
+        expect(scheduleRepository.lastCategories, ['show']);
+        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+
+        controller.onDispose();
+      },
+    );
+
+    testWidgets(
+      'home agenda app bar exposes filter action and active hint before radius',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: _homeEventsFilterCatalog(),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: HomeAgendaAppBar(controller: controller),
+              ),
+              body: const SizedBox.shrink(),
+            ),
+          ),
+        );
+
+        expect(
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsOneWidget,
+        );
+        expect(find.byTooltip('Filtrar eventos'), findsOneWidget);
+        expect(
+          tester
+              .getTopLeft(
+                find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+              )
+              .dx,
+          lessThan(
+            tester
+                .getTopLeft(
+                  find.byKey(
+                    const ValueKey<String>('agenda-radius-expanded'),
+                  ),
+                )
+                .dx,
+          ),
+        );
+
+        controller.setDiscoveryFilterSelection(
+          const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+        );
+        await tester.pump();
+
+        expect(find.byTooltip('Filtros ativos'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey<String>('home-agenda-filter-badge')),
+          findsOneWidget,
+        );
+        expect(find.text('1'), findsOneWidget);
+
+        controller.onDispose();
+      },
+    );
+
     testWidgets('home radius action shows loading affordance while refreshing',
         (tester) async {
       final controller = _buildAgendaController(
@@ -1444,7 +1700,7 @@ void main() {
             },
           },
           'date_time_start': '2026-03-06T20:00:00+00:00',
-          'artists': const [],
+          'linked_account_profiles': const [],
           'tags': const ['music'],
         }).toDomain();
         scheduleRepository.writeHomeAgendaCache(
@@ -1681,7 +1937,7 @@ void main() {
       expect(event.coordinate, isNotNull);
       expect(event.coordinate!.latitude, closeTo(-20.671339, 0.000001));
       expect(event.coordinate!.longitude, closeTo(-40.495395, 0.000001));
-      expect(event.artists.single.avatarUri, isNull);
+      expect(event.counterpartProfiles.single.avatarUrl, isNull);
 
       controller.onDispose();
     });
@@ -2157,6 +2413,7 @@ TenantHomeAgendaController _buildAgendaController({
   required ScheduleRepositoryContract scheduleRepository,
   required UserEventsRepositoryContract userEventsRepository,
   required InvitesRepositoryContract invitesRepository,
+  DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
   AuthRepositoryContract? authRepository,
@@ -2169,6 +2426,7 @@ TenantHomeAgendaController _buildAgendaController({
   return TenantHomeAgendaController(
     scheduleRepository: scheduleRepository,
     userEventsRepository: userEventsRepository,
+    discoveryFiltersRepository: discoveryFiltersRepository,
     invitesRepository: invitesRepository,
     userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
@@ -2259,12 +2517,87 @@ AppData _buildAppData({
       remoteData: remoteData, localInfo: localInfo);
 }
 
+DiscoveryFilterCatalog _homeEventsFilterCatalog() {
+  return const DiscoveryFilterCatalog(
+    surface: 'home.events',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: 'shows',
+        label: 'Shows',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'show'},
+        },
+        taxonomyKeys: <String>{'music_styles'},
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      'music_styles': DiscoveryFilterTaxonomyGroupOption(
+        key: 'music_styles',
+        label: 'Estilos',
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: 'rock',
+            label: 'Rock',
+          ),
+        ],
+      ),
+    },
+  );
+}
+
+DiscoveryFilterCatalog _homeEventsFilterCatalogWithMultipleTypes() {
+  return const DiscoveryFilterCatalog(
+    surface: 'home.events',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: 'shows',
+        label: 'Shows',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'show'},
+        },
+      ),
+      DiscoveryFilterCatalogItem(
+        key: 'fairs',
+        label: 'Feiras',
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'fair'},
+        },
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      'music_styles': DiscoveryFilterTaxonomyGroupOption(
+        key: 'music_styles',
+        label: 'Estilos',
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: 'rock',
+            label: 'Rock',
+          ),
+        ],
+      ),
+    },
+  );
+}
+
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(
     this._appData, {
     double? initialMaxRadiusMeters,
     bool hasPersistedMaxRadiusPreference = false,
+    Map<String, AppDataDiscoveryFilterSelectionSnapshot>?
+        discoveryFilterSelections,
   })  : _hasPersistedMaxRadiusPreference = hasPersistedMaxRadiusPreference,
+        _discoveryFilterSelections =
+            Map<String, AppDataDiscoveryFilterSelectionSnapshot>.from(
+          discoveryFilterSelections ??
+              const <String, AppDataDiscoveryFilterSelectionSnapshot>{},
+        ),
         maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
           defaultValue: DistanceInMetersValue.fromRaw(
             initialMaxRadiusMeters ?? _appData.mapRadiusMaxMeters,
@@ -2274,6 +2607,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   final AppData _appData;
   bool _hasPersistedMaxRadiusPreference;
+  final Map<String, AppDataDiscoveryFilterSelectionSnapshot>
+      _discoveryFilterSelections;
   int setMaxRadiusMetersCallCount = 0;
   int setLocationOriginSettingsCallCount = 0;
 
@@ -2321,7 +2656,60 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 
   @override
+  Future<AppDataDiscoveryFilterSelectionSnapshot?> getDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+  ) async {
+    return _discoveryFilterSelections[surface.value];
+  }
+
+  @override
+  Future<void> setDiscoveryFilterSelection(
+    AppDataDiscoveryFilterTokenValue surface,
+    AppDataDiscoveryFilterSelectionSnapshot selection,
+  ) async {
+    _discoveryFilterSelections[surface.value] = selection;
+  }
+
+  @override
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
+}
+
+AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
+  DiscoveryFilterSelection selection,
+) {
+  return AppDataDiscoveryFilterSelectionSnapshot(
+    primaryKeys: selection.primaryKeys
+        .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+        .toList(growable: false),
+    taxonomySelections: selection.taxonomyTermKeys.entries
+        .map(
+          (entry) => AppDataDiscoveryFilterTaxonomySelection(
+            taxonomyKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
+            termKeys: entry.value
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .toList(growable: false),
+          ),
+        )
+        .toList(growable: false),
+  );
+}
+
+class _FakeDiscoveryFiltersRepository
+    implements DiscoveryFiltersRepositoryContract {
+  _FakeDiscoveryFiltersRepository({
+    required this.catalog,
+  });
+
+  final DiscoveryFilterCatalog catalog;
+  final List<String> requestedSurfaces = <String>[];
+
+  @override
+  Future<DiscoveryFilterCatalog> fetchCatalog(
+    DiscoveryFiltersRepoText surface,
+  ) async {
+    requestedSurfaces.add(surface.value);
+    return catalog;
+  }
 }
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
@@ -2335,6 +2723,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+  List<String>? lastCategories;
+  List<String>? lastTaxonomy;
   Completer<void>? nextFetchGate;
   _FakeHomeAgendaState? _homeAgendaState;
 
@@ -2346,6 +2736,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) {
     final state = _resolveHomeAgendaState(
       showPastOnly: showPastOnly,
@@ -2416,7 +2808,11 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
+    lastCategories = _categoryLabels(categories);
+    lastTaxonomy = _taxonomyLabels(taxonomy);
     final events = await _fetchPage(
       page: 1,
       pageSize: 25,
@@ -2449,7 +2845,11 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
+    List<ScheduleRepoString>? categories,
+    ScheduleRepoTaxonomyEntries? taxonomy,
   }) async {
+    lastCategories = _categoryLabels(categories);
+    lastTaxonomy = _taxonomyLabels(taxonomy);
     final current = _resolveHomeAgendaState(
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
@@ -2491,7 +2891,11 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<EventModel?> getEventBySlug(ScheduleRepoString slug) async => null;
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  }) async =>
+      null;
 
   Future<List<EventModel>> _fetchPage({
     required int page,
@@ -2513,6 +2917,29 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       await fetchGate.future;
     }
     return const <EventModel>[];
+  }
+
+  List<String>? _categoryLabels(List<ScheduleRepoString>? categories) {
+    final labels = (categories ?? const <ScheduleRepoString>[])
+        .map((category) => category.value.trim())
+        .where((category) => category.isNotEmpty)
+        .toList(growable: false);
+    return labels.isEmpty ? null : labels;
+  }
+
+  List<String>? _taxonomyLabels(ScheduleRepoTaxonomyEntries? taxonomy) {
+    final labels = (taxonomy ?? const ScheduleRepoTaxonomyEntries.empty())
+        .map((entry) {
+          final type = entry.type.value.trim();
+          final term = entry.term.value.trim();
+          if (type.isEmpty || term.isEmpty) {
+            return '';
+          }
+          return '$type:$term';
+        })
+        .where((entry) => entry.isNotEmpty)
+        .toList(growable: false);
+    return labels.isEmpty ? null : labels;
   }
 
   @override
@@ -2733,7 +3160,10 @@ class _FailAfterDisposeScheduleRepository extends _FakeScheduleRepository {
 
 class _PayloadScheduleBackend implements ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _eventDto();
 
   @override
@@ -2799,10 +3229,12 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
-      'artists': const [
+      'linked_account_profiles': const [
         {
           'id': '507f1f77bcf86cd799439013',
-          'name': 'Main Artist',
+          'display_name': 'Main Artist',
+          'slug': 'main-artist',
+          'profile_type': 'artist',
           'avatar_url': null,
           'genres': ['rock'],
         },
@@ -2816,7 +3248,10 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
   final List<int> requestedPages = <int>[];
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _pageOneEvent();
 
   @override
@@ -2885,7 +3320,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -2912,7 +3347,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-04T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -2920,7 +3355,10 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
 
 class _ScrollableAgendaBackend implements ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _eventDto(index: 0);
 
   @override
@@ -2993,7 +3431,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
       },
       'date_time_start':
           '2026-03-${day.toString().padLeft(2, '0')}T${hour.toString().padLeft(2, '0')}:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3037,7 +3475,10 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
 
 class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _eventDto(
         eventId: '507f1f77bcf86cd799439411',
         occurrenceId: '507f1f77bcf86cd799439412',
@@ -3133,7 +3574,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-06T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3143,7 +3584,10 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
   int fetchEventsPageCallCount = 0;
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _eventDto();
 
   @override
@@ -3212,7 +3656,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-05T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }
@@ -3222,7 +3666,10 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
   int fetchEventsPageCallCount = 0;
 
   @override
-  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
       _eventDto(
         eventId: '507f1f77bcf86cd799439311',
         occurrenceId: '507f1f77bcf86cd799439312',
@@ -3325,7 +3772,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-05T20:00:00+00:00',
-      'artists': const [],
+      'linked_account_profiles': const [],
       'tags': const ['music'],
     });
   }

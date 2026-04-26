@@ -10,16 +10,20 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -107,6 +111,41 @@ void main() {
       controller.receivedInvitesStreamValue.value.first.eventId,
       '507f1f77bcf86cd799439011',
     );
+  });
+
+  test('select occurrence uses the selected occurrence start and end pair', () {
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final firstStart = DateTime(2026, 3, 15, 20);
+    final secondStart = DateTime(2026, 3, 16, 9);
+    final secondEnd = DateTime(2026, 3, 16, 14);
+    final secondOccurrence = _buildOccurrence(
+      id: 'occurrence-second',
+      start: secondStart,
+      end: secondEnd,
+    );
+    final event = _buildEvent(
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: firstStart,
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+        ),
+        secondOccurrence,
+      ],
+    );
+
+    controller.init(event);
+    controller.selectOccurrence(event, secondOccurrence);
+
+    final selectedEvent = controller.eventStreamValue.value;
+    expect(selectedEvent?.dateTimeStart.value, secondStart);
+    expect(selectedEvent?.dateTimeEnd?.value, secondEnd);
+    expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
   });
 }
 
@@ -340,7 +379,9 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   String get userToken => authorized ? 'token' : '';
 }
 
-EventModel _buildEvent() {
+EventModel _buildEvent({
+  List<EventOccurrenceOption> occurrences = const [],
+}) {
   return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse('evento-de-teste'),
@@ -367,6 +408,7 @@ EventModel _buildEvent() {
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    occurrences: occurrences,
     coordinate: null,
     tags: const <String>['show'],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
@@ -375,6 +417,26 @@ EventModel _buildEvent() {
     sentInvites: null,
     friendsGoing: null,
     totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
+  );
+}
+
+EventOccurrenceOption _buildOccurrence({
+  required String id,
+  required DateTime start,
+  DateTime? end,
+  bool isSelected = false,
+}) {
+  final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
+
+  return EventOccurrenceOption(
+    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
+    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    dateTimeStartValue: DateTimeValue(isRequired: true)
+      ..parse(start.toIso8601String()),
+    dateTimeEndValue: endValue,
+    isSelectedValue: EventOccurrenceFlagValue()..parse(isSelected.toString()),
+    hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
+    programmingCountValue: EventProgrammingCountValue()..parse('0'),
   );
 }
 

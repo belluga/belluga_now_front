@@ -1,4 +1,4 @@
-import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -14,8 +14,8 @@ class EventInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final html = event.content.value?.trim() ?? '';
-    if (InviteFromEventFactory.stripHtml(html).isEmpty) {
+    final html = SafeRichHtml.canonicalize(event.content.value?.trim() ?? '');
+    if (SafeRichHtml.isEffectivelyEmpty(html)) {
       return const SizedBox.shrink();
     }
     return SingleChildScrollView(

@@ -35,11 +35,15 @@ class ImmersiveDetailScreenController {
   Future<EventTrackerTimedEventHandle?>? _activeSectionTimedEventFuture;
   int? _activeSectionIndex;
   double _pinnedHeaderHeight = 0;
+  bool _disposed = false;
 
   // Track visibility of each tab
   final Map<int, double> _tabVisibility = {};
 
   void updateTabs(List<ImmersiveTabItem> updatedTabs) {
+    if (_disposed) {
+      return;
+    }
     tabItems = updatedTabs;
     _tabVisibility.removeWhere((index, _) => index >= tabItems.length);
     _lastSectionViewedIndex = null;
@@ -55,10 +59,16 @@ class ImmersiveDetailScreenController {
   }
 
   void updatePinnedHeaderHeight(double value) {
+    if (_disposed) {
+      return;
+    }
     _pinnedHeaderHeight = value < 0 ? 0 : value;
   }
 
   void onTabVisibilityChanged(int index, double visibleFraction) {
+    if (_disposed) {
+      return;
+    }
     if (index >= tabItems.length) return;
 
     // Don't auto-switch during programmatic scrolling
@@ -85,6 +95,9 @@ class ImmersiveDetailScreenController {
   }
 
   void onTabTapped(int index) {
+    if (_disposed) {
+      return;
+    }
     if (index >= tabItems.length) return;
 
     _tabVisibility
@@ -100,6 +113,9 @@ class ImmersiveDetailScreenController {
 
     Future<void>(() async {
       try {
+        if (_disposed) {
+          return;
+        }
         if (index == 0) {
           final innerPosition = nestedState.innerController.position;
           if (innerPosition.pixels > 0) {
@@ -122,6 +138,9 @@ class ImmersiveDetailScreenController {
           return;
         }
 
+        if (_disposed) {
+          return;
+        }
         double targetScroll = 0;
         for (int i = 0; i < index; i++) {
           final renderBox =
@@ -143,18 +162,26 @@ class ImmersiveDetailScreenController {
           );
         }
 
+        if (_disposed) {
+          return;
+        }
         await nestedState.innerController.animateTo(
           targetScroll,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
       } finally {
-        _isProgrammaticScroll = false;
+        if (!_disposed) {
+          _isProgrammaticScroll = false;
+        }
       }
     });
   }
 
   void onHorizontalSwipeEnd(double? primaryVelocity) {
+    if (_disposed) {
+      return;
+    }
     if (primaryVelocity == null || primaryVelocity.abs() < 300) {
       return;
     }
@@ -172,12 +199,16 @@ class ImmersiveDetailScreenController {
   }
 
   void dispose() {
+    _disposed = true;
     _finishSectionTimedEvent();
     scrollController.dispose();
     currentTabIndexStreamValue.dispose();
   }
 
   void _setCurrentTabIndex(int index, {required bool track}) {
+    if (_disposed) {
+      return;
+    }
     currentTabIndexStreamValue.addValue(index);
     if (track) {
       _trackSectionViewed(index);
