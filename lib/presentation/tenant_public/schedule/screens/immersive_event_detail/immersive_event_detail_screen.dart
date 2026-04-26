@@ -228,9 +228,10 @@ class _ImmersiveEventDetailScreenState
                               fallbackImageUri:
                                   _controller.defaultEventImageUri,
                               onCounterpartTap: (profile) {
-                                final targetIndex = _linkedProfileTabIndex(
+                                final targetIndex =
+                                    _linkedProfileTabIndexForHeroTap(
                                   resolvedEvent,
-                                  profile.profileType,
+                                  profile,
                                 );
                                 if (targetIndex != null) {
                                   activateTab(targetIndex);
@@ -375,6 +376,23 @@ class _ImmersiveEventDetailScreenState
     }
 
     return firstDynamicTabIndex + typeOffset;
+  }
+
+  int? _linkedProfileTabIndexForHeroTap(
+    EventModel event,
+    EventLinkedAccountProfile profile,
+  ) {
+    final directIndex = _linkedProfileTabIndex(event, profile.profileType);
+    if (directIndex != null) {
+      return directIndex;
+    }
+
+    final availableTypes = _groupLinkedProfilesByType(event).keys;
+    if (availableTypes.isEmpty) {
+      return null;
+    }
+
+    return _linkedProfileTabIndex(event, availableTypes.first);
   }
 
   String _humanizeTypeKey(String raw) {
