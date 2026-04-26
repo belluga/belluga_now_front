@@ -45,6 +45,28 @@ void main() {
     );
   });
 
+  test('escapes angle-bracketed placeholders instead of treating them as html',
+      () {
+    expect(SafeRichHtml.looksLikeHtml('Use <token> here'), isFalse);
+    expect(
+      SafeRichHtml.canonicalize('Use <token> here'),
+      '<p>Use &lt;token&gt; here</p>',
+    );
+  });
+
+  test('sanitizes unsupported but valid html tags instead of escaping them',
+      () {
+    final html = SafeRichHtml.canonicalize(
+      '<b>bold</b><table><tr><td>cell</td></tr></table>',
+    );
+
+    expect(SafeRichHtml.looksLikeHtml('<b>bold</b>'), isTrue);
+    expect(html, contains('bold'));
+    expect(html, contains('cell'));
+    expect(html, isNot(contains('<b>')));
+    expect(html, isNot(contains('<table>')));
+  });
+
   test('preserves the approved safe subset and strips unsupported markup', () {
     final html = SafeRichHtml.canonicalize(
       '<h2>Título seguro</h2>'

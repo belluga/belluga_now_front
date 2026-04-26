@@ -15,7 +15,13 @@ class SafeRichHtml {
     return isEffectivelyEmpty(html) ? '' : html;
   }
 
-  static bool looksLikeHtml(String value) => RegExp(r'<[^>]+>').hasMatch(value);
+  static bool looksLikeHtml(String value) =>
+      RegExp(r'</[a-zA-Z][a-zA-Z0-9:-]*\s*>').hasMatch(value) ||
+      RegExp(r'<[a-zA-Z][a-zA-Z0-9:-]*(?:\s[^>]*)?/>').hasMatch(value) ||
+      RegExp(
+        r'</?(?:a|b|blockquote|body|br|div|em|h[1-6]|html|iframe|img|li|ol|p|s|script|span|strong|style|table|tbody|td|tfoot|th|thead|tr|u|ul)(?:\s[^>]*)?/?>',
+        caseSensitive: false,
+      ).hasMatch(value);
 
   static bool isEffectivelyEmpty(String html) {
     final compact = html
@@ -76,7 +82,7 @@ class SafeRichHtml {
         );
 
     sanitized = sanitized.replaceAllMapped(
-      RegExp(r'</?([a-zA-Z0-9]+)(?:\s[^>]*)?\/?>'),
+      RegExp(r'</?([a-zA-Z][a-zA-Z0-9:-]*)(?:\s[^>]*)?\/?>'),
       (match) {
         final rawTag = match.group(1)?.toLowerCase() ?? '';
         final rawMatch = match.group(0) ?? '';
