@@ -373,6 +373,10 @@ class TenantHomeAgendaController extends Object
       return;
     }
 
+    await _resolveEffectiveOrigin(warmUpIfPossible: true);
+    _ifAlive(
+      () => initialLoadingLabelStreamValue.addValue(_loadingNearbyEventsLabel),
+    );
     try {
       await _invitesRepository.init();
     } catch (error) {
@@ -384,12 +388,12 @@ class TenantHomeAgendaController extends Object
       debugPrint(
           'TenantHomeAgendaController.init confirmed ids failed: $error');
     }
-    await _resolveEffectiveOrigin(warmUpIfPossible: true);
-    await _refresh();
+    await _refresh(resolveOrigin: false);
   }
 
   Future<void> _refresh({
     bool preserveCurrentResults = false,
+    bool resolveOrigin = true,
   }) async {
     if (_isRefreshing) {
       _queueRefreshRequest(
@@ -407,19 +411,22 @@ class TenantHomeAgendaController extends Object
     if (shouldShowInitialLoading) {
       _ifAlive(() => isInitialLoadingStreamValue.addValue(true));
       _ifAlive(
-        () => initialLoadingLabelStreamValue.addValue(_loadingLocationLabel),
+        () => initialLoadingLabelStreamValue.addValue(
+          resolveOrigin ? _loadingLocationLabel : _loadingNearbyEventsLabel,
+        ),
       );
     }
     try {
       final stopwatch = Stopwatch()..start();
-      if (shouldShowInitialLoading) {
+      int locationElapsed = 0;
+      if (shouldShowInitialLoading && resolveOrigin) {
         _ifAlive(
             () => initialLoadingLabelStreamValue.addValue('Localizando...'));
         await _resolveEffectiveOrigin(
           warmUpIfPossible: shouldShowInitialLoading,
         );
+        locationElapsed = stopwatch.elapsedMilliseconds;
       }
-      final locationElapsed = stopwatch.elapsedMilliseconds;
 
       if (shouldShowInitialLoading) {
         _ifAlive(
@@ -447,6 +454,7 @@ class TenantHomeAgendaController extends Object
       if (shouldShowInitialLoading) {
         final recovered = await _retryFirstPageAfterFailure();
         if (!recovered) {
+          _publishEmptyFirstPageStateIfNeeded();
           debugPrint(
             'TenantHomeAgendaController._refresh retry failed after first-page error.',
           );
@@ -484,6 +492,19 @@ class TenantHomeAgendaController extends Object
     } catch (_) {
       return false;
     }
+  }
+
+  void _publishEmptyFirstPageStateIfNeeded() {
+    if (_isDisposed || displayStateStreamValue.value != null) {
+      return;
+    }
+    _hasMore = false;
+    _ifAlive(() => hasMoreStreamValue.addValue(false));
+    _ifAlive(
+      () => displayStateStreamValue.addValue(
+        TenantHomeAgendaDisplayState(events: const <EventModel>[]),
+      ),
+    );
   }
 
   Future<void> loadNextPage() async {
