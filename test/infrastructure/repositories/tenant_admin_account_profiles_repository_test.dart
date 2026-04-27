@@ -385,6 +385,7 @@ void main() {
         ),
         visual: TenantAdminPoiVisual.image(
           imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+          colorValue: TenantAdminHexColorValue()..parse('#00897B'),
         ),
         typeAssetUpload: tenantAdminMediaUploadFromRaw(
           bytes: Uint8List.fromList([7, 8, 9]),
@@ -400,6 +401,12 @@ void main() {
       expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
       expect(
         formData.fields.any((entry) => entry.key == 'visual[image_source]'),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'visual[color]' && entry.value == '#00897B',
+        ),
         isTrue,
       );
       expect(

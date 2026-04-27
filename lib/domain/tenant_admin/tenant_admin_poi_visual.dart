@@ -88,9 +88,9 @@ class TenantAdminPoiVisual {
   TenantAdminPoiVisual.image({
     required this.imageSource,
     this.imageUrlValue,
+    this.colorValue,
   })  : mode = TenantAdminPoiVisualMode.image,
         iconValue = null,
-        colorValue = null,
         iconColorValue = null;
 
   final TenantAdminPoiVisualMode mode;
@@ -130,6 +130,7 @@ class TenantAdminPoiVisual {
     return TenantAdminDynamicMapValue({
       'mode': mode.apiValue,
       'image_source': imageSource?.apiValue,
+      if (color != null) 'color': color,
     });
   }
 

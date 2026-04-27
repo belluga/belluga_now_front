@@ -311,6 +311,12 @@ class _TenantAdminEventTypeFormScreenState
                       if (imageSource ==
                           TenantAdminPoiVisualImageSource.typeAsset) ...[
                         const SizedBox(height: 12),
+                        TenantAdminColorPickerField(
+                          controller:
+                              _controller.eventTypePoiVisualColorController,
+                          labelText: 'Cor do marcador',
+                        ),
+                        const SizedBox(height: 12),
                         _buildTypeAssetUploadField(context),
                       ],
                     ],
@@ -338,7 +344,8 @@ class _TenantAdminEventTypeFormScreenState
                 streamValue: _controller.taxonomiesStreamValue,
                 builder: (context, availableTaxonomies) {
                   return StreamValueBuilder<List<String>>(
-                    streamValue: _controller.eventTypeAllowedTaxonomiesStreamValue,
+                    streamValue:
+                        _controller.eventTypeAllowedTaxonomiesStreamValue,
                     builder: (context, selectedTaxonomies) {
                       final selected = selectedTaxonomies.toSet();
                       return Column(
@@ -352,7 +359,8 @@ class _TenantAdminEventTypeFormScreenState
                                 rawError: error ?? '',
                                 fallbackMessage:
                                     'Nao foi possivel carregar taxonomias.',
-                                onRetry: _controller.loadEventTypeFormTaxonomies,
+                                onRetry:
+                                    _controller.loadEventTypeFormTaxonomies,
                               ),
                             ),
                           if (availableTaxonomies.isEmpty && !isLoading)
@@ -364,41 +372,39 @@ class _TenantAdminEventTypeFormScreenState
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: availableTaxonomies
-                                  .map(
-                                    (taxonomy) {
-                                      final label =
-                                          '${taxonomy.name} (${taxonomy.slug})';
-                                      final isSelected =
-                                          selected.contains(taxonomy.slug);
-                                      return Semantics(
-                                        key: ValueKey<String>(
-                                          'tenantAdminEventTypeAllowedTaxonomySemantics_${taxonomy.slug}',
-                                        ),
-                                        container: true,
-                                        label: label,
-                                        button: true,
-                                        focusable: true,
-                                        toggled: isSelected,
+                              children: availableTaxonomies.map(
+                                (taxonomy) {
+                                  final label =
+                                      '${taxonomy.name} (${taxonomy.slug})';
+                                  final isSelected =
+                                      selected.contains(taxonomy.slug);
+                                  return Semantics(
+                                    key: ValueKey<String>(
+                                      'tenantAdminEventTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                                    ),
+                                    container: true,
+                                    label: label,
+                                    button: true,
+                                    focusable: true,
+                                    toggled: isSelected,
+                                    selected: isSelected,
+                                    onTap: () => _controller
+                                        .toggleEventTypeAllowedTaxonomy(
+                                      taxonomy.slug,
+                                    ),
+                                    child: ExcludeSemantics(
+                                      child: FilterChip(
+                                        label: Text(label),
                                         selected: isSelected,
-                                        onTap: () => _controller
+                                        onSelected: (_) => _controller
                                             .toggleEventTypeAllowedTaxonomy(
-                                              taxonomy.slug,
-                                            ),
-                                        child: ExcludeSemantics(
-                                          child: FilterChip(
-                                            label: Text(label),
-                                            selected: isSelected,
-                                            onSelected: (_) => _controller
-                                                .toggleEventTypeAllowedTaxonomy(
-                                                  taxonomy.slug,
-                                                ),
-                                          ),
+                                          taxonomy.slug,
                                         ),
-                                      );
-                                    },
-                                  )
-                                  .toList(growable: false),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ).toList(growable: false),
                             ),
                         ],
                       );
