@@ -2662,13 +2662,24 @@ class TenantAdminEventsController implements Disposable {
       }
     }
 
-    return TenantAdminPoiVisual.image(
-      imageSource: currentEventTypePoiVisualImageSource,
-      imageUrlValue: currentEventTypePoiVisualImageSource ==
-              TenantAdminPoiVisualImageSource.typeAsset
-          ? _buildOptionalUrlValue(currentEventTypeTypeAssetUrl)
-          : null,
-    );
+    try {
+      final isTypeAsset = currentEventTypePoiVisualImageSource ==
+          TenantAdminPoiVisualImageSource.typeAsset;
+      final colorValue = isTypeAsset
+          ? (TenantAdminHexColorValue()
+            ..parse(eventTypePoiVisualColorController.text))
+          : null;
+      final candidate = TenantAdminPoiVisual.image(
+        imageSource: currentEventTypePoiVisualImageSource,
+        imageUrlValue: isTypeAsset
+            ? _buildOptionalUrlValue(currentEventTypeTypeAssetUrl)
+            : null,
+        colorValue: colorValue,
+      );
+      return candidate.isValid ? candidate : null;
+    } on Object {
+      return null;
+    }
   }
 
   XFile? get currentEventTypeTypeAssetFile =>
@@ -2760,7 +2771,7 @@ class TenantAdminEventsController implements Disposable {
 
     eventTypePoiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.image);
     eventTypePoiVisualIconController.text = 'place';
-    eventTypePoiVisualColorController.text = '#2563EB';
+    eventTypePoiVisualColorController.text = visual.color ?? '#2563EB';
     eventTypePoiVisualIconColorController.text = '#FFFFFF';
     final imageSource =
         visual.imageSource == TenantAdminPoiVisualImageSource.avatar

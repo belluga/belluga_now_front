@@ -17,10 +17,6 @@ class DiscoveryFilterCatalog {
   });
 
   factory DiscoveryFilterCatalog.fromJson(Map<String, Object?> json) {
-    final filters = _readMapList(json['filters'])
-        .map(DiscoveryFilterCatalogItem.fromJson)
-        .where((item) => item.isValid)
-        .toList(growable: false);
     final typeOptionsByEntity = <String, List<DiscoveryFilterTypeOption>>{};
     final rawTypeOptions = _readMap(json['type_options']);
 
@@ -38,6 +34,16 @@ class DiscoveryFilterCatalog {
         typeOptionsByEntity[entity] = options;
       }
     }
+    final filters = _readMapList(json['filters'])
+        .map(DiscoveryFilterCatalogItem.fromJson)
+        .where((item) => item.isValid)
+        .map(
+          (item) => _hydrateFilterVisualFromTypeOptions(
+            item,
+            typeOptionsByEntity,
+          ),
+        )
+        .toList(growable: false);
     final taxonomyOptionsByKey = <String, DiscoveryFilterTaxonomyGroupOption>{};
     final rawTaxonomyOptions = _readMap(json['taxonomy_options']);
 
@@ -88,6 +94,95 @@ class DiscoveryFilterCatalog {
           (key, value) => MapEntry<String, Object?>(key, value.toJson()),
         ),
       };
+}
+
+DiscoveryFilterCatalogItem _hydrateFilterVisualFromTypeOptions(
+  DiscoveryFilterCatalogItem item,
+  Map<String, List<DiscoveryFilterTypeOption>> typeOptionsByEntity,
+) {
+  final option = _resolveSingleMatchingTypeOption(item, typeOptionsByEntity);
+  if (option == null || option.visual.isEmpty) {
+    return item;
+  }
+
+  final visual = option.visual;
+  final mode = _readString(visual['mode'])?.toLowerCase();
+  final imageUri = _readString(visual['image_uri']) ??
+      _readString(visual['image_url']) ??
+      _readString(visual['image']);
+  final colorHex =
+      _readString(visual['color']) ?? _readString(visual['color_hex']);
+  final iconKey =
+      _readString(visual['icon']) ?? _readString(visual['icon_key']);
+  final isImageVisual = mode == 'image' || (mode == null && imageUri != null);
+
+  return item.withVisualFallback(
+    iconKey: isImageVisual ? null : iconKey,
+    colorHex: colorHex,
+    imageUri: isImageVisual ? imageUri : null,
+  );
+}
+
+DiscoveryFilterTypeOption? _resolveSingleMatchingTypeOption(
+  DiscoveryFilterCatalogItem item,
+  Map<String, List<DiscoveryFilterTypeOption>> typeOptionsByEntity,
+) {
+  if (typeOptionsByEntity.isEmpty) {
+    return null;
+  }
+
+  if (item.typesByEntity.isNotEmpty) {
+    final matches = <DiscoveryFilterTypeOption>[];
+    for (final entry in item.typesByEntity.entries) {
+      if (entry.value.length != 1) {
+        return null;
+      }
+      final match = _findTypeOption(
+        typeOptionsByEntity,
+        entry.key,
+        entry.value.single,
+      );
+      if (match != null) {
+        matches.add(match);
+      }
+    }
+    return matches.length == 1 ? matches.single : null;
+  }
+
+  if (item.types.length != 1) {
+    return null;
+  }
+
+  final type = item.types.single;
+  final entities =
+      item.entities.isEmpty ? typeOptionsByEntity.keys.toSet() : item.entities;
+  final matches = <DiscoveryFilterTypeOption>[];
+  for (final entity in entities) {
+    final match = _findTypeOption(typeOptionsByEntity, entity, type);
+    if (match != null) {
+      matches.add(match);
+    }
+  }
+  return matches.length == 1 ? matches.single : null;
+}
+
+DiscoveryFilterTypeOption? _findTypeOption(
+  Map<String, List<DiscoveryFilterTypeOption>> typeOptionsByEntity,
+  String entity,
+  String type,
+) {
+  final options = typeOptionsByEntity[entity] ??
+      typeOptionsByEntity[entity.trim().toLowerCase()];
+  if (options == null) {
+    return null;
+  }
+  final normalizedType = type.trim().toLowerCase();
+  for (final option in options) {
+    if (option.value.trim().toLowerCase() == normalizedType) {
+      return option;
+    }
+  }
+  return null;
 }
 
 Map<String, Object?> _readMap(Object? value) {

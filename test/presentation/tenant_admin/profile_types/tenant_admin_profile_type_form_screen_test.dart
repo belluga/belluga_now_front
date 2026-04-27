@@ -194,6 +194,7 @@ void main() {
               allowedTaxonomies: const [],
               visual: TenantAdminPoiVisual.image(
                 imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+                colorValue: TenantAdminHexColorValue()..parse('#00897B'),
                 imageUrlValue: TenantAdminOptionalUrlValue()
                   ..parse(
                     'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
@@ -216,6 +217,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextFormField, 'Cor do marcador'),
+        findsOneWidget,
+      );
       expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
       expect(find.text('Enviar imagem canônica'), findsOneWidget);
     },
@@ -271,11 +276,11 @@ void main() {
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
   _TestProfileTypesController({required int impactCount})
-    : _impactCount = impactCount,
-      super(
-        repository: _FakeAccountProfilesRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-      );
+      : _impactCount = impactCount,
+        super(
+          repository: _FakeAccountProfilesRepository(),
+          taxonomiesRepository: _FakeTaxonomiesRepository(),
+        );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -372,7 +377,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-  fetchProfileTypesPage({
+      fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -426,8 +431,7 @@ class _FakeAccountProfilesRepository
       type: newType ?? type,
       label: label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
-      capabilities:
-          capabilities ??
+      capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -481,7 +485,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-  fetchTaxonomiesPage({
+      fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -500,7 +504,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-  fetchTermsPage({
+      fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

@@ -1942,8 +1942,59 @@ void main() {
       controller.onDispose();
     });
 
-    test('does not auto-page when current filter leaves first page empty',
-        () async {
+    test(
+      'scroll pagination appends same-event occurrence siblings from later pages',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 50,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final backend = _ProductionLikePagedHomeAgendaBackend();
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(backend: backend),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+        expect(backend.requestedPages, <int>[1]);
+
+        await controller.loadNextPage();
+        await controller.loadNextPage();
+        await controller.loadNextPage();
+
+        final festaOccurrences = _displayedEvents(controller)!
+            .where((event) => event.slug == 'festa-da-imigracao-italiana')
+            .map((event) => event.selectedOccurrenceId)
+            .toList(growable: false);
+
+        expect(backend.requestedPages, <int>[1, 2, 3, 4]);
+        expect(
+          festaOccurrences,
+          <String>[
+            '69dd8398d698348015047b62',
+            '69ee1dafb70a4bcfef05e979',
+            '69ee1f37b861740a340d94d0',
+          ],
+        );
+        expect(controller.hasMoreStreamValue.value, isTrue);
+
+        controller.onDispose();
+      },
+    );
+
+    test('client-side invite filter does not trigger extra paging', () async {
       final appData = _buildAppData(
         minKm: 1,
         defaultKm: 5,
@@ -3340,6 +3391,183 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
       'date_time_start': '2026-03-04T20:00:00+00:00',
       'linked_account_profiles': const [],
       'tags': const ['music'],
+    });
+  }
+}
+
+class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
+  final List<int> requestedPages = <int>[];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
+      _eventDto(
+        eventId: '69dd8398d698348015047b61',
+        occurrenceId: occurrenceId ?? '69dd8398d698348015047b62',
+        slug: 'festa-da-imigracao-italiana',
+        title: '5 ª Festa da Imigração Italiana',
+        dateTimeStart: '2026-05-15T21:30:00+00:00',
+        dateTimeEnd: '2026-05-16T04:00:00+00:00',
+        linkedCount: 3,
+      );
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    int? pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    requestedPages.add(page);
+    return switch (page) {
+      1 => EventPageDTO(
+          events: [
+            _eventDto(
+              eventId: '507f1f77bcf86cd799439101',
+              occurrenceId: '507f1f77bcf86cd799439102',
+              slug: 'pagina-um',
+              title: 'Pagina Um',
+              dateTimeStart: '2026-04-20T20:00:00+00:00',
+            ),
+          ],
+          hasMore: true,
+        ),
+      2 => EventPageDTO(
+          events: [
+            _eventDto(
+              eventId: '507f1f77bcf86cd799439201',
+              occurrenceId: '507f1f77bcf86cd799439202',
+              slug: 'pagina-dois',
+              title: 'Pagina Dois',
+              dateTimeStart: '2026-05-01T20:00:00+00:00',
+            ),
+          ],
+          hasMore: true,
+        ),
+      3 => EventPageDTO(
+          events: [
+            _eventDto(
+              eventId: '69dd8398d698348015047b61',
+              occurrenceId: '69dd8398d698348015047b62',
+              slug: 'festa-da-imigracao-italiana',
+              title: '5 ª Festa da Imigração Italiana',
+              dateTimeStart: '2026-05-15T21:30:00+00:00',
+              dateTimeEnd: '2026-05-16T04:00:00+00:00',
+              linkedCount: 3,
+            ),
+            _eventDto(
+              eventId: '69dd8398d698348015047b61',
+              occurrenceId: '69ee1dafb70a4bcfef05e979',
+              slug: 'festa-da-imigracao-italiana',
+              title: '5 ª Festa da Imigração Italiana',
+              dateTimeStart: '2026-05-16T14:00:00+00:00',
+              dateTimeEnd: '2026-05-17T04:00:00+00:00',
+              linkedCount: 4,
+            ),
+          ],
+          hasMore: true,
+        ),
+      4 => EventPageDTO(
+          events: [
+            _eventDto(
+              eventId: '69dd8398d698348015047b61',
+              occurrenceId: '69ee1f37b861740a340d94d0',
+              slug: 'festa-da-imigracao-italiana',
+              title: '5 ª Festa da Imigração Italiana',
+              dateTimeStart: '2026-05-17T13:00:00+00:00',
+              dateTimeEnd: '2026-05-17T22:00:00+00:00',
+              linkedCount: 4,
+            ),
+            _eventDto(
+              eventId: '507f1f77bcf86cd799439401',
+              occurrenceId: '507f1f77bcf86cd799439402',
+              slug: 'rock-da-tarde',
+              title: 'Rock da Tarde',
+              dateTimeStart: '2026-05-17T17:00:00+00:00',
+            ),
+          ],
+          hasMore: true,
+        ),
+      _ => EventPageDTO(events: const [], hasMore: false),
+    };
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _eventDto({
+    required String eventId,
+    required String occurrenceId,
+    required String slug,
+    required String title,
+    required String dateTimeStart,
+    String? dateTimeEnd,
+    int linkedCount = 0,
+  }) {
+    return EventDTO.fromJson({
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'slug': slug,
+      'title': title,
+      'content': 'Conteudo',
+      'type': {
+        'id': '69e3aa5af3bd18b69005aefe',
+        'name': 'Mostra Cultural',
+        'slug': 'mostra-cultural',
+        'description': null,
+        'color': '#EB2534',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Campo do Buenos Aires',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.53998982628426, -20.58156079400973],
+        },
+      },
+      'date_time_start': dateTimeStart,
+      if (dateTimeEnd != null) 'date_time_end': dateTimeEnd,
+      'occurrences': [
+        {
+          'occurrence_id': occurrenceId,
+          'date_time_start': dateTimeStart,
+          if (dateTimeEnd != null) 'date_time_end': dateTimeEnd,
+          'is_selected': true,
+        },
+      ],
+      'linked_account_profiles': List<Map<String, Object?>>.generate(
+        linkedCount,
+        (index) => {
+          'id': '69dd8398d698348015047b6${3 + index}',
+          'display_name': 'Perfil ${index + 1}',
+          'slug': 'perfil-${index + 1}',
+          'profile_type': 'artist',
+          'avatar_url': null,
+        },
+      ),
+      'tags': const ['cultura'],
     });
   }
 }

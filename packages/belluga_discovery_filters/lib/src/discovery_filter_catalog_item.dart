@@ -7,6 +7,7 @@ class DiscoveryFilterCatalogItem {
     required this.entities,
     this.iconKey,
     this.colorHex,
+    this.imageUri,
     this.target,
     this.types = const <String>{},
     this.typesByEntity = const <String, Set<String>>{},
@@ -54,6 +55,9 @@ class DiscoveryFilterCatalogItem {
       label: _readString(json['label']) ?? '',
       iconKey: _readString(json['icon']) ?? _readString(json['icon_key']),
       colorHex: _readString(json['color']) ?? _readString(json['color_hex']),
+      imageUri: _readString(json['image_uri']) ??
+          _readString(json['image_url']) ??
+          _readString(json['image']),
       target: _readString(json['target']),
       entities: _readStringSet(
         query['entities'] ??
@@ -80,6 +84,7 @@ class DiscoveryFilterCatalogItem {
   final String label;
   final String? iconKey;
   final String? colorHex;
+  final String? imageUri;
   final String? target;
   final Set<String> entities;
   final Set<String> types;
@@ -116,6 +121,7 @@ class DiscoveryFilterCatalogItem {
       'label': label,
       if (iconKey != null) 'icon_key': iconKey,
       if (colorHex != null) 'color_hex': colorHex,
+      if (imageUri != null) 'image_uri': imageUri,
       if (target != null) 'target': target,
       'query': query,
       if (taxonomyConfigs.isNotEmpty)
@@ -126,4 +132,25 @@ class DiscoveryFilterCatalogItem {
   }
 
   bool get isValid => key.isNotEmpty && label.isNotEmpty && entities.isNotEmpty;
+
+  DiscoveryFilterCatalogItem withVisualFallback({
+    String? iconKey,
+    String? colorHex,
+    String? imageUri,
+  }) {
+    return DiscoveryFilterCatalogItem(
+      key: key,
+      label: label,
+      entities: entities,
+      iconKey: this.iconKey ?? iconKey,
+      colorHex: this.colorHex ?? colorHex,
+      imageUri: this.imageUri ?? imageUri,
+      target: target,
+      types: types,
+      typesByEntity: typesByEntity,
+      taxonomyKeys: taxonomyKeys,
+      taxonomyValuesByGroup: taxonomyValuesByGroup,
+      taxonomyConfigs: taxonomyConfigs,
+    );
+  }
 }

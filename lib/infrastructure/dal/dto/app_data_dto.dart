@@ -481,6 +481,9 @@ class AppDataDTO {
         _readTrimmedString(visualMap['image_url']) ??
             _readTrimmedString(typeAssetUrl),
       ),
+      colorValue: _optionalProfileTypeHexColorValue(
+        _normalizeHexColor(visualMap['color']),
+      ),
     );
   }
 
@@ -542,6 +545,15 @@ class AppDataDTO {
       return '#$value';
     }
     return null;
+  }
+
+  static ProfileTypeVisualHexColorValue? _optionalProfileTypeHexColorValue(
+    String? color,
+  ) {
+    if (color == null) {
+      return null;
+    }
+    return ProfileTypeVisualHexColorValue()..parse(color);
   }
 
   static ThemeDataSettings _buildThemeDataSettings(

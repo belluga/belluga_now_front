@@ -77,6 +77,7 @@ void main() {
               'visual': {
                 'mode': 'image',
                 'image_source': 'type_asset',
+                'color': '#00897B',
                 'image_url':
                     'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
               },
@@ -102,6 +103,7 @@ void main() {
         definition.visual?.imageUrl,
         'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
       );
+      expect(definition.visual?.color, '#00897B');
     });
 
     test('normalizes reference location capability in public registry', () {
