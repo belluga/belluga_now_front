@@ -239,21 +239,52 @@ class DateGroupedEventList extends StatelessWidget {
                     ),
             ),
             // Events for this date
-            ...dateEvents.map((event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: UpcomingEventCard.fromVenueEventResume(
-                    event: event,
-                    onTap: () => onEventSelected(event),
-                    isConfirmed: isConfirmed?.call(event) ?? false,
-                    pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
-                    distanceLabel: distanceLabel?.call(event),
-                    statusIconSize: statusIconSize ?? 24,
+            ...dateEvents.asMap().entries.map((entry) {
+              final event = entry.value;
+              final cardIdentity = _cardIdentityFor(
+                event: event,
+                sectionIndex: index,
+                eventIndex: entry.key,
+              );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: UpcomingEventCard.fromVenueEventResume(
+                  key: ValueKey<String>(
+                    'date-grouped-event-card-$cardIdentity',
                   ),
-                )),
+                  event: event,
+                  onTap: () => onEventSelected(event),
+                  isConfirmed: isConfirmed?.call(event) ?? false,
+                  pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
+                  distanceLabel: distanceLabel?.call(event),
+                  statusIconSize: statusIconSize ?? 24,
+                  keyNamespace: 'dateGroupedEventCard',
+                  cardId: cardIdentity,
+                ),
+              );
+            }),
           ],
         );
       },
     );
+  }
+
+  String _cardIdentityFor({
+    required VenueEventResume event,
+    required int sectionIndex,
+    required int eventIndex,
+  }) {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId != null && occurrenceId.isNotEmpty) {
+      return 'occurrence:$occurrenceId';
+    }
+
+    final eventId = event.id.trim();
+    if (eventId.isNotEmpty) {
+      return 'event:$eventId:$sectionIndex:$eventIndex';
+    }
+
+    return 'index:$sectionIndex:$eventIndex';
   }
 }
 

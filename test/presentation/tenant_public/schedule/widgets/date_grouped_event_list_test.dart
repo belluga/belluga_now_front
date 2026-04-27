@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/artist/value_objects/artist_genre_value.dart'
 import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,85 @@ void main() {
       expect(find.text('Evento em Andamento'), findsOneWidget);
       expect(find.text('Ananda Torres'), findsOneWidget);
       expect(find.text('Carvoeiro - Av. Beira Mar, 4500'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'keeps occurrence-first card identity when the same event appears on multiple dates',
+    (tester) async {
+      final eventId = '507f1f77bcf86cd799439099';
+      final baseDate = DateTime(2026, 5, 15, 18);
+      final events = <VenueEventResume>[
+        buildVenueEventResume(
+          id: eventId,
+          slug: 'festa-da-imigracao-italiana',
+          title: '5 ª Festa da Imigração Italiana',
+          imageUri: Uri.parse('http://example.com/event.jpg'),
+          startDateTime: baseDate,
+          location: 'Campo do Buenos Aires',
+          selectedOccurrenceId: '69dd8398d698348015047b62',
+        ),
+        buildVenueEventResume(
+          id: eventId,
+          slug: 'festa-da-imigracao-italiana',
+          title: '5 ª Festa da Imigração Italiana',
+          imageUri: Uri.parse('http://example.com/event.jpg'),
+          startDateTime: baseDate.add(const Duration(days: 1)),
+          location: 'Campo do Buenos Aires',
+          selectedOccurrenceId: '69ee1dafb70a4bcfef05e979',
+        ),
+        buildVenueEventResume(
+          id: eventId,
+          slug: 'festa-da-imigracao-italiana',
+          title: '5 ª Festa da Imigração Italiana',
+          imageUri: Uri.parse('http://example.com/event.jpg'),
+          startDateTime: baseDate.add(const Duration(days: 2)),
+          location: 'Campo do Buenos Aires',
+          selectedOccurrenceId: '69ee1f37b861740a340d94d0',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: DateGroupedEventList(
+                events: events,
+                onEventSelected: (_) {},
+                primary: false,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(
+          const ValueKey<String>(
+            'date-grouped-event-card-occurrence:69dd8398d698348015047b62',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>(
+            'date-grouped-event-card-occurrence:69ee1dafb70a4bcfef05e979',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>(
+            'date-grouped-event-card-occurrence:69ee1f37b861740a340d94d0',
+          ),
+        ),
+        findsOneWidget,
+      );
     },
   );
 }

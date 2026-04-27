@@ -135,7 +135,8 @@ void main() {
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
   });
 
-  testWidgets('shows canonical type image upload controls for static type_asset visuals',
+  testWidgets(
+      'shows canonical type image upload controls for static type_asset visuals',
       (tester) async {
     final controller = _TestStaticProfileTypesController(impactCount: 0);
     GetIt.I.registerSingleton<TenantAdminStaticProfileTypesController>(
@@ -151,6 +152,7 @@ void main() {
             allowedTaxonomies: const [],
             visual: TenantAdminPoiVisual.image(
               imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+              colorValue: TenantAdminHexColorValue()..parse('#00897B'),
               imageUrlValue: TenantAdminOptionalUrlValue()
                 ..parse(
                   'https://tenant.test/api/v1/media/static-profile-types/type-1/type_asset?v=123',
@@ -171,6 +173,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Cor do marcador'),
+      findsOneWidget,
+    );
     expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
     expect(find.text('Enviar imagem canônica'), findsOneWidget);
   });

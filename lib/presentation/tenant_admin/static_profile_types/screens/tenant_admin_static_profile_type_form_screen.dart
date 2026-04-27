@@ -428,6 +428,11 @@ class _TenantAdminStaticProfileTypeFormScreenState
                       if (imageSource ==
                           TenantAdminPoiVisualImageSource.typeAsset) ...[
                         const SizedBox(height: 12),
+                        TenantAdminColorPickerField(
+                          controller: _controller.poiVisualColorController,
+                          labelText: 'Cor do marcador',
+                        ),
+                        const SizedBox(height: 12),
                         _buildTypeAssetUploadField(context),
                       ],
                     ],
@@ -460,41 +465,37 @@ class _TenantAdminStaticProfileTypeFormScreenState
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: taxonomies
-                          .map((taxonomy) {
-                            final label = taxonomy.name;
-                            final isSelected =
-                                selected.contains(taxonomy.slug);
-                            return Semantics(
-                              key: ValueKey<String>(
-                                'tenantAdminStaticProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
-                              ),
-                              container: true,
-                              label: label,
-                              button: true,
-                              focusable: true,
-                              toggled: isSelected,
+                      children: taxonomies.map((taxonomy) {
+                        final label = taxonomy.name;
+                        final isSelected = selected.contains(taxonomy.slug);
+                        return Semantics(
+                          key: ValueKey<String>(
+                            'tenantAdminStaticProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
+                          ),
+                          container: true,
+                          label: label,
+                          button: true,
+                          focusable: true,
+                          toggled: isSelected,
+                          selected: isSelected,
+                          onTap: () => _controller.toggleTaxonomySelection(
+                            taxonomy.slug,
+                            !isSelected,
+                          ),
+                          child: ExcludeSemantics(
+                            child: FilterChip(
+                              label: Text(label),
                               selected: isSelected,
-                              onTap: () => _controller
-                                  .toggleTaxonomySelection(
-                                    taxonomy.slug,
-                                    !isSelected,
-                                  ),
-                              child: ExcludeSemantics(
-                                child: FilterChip(
-                                  label: Text(label),
-                                  selected: isSelected,
-                                  onSelected: (enabled) {
-                                    _controller.toggleTaxonomySelection(
-                                      taxonomy.slug,
-                                      enabled,
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          })
-                          .toList(growable: false),
+                              onSelected: (enabled) {
+                                _controller.toggleTaxonomySelection(
+                                  taxonomy.slug,
+                                  enabled,
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      }).toList(growable: false),
                     ),
                 ],
               );

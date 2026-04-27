@@ -26,9 +26,9 @@ class ProfileTypeVisual {
   ProfileTypeVisual.image({
     required this.imageSource,
     this.imageUrlValue,
+    this.colorValue,
   })  : mode = ProfileTypeVisualMode.image,
         iconValue = null,
-        colorValue = null,
         iconColorValue = null;
 
   final ProfileTypeVisualMode mode;

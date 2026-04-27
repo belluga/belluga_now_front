@@ -27,6 +27,12 @@ void main() {
             <String, Object?>{
               'value': 'show',
               'label': 'Show',
+              'visual': <String, Object?>{
+                'mode': 'image',
+                'image_source': 'type_asset',
+                'image_url': 'https://tenant.test/types/show.png',
+                'color': '#D81B60',
+              },
               'allowed_taxonomies': <String>['music_styles'],
             },
           ],
@@ -53,6 +59,9 @@ void main() {
     expect(catalog.filters.single.typesByEntity, <String, Set<String>>{
       'event': <String>{'show'},
     });
+    expect(
+        catalog.filters.single.imageUri, 'https://tenant.test/types/show.png');
+    expect(catalog.filters.single.colorHex, '#D81B60');
     expect(catalog.filters.single.taxonomyValuesByGroup, <String, Set<String>>{
       'music_styles': <String>{'rock'},
     });

@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_buck
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -306,8 +307,8 @@ void main() {
       isTrue,
     );
     expect(
-      hasField('occurrences[1][programming_items][0][title]',
-          'Show com a banda'),
+      hasField(
+          'occurrences[1][programming_items][0][title]', 'Show com a banda'),
       isTrue,
     );
     expect(
@@ -1037,6 +1038,7 @@ void main() {
       slug: _repoText('festival'),
       visual: TenantAdminPoiVisual.image(
         imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+        colorValue: TenantAdminHexColorValue()..parse('#00897B'),
       ),
       typeAssetUpload: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList([7, 8, 9]),
@@ -1062,9 +1064,21 @@ void main() {
     );
     expect(
       formData.fields.any(
+        (entry) => entry.key == 'visual[color]' && entry.value == '#00897B',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
         (entry) =>
             entry.key == 'poi_visual[image_source]' &&
             entry.value == 'type_asset',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'poi_visual[color]' && entry.value == '#00897B',
       ),
       isTrue,
     );
