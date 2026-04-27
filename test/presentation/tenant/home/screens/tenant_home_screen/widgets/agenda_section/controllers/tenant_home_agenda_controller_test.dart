@@ -690,6 +690,7 @@ void main() {
 
       await controller.init();
       expect(_displayedEvents(controller), isEmpty);
+      expect(controller.hasMoreStreamValue.value, isFalse);
       expect(scheduleRepository.getEventsPageCallCount, 2);
 
       await controller.init();
@@ -697,6 +698,11 @@ void main() {
         scheduleRepository.getEventsPageCallCount,
         4,
         reason: 'When cache is null, init must retry fetching.',
+      );
+      expect(
+        controller.hasMoreStreamValue.value,
+        isFalse,
+        reason: 'Repeated first-page failures must keep pagination closed.',
       );
 
       controller.onDispose();

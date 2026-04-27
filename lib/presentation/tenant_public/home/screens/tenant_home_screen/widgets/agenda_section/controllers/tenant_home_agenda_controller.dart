@@ -495,11 +495,14 @@ class TenantHomeAgendaController extends Object
   }
 
   void _publishEmptyFirstPageStateIfNeeded() {
-    if (_isDisposed || displayStateStreamValue.value != null) {
+    if (_isDisposed) {
       return;
     }
     _hasMore = false;
     _ifAlive(() => hasMoreStreamValue.addValue(false));
+    if (displayStateStreamValue.value != null) {
+      return;
+    }
     _ifAlive(
       () => displayStateStreamValue.addValue(
         TenantHomeAgendaDisplayState(events: const <EventModel>[]),
