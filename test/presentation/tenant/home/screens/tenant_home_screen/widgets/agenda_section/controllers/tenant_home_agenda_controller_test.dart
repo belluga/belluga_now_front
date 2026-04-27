@@ -423,7 +423,7 @@ void main() {
       expect(appData.mapRadiusDefaultMeters, 20000);
     });
 
-    test('finalizes initial loading even when first fetch fails', () async {
+    test('publishes empty state when first fetch cannot recover', () async {
       final appData = _buildAppData(
         minKm: 1,
         defaultKm: 5,
@@ -441,7 +441,8 @@ void main() {
       await controller.init();
 
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
-      expect(_displayedEvents(controller), isNull);
+      expect(controller.hasMoreStreamValue.value, isFalse);
+      expect(_displayedEvents(controller), isEmpty);
 
       controller.onDispose();
     });
@@ -503,6 +504,44 @@ void main() {
         _displayedEvents(controller)!.first.title.value,
         'Evento Recuperado',
       );
+
+      controller.onDispose();
+    });
+
+    test(
+        'switches from location loading label before invite bootstrap completes',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final invitesRepository = _GatedInvitesRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: invitesRepository,
+        userLocationRepository: locationRepository,
+        appDataRepository: _FakeAppDataRepository(appData),
+      );
+
+      final initFuture = controller.init();
+      await invitesRepository.fetchSettingsStarted.future;
+
+      expect(
+        controller.initialLoadingLabelStreamValue.value,
+        'Buscando eventos perto de você...',
+      );
+
+      invitesRepository.release();
+      await initFuture;
 
       controller.onDispose();
     });
@@ -650,7 +689,8 @@ void main() {
       );
 
       await controller.init();
-      expect(_displayedEvents(controller), isNull);
+      expect(_displayedEvents(controller), isEmpty);
+      expect(controller.hasMoreStreamValue.value, isFalse);
       expect(scheduleRepository.getEventsPageCallCount, 2);
 
       await controller.init();
@@ -658,6 +698,11 @@ void main() {
         scheduleRepository.getEventsPageCallCount,
         4,
         reason: 'When cache is null, init must retry fetching.',
+      );
+      expect(
+        controller.hasMoreStreamValue.value,
+        isFalse,
+        reason: 'Repeated first-page failures must keep pagination closed.',
       );
 
       controller.onDispose();
@@ -4073,6 +4118,26 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InviteRecipients recipients,
       {InvitesRepositoryContractPrimString? occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
+}
+
+class _GatedInvitesRepository extends _FakeInvitesRepository {
+  final Completer<void> fetchSettingsStarted = Completer<void>();
+  final Completer<void> _releaseGate = Completer<void>();
+
+  void release() {
+    if (!_releaseGate.isCompleted) {
+      _releaseGate.complete();
+    }
+  }
+
+  @override
+  Future<InviteRuntimeSettings> fetchSettings() async {
+    if (!fetchSettingsStarted.isCompleted) {
+      fetchSettingsStarted.complete();
+    }
+    await _releaseGate.future;
+    return super.fetchSettings();
+  }
 }
 
 class _LoggedEvent {
