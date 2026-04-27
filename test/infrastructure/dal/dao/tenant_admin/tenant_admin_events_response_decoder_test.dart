@@ -16,6 +16,7 @@ void main() {
         'visual': {
           'mode': 'image',
           'image_source': 'type_asset',
+          'color': '#00897B',
           'image_url':
               'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
         },
@@ -32,6 +33,7 @@ void main() {
       eventType.visual?.imageUrl,
       'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
     );
+    expect(eventType.visual?.color, '#00897B');
     expect(eventType.allowedTaxonomies.value, ['genre', 'cuisine']);
   });
 

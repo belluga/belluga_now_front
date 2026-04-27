@@ -481,7 +481,21 @@ class TenantAdminEventsResponseDecoder {
       imageSource: imageSource,
       imageUrlValue:
           tenantAdminOptionalUrl(_asString(fallbackVisualRow['image_url'])),
+      colorValue: _optionalHexColor(_asString(fallbackVisualRow['color'])),
     );
+  }
+
+  TenantAdminHexColorValue? _optionalHexColor(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    final value = TenantAdminHexColorValue();
+    try {
+      value.parse(raw);
+    } on Object {
+      return null;
+    }
+    return value;
   }
 
   TenantAdminAccountProfile _mapAccountProfile(Map<String, dynamic> row) {

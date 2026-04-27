@@ -91,6 +91,7 @@ void main() {
             slugValue: tenantAdminRequiredText('festival'),
             visual: TenantAdminPoiVisual.image(
               imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+              colorValue: TenantAdminHexColorValue()..parse('#00897B'),
               imageUrlValue: TenantAdminOptionalUrlValue()
                 ..parse(
                   'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=3',
@@ -103,6 +104,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Cor do marcador'),
+      findsOneWidget,
+    );
     expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
     expect(find.text('Enviar imagem canônica'), findsOneWidget);
   });
@@ -604,9 +609,8 @@ class _RecordingEventsRepository extends _NoopEventsRepository {
     TenantAdminEventsRepoBool? removeTypeAsset,
   }) {
     updateEventTypeWithVisualCallCount += 1;
-    lastUpdateAllowedTaxonomies = allowedTaxonomies
-        ?.map((entry) => entry.value)
-        .toList(growable: false);
+    lastUpdateAllowedTaxonomies =
+        allowedTaxonomies?.map((entry) => entry.value).toList(growable: false);
     return updateEventTypeWithVisualResult;
   }
 }

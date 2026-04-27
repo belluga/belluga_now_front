@@ -215,7 +215,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     } else {
       poiVisualModeStreamValue.addValue(TenantAdminPoiVisualMode.image);
       poiVisualIconController.text = 'place';
-      poiVisualColorController.text = '#2563EB';
+      poiVisualColorController.text = visual.color ?? '#2563EB';
       poiVisualIconColorController.text = '#FFFFFF';
       poiVisualImageSourceStreamValue.addValue(
         visual.imageSource ?? TenantAdminPoiVisualImageSource.avatar,
@@ -286,13 +286,22 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       }
     }
 
-    return TenantAdminPoiVisual.image(
-      imageSource: currentPoiVisualImageSource,
-      imageUrlValue: currentPoiVisualImageSource ==
-              TenantAdminPoiVisualImageSource.typeAsset
-          ? _buildOptionalUrlValue(currentTypeAssetUrl)
-          : null,
-    );
+    try {
+      final isTypeAsset = currentPoiVisualImageSource ==
+          TenantAdminPoiVisualImageSource.typeAsset;
+      final colorValue = isTypeAsset
+          ? (TenantAdminHexColorValue()..parse(poiVisualColorController.text))
+          : null;
+      final candidate = TenantAdminPoiVisual.image(
+        imageSource: currentPoiVisualImageSource,
+        imageUrlValue:
+            isTypeAsset ? _buildOptionalUrlValue(currentTypeAssetUrl) : null,
+        colorValue: colorValue,
+      );
+      return candidate.isValid ? candidate : null;
+    } on Object {
+      return null;
+    }
   }
 
   XFile? get currentTypeAssetFile => typeAssetFileStreamValue.value;
@@ -408,8 +417,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       if (_isDisposed) {
         return;
       }
-      final types =
-          typesStreamValue.value ??
+      final types = typesStreamValue.value ??
           const <TenantAdminStaticProfileTypeDefinition>[];
       TenantAdminStaticProfileTypeDefinition? match;
       for (final entry in types) {

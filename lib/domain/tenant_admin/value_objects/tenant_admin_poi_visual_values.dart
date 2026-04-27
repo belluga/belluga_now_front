@@ -56,6 +56,7 @@ TenantAdminPoiVisual? tenantAdminPoiVisualFromMapValue(
   return TenantAdminPoiVisual.image(
     imageSource: imageSource,
     imageUrlValue: _optionalUrlValue(_readTrimmedString(json['image_url'])),
+    colorValue: _optionalHexColorValue(_readTrimmedString(json['color'])),
   );
 }
 
@@ -100,5 +101,18 @@ TenantAdminOptionalUrlValue? _optionalUrlValue(String? raw) {
   }
   final value = TenantAdminOptionalUrlValue();
   value.parse(raw);
+  return value;
+}
+
+TenantAdminHexColorValue? _optionalHexColorValue(String? raw) {
+  if (raw == null) {
+    return null;
+  }
+  final value = TenantAdminHexColorValue();
+  try {
+    value.parse(raw);
+  } on Object {
+    return null;
+  }
   return value;
 }

@@ -9,6 +9,7 @@ void main() {
         'label': 'Eventos',
         'icon_key': 'music',
         'color_hex': '#D71920',
+        'image_uri': 'https://tenant.test/filters/events.png',
         'target': 'map_poi',
         'query': <String, Object?>{
           'entity': 'event_occurrence',
@@ -28,6 +29,7 @@ void main() {
     expect(item.isValid, isTrue);
     expect(item.entities, <String>{'event_occurrence'});
     expect(item.types, <String>{'show', 'fair'});
+    expect(item.imageUri, 'https://tenant.test/filters/events.png');
     expect(item.taxonomyKeys, <String>{'music_styles'});
     expect(item.taxonomyConfigs['music_styles']?.labelOverride, 'Estilos');
     expect(
@@ -160,6 +162,47 @@ void main() {
       'rock',
     );
     expect(catalog.isEmpty, isFalse);
+  });
+
+  test(
+      'hydrates filter image visual and active color from matching type option',
+      () {
+    final catalog = DiscoveryFilterCatalog.fromJson(
+      <String, Object?>{
+        'surface': 'home.events',
+        'filters': <Object?>[
+          <String, Object?>{
+            'key': 'show',
+            'label': 'Shows',
+            'query': <String, Object?>{
+              'entities': <String>['event'],
+              'types_by_entity': <String, Object?>{
+                'event': <String>['show'],
+              },
+            },
+          },
+        ],
+        'type_options': <String, Object?>{
+          'event': <Object?>[
+            <String, Object?>{
+              'value': 'show',
+              'label': 'Show',
+              'visual': <String, Object?>{
+                'mode': 'image',
+                'image_source': 'type_asset',
+                'image_url': 'https://tenant.test/types/show.png',
+                'color': '#D81B60',
+              },
+            },
+          ],
+        },
+      },
+    );
+
+    expect(
+        catalog.filters.single.imageUri, 'https://tenant.test/types/show.png');
+    expect(catalog.filters.single.colorHex, '#D81B60');
+    expect(catalog.filters.single.iconKey, isNull);
   });
 
   test('registry resolves entity-qualified type options', () {
