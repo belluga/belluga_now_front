@@ -144,6 +144,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
     final contactHash = InviteContactImportHashes.contactHashes(
       contacts.first,
+      regionCode: contacts.regionCode,
     ).first;
 
     return <InviteContactMatch>[

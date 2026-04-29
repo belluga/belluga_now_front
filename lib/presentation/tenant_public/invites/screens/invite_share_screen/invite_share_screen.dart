@@ -53,7 +53,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init(widget.invite);
+    unawaited(_controller.init(widget.invite));
   }
 
   @override
@@ -313,11 +313,21 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ? null
         : InviteContactPhoneNormalization.preferredWhatsAppTarget(
             target.primaryPhone!,
+            regionCode: _currentCountryCode(),
           );
     if (phone == null || phone.isEmpty) {
       return null;
     }
     return Uri.https('wa.me', '/$phone', {'text': text});
+  }
+
+  String? _currentCountryCode() {
+    final countryCode = Localizations.maybeLocaleOf(context)?.countryCode ??
+        WidgetsBinding.instance.platformDispatcher.locale.countryCode;
+    if (countryCode == null || countryCode.trim().isEmpty) {
+      return null;
+    }
+    return countryCode.trim().toUpperCase();
   }
 
   Future<bool> _launchExternalUrl(

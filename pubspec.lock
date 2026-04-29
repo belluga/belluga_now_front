@@ -1426,7 +1426,7 @@ packages:
     source: hosted
     version: "10.0.17"
   phone_numbers_parser:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: phone_numbers_parser
       sha256: "2c9b190a8f56c7ce4d6703ac09d766a687b10e4328c44a6f924d9dffa54b6375"

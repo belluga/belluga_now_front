@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -203,7 +204,7 @@ void main() {
         },
       ),
     );
-    final contacts = InviteContacts()
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
       ..add(
         buildContactModel(
           id: 'contact-1',
@@ -251,13 +252,13 @@ void main() {
     expect(recipients.single.isFriend, isTrue);
   });
 
-  test('importContacts sends OTP-compatible Brazil phone hash variants',
+  test('importContacts sends region-aware OTP-compatible phone hash variants',
       () async {
     final backend = _FakeInvitesBackend(
       importContactsResponse: const {'matches': []},
     );
     final repository = InvitesRepository(backend: backend);
-    final contacts = InviteContacts()
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
       ..add(
         buildContactModel(
           id: 'contact-1',
@@ -358,7 +359,7 @@ void main() {
       },
     );
     final repository = InvitesRepository(backend: backend);
-    final contacts = InviteContacts();
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'));
     for (var index = 0; index <= 250; index += 1) {
       contacts.add(
         buildContactModel(
@@ -650,6 +651,9 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 }
 
 String _sha256(String raw) => sha256.convert(utf8.encode(raw)).toString();
+
+InviteContactRegionCodeValue _regionCodeValue(String raw) =>
+    InviteContactRegionCodeValue()..parse(raw);
 
 Map<String, dynamic> _buildInvitePayload({
   required String id,

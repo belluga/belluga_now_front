@@ -172,7 +172,10 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
   ) async {
-    final importItems = _buildContactImportItems(contacts.items);
+    final importItems = _buildContactImportItems(
+      contacts.items,
+      regionCode: contacts.regionCode,
+    );
     if (importItems.isEmpty) {
       return const <InviteContactMatch>[];
     }
@@ -387,8 +390,9 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   List<InviteContactImportItemRequest> _buildContactImportItems(
-    List<ContactModel> contacts,
-  ) {
+    List<ContactModel> contacts, {
+    required String? regionCode,
+  }) {
     final seen = <String>{};
     final items = <InviteContactImportItemRequest>[];
 
@@ -404,6 +408,7 @@ class InvitesRepository extends InvitesRepositoryContract
             displayNameValue: contact.displayNameValue,
             emailValues: [email],
           ),
+          regionCode: regionCode,
         ).single;
         final signature = 'email::$hash';
         if (!seen.add(signature)) {
@@ -418,8 +423,10 @@ class InvitesRepository extends InvitesRepositoryContract
           displayNameValue: contact.displayNameValue,
           phoneValues: [phone],
         );
-        for (final hash
-            in InviteContactImportHashes.contactHashes(phoneOnlyContact)) {
+        for (final hash in InviteContactImportHashes.contactHashes(
+          phoneOnlyContact,
+          regionCode: regionCode,
+        )) {
           final signature = 'phone::$hash';
           if (!seen.add(signature)) {
             continue;

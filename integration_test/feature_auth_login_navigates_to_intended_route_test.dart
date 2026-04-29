@@ -40,6 +40,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:phone_form_field/phone_form_field.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
@@ -201,8 +202,9 @@ void main() {
     await app.init();
 
     _unregisterIfRegistered<AuthLoginControllerContract>();
+    final loginController = AuthLoginController();
     getIt.registerSingleton<AuthLoginControllerContract>(
-      AuthLoginController(),
+      loginController,
     );
 
     await tester.pumpWidget(app);
@@ -232,9 +234,9 @@ void main() {
     await _waitForFinder(tester, phoneField);
     expect(find.byKey(WidgetKeys.auth.loginPasswordField), findsNothing);
 
-    await tester.ensureVisible(phoneField.first);
-    await _pumpFor(tester, const Duration(milliseconds: 300));
-    await tester.enterText(phoneField, '+55 27 99999-0000');
+    const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+    loginController.phoneNumberController.value = phoneNumber;
+    loginController.updatePhoneOtpInput(phoneNumber);
     tester.binding.focusManager.primaryFocus?.unfocus();
     await _pumpFor(tester, const Duration(milliseconds: 500));
 

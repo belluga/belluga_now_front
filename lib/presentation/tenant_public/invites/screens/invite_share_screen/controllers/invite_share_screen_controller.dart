@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/invites/projections/friend_resume_with_status
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
@@ -31,17 +32,20 @@ class InviteShareScreenController with Disposable {
     ContactsRepositoryContract? contactsRepository,
     AppData? appData,
     bool? isWebRuntime,
+    String? contactRegionCode,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _contactsRepository =
             contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
         _appData = appData ?? GetIt.I.get<AppData>(),
-        _isWebRuntime = isWebRuntime ?? kIsWeb;
+        _isWebRuntime = isWebRuntime ?? kIsWeb,
+        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
 
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
   final AppData _appData;
   final bool _isWebRuntime;
+  InviteContactRegionCodeValue? _contactRegionCodeValue;
 
   InviteModel? _currentInvite;
 
@@ -69,6 +73,10 @@ class InviteShareScreenController with Disposable {
   List<ContactModel> _availableContacts = const [];
   bool _isShareCodeLoading = false;
   bool _isInviteablesRefreshing = false;
+
+  void setContactRegionCode(String? regionCode) {
+    _contactRegionCodeValue = _buildRegionCodeValue(regionCode);
+  }
 
   Future<void> init(InviteModel invite) async {
     _currentInvite = invite;
@@ -281,7 +289,9 @@ class InviteShareScreenController with Disposable {
     try {
       return await _invitesRepository.importContacts(
         (() {
-          final contacts = InviteContacts();
+          final contacts = InviteContacts(
+            regionCodeValue: _contactRegionCodeValue,
+          );
           for (final availableContact in _availableContacts) {
             contacts.add(availableContact);
           }
@@ -432,7 +442,10 @@ class InviteShareScreenController with Disposable {
     return _availableContacts
         .where(_isShareableExternalContact)
         .where((contact) {
-          final localHashes = InviteContactImportHashes.contactHashes(contact);
+          final localHashes = InviteContactImportHashes.contactHashes(
+            contact,
+            regionCode: _contactRegionCodeValue?.value,
+          );
           return localHashes.intersection(matchedHashes).isEmpty;
         })
         .map(_toExternalShareTarget)
@@ -469,6 +482,16 @@ class InviteShareScreenController with Disposable {
       }
     }
     return null;
+  }
+
+  static InviteContactRegionCodeValue? _buildRegionCodeValue(
+    String? regionCode,
+  ) {
+    final normalized = regionCode?.trim().toUpperCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return InviteContactRegionCodeValue()..parse(normalized);
   }
 
   String _inviteableIdentityKey(InviteFriendResume friend) {

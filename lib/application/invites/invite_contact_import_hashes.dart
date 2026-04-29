@@ -7,7 +7,10 @@ import 'package:crypto/crypto.dart';
 class InviteContactImportHashes {
   const InviteContactImportHashes._();
 
-  static Set<String> contactHashes(ContactModel contact) {
+  static Set<String> contactHashes(
+    ContactModel contact, {
+    String? regionCode,
+  }) {
     final hashes = <String>{};
 
     for (final email in contact.emails) {
@@ -21,6 +24,7 @@ class InviteContactImportHashes {
     for (final phone in contact.phones) {
       for (final normalized in InviteContactPhoneNormalization.hashInputs(
         phone.value,
+        regionCode: regionCode,
       )) {
         hashes.add(sha256.convert(utf8.encode(normalized)).toString());
       }

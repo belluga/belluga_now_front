@@ -21,6 +21,7 @@ import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
@@ -228,6 +229,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: _testSupportedLocales,
+        localizationsDelegates: _testLocalizationDelegates,
         home: InviteShareScreen(
           invite: _buildInvite(),
           externalUrlLauncher: (uri, {required mode}) async {
@@ -285,6 +289,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: _testSupportedLocales,
+        localizationsDelegates: _testLocalizationDelegates,
         home: InviteShareScreen(
           invite: _buildInvite(),
           externalUrlLauncher: (uri, {required mode}) async {
@@ -312,7 +319,75 @@ void main() {
     );
     expect(sharedParams.single.subject, 'Convite Belluga Now');
   });
+
+  testWidgets(
+      'external phone contact share does not assume Brazil outside Brazilian locale',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final launchedUris = <Uri>[];
+    final sharedParams = <ShareParams>[];
+    final controller = InviteShareScreenController(
+      invitesRepository: _FakeInvitesRepository(),
+      contactsRepository: _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['(27) 98888-7777'],
+          ),
+        ],
+      ),
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        supportedLocales: _testSupportedLocales,
+        localizationsDelegates: _testLocalizationDelegates,
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            return true;
+          },
+          systemShareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Contatos do telefone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WhatsApp'));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, isEmpty);
+    expect(sharedParams, hasLength(1));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/invite?code=SHARE-CODE'),
+    );
+  });
 }
+
+const _testSupportedLocales = <Locale>[
+  Locale('pt', 'BR'),
+  Locale('en', 'US'),
+];
+
+const _testLocalizationDelegates = <LocalizationsDelegate<dynamic>>[
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
