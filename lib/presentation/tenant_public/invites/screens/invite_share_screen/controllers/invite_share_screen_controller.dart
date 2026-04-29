@@ -48,10 +48,15 @@ class InviteShareScreenController with Disposable {
       StreamValue<List<SentInviteStatus>>(defaultValue: const []);
   final shareCodeStreamValue =
       StreamValue<InviteShareCodeResult?>(defaultValue: null);
+  final isShareCodeLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+  final isInviteablesRefreshingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final selectedInviteableReasonStreamValue =
       StreamValue<String?>(defaultValue: null);
 
   List<ContactModel> _availableContacts = const [];
+  bool _isShareCodeLoading = false;
+  bool _isInviteablesRefreshing = false;
 
   Future<void> init(InviteModel invite) async {
     _currentInvite = invite;
@@ -101,7 +106,10 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> refreshFriends() async {
-    await _loadInviteTargetsWithStatusSafe(forceReloadContacts: true);
+    await _loadInviteTargetsWithStatusSafe(
+      forceReloadContacts: true,
+      exposeRefreshState: true,
+    );
   }
 
   void selectInviteableReason(String? reason) {
@@ -214,7 +222,17 @@ class InviteShareScreenController with Disposable {
 
   Future<void> _loadInviteTargetsWithStatusSafe({
     bool forceReloadContacts = false,
+    bool exposeRefreshState = false,
   }) async {
+    if (exposeRefreshState && _isInviteablesRefreshing) {
+      return;
+    }
+    if (exposeRefreshState) {
+      _isInviteablesRefreshing = true;
+      if (!_isDisposed) {
+        isInviteablesRefreshingStreamValue.addValue(true);
+      }
+    }
     try {
       await _loadInviteTargetsWithStatus(
         forceReloadContacts: forceReloadContacts,
@@ -223,6 +241,13 @@ class InviteShareScreenController with Disposable {
       if (_isDisposed) return;
       sentInvitesStreamValue.addValue(const []);
       friendsSuggestionsStreamValue.addValue(const []);
+    } finally {
+      if (exposeRefreshState) {
+        _isInviteablesRefreshing = false;
+        if (!_isDisposed) {
+          isInviteablesRefreshingStreamValue.addValue(false);
+        }
+      }
     }
   }
 
@@ -285,12 +310,28 @@ class InviteShareScreenController with Disposable {
     shareCodeStreamValue.addValue(shareCode);
   }
 
+  Future<void> reloadShareCode() async {
+    await _loadShareCodeSafe();
+  }
+
   Future<void> _loadShareCodeSafe() async {
+    if (_isShareCodeLoading) {
+      return;
+    }
+    _isShareCodeLoading = true;
+    if (!_isDisposed) {
+      isShareCodeLoadingStreamValue.addValue(true);
+    }
     try {
       await _loadShareCode();
     } catch (_) {
       if (_isDisposed) return;
       shareCodeStreamValue.addValue(null);
+    } finally {
+      _isShareCodeLoading = false;
+      if (!_isDisposed) {
+        isShareCodeLoadingStreamValue.addValue(false);
+      }
     }
   }
 
@@ -374,6 +415,8 @@ class InviteShareScreenController with Disposable {
     contactsPermissionGranted.dispose();
     sentInvitesStreamValue.dispose();
     shareCodeStreamValue.dispose();
+    isShareCodeLoadingStreamValue.dispose();
+    isInviteablesRefreshingStreamValue.dispose();
     selectedInviteableReasonStreamValue.dispose();
   }
 }

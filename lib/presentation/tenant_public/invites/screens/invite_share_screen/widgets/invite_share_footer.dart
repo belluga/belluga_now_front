@@ -9,10 +9,14 @@ class InviteShareFooter extends StatelessWidget {
     super.key,
     required this.invite,
     required this.shareUri,
+    required this.isGeneratingShareCode,
+    required this.onRetryShareCode,
   });
 
   final InviteModel invite;
   final Uri? shareUri;
+  final bool isGeneratingShareCode;
+  final VoidCallback onRetryShareCode;
 
   @override
   Widget build(BuildContext context) {
@@ -64,23 +68,36 @@ class InviteShareFooter extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           FilledButton.icon(
-            onPressed: shareUri == null
+            onPressed: isGeneratingShareCode
                 ? null
-                : () {
-                    final localEventDate =
-                        TimezoneConverter.utcToLocal(invite.eventDateTime);
-                    final text =
-                        'Bora? ${invite.eventName} em ${invite.location} no dia $localEventDate.'
-                        '\nDetalhes: $shareUri';
-                    SharePlus.instance.share(
-                      ShareParams(
-                        text: text,
-                        subject: 'Convite Belluga Now',
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.share),
-            label: Text(shareUri == null ? 'Gerando...' : 'Compartilhar'),
+                : shareUri == null
+                    ? onRetryShareCode
+                    : () {
+                        final localEventDate =
+                            TimezoneConverter.utcToLocal(invite.eventDateTime);
+                        final text =
+                            'Bora? ${invite.eventName} em ${invite.location} no dia $localEventDate.'
+                            '\nDetalhes: $shareUri';
+                        SharePlus.instance.share(
+                          ShareParams(
+                            text: text,
+                            subject: 'Convite Belluga Now',
+                          ),
+                        );
+                      },
+            icon: isGeneratingShareCode
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(shareUri == null ? Icons.refresh : Icons.share),
+            label: Text(
+              isGeneratingShareCode
+                  ? 'Gerando...'
+                  : shareUri == null
+                      ? 'Tentar novamente'
+                      : 'Compartilhar',
+            ),
           ),
         ],
       ),

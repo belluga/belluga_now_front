@@ -71,6 +71,85 @@ void main() {
     expect(find.text('Ana Contato'), findsOneWidget);
     expect(find.text('Bia Favorita'), findsOneWidget);
   });
+
+  testWidgets('refresh action refetches the inviteable friends list',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository();
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ana Contato'), findsOneWidget);
+    expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+
+    invitesRepository.inviteableRecipients = [
+      buildInviteableRecipient(
+        userId: 'user-3',
+        accountProfileId: 'profile-3',
+        displayName: 'Caio Amigo',
+        profileExposureLevel: 'full_profile',
+        inviteableReasons: const <String>['friend'],
+      ),
+    ];
+
+    await tester.tap(find.text('Atualizar lista de amigos'));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
+    expect(find.text('Ana Contato'), findsNothing);
+    expect(find.text('Caio Amigo'), findsOneWidget);
+  });
+
+  testWidgets('share CTA leaves Gerando state after failure and can retry',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository()
+      ..throwOnCreateShareCode = true;
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gerando...'), findsNothing);
+    expect(find.text('Tentar novamente'), findsOneWidget);
+
+    invitesRepository.throwOnCreateShareCode = false;
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.createShareCodeCalls, 2);
+    expect(find.text('Compartilhar'), findsOneWidget);
+  });
 }
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
@@ -92,21 +171,32 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
+  _FakeInvitesRepository()
+      : inviteableRecipients = [
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+
+  bool throwOnCreateShareCode = false;
+  int fetchInviteableRecipientsCalls = 0;
+  int createShareCodeCalls = 0;
+  List<InviteableRecipient> inviteableRecipients;
+
   @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async => [
-        buildInviteableRecipient(
-          userId: 'user-1',
-          accountProfileId: 'profile-1',
-          displayName: 'Ana Contato',
-          inviteableReasons: const <String>['contact_match'],
-        ),
-        buildInviteableRecipient(
-          userId: 'user-2',
-          accountProfileId: 'profile-2',
-          displayName: 'Bia Favorita',
-          inviteableReasons: const <String>['favorite_by_you'],
-        ),
-      ];
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    fetchInviteableRecipientsCalls += 1;
+    return inviteableRecipients;
+  }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
@@ -118,12 +208,17 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'SHARE-CODE',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
-      );
+  }) async {
+    createShareCodeCalls += 1;
+    if (throwOnCreateShareCode) {
+      throw Exception('share code failed');
+    }
+    return buildInviteShareCodeResult(
+      code: 'SHARE-CODE',
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value,
+    );
+  }
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -68,9 +70,13 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   bool throwOnImportContacts = false;
+  bool throwOnCreateShareCode = false;
   List<InviteableRecipient> inviteableRecipients =
       const <InviteableRecipient>[];
   final sentRecipientAccountProfileIds = <String>[];
+  int fetchInviteableRecipientsCalls = 0;
+  int createShareCodeCalls = 0;
+  Completer<void>? fetchInviteableRecipientsGate;
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -141,20 +147,28 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      inviteableRecipients;
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    fetchInviteableRecipientsCalls += 1;
+    await fetchInviteableRecipientsGate?.future;
+    return inviteableRecipients;
+  }
 
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'SHARE-CODE',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
-      );
+  }) async {
+    createShareCodeCalls += 1;
+    if (throwOnCreateShareCode) {
+      throw Exception('share code failed');
+    }
+    return buildInviteShareCodeResult(
+      code: 'SHARE-CODE',
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value,
+    );
+  }
 
   @override
   Future<void> sendInvites(
@@ -376,6 +390,119 @@ void main() {
       await controller.sendInviteToFriend(suggestion);
 
       expect(invitesRepository.sentRecipientAccountProfileIds, ['profile-1']);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'refreshFriends exposes bounded refresh state and reloads inviteables',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+
+      invitesRepository.inviteableRecipients = <InviteableRecipient>[
+        buildInviteableRecipient(
+          userId: 'user-2',
+          accountProfileId: 'profile-2',
+          displayName: 'Bia Favorita',
+          profileExposureLevel: 'full_profile',
+          inviteableReasons: const <String>['favorite_by_you'],
+        ),
+      ];
+
+      await controller.refreshFriends();
+
+      expect(controller.isInviteablesRefreshingStreamValue.value, isFalse);
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
+      expect(
+        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        'Bia Favorita',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'refreshFriends drops duplicate refresh while a refresh is in flight',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+      await controller.init(_buildInvite());
+
+      final gate = Completer<void>();
+      invitesRepository.fetchInviteableRecipientsGate = gate;
+
+      final firstRefresh = controller.refreshFriends();
+      await Future<void>.delayed(Duration.zero);
+      final duplicateRefresh = controller.refreshFriends();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.isInviteablesRefreshingStreamValue.value, isTrue);
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
+
+      gate.complete();
+      await Future.wait([firstRefresh, duplicateRefresh]);
+
+      expect(controller.isInviteablesRefreshingStreamValue.value, isFalse);
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'share code failure clears generating state and can be retried',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..throwOnCreateShareCode = true;
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(controller.isShareCodeLoadingStreamValue.value, isFalse);
+      expect(controller.shareCodeStreamValue.value, isNull);
+      expect(invitesRepository.createShareCodeCalls, 1);
+
+      invitesRepository.throwOnCreateShareCode = false;
+      await controller.reloadShareCode();
+
+      expect(controller.isShareCodeLoadingStreamValue.value, isFalse);
+      expect(controller.shareCodeStreamValue.value?.code, 'SHARE-CODE');
+      expect(invitesRepository.createShareCodeCalls, 2);
 
       await controller.onDispose();
     },

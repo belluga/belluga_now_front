@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -20,6 +21,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     FavoriteBackendContract? favoriteBackend,
     BackendContract? backendContract,
     Set<String>? favoriteAccountProfileIds,
+    FavoriteRepositoryContract? favoriteRepository,
     TelemetryRepositoryContract? telemetryRepository,
   })  : _backend = backend ??
             (backendContract ?? GetIt.I.get<BackendContract>()).accountProfiles,
@@ -29,12 +31,15 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
             ),
         _favoriteAccountProfileIds =
             Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
+        _favoriteRepository =
+            favoriteRepository ?? _resolveFavoriteRepositoryOrNull(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
   final AccountProfilesBackendContract _backend;
   final FavoriteBackendContract _favoriteBackend;
   final Set<String> _favoriteAccountProfileIds;
+  final FavoriteRepositoryContract? _favoriteRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
   @override
@@ -146,20 +151,14 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     favoriteAccountProfileIdsStreamValue.addValue(
       _toFavoriteIdValues(_favoriteAccountProfileIds),
     );
+    var persistenceSucceeded = false;
     try {
       if (wasFavorite) {
         await _favoriteBackend.unfavoriteAccountProfile(normalizedProfileId);
       } else {
         await _favoriteBackend.favoriteAccountProfile(normalizedProfileId);
       }
-      await _telemetryRepository.logEvent(
-        EventTrackerEvents.favoriteArtistToggled,
-        eventName: telemetryRepoString('favorite_artist_toggled'),
-        properties: telemetryRepoMap({
-          'account_profile_id': normalizedProfileId,
-          'is_favorite': !wasFavorite,
-        }),
-      );
+      persistenceSucceeded = true;
     } catch (error) {
       if (wasFavorite) {
         _favoriteAccountProfileIds.add(normalizedProfileId);
@@ -171,6 +170,28 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       );
       debugPrint(
           'Failed to persist favorite mutation for $normalizedProfileId: $error');
+    }
+    if (!persistenceSucceeded) {
+      return;
+    }
+    try {
+      await _favoriteRepository?.refreshFavoriteResumes();
+    } catch (error) {
+      debugPrint(
+          'Failed to refresh favorite resumes after mutation for $normalizedProfileId: $error');
+    }
+    try {
+      await _telemetryRepository.logEvent(
+        EventTrackerEvents.favoriteArtistToggled,
+        eventName: telemetryRepoString('favorite_artist_toggled'),
+        properties: telemetryRepoMap({
+          'account_profile_id': normalizedProfileId,
+          'is_favorite': !wasFavorite,
+        }),
+      );
+    } catch (error) {
+      debugPrint(
+          'Failed to log favorite mutation telemetry for $normalizedProfileId: $error');
     }
   }
 
@@ -341,5 +362,12 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     throw StateError(
       'FavoriteBackendContract is not available for AccountProfilesRepository.',
     );
+  }
+
+  static FavoriteRepositoryContract? _resolveFavoriteRepositoryOrNull() {
+    if (!GetIt.I.isRegistered<FavoriteRepositoryContract>()) {
+      return null;
+    }
+    return GetIt.I.get<FavoriteRepositoryContract>();
   }
 }

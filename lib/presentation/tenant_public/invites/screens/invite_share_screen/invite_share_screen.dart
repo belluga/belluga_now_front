@@ -79,6 +79,34 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                               const SizedBox(height: 16),
                               InviteShareSummary(invites: sentInvites),
                               const SizedBox(height: 16),
+                              StreamValueBuilder<bool>(
+                                streamValue: _controller
+                                    .isInviteablesRefreshingStreamValue,
+                                builder: (context, isRefreshing) {
+                                  return Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: isRefreshing
+                                          ? null
+                                          : _controller.refreshFriends,
+                                      icon: isRefreshing
+                                          ? const SizedBox.square(
+                                              dimension: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Icon(Icons.refresh),
+                                      label: Text(
+                                        isRefreshing
+                                            ? 'Atualizando...'
+                                            : 'Atualizar lista de amigos',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 8),
                               if (availableReasons.isNotEmpty)
                                 InviteShareRelationFilterChips(
                                   selectedReason: selectedReason,
@@ -105,12 +133,23 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: StreamValueBuilder<InviteShareCodeResult?>(
-                            streamValue: _controller.shareCodeStreamValue,
-                            builder: (context, shareCode) {
-                              return InviteShareFooter(
-                                invite: widget.invite,
-                                shareUri: _controller.buildShareUri(shareCode),
+                          child: StreamValueBuilder<bool>(
+                            streamValue:
+                                _controller.isShareCodeLoadingStreamValue,
+                            builder: (context, isGeneratingShareCode) {
+                              return StreamValueBuilder<InviteShareCodeResult?>(
+                                streamValue: _controller.shareCodeStreamValue,
+                                builder: (context, shareCode) {
+                                  return InviteShareFooter(
+                                    invite: widget.invite,
+                                    shareUri:
+                                        _controller.buildShareUri(shareCode),
+                                    isGeneratingShareCode:
+                                        isGeneratingShareCode,
+                                    onRetryShareCode:
+                                        _controller.reloadShareCode,
+                                  );
+                                },
                               );
                             },
                           ),
