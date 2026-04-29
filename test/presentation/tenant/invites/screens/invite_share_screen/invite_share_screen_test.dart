@@ -23,7 +23,9 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   setUp(() async {
@@ -153,24 +155,189 @@ void main() {
     expect(invitesRepository.lastShareCodeOccurrenceId, 'occurrence-1');
     expect(find.text('Compartilhar'), findsOneWidget);
   });
+
+  testWidgets('renders phone contacts as a separate external-share drill-in',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final controller = InviteShareScreenController(
+      invitesRepository: _FakeInvitesRepository(),
+      contactsRepository: _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      ),
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Contatos do telefone'), findsOneWidget);
+    expect(find.text('1 contato'), findsOneWidget);
+    expect(find.text('Mae'), findsNothing);
+
+    await tester.tap(find.text('Contatos do telefone'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Compartilhar externamente'), findsOneWidget);
+    expect(find.text('Mae'), findsOneWidget);
+    expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.text('Convidar'), findsNWidgets(2));
+  });
+
+  testWidgets(
+      'external phone contact share launches normalized WhatsApp target',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final launchedUris = <Uri>[];
+    final launchedModes = <LaunchMode>[];
+    final sharedParams = <ShareParams>[];
+    final controller = InviteShareScreenController(
+      invitesRepository: _FakeInvitesRepository(),
+      contactsRepository: _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['(27) 98888-7777'],
+          ),
+        ],
+      ),
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            launchedModes.add(mode);
+            return true;
+          },
+          systemShareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Contatos do telefone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WhatsApp'));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(1));
+    expect(launchedUris.single.host, 'wa.me');
+    expect(launchedUris.single.path, '/5527988887777');
+    expect(
+      launchedUris.single.queryParameters['text'],
+      contains('https://tenant.test/invite?code=SHARE-CODE'),
+    );
+    expect(launchedModes.single, LaunchMode.externalApplication);
+    expect(sharedParams, isEmpty);
+  });
+
+  testWidgets('external contact share falls back to system share',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final launchedUris = <Uri>[];
+    final sharedParams = <ShareParams>[];
+    final controller = InviteShareScreenController(
+      invitesRepository: _FakeInvitesRepository(),
+      contactsRepository: _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['(27) 98888-7777'],
+          ),
+        ],
+      ),
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          invite: _buildInvite(),
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            return false;
+          },
+          systemShareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Contatos do telefone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WhatsApp'));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(1));
+    expect(sharedParams, hasLength(1));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/invite?code=SHARE-CODE'),
+    );
+    expect(sharedParams.single.subject, 'Convite Belluga Now');
+  });
 }
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
+  _FakeContactsRepository({
+    this.contacts = const <ContactModel>[],
+  });
+
+  final List<ContactModel> contacts;
+
   @override
   final contactsStreamValue =
       StreamValue<List<ContactModel>?>(defaultValue: const <ContactModel>[]);
 
   @override
-  Future<List<ContactModel>> getContacts() async => const <ContactModel>[];
+  Future<List<ContactModel>> getContacts() async => contacts;
 
   @override
   Future<void> initializeContacts() async {}
 
   @override
-  Future<void> refreshContacts() async {}
+  Future<void> refreshContacts() async {
+    contactsStreamValue.addValue(contacts);
+  }
 
   @override
-  Future<bool> requestPermission() async => false;
+  Future<bool> requestPermission() async => true;
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -210,18 +377,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
     createShareCodeCalls += 1;
-    lastShareCodeOccurrenceId = occurrenceId?.value;
+    lastShareCodeOccurrenceId = occurrenceId.value;
     if (throwOnCreateShareCode) {
       throw Exception('share code failed');
     }
     return buildInviteShareCodeResult(
       code: 'SHARE-CODE',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+      occurrenceId: occurrenceId.value,
     );
   }
 

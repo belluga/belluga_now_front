@@ -1,5 +1,4 @@
-import 'dart:convert';
-
+import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
@@ -36,7 +35,6 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_reque
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
-import 'package:crypto/crypto.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
@@ -400,7 +398,13 @@ class InvitesRepository extends InvitesRepositoryContract
         if (normalized.isEmpty) {
           continue;
         }
-        final hash = sha256.convert(utf8.encode(normalized)).toString();
+        final hash = InviteContactImportHashes.contactHashes(
+          ContactModel(
+            idValue: contact.idValue,
+            displayNameValue: contact.displayNameValue,
+            emailValues: [email],
+          ),
+        ).single;
         final signature = 'email::$hash';
         if (!seen.add(signature)) {
           continue;
@@ -409,8 +413,13 @@ class InvitesRepository extends InvitesRepositoryContract
       }
 
       for (final phone in contact.phones) {
-        for (final normalized in _phoneHashInputs(phone.value)) {
-          final hash = sha256.convert(utf8.encode(normalized)).toString();
+        final phoneOnlyContact = ContactModel(
+          idValue: contact.idValue,
+          displayNameValue: contact.displayNameValue,
+          phoneValues: [phone],
+        );
+        for (final hash
+            in InviteContactImportHashes.contactHashes(phoneOnlyContact)) {
           final signature = 'phone::$hash';
           if (!seen.add(signature)) {
             continue;
@@ -435,32 +444,6 @@ class InvitesRepository extends InvitesRepositoryContract
       start = end;
     }
     return chunks;
-  }
-
-  List<String> _phoneHashInputs(String rawPhone) {
-    final digits = rawPhone.replaceAll(RegExp(r'\D+'), '');
-    if (digits.isEmpty) {
-      return const <String>[];
-    }
-
-    final variants = <String>{digits};
-
-    final withoutTrunkPrefix = digits.replaceFirst(RegExp(r'^0+'), '');
-    if (withoutTrunkPrefix.isNotEmpty && withoutTrunkPrefix != digits) {
-      variants.add(withoutTrunkPrefix);
-    }
-
-    for (final candidate in List<String>.from(variants)) {
-      if (candidate.length == 10 || candidate.length == 11) {
-        variants.add('55$candidate');
-      }
-      if (candidate.startsWith('55') &&
-          (candidate.length == 12 || candidate.length == 13)) {
-        variants.add(candidate.substring(2));
-      }
-    }
-
-    return variants.toList(growable: false);
   }
 
   List<String> _parseRecipientIds(Object? raw) {

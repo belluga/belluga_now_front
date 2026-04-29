@@ -28,7 +28,7 @@ class InviteShareFooter extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: theme.shadowColor.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -38,10 +38,10 @@ class InviteShareFooter extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: Colors.purple.withValues(alpha: 0.12),
+            backgroundColor: theme.colorScheme.secondaryContainer,
+            foregroundColor: theme.colorScheme.onSecondaryContainer,
             child: const Icon(
               BooraIcons.invite_solid,
-              color: Colors.purple,
               size: 18,
             ),
           ),

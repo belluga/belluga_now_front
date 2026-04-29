@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -141,9 +142,13 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       return const <InviteContactMatch>[];
     }
 
+    final contactHash = InviteContactImportHashes.contactHashes(
+      contacts.first,
+    ).first;
+
     return <InviteContactMatch>[
       InviteContactMatch(
-        contactHashValue: InviteContactHashValue()..parse('hash-1'),
+        contactHashValue: InviteContactHashValue()..parse(contactHash),
         typeValue: InviteContactTypeValue()..parse('phone'),
         userIdValue: UserIdValue()..parse('user-1'),
         receiverAccountProfileIdValue: InviteAccountProfileIdValue()
@@ -497,6 +502,104 @@ void main() {
             .toList(),
         ['Bia Favorita', 'Matched Contact'],
       );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'refreshFriends exposes unmatched local contacts as native external share targets',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'matched-contact',
+            displayName: 'Matched Contact',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+          buildContactModel(
+            id: 'external-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value
+            .map((item) => item.friend.name),
+        contains('Matched Contact'),
+      );
+      expect(controller.externalContactShareTargetsStreamValue.value,
+          hasLength(1));
+      expect(
+        controller
+            .externalContactShareTargetsStreamValue.value.single.displayName,
+        'Mae',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'does not expose external phone contacts on web runtime',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'external-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: true,
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(controller.externalContactShareTargetsStreamValue.value, isEmpty);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'does not expose external phone contacts when import classification fails',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'external-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository()
+          ..throwOnImportContacts = true,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(controller.externalContactShareTargetsStreamValue.value, isEmpty);
 
       await controller.onDispose();
     },

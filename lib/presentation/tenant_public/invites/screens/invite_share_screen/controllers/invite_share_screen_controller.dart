@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -19,6 +20,8 @@ import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -27,15 +30,18 @@ class InviteShareScreenController with Disposable {
     InvitesRepositoryContract? invitesRepository,
     ContactsRepositoryContract? contactsRepository,
     AppData? appData,
+    bool? isWebRuntime,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _contactsRepository =
             contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
-        _appData = appData ?? GetIt.I.get<AppData>();
+        _appData = appData ?? GetIt.I.get<AppData>(),
+        _isWebRuntime = isWebRuntime ?? kIsWeb;
 
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
   final AppData _appData;
+  final bool _isWebRuntime;
 
   InviteModel? _currentInvite;
 
@@ -55,6 +61,10 @@ class InviteShareScreenController with Disposable {
       StreamValue<bool>(defaultValue: false);
   final selectedInviteableReasonStreamValue =
       StreamValue<String?>(defaultValue: null);
+  final externalContactShareTargetsStreamValue =
+      StreamValue<List<InviteExternalContactShareTarget>>(
+    defaultValue: const [],
+  );
 
   List<ContactModel> _availableContacts = const [];
   bool _isShareCodeLoading = false;
@@ -186,6 +196,13 @@ class InviteShareScreenController with Disposable {
       suppressFailures: !forceReloadContacts,
     );
     if (_isDisposed) return;
+    if (matches == null) {
+      externalContactShareTargetsStreamValue.addValue(const []);
+    } else {
+      externalContactShareTargetsStreamValue.addValue(
+        _buildExternalShareTargets(matches),
+      );
+    }
 
     final inviteableRecipients =
         await _invitesRepository.fetchInviteableRecipients();
@@ -195,7 +212,7 @@ class InviteShareScreenController with Disposable {
       backendRecipients: inviteableRecipients
           .map((recipient) => recipient.toFriendResume())
           .toList(growable: false),
-      importedMatches: matches
+      importedMatches: (matches ?? const <InviteContactMatch>[])
           .map(
             (match) => _toInviteFriendResume(match),
           )
@@ -241,6 +258,7 @@ class InviteShareScreenController with Disposable {
       );
     } catch (_) {
       if (_isDisposed) return;
+      externalContactShareTargetsStreamValue.addValue(const []);
       if (exposeRefreshState) {
         inviteablesRefreshFailedStreamValue.addValue(true);
       } else {
@@ -257,7 +275,7 @@ class InviteShareScreenController with Disposable {
     }
   }
 
-  Future<List<InviteContactMatch>> _importContactsOpportunistically({
+  Future<List<InviteContactMatch>?> _importContactsOpportunistically({
     required bool suppressFailures,
   }) async {
     try {
@@ -274,7 +292,7 @@ class InviteShareScreenController with Disposable {
       if (!suppressFailures) {
         rethrow;
       }
-      return const <InviteContactMatch>[];
+      return null;
     }
   }
 
@@ -399,6 +417,60 @@ class InviteShareScreenController with Disposable {
     return merged.values.toList(growable: false);
   }
 
+  List<InviteExternalContactShareTarget> _buildExternalShareTargets(
+    List<InviteContactMatch> importedMatches,
+  ) {
+    if (_isWebRuntime) {
+      return const <InviteExternalContactShareTarget>[];
+    }
+
+    final matchedHashes = importedMatches
+        .map((match) => match.contactHash.trim())
+        .where((hash) => hash.isNotEmpty)
+        .toSet();
+
+    return _availableContacts
+        .where(_isShareableExternalContact)
+        .where((contact) {
+          final localHashes = InviteContactImportHashes.contactHashes(contact);
+          return localHashes.intersection(matchedHashes).isEmpty;
+        })
+        .map(_toExternalShareTarget)
+        .toList(growable: false);
+  }
+
+  bool _isShareableExternalContact(ContactModel contact) =>
+      contact.phones.isNotEmpty || contact.emails.isNotEmpty;
+
+  InviteExternalContactShareTarget _toExternalShareTarget(
+    ContactModel contact,
+  ) {
+    final displayName = contact.displayName.trim().isNotEmpty
+        ? contact.displayName.trim()
+        : 'Contato sem nome';
+
+    return InviteExternalContactShareTarget(
+      id: contact.id,
+      displayName: displayName,
+      primaryPhone: _firstNonEmpty(
+        contact.phones.map((phone) => phone.value),
+      ),
+      primaryEmail: _firstNonEmpty(
+        contact.emails.map((email) => email.value),
+      ),
+    );
+  }
+
+  String? _firstNonEmpty(Iterable<String> values) {
+    for (final value in values) {
+      final normalized = value.trim();
+      if (normalized.isNotEmpty) {
+        return normalized;
+      }
+    }
+    return null;
+  }
+
   String _inviteableIdentityKey(InviteFriendResume friend) {
     final accountProfileId = friend.accountProfileId.trim();
     if (accountProfileId.isNotEmpty) {
@@ -463,5 +535,6 @@ class InviteShareScreenController with Disposable {
     isInviteablesRefreshingStreamValue.dispose();
     inviteablesRefreshFailedStreamValue.dispose();
     selectedInviteableReasonStreamValue.dispose();
+    externalContactShareTargetsStreamValue.dispose();
   }
 }
