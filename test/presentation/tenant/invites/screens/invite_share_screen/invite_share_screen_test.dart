@@ -37,8 +37,9 @@ void main() {
     await GetIt.I.reset(dispose: false);
   });
 
-  testWidgets('renders deduped inviteables and narrows by relation filter',
-      (tester) async {
+  testWidgets('renders deduped inviteables and narrows by relation filter', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -51,11 +52,7 @@ void main() {
     addTearDown(controller.onDispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-        ),
-      ),
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
     await tester.pumpAndSettle();
 
@@ -75,8 +72,9 @@ void main() {
     expect(find.text('Bia Favorita'), findsOneWidget);
   });
 
-  testWidgets('refresh action refetches the inviteable friends list',
-      (tester) async {
+  testWidgets('refresh action refetches the inviteable friends list', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -90,11 +88,7 @@ void main() {
     addTearDown(controller.onDispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-        ),
-      ),
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
     await tester.pumpAndSettle();
 
@@ -119,8 +113,9 @@ void main() {
     expect(find.text('Caio Amigo'), findsOneWidget);
   });
 
-  testWidgets('share CTA leaves Gerando state after failure and can retry',
-      (tester) async {
+  testWidgets('share CTA leaves Gerando state after failure and can retry', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -135,11 +130,7 @@ void main() {
     addTearDown(controller.onDispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-        ),
-      ),
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
     await tester.pumpAndSettle();
 
@@ -157,8 +148,9 @@ void main() {
     expect(find.text('Compartilhar'), findsOneWidget);
   });
 
-  testWidgets('renders phone contacts as a separate external-share drill-in',
-      (tester) async {
+  testWidgets('renders phone contacts in a separate external-share pane', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -180,91 +172,88 @@ void main() {
     addTearDown(controller.onDispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-        ),
-      ),
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Contatos do telefone'), findsOneWidget);
-    expect(find.text('1 contato'), findsOneWidget);
+    expect(find.text('Telefone'), findsOneWidget);
     expect(find.text('Mae'), findsNothing);
 
-    await tester.tap(find.text('Contatos do telefone'));
+    await tester.tap(find.text('Telefone'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Compartilhar externamente'), findsOneWidget);
+    expect(find.text('1 contato'), findsOneWidget);
     expect(find.text('Mae'), findsOneWidget);
     expect(find.text('WhatsApp'), findsOneWidget);
-    expect(find.text('Convidar'), findsNWidgets(2));
+    expect(find.text('Convidar'), findsNothing);
   });
 
   testWidgets(
-      'external phone contact share launches normalized WhatsApp target',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(480, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    'external phone contact share launches normalized WhatsApp target',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final launchedUris = <Uri>[];
-    final launchedModes = <LaunchMode>[];
-    final sharedParams = <ShareParams>[];
-    final controller = InviteShareScreenController(
-      invitesRepository: _FakeInvitesRepository(),
-      contactsRepository: _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'phone-contact',
-            displayName: 'Mae',
-            phones: <String>['(27) 98888-7777'],
-          ),
-        ],
-      ),
-      appData: _buildAppData(),
-      isWebRuntime: false,
-    );
-    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
-    addTearDown(controller.onDispose);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('pt', 'BR'),
-        supportedLocales: _testSupportedLocales,
-        localizationsDelegates: _testLocalizationDelegates,
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-          externalUrlLauncher: (uri, {required mode}) async {
-            launchedUris.add(uri);
-            launchedModes.add(mode);
-            return true;
-          },
-          systemShareLauncher: (params) async {
-            sharedParams.add(params);
-          },
+      final launchedUris = <Uri>[];
+      final launchedModes = <LaunchMode>[];
+      final sharedParams = <ShareParams>[];
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: _FakeContactsRepository(
+          contacts: <ContactModel>[
+            buildContactModel(
+              id: 'phone-contact',
+              displayName: 'Mae',
+              phones: <String>['(27) 98888-7777'],
+            ),
+          ],
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
 
-    await tester.tap(find.text('Contatos do telefone'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('WhatsApp'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: _testSupportedLocales,
+          localizationsDelegates: _testLocalizationDelegates,
+          home: InviteShareScreen(
+            invite: _buildInvite(),
+            externalUrlLauncher: (uri, {required mode}) async {
+              launchedUris.add(uri);
+              launchedModes.add(mode);
+              return true;
+            },
+            systemShareLauncher: (params) async {
+              sharedParams.add(params);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(launchedUris, hasLength(1));
-    expect(launchedUris.single.host, 'wa.me');
-    expect(launchedUris.single.path, '/5527988887777');
-    expect(
-      launchedUris.single.queryParameters['text'],
-      contains('https://tenant.test/invite?code=SHARE-CODE'),
-    );
-    expect(launchedModes.single, LaunchMode.externalApplication);
-    expect(sharedParams, isEmpty);
-  });
+      await tester.tap(find.text('Telefone'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('WhatsApp'));
+      await tester.pumpAndSettle();
 
-  testWidgets('external contact share falls back to system share',
-      (tester) async {
+      expect(launchedUris, hasLength(1));
+      expect(launchedUris.single.host, 'wa.me');
+      expect(launchedUris.single.path, '/5527988887777');
+      expect(
+        launchedUris.single.queryParameters['text'],
+        contains('https://tenant.test/invite?code=SHARE-CODE'),
+      );
+      expect(launchedModes.single, LaunchMode.externalApplication);
+      expect(sharedParams, isEmpty);
+    },
+  );
+
+  testWidgets('external contact share falls back to system share', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -306,7 +295,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Contatos do telefone'));
+    await tester.tap(find.text('Telefone'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('WhatsApp'));
     await tester.pumpAndSettle();
@@ -321,67 +310,65 @@ void main() {
   });
 
   testWidgets(
-      'external phone contact share does not assume Brazil outside Brazilian locale',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(480, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    'external phone contact share does not assume Brazil outside Brazilian locale',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final launchedUris = <Uri>[];
-    final sharedParams = <ShareParams>[];
-    final controller = InviteShareScreenController(
-      invitesRepository: _FakeInvitesRepository(),
-      contactsRepository: _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'phone-contact',
-            displayName: 'Mae',
-            phones: <String>['(27) 98888-7777'],
-          ),
-        ],
-      ),
-      appData: _buildAppData(),
-      isWebRuntime: false,
-    );
-    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
-    addTearDown(controller.onDispose);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('en', 'US'),
-        supportedLocales: _testSupportedLocales,
-        localizationsDelegates: _testLocalizationDelegates,
-        home: InviteShareScreen(
-          invite: _buildInvite(),
-          externalUrlLauncher: (uri, {required mode}) async {
-            launchedUris.add(uri);
-            return true;
-          },
-          systemShareLauncher: (params) async {
-            sharedParams.add(params);
-          },
+      final launchedUris = <Uri>[];
+      final sharedParams = <ShareParams>[];
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: _FakeContactsRepository(
+          contacts: <ContactModel>[
+            buildContactModel(
+              id: 'phone-contact',
+              displayName: 'Mae',
+              phones: <String>['(27) 98888-7777'],
+            ),
+          ],
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
 
-    await tester.tap(find.text('Contatos do telefone'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('WhatsApp'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en', 'US'),
+          supportedLocales: _testSupportedLocales,
+          localizationsDelegates: _testLocalizationDelegates,
+          home: InviteShareScreen(
+            invite: _buildInvite(),
+            externalUrlLauncher: (uri, {required mode}) async {
+              launchedUris.add(uri);
+              return true;
+            },
+            systemShareLauncher: (params) async {
+              sharedParams.add(params);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(launchedUris, isEmpty);
-    expect(sharedParams, hasLength(1));
-    expect(
-      sharedParams.single.text,
-      contains('https://tenant.test/invite?code=SHARE-CODE'),
-    );
-  });
+      await tester.tap(find.text('Telefone'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('WhatsApp'));
+      await tester.pumpAndSettle();
+
+      expect(launchedUris, isEmpty);
+      expect(sharedParams, hasLength(1));
+      expect(
+        sharedParams.single.text,
+        contains('https://tenant.test/invite?code=SHARE-CODE'),
+      );
+    },
+  );
 }
 
-const _testSupportedLocales = <Locale>[
-  Locale('pt', 'BR'),
-  Locale('en', 'US'),
-];
+const _testSupportedLocales = <Locale>[Locale('pt', 'BR'), Locale('en', 'US')];
 
 const _testLocalizationDelegates = <LocalizationsDelegate<dynamic>>[
   GlobalMaterialLocalizations.delegate,
@@ -390,15 +377,14 @@ const _testLocalizationDelegates = <LocalizationsDelegate<dynamic>>[
 ];
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
-  _FakeContactsRepository({
-    this.contacts = const <ContactModel>[],
-  });
+  _FakeContactsRepository({this.contacts = const <ContactModel>[]});
 
   final List<ContactModel> contacts;
 
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: const <ContactModel>[]);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: const <ContactModel>[],
+  );
 
   @override
   Future<List<ContactModel>> getContacts() async => contacts;
@@ -446,7 +432,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-          InviteContacts contacts) async =>
+    InviteContacts contacts,
+  ) async =>
       const <InviteContactMatch>[];
 
   @override

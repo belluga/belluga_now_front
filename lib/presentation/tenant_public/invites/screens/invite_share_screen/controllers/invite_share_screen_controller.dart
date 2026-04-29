@@ -26,6 +26,8 @@ import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+enum InviteSharePane { app, phone }
+
 class InviteShareScreenController with Disposable {
   InviteShareScreenController({
     InvitesRepositoryContract? invitesRepository,
@@ -33,13 +35,13 @@ class InviteShareScreenController with Disposable {
     AppData? appData,
     bool? isWebRuntime,
     String? contactRegionCode,
-  })  : _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _contactsRepository =
-            contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
-        _appData = appData ?? GetIt.I.get<AppData>(),
-        _isWebRuntime = isWebRuntime ?? kIsWeb,
-        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
+  }) : _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _contactsRepository =
+           contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
+       _appData = appData ?? GetIt.I.get<AppData>(),
+       _isWebRuntime = isWebRuntime ?? kIsWeb,
+       _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
 
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
@@ -54,21 +56,29 @@ class InviteShareScreenController with Disposable {
   final selectedFriendsSuggestionsStreamValue =
       StreamValue<List<InviteFriendResume>>(defaultValue: const []);
   final contactsPermissionGranted = StreamValue<bool>(defaultValue: false);
-  final sentInvitesStreamValue =
-      StreamValue<List<SentInviteStatus>>(defaultValue: const []);
-  final shareCodeStreamValue =
-      StreamValue<InviteShareCodeResult?>(defaultValue: null);
-  final isShareCodeLoadingStreamValue = StreamValue<bool>(defaultValue: true);
-  final isInviteablesRefreshingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final inviteablesRefreshFailedStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final selectedInviteableReasonStreamValue =
-      StreamValue<String?>(defaultValue: null);
-  final externalContactShareTargetsStreamValue =
-      StreamValue<List<InviteExternalContactShareTarget>>(
+  final sentInvitesStreamValue = StreamValue<List<SentInviteStatus>>(
     defaultValue: const [],
   );
+  final shareCodeStreamValue = StreamValue<InviteShareCodeResult?>(
+    defaultValue: null,
+  );
+  final isShareCodeLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+  final isInviteablesRefreshingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final inviteablesRefreshFailedStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final selectedInviteableReasonStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
+  final selectedPaneStreamValue = StreamValue<InviteSharePane>(
+    defaultValue: InviteSharePane.app,
+  );
+  final externalContactShareTargetsStreamValue =
+      StreamValue<List<InviteExternalContactShareTarget>>(
+        defaultValue: const [],
+      );
 
   List<ContactModel> _availableContacts = const [];
   bool _isShareCodeLoading = false;
@@ -99,12 +109,14 @@ class InviteShareScreenController with Disposable {
 
       await _contactsRepository.refreshContacts();
       if (_isDisposed) return;
-      final contacts = _contactsRepository.contactsStreamValue.value ??
+      final contacts =
+          _contactsRepository.contactsStreamValue.value ??
           const <ContactModel>[];
 
       final validContacts = contacts
-          .where((contact) =>
-              contact.phones.isNotEmpty || contact.emails.isNotEmpty)
+          .where(
+            (contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty,
+          )
           .toList(growable: false);
       _availableContacts = validContacts;
     } catch (_) {
@@ -116,7 +128,8 @@ class InviteShareScreenController with Disposable {
 
   void toggleFriend(InviteFriendResume friend) {
     final selected = List<InviteFriendResume>.from(
-        selectedFriendsSuggestionsStreamValue.value);
+      selectedFriendsSuggestionsStreamValue.value,
+    );
     if (selected.contains(friend)) {
       selected.remove(friend);
     } else {
@@ -139,6 +152,10 @@ class InviteShareScreenController with Disposable {
     );
   }
 
+  void selectPane(InviteSharePane pane) {
+    selectedPaneStreamValue.addValue(pane);
+  }
+
   Future<void> sendInvites() async {
     final invite = _currentInvite;
     if (invite == null) return;
@@ -149,11 +166,7 @@ class InviteShareScreenController with Disposable {
     if (occurrenceId == null) return;
 
     await _invitesRepository.sendInvites(
-      invitesRepoString(
-        invite.eventId,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      invitesRepoString(invite.eventId, defaultValue: '', isRequired: true),
       (() {
         final recipients = InviteRecipients();
         for (final selectedFriend in selectedFriends) {
@@ -175,11 +188,7 @@ class InviteShareScreenController with Disposable {
     if (occurrenceId == null) return;
 
     await _invitesRepository.sendInvites(
-      invitesRepoString(
-        invite.eventId,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      invitesRepoString(invite.eventId, defaultValue: '', isRequired: true),
       (() {
         final recipients = InviteRecipients();
         recipients.add(_toEventFriendResume(friend));
@@ -212,8 +221,8 @@ class InviteShareScreenController with Disposable {
       );
     }
 
-    final inviteableRecipients =
-        await _invitesRepository.fetchInviteableRecipients();
+    final inviteableRecipients = await _invitesRepository
+        .fetchInviteableRecipients();
     if (_isDisposed) return;
 
     final recipients = _mergeInviteableRecipients(
@@ -221,9 +230,7 @@ class InviteShareScreenController with Disposable {
           .map((recipient) => recipient.toFriendResume())
           .toList(growable: false),
       importedMatches: (matches ?? const <InviteContactMatch>[])
-          .map(
-            (match) => _toInviteFriendResume(match),
-          )
+          .map((match) => _toInviteFriendResume(match))
           .toList(growable: false),
     )..sort((left, right) => left.name.compareTo(right.name));
 
@@ -321,8 +328,9 @@ class InviteShareScreenController with Disposable {
     final currentFriends = friendsSuggestionsStreamValue.value
         .map((entry) => entry.friend)
         .toList(growable: false);
-    friendsSuggestionsStreamValue
-        .addValue(_mergeFriendsWithStatus(currentFriends, sentInvites));
+    friendsSuggestionsStreamValue.addValue(
+      _mergeFriendsWithStatus(currentFriends, sentInvites),
+    );
   }
 
   Future<void> _loadShareCode() async {
@@ -349,11 +357,7 @@ class InviteShareScreenController with Disposable {
       return null;
     }
 
-    return invitesRepoString(
-      occurrenceId,
-      defaultValue: '',
-      isRequired: true,
-    );
+    return invitesRepoString(occurrenceId, defaultValue: '', isRequired: true);
   }
 
   Future<void> reloadShareCode() async {
@@ -465,12 +469,8 @@ class InviteShareScreenController with Disposable {
     return InviteExternalContactShareTarget(
       id: contact.id,
       displayName: displayName,
-      primaryPhone: _firstNonEmpty(
-        contact.phones.map((phone) => phone.value),
-      ),
-      primaryEmail: _firstNonEmpty(
-        contact.emails.map((email) => email.value),
-      ),
+      primaryPhone: _firstNonEmpty(contact.phones.map((phone) => phone.value)),
+      primaryEmail: _firstNonEmpty(contact.emails.map((email) => email.value)),
     );
   }
 
@@ -532,13 +532,15 @@ class InviteShareScreenController with Disposable {
       accountProfileIdValue: match.receiverAccountProfileId.isEmpty
           ? null
           : (InviteAccountProfileIdValue()
-            ..parse(match.receiverAccountProfileId)),
+              ..parse(match.receiverAccountProfileId)),
       nameValue: TitleValue()..parse(match.displayName),
       avatarValue: avatarValue,
       matchLabelValue: FriendMatchLabelValue()
-        ..parse(match.inviteableReasons.contains('friend')
-            ? 'Amigo no Belluga'
-            : 'Contato no Belluga'),
+        ..parse(
+          match.inviteableReasons.contains('friend')
+              ? 'Amigo no Belluga'
+              : 'Contato no Belluga',
+        ),
       inviteableReasons: match.inviteableReasons,
       profileExposureLevelValue: match.profileExposureLevelValue,
     );
@@ -558,6 +560,7 @@ class InviteShareScreenController with Disposable {
     isInviteablesRefreshingStreamValue.dispose();
     inviteablesRefreshFailedStreamValue.dispose();
     selectedInviteableReasonStreamValue.dispose();
+    selectedPaneStreamValue.dispose();
     externalContactShareTargetsStreamValue.dispose();
   }
 }
