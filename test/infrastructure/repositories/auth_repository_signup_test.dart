@@ -112,6 +112,60 @@ void main() {
     expect(storedToken, 'token-registered');
     expect(storedUserId, '507f1f77bcf86cd799439011');
   });
+
+  test('phone otp verification merges anonymous identity and persists user id',
+      () async {
+    final authBackend = _CaptureAuthBackend();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    final telemetry = _CaptureTelemetryRepository();
+    GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      AuthRepository(),
+    );
+
+    final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
+    final challenge = await repository.requestPhoneOtpChallenge(
+      authRepoString('+55 27 99999-0000'),
+    );
+    await repository.verifyPhoneOtpChallenge(
+      challengeId: authRepoString(challenge.challengeId),
+      phone: authRepoString(challenge.phone),
+      code: authRepoString('123456'),
+    );
+
+    expect(authBackend.lastOtpPhone, '+55 27 99999-0000');
+    expect(authBackend.lastOtpAnonymousUserIds, ['507f1f77bcf86cd799439012']);
+    expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
+
+    final storedToken = await AuthRepository.storage.read(
+      key: 'user_token',
+    );
+    final storedUserId = await AuthRepository.storage.read(key: 'user_id');
+    expect(storedToken, 'token-phone-otp');
+    expect(storedUserId, '507f1f77bcf86cd799439011');
+  });
+
+  test('phone otp challenge forwards requested delivery channel', () async {
+    final authBackend = _CaptureAuthBackend();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      AuthRepository(),
+    );
+
+    final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
+    final challenge = await repository.requestPhoneOtpChallenge(
+      authRepoString('+55 27 99999-0000'),
+      deliveryChannel: authRepoString('sms'),
+    );
+
+    expect(authBackend.lastOtpPhone, '+55 27 99999-0000');
+    expect(authBackend.lastOtpDeliveryChannel, 'sms');
+    expect(challenge.deliveryChannel, 'sms');
+  });
 }
 
 class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
@@ -203,6 +257,9 @@ class _CaptureAuthBackend extends AuthBackendContract {
   final (UserDto, String)? loginResponse;
   int registerCalls = 0;
   List<String>? lastAnonymousUserIds;
+  String? lastOtpPhone;
+  String? lastOtpDeliveryChannel;
+  List<String>? lastOtpAnonymousUserIds;
 
   @override
   Future<(UserDto, String)> loginWithEmailPassword(
@@ -245,6 +302,38 @@ class _CaptureAuthBackend extends AuthBackendContract {
       token: 'token-registered',
       userId: '507f1f77bcf86cd799439011',
       identityState: 'authenticated',
+    );
+  }
+
+  @override
+  Future<PhoneOtpChallengeResponse> requestPhoneOtpChallenge({
+    required String phone,
+    String? deliveryChannel,
+  }) async {
+    lastOtpPhone = phone;
+    lastOtpDeliveryChannel = deliveryChannel;
+    return PhoneOtpChallengeResponse(
+      challengeId: 'otp-challenge-1',
+      phone: phone,
+      deliveryChannel: deliveryChannel ?? 'whatsapp',
+      expiresAt: DateTime.utc(2026).toIso8601String(),
+      resendAvailableAt: DateTime.utc(2026).toIso8601String(),
+    );
+  }
+
+  @override
+  Future<PhoneOtpVerificationResponse> verifyPhoneOtpChallenge({
+    required String challengeId,
+    required String phone,
+    required String code,
+    List<String>? anonymousUserIds,
+  }) async {
+    lastOtpAnonymousUserIds = anonymousUserIds;
+    return PhoneOtpVerificationResponse(
+      user: await loginCheck(),
+      token: 'token-phone-otp',
+      userId: '507f1f77bcf86cd799439011',
+      identityState: 'registered',
     );
   }
 

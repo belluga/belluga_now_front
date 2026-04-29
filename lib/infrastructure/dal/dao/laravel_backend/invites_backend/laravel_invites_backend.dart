@@ -87,6 +87,51 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     );
   }
 
+  @override
+  Future<Map<String, dynamic>> fetchInviteableContacts() {
+    return _get('$_apiBaseUrl/v1/contacts/inviteables');
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchContactGroups() {
+    return _get('$_apiBaseUrl/v1/contact-groups');
+  }
+
+  @override
+  Future<Map<String, dynamic>> createContactGroup({
+    required String name,
+    required List<String> recipientAccountProfileIds,
+  }) {
+    return _post(
+      '$_apiBaseUrl/v1/contact-groups',
+      data: {
+        'name': name,
+        'recipient_account_profile_ids': recipientAccountProfileIds,
+      },
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateContactGroup({
+    required String groupId,
+    String? name,
+    List<String>? recipientAccountProfileIds,
+  }) {
+    return _patch(
+      '$_apiBaseUrl/v1/contact-groups/$groupId',
+      data: {
+        if (name != null) 'name': name,
+        if (recipientAccountProfileIds != null)
+          'recipient_account_profile_ids': recipientAccountProfileIds,
+      },
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteContactGroup(String groupId) {
+    return _delete('$_apiBaseUrl/v1/contact-groups/$groupId');
+  }
+
   Future<Map<String, dynamic>> _get(
     String url, {
     Map<String, dynamic>? queryParameters,
@@ -121,7 +166,40 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     }
   }
 
+  Future<Map<String, dynamic>> _patch(
+    String url, {
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final headers = await _headers(includeJsonAccept: true);
+      final response = await _dio.patch(
+        url,
+        data: data,
+        options: Options(headers: headers),
+      );
+      return _normalizeResponse(response.data);
+    } on DioException catch (error) {
+      throw _wrapException('PATCH', error);
+    }
+  }
+
+  Future<Map<String, dynamic>> _delete(String url) async {
+    try {
+      final headers = await _headers(includeJsonAccept: true);
+      final response = await _dio.delete(
+        url,
+        options: Options(headers: headers),
+      );
+      return _normalizeResponse(response.data);
+    } on DioException catch (error) {
+      throw _wrapException('DELETE', error);
+    }
+  }
+
   Map<String, dynamic> _normalizeResponse(dynamic raw) {
+    if (raw == null) {
+      return const <String, dynamic>{};
+    }
     if (raw is Map<String, dynamic>) {
       final data = raw['data'];
       if (data is Map<String, dynamic>) {

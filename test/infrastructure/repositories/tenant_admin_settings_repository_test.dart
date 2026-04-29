@@ -158,6 +158,76 @@ void main() {
     );
   });
 
+  test('fetchOutboundIntegrationsSettings parses outbound integrations payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchOutboundIntegrationsSettings();
+
+    expect(
+      settings.whatsappWebhookUrl,
+      'https://integrations.example/whatsapp',
+    );
+    expect(settings.otpWebhookUrl, 'https://integrations.example/otp');
+    expect(settings.otpUseWhatsappWebhook, isTrue);
+    expect(settings.otpDeliveryChannel, 'whatsapp');
+    expect(settings.otpTtlMinutes, 10);
+    expect(settings.otpResendCooldownSeconds, 60);
+    expect(settings.otpMaxAttempts, 5);
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
+  test(
+      'updateOutboundIntegrationsSettings patches outbound_integrations compatibility payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateOutboundIntegrationsSettings(
+      settings: TenantAdminOutboundIntegrationsSettings(
+        whatsappWebhookUrlValue:
+            _optionalUrlValue('https://integrations.example/whatsapp'),
+        otpWebhookUrlValue:
+            _optionalUrlValue('https://integrations.example/otp'),
+        otpUseWhatsappWebhookValue: _booleanValue(true),
+        otpDeliveryChannelValue: _tokenValue('whatsapp'),
+        otpTtlMinutesValue: _positiveIntValue(8),
+        otpResendCooldownSecondsValue: _positiveIntValue(90),
+        otpMaxAttemptsValue: _positiveIntValue(4),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(
+      request.uri.path,
+      '/admin/api/v1/settings/values/outbound_integrations',
+    );
+    final payload = request.data as Map<String, dynamic>;
+    expect(
+      payload['whatsapp.webhook_url'],
+      'https://integrations.example/whatsapp',
+    );
+    expect(payload['otp.webhook_url'], 'https://integrations.example/otp');
+    expect(payload['otp.use_whatsapp_webhook'], isTrue);
+    expect(payload['otp.delivery_channel'], 'whatsapp');
+    expect(payload['otp.ttl_minutes'], 8);
+    expect(payload['otp.resend_cooldown_seconds'], 90);
+    expect(payload['otp.max_attempts'], 4);
+    expect(updated.otpDeliveryChannel, 'whatsapp');
+    expect(updated.otpUseWhatsappWebhook, isTrue);
+  });
+
   test('updateDiscoveryFiltersSettings preserves dotted surface keys',
       () async {
     final adapter = _RoutingAdapter();
@@ -1404,6 +1474,12 @@ TenantAdminOptionalTextValue _optionalTextValue(String raw) {
   return value;
 }
 
+TenantAdminOptionalUrlValue _optionalUrlValue(String raw) {
+  final value = TenantAdminOptionalUrlValue();
+  value.parse(raw);
+  return value;
+}
+
 TenantAdminBooleanValue _booleanValue(bool raw) {
   final value = TenantAdminBooleanValue();
   value.parse(raw.toString());
@@ -1680,6 +1756,19 @@ class _RoutingAdapter implements HttpClientAdapter {
                   'bcc': ['audit@bellugasolutions.com.br'],
                   'reply_to': ['reply@bellugasolutions.com.br'],
                 },
+                'outbound_integrations': {
+                  'whatsapp': {
+                    'webhook_url': 'https://integrations.example/whatsapp',
+                  },
+                  'otp': {
+                    'webhook_url': 'https://integrations.example/otp',
+                    'use_whatsapp_webhook': true,
+                    'delivery_channel': 'whatsapp',
+                    'ttl_minutes': 10,
+                    'resend_cooldown_seconds': 60,
+                    'max_attempts': 5,
+                  },
+                },
                 'map_ui': {
                   'radius': {
                     'min_km': 1,
@@ -1859,6 +1948,16 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'resend_email': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/outbound_integrations') &&
+        method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'outbound_integrations': _expandDotPayload(request),
         },
       });
     }

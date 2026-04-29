@@ -75,6 +75,7 @@ class InviteFlowScreenController with Disposable {
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
   String? _activeMaterializedInviteId;
+  String? _activeShareCode;
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
@@ -89,6 +90,7 @@ class InviteFlowScreenController with Disposable {
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
+    _activeShareCode = normalizedShareCode.isEmpty ? null : normalizedShareCode;
 
     if (kIsWeb) {
       // Web policy: keep invite landing preview-only and avoid mutation/materialization.
@@ -154,6 +156,7 @@ class InviteFlowScreenController with Disposable {
       properties: telemetryRepoMap(<String, dynamic>{
         'store_channel': 'web',
         'has_code': hasCode,
+        if (hasCode) 'code': normalizedCode,
       }),
     );
   }
@@ -575,7 +578,7 @@ class InviteFlowScreenController with Disposable {
       'source': 'invite_flow',
     };
 
-    final shareCode = _extractShareCode(inviteId);
+    final shareCode = _extractShareCode(inviteId) ?? _activeShareCode;
     if (shareCode != null) {
       properties['code'] = shareCode;
     }

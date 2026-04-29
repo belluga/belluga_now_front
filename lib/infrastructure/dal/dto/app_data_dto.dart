@@ -40,6 +40,7 @@ import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/theme_data_settings/color_scheme_data.dart';
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart';
 import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/color_required_value.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -272,6 +273,9 @@ class AppDataDTO {
       ),
       firebaseSettings: _buildFirebaseSettings(firebase),
       pushSettings: _buildPushSettings(push),
+      phoneOtpSmsFallbackEnabledValue: _buildBooleanValue(
+        _resolvePhoneOtpSmsFallbackEnabled(settings),
+      ),
       tenantDefaultOrigin: tenantDefaultOrigin,
       mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
       mapRadiusDefaultMetersValue: _buildDistanceValue(
@@ -792,6 +796,24 @@ class AppDataDTO {
     return List<String>.unmodifiable(ordered);
   }
 
+  static bool _resolvePhoneOtpSmsFallbackEnabled(
+    Map<String, dynamic>? rawSettings,
+  ) {
+    final settings = rawSettings ?? const <String, dynamic>{};
+    final outbound = settings['outbound_integrations'] is Map
+        ? Map<String, dynamic>.from(settings['outbound_integrations'] as Map)
+        : const <String, dynamic>{};
+    final otp = outbound['otp'] is Map
+        ? Map<String, dynamic>.from(outbound['otp'] as Map)
+        : const <String, dynamic>{};
+
+    final smsWebhookUrl = _firstNonEmpty(
+      otp['webhook_url']?.toString(),
+      settings['outbound_integrations.otp.webhook_url']?.toString(),
+    );
+    return smsWebhookUrl != null && smsWebhookUrl.trim().isNotEmpty;
+  }
+
   static T _parseRequired<T extends ValueObject<dynamic>>(
     String? rawValue,
     T Function() builder,
@@ -835,6 +857,11 @@ class AppDataDTO {
 
   static PushEnabledValue _buildEnabledValue(bool rawValue) {
     final value = PushEnabledValue()..parse(rawValue.toString());
+    return value;
+  }
+
+  static DomainBooleanValue _buildBooleanValue(bool rawValue) {
+    final value = DomainBooleanValue()..parse(rawValue.toString());
     return value;
   }
 

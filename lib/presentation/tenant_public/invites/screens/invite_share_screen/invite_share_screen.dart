@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
@@ -7,6 +9,7 @@ import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_sh
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_event_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_footer.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_relation_filter_chips.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -25,7 +28,7 @@ class InviteShareScreen extends StatefulWidget {
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-  final InviteShareScreenController _controller =
+  late final InviteShareScreenController _controller =
       GetIt.I.get<InviteShareScreenController>();
 
   @override
@@ -39,53 +42,82 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     return Scaffold(
       appBar: AppBar(
         title: InviteShareAppBarTitle(invite: widget.invite),
+        actions: [
+          IconButton(
+            tooltip: 'Gerenciar grupos',
+            onPressed: _openGroupManagement,
+            icon: const Icon(Icons.group),
+          ),
+        ],
       ),
       body: SafeArea(
         child: StreamValueBuilder<List<InviteFriendResumeWithStatus>>(
           streamValue: _controller.friendsSuggestionsStreamValue,
           builder: (context, friendsWithStatus) {
-            return StreamValueBuilder<List<SentInviteStatus>>(
-              streamValue: _controller.sentInvitesStreamValue,
-              builder: (context, sentInvites) {
-                return Column(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        children: [
-                          InviteEventHero(invite: widget.invite),
-                          const SizedBox(height: 16),
-                          InviteShareSummary(invites: sentInvites),
-                          const SizedBox(height: 16),
-                          ..._paddedFriends(friendsWithStatus).map(
-                            (item) => InviteShareFriendCard(
-                              friend: item.friend.friend,
-                              status: item.friend.inviteStatus,
-                              onInvite: item.isPlaceholder
-                                  ? null
-                                  : () => _controller.sendInviteToFriend(
-                                        item.friend.friend,
-                                      ),
-                              isPlaceholder: item.isPlaceholder,
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.selectedInviteableReasonStreamValue,
+              builder: (context, selectedReason) {
+                final filteredFriends = _filterFriends(
+                  friendsWithStatus,
+                  selectedReason,
+                );
+                final availableReasons = _availableReasons(friendsWithStatus);
+
+                return StreamValueBuilder<List<SentInviteStatus>>(
+                  streamValue: _controller.sentInvitesStreamValue,
+                  builder: (context, sentInvites) {
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: ListView(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
+                            children: [
+                              InviteEventHero(invite: widget.invite),
+                              const SizedBox(height: 16),
+                              InviteShareSummary(invites: sentInvites),
+                              const SizedBox(height: 16),
+                              if (availableReasons.isNotEmpty)
+                                InviteShareRelationFilterChips(
+                                  selectedReason: selectedReason,
+                                  availableReasons: availableReasons,
+                                  onSelectReason:
+                                      _controller.selectInviteableReason,
+                                ),
+                              if (filteredFriends.isEmpty)
+                                Text(
+                                  'Nenhum contato convidável para este filtro.',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ...filteredFriends.map(
+                                (item) => InviteShareFriendCard(
+                                  friend: item.friend,
+                                  status: item.inviteStatus,
+                                  onInvite: () => _controller
+                                      .sendInviteToFriend(item.friend),
+                                  isPlaceholder: false,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: StreamValueBuilder<InviteShareCodeResult?>(
-                        streamValue: _controller.shareCodeStreamValue,
-                        builder: (context, shareCode) {
-                          return InviteShareFooter(
-                            invite: widget.invite,
-                            shareUri: _controller.buildShareUri(shareCode),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: StreamValueBuilder<InviteShareCodeResult?>(
+                            streamValue: _controller.shareCodeStreamValue,
+                            builder: (context, shareCode) {
+                              return InviteShareFooter(
+                                invite: widget.invite,
+                                shareUri: _controller.buildShareUri(shareCode),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             );
@@ -95,32 +127,33 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  List<_InviteShareFriendItem> _paddedFriends(
+  List<InviteFriendResumeWithStatus> _filterFriends(
     List<InviteFriendResumeWithStatus> friends,
+    String? selectedReason,
   ) {
-    if (friends.isEmpty) return [];
-    final items = <_InviteShareFriendItem>[
-      ...friends.map(
-        (f) => _InviteShareFriendItem(friend: f, isPlaceholder: false),
-      ),
-    ];
-    var idx = 0;
-    while (items.length < 20) {
-      items.add(
-        _InviteShareFriendItem(
-          friend: friends[idx % friends.length],
-          isPlaceholder: true,
-        ),
-      );
-      idx++;
+    final reason = selectedReason?.trim();
+    if (reason == null || reason.isEmpty) {
+      return friends;
     }
-    return items;
+    return friends
+        .where((item) => item.friend.inviteableReasons.contains(reason))
+        .toList(growable: false);
   }
-}
 
-class _InviteShareFriendItem {
-  _InviteShareFriendItem({required this.friend, required this.isPlaceholder});
+  List<String> _availableReasons(List<InviteFriendResumeWithStatus> friends) {
+    const order = <String>[
+      'contact_match',
+      'favorite_by_you',
+      'favorited_you',
+      'friend',
+    ];
+    final available = <String>{
+      for (final item in friends) ...item.friend.inviteableReasons,
+    };
+    return order.where(available.contains).toList(growable: false);
+  }
 
-  final InviteFriendResumeWithStatus friend;
-  final bool isPlaceholder;
+  void _openGroupManagement() {
+    context.router.push(const ContactGroupManagementRoute());
+  }
 }

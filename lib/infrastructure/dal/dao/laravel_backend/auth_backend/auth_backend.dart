@@ -214,6 +214,103 @@ class LaravelAuthBackend extends AuthBackendContract {
   }
 
   @override
+  Future<PhoneOtpChallengeResponse> requestPhoneOtpChallenge({
+    required String phone,
+    String? deliveryChannel,
+  }) async {
+    final payload = <String, dynamic>{
+      'phone': phone,
+      'device_name': await _resolveDeviceName(),
+      if (deliveryChannel != null && deliveryChannel.trim().isNotEmpty)
+        'delivery_channel': deliveryChannel.trim(),
+    };
+    try {
+      final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
+      final response = await dio.post(
+        '/v1/auth/otp/challenge$tenantQuery',
+        data: payload,
+      );
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final data = raw['data'];
+        if (data is Map<String, dynamic>) {
+          return PhoneOtpChallengeResponse.fromJson(data);
+        }
+      }
+      throw Exception(
+        'Unexpected OTP challenge response shape '
+        'for ${response.requestOptions.uri}.',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to request OTP '
+        '[${_responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
+    }
+  }
+
+  @override
+  Future<PhoneOtpVerificationResponse> verifyPhoneOtpChallenge({
+    required String challengeId,
+    required String phone,
+    required String code,
+    List<String>? anonymousUserIds,
+  }) async {
+    final payload = <String, dynamic>{
+      'challenge_id': challengeId,
+      'phone': phone,
+      'code': code,
+      'device_name': await _resolveDeviceName(),
+      if (anonymousUserIds != null && anonymousUserIds.isNotEmpty)
+        'anonymous_user_ids': anonymousUserIds,
+    };
+    try {
+      final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
+      final response = await dio.post(
+        '/v1/auth/otp/verify$tenantQuery',
+        data: payload,
+      );
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final data = raw['data'];
+        if (data is Map<String, dynamic>) {
+          final token = data['token']?.toString() ?? '';
+          if (token.isEmpty) {
+            throw Exception(
+              'OTP verification token missing for ${response.requestOptions.uri}.',
+            );
+          }
+          return PhoneOtpVerificationResponse(
+            user: _userDtoFromOtpVerifyData(data),
+            token: token,
+            userId: data['user_id']?.toString(),
+            identityState: data['identity_state']?.toString(),
+          );
+        }
+      }
+      throw Exception(
+        'Unexpected OTP verification response shape '
+        'for ${response.requestOptions.uri}.',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to verify OTP '
+        '[${_responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
+    }
+  }
+
+  @override
   Future<AnonymousIdentityResponse> issueAnonymousIdentity({
     required String deviceName,
     required String fingerprintHash,
@@ -355,6 +452,35 @@ UserDto _userDtoFromUserResource(Map<String, dynamic> user) {
       birthday: null,
     ),
     customData: _extractCustomData(user),
+  );
+}
+
+UserDto _userDtoFromOtpVerifyData(Map<String, dynamic> data) {
+  final me = data['me'];
+  final meMap = me is Map ? Map<String, dynamic>.from(me) : <String, dynamic>{};
+  final profile = meMap['data'];
+  final profileMap =
+      profile is Map ? Map<String, dynamic>.from(profile) : <String, dynamic>{};
+  final id = data['user_id']?.toString() ?? profileMap['user_id']?.toString();
+  if (id == null || id.isEmpty) {
+    throw Exception('OTP verification user id missing.');
+  }
+
+  final customData = <String, dynamic>{};
+  final identityState = data['identity_state']?.toString().trim();
+  if (identityState != null && identityState.isNotEmpty) {
+    customData['identity_state'] = identityState;
+  }
+
+  return UserDto(
+    id: id,
+    profile: UserProfileDto(
+      name: profileMap['display_name']?.toString(),
+      email: null,
+      pictureUrl: profileMap['avatar_url']?.toString(),
+      birthday: null,
+    ),
+    customData: customData,
   );
 }
 

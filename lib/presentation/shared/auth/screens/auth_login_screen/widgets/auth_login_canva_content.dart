@@ -4,7 +4,7 @@ import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
-import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_signup_sheet.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_phone_otp_form.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/auth_login_landlord_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
@@ -32,6 +32,8 @@ class AuthLoginCanvaContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usesPhoneOtp = !_controller.isLandlordContext;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -46,7 +48,7 @@ class AuthLoginCanvaContent extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Entrar',
+                  usesPhoneOtp ? 'Entrar com telefone' : 'Entrar',
                   style: TextTheme.of(context).titleLarge,
                 ),
                 const SizedBox(height: 20),
@@ -54,54 +56,65 @@ class AuthLoginCanvaContent extends StatelessWidget {
             );
           },
         ),
-        AuthLoginForm(controller: _controller),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Esqueci minha senha.',
-                  style: TextStyle(fontSize: 12),
-                ),
-                TextButton(
-                  onPressed: navigateToPasswordRecover,
-                  child: const Text(
-                    'Recuperar agora',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+        if (usesPhoneOtp)
+          AuthPhoneOtpForm(controller: _controller)
+        else
+          AuthLoginForm(controller: _controller),
+        if (!usesPhoneOtp)
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Esqueci minha senha.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  TextButton(
+                    onPressed: navigateToPasswordRecover,
+                    child: const Text(
+                      'Recuperar agora',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        StreamValueBuilder<bool>(
-          streamValue: _controller.buttonLoadingValue,
-          builder: (context, isLoading) {
-            return Semantics(
-              identifier: 'auth_login_submit_button',
-              button: true,
-              onTap: _tryLoginWithEmailPassword,
-              child: ButtonLoading(
-                key: WidgetKeys.auth.loginButton,
-                onPressed: _tryLoginWithEmailPassword,
-                isLoading: isLoading,
-                label: 'Entrar',
+                ],
               ),
+            ],
+          ),
+        const SizedBox(height: 20),
+        StreamValueBuilder<AuthPhoneOtpStep>(
+          streamValue: _controller.phoneOtpStepStreamValue,
+          builder: (context, step) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.buttonLoadingValue,
+              builder: (context, isLoading) {
+                final label =
+                    usesPhoneOtp ? _phoneOtpButtonLabel(step) : 'Entrar';
+                return Semantics(
+                  identifier: 'auth_login_submit_button',
+                  button: true,
+                  onTap: usesPhoneOtp
+                      ? _submitPhoneOtpStep
+                      : _tryLoginWithEmailPassword,
+                  child: ButtonLoading(
+                    key: WidgetKeys.auth.loginButton,
+                    onPressed: usesPhoneOtp
+                        ? _submitPhoneOtpStep
+                        : _tryLoginWithEmailPassword,
+                    isLoading: isLoading,
+                    label: label,
+                  ),
+                );
+              },
             );
           },
         ),
         const SizedBox(height: 16),
-        TextButton(
-          onPressed: () => _openSignupSheet(context),
-          child: const Text('Criar conta'),
-        ),
         if (_controller.isLandlordContext)
           Semantics(
             identifier: 'auth_login_enter_as_admin_button',
@@ -120,14 +133,21 @@ class AuthLoginCanvaContent extends StatelessWidget {
     unawaited(_controller.tryLoginWithEmailPassword());
   }
 
-  Future<void> _openSignupSheet(BuildContext context) async {
-    _controller.resetSignupControllers();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => AuthSignupSheet(controller: _controller),
-    );
+  void _submitPhoneOtpStep() {
+    final step = _controller.phoneOtpStepStreamValue.value;
+    if (step == AuthPhoneOtpStep.phoneEntry) {
+      unawaited(_controller.requestPhoneOtpChallenge());
+      return;
+    }
+
+    unawaited(_controller.verifyPhoneOtpChallenge());
+  }
+
+  String _phoneOtpButtonLabel(AuthPhoneOtpStep step) {
+    return switch (step) {
+      AuthPhoneOtpStep.phoneEntry => 'Receber codigo',
+      AuthPhoneOtpStep.otpVerification => 'Confirmar codigo',
+    };
   }
 
   Future<void> _openLandlordLogin(BuildContext context) async {

@@ -106,5 +106,5 @@ class AppPromotionScreenController implements Disposable {
 
 AppPromotionExperience _resolveHardcodedPromotionExperience() {
   // TODO(vnext-promotion-experience-switch): move the active promotion experience selection to runtime config/backend contracts.
-  return AppPromotionExperience.testerWaitlist;
+  return AppPromotionExperience.appDownload;
 }

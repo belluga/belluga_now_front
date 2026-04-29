@@ -6,25 +6,37 @@ import 'package:belluga_now/domain/contacts/value_objects/contact_display_name_v
 import 'package:belluga_now/domain/contacts/value_objects/contact_email_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_id_value.dart';
 import 'package:belluga_now/domain/contacts/value_objects/contact_phone_value.dart';
+import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
+import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_cooldowns_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_decline_status_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_declined_at_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pending_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
@@ -91,6 +103,51 @@ InviteShareCodeResult buildInviteShareCodeResult({
     codeValue: InviteShareCodeValue(code),
     eventIdValue: eventIdValue,
     occurrenceIdValue: occurrenceIdValue,
+  );
+}
+
+InviteAccountProfileIds buildInviteAccountProfileIds(List<String> ids) {
+  return InviteAccountProfileIds(
+    ids.map((id) => InviteAccountProfileIdValue()..parse(id)),
+  );
+}
+
+InviteableReasons buildInviteableReasons(List<String> reasons) {
+  return InviteableReasons(
+    reasons.map((reason) => InviteableReasonValue()..parse(reason)),
+  );
+}
+
+InviteContactGroup buildInviteContactGroup({
+  required String id,
+  required String name,
+  List<String> recipientAccountProfileIds = const <String>[],
+}) {
+  return InviteContactGroup(
+    idValue: InviteContactGroupIdValue()..parse(id),
+    nameValue: InviteContactGroupNameValue()..parse(name),
+    recipientAccountProfileIds: buildInviteAccountProfileIds(
+      recipientAccountProfileIds,
+    ),
+  );
+}
+
+InviteableRecipient buildInviteableRecipient({
+  required String userId,
+  required String accountProfileId,
+  required String displayName,
+  List<String> inviteableReasons = const <String>[],
+  String profileExposureLevel = '',
+}) {
+  return InviteableRecipient(
+    userIdValue: UserIdValue()..parse(userId),
+    receiverAccountProfileIdValue: InviteAccountProfileIdValue()
+      ..parse(accountProfileId),
+    displayNameValue: InviteInviterNameValue()..parse(displayName),
+    avatarValue: InviteInviterAvatarValue(),
+    inviteableReasons: buildInviteableReasons(inviteableReasons),
+    profileExposureLevelValue: InviteProfileExposureLevelValue()
+      ..parse(profileExposureLevel),
   );
 }
 

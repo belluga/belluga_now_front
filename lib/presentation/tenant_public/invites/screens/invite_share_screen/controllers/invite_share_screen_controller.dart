@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -47,6 +48,8 @@ class InviteShareScreenController with Disposable {
       StreamValue<List<SentInviteStatus>>(defaultValue: const []);
   final shareCodeStreamValue =
       StreamValue<InviteShareCodeResult?>(defaultValue: null);
+  final selectedInviteableReasonStreamValue =
+      StreamValue<String?>(defaultValue: null);
 
   List<ContactModel> _availableContacts = const [];
 
@@ -99,6 +102,13 @@ class InviteShareScreenController with Disposable {
 
   Future<void> refreshFriends() async {
     await _loadInviteTargetsWithStatusSafe(forceReloadContacts: true);
+  }
+
+  void selectInviteableReason(String? reason) {
+    final normalized = reason?.trim();
+    selectedInviteableReasonStreamValue.addValue(
+      normalized == null || normalized.isEmpty ? null : normalized,
+    );
   }
 
   Future<void> sendInvites() async {
@@ -170,22 +180,22 @@ class InviteShareScreenController with Disposable {
       await loadContacts();
     }
 
-    final matches = await _invitesRepository.importContacts(
-      (() {
-        final contacts = InviteContacts();
-        for (final availableContact in _availableContacts) {
-          contacts.add(availableContact);
-        }
-        return contacts;
-      })(),
-    );
+    final matches = await _importContactsOpportunistically();
     if (_isDisposed) return;
 
-    final recipients = matches
-        .map(
-          (match) => _toInviteFriendResume(match),
-        )
-        .toList(growable: false)
+    final inviteableRecipients =
+        await _invitesRepository.fetchInviteableRecipients();
+    if (_isDisposed) return;
+
+    final recipients = (inviteableRecipients.isNotEmpty
+        ? inviteableRecipients
+            .map((recipient) => recipient.toFriendResume())
+            .toList(growable: false)
+        : matches
+            .map(
+              (match) => _toInviteFriendResume(match),
+            )
+            .toList(growable: false))
       ..sort((left, right) => left.name.compareTo(right.name));
 
     final sentInvites = await _invitesRepository.getSentInvitesForEvent(
@@ -213,6 +223,22 @@ class InviteShareScreenController with Disposable {
       if (_isDisposed) return;
       sentInvitesStreamValue.addValue(const []);
       friendsSuggestionsStreamValue.addValue(const []);
+    }
+  }
+
+  Future<List<InviteContactMatch>> _importContactsOpportunistically() async {
+    try {
+      return await _invitesRepository.importContacts(
+        (() {
+          final contacts = InviteContacts();
+          for (final availableContact in _availableContacts) {
+            contacts.add(availableContact);
+          }
+          return contacts;
+        })(),
+      );
+    } catch (_) {
+      return const <InviteContactMatch>[];
     }
   }
 
@@ -306,6 +332,9 @@ class InviteShareScreenController with Disposable {
 
     return EventFriendResume(
       idValue: UserIdValue()..parse(friend.id),
+      accountProfileIdValue: friend.accountProfileId.isEmpty
+          ? null
+          : (InviteAccountProfileIdValue()..parse(friend.accountProfileId)),
       displayNameValue: UserDisplayNameValue()..parse(friend.name),
       avatarUrlValue: avatarUrlValue,
     );
@@ -320,9 +349,18 @@ class InviteShareScreenController with Disposable {
 
     return InviteFriendResume(
       idValue: FriendIdValue()..parse(match.userId),
+      accountProfileIdValue: match.receiverAccountProfileId.isEmpty
+          ? null
+          : (InviteAccountProfileIdValue()
+            ..parse(match.receiverAccountProfileId)),
       nameValue: TitleValue()..parse(match.displayName),
       avatarValue: avatarValue,
-      matchLabelValue: FriendMatchLabelValue()..parse('Contato no Belluga'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse(match.inviteableReasons.contains('friend')
+            ? 'Amigo no Belluga'
+            : 'Contato no Belluga'),
+      inviteableReasons: match.inviteableReasons,
+      profileExposureLevelValue: match.profileExposureLevelValue,
     );
   }
 
@@ -336,5 +374,6 @@ class InviteShareScreenController with Disposable {
     contactsPermissionGranted.dispose();
     sentInvitesStreamValue.dispose();
     shareCodeStreamValue.dispose();
+    selectedInviteableReasonStreamValue.dispose();
   }
 }

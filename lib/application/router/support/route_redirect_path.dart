@@ -3,6 +3,8 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:get_it/get_it.dart';
 
 const String webPromotionRoutePath = '/baixe-o-app';
+const int _maxPromotionRedirectUnwrapDepth = 5;
+const int _maxPromotionRedirectPathLength = 2048;
 
 String buildRedirectPathFromRouteMatch(RouteMatch route) {
   return buildRedirectPath(
@@ -34,14 +36,18 @@ String resolveWebPromotionPath({
   required String redirectPath,
 }) {
   final shareCode = resolveWebPromotionShareCode(redirectPath: redirectPath);
-  if (shareCode == null) {
-    return '/';
+  if (shareCode != null) {
+    return Uri(
+      path: '/invite',
+      queryParameters: <String, String>{'code': shareCode},
+    ).toString();
   }
 
-  return Uri(
-    path: '/invite',
-    queryParameters: <String, String>{'code': shareCode},
-  ).toString();
+  return _resolveAllowedPromotionRedirectPath(
+        redirectPath: redirectPath,
+        includeAuthOwnedAppPaths: false,
+      ) ??
+      '/';
 }
 
 String resolveWebPromotionDismissPath({
@@ -60,12 +66,12 @@ String? resolveWebPromotionShareCode({
   required String redirectPath,
 }) {
   final raw = redirectPath.trim();
-  if (raw.isEmpty) {
+  if (raw.isEmpty || raw.length > _maxPromotionRedirectPathLength) {
     return null;
   }
 
   final uri = Uri.tryParse(raw);
-  if (uri == null) {
+  if (uri == null || _isExternalPromotionRedirectUri(uri, raw)) {
     return null;
   }
 
@@ -143,7 +149,13 @@ Uri? buildTenantPromotionUriFromAppContext({
       redirectContextCode ?? (hasRedirectPath ? null : normalizedShareCode);
   final normalizedPlatformTarget =
       _normalizePromotionPlatformTarget(platformTarget);
-  final targetPath = normalizedCode == null ? '/' : '/invite';
+  final targetPath = normalizedCode == null
+      ? _resolveAllowedPromotionRedirectPath(
+            redirectPath: normalizedRedirectPath,
+            includeAuthOwnedAppPaths: true,
+          ) ??
+          '/'
+      : '/invite';
 
   final resolvedBaseUri = mainDomainUri ??
       (GetIt.I.isRegistered<AppDataRepositoryContract>()
@@ -168,6 +180,145 @@ Uri? buildTenantPromotionUriFromAppContext({
   return targetUri.replace(
     queryParameters: query.isEmpty ? null : query,
   );
+}
+
+String? _resolveAllowedPromotionRedirectPath({
+  required String? redirectPath,
+  required bool includeAuthOwnedAppPaths,
+  int unwrapDepth = 0,
+}) {
+  final raw = redirectPath?.trim();
+  if (raw == null ||
+      raw.isEmpty ||
+      raw.length > _maxPromotionRedirectPathLength) {
+    return null;
+  }
+
+  final uri = Uri.tryParse(raw);
+  if (uri == null || _isExternalPromotionRedirectUri(uri, raw)) {
+    return null;
+  }
+
+  final normalizedPath = _normalizePath(uri.path);
+  if (normalizedPath == webPromotionRoutePath) {
+    return null;
+  }
+
+  if (normalizedPath == '/auth' || normalizedPath.startsWith('/auth/')) {
+    if (unwrapDepth >= _maxPromotionRedirectUnwrapDepth) {
+      return null;
+    }
+    final nestedRedirect = uri.queryParameters['redirect'];
+    if (nestedRedirect == null || nestedRedirect.trim().isEmpty) {
+      return null;
+    }
+    return _resolveAllowedPromotionRedirectPath(
+      redirectPath: nestedRedirect,
+      includeAuthOwnedAppPaths: includeAuthOwnedAppPaths,
+      unwrapDepth: unwrapDepth + 1,
+    );
+  }
+
+  final shareCode = resolveWebPromotionShareCode(redirectPath: raw);
+  if (shareCode != null) {
+    return Uri(
+      path: '/invite',
+      queryParameters: <String, String>{'code': shareCode},
+    ).toString();
+  }
+
+  if (normalizedPath == '/invite' || normalizedPath == '/convites') {
+    return null;
+  }
+
+  if (isAuthOwnedPromotionRedirectPath(normalizedPath)) {
+    if (!includeAuthOwnedAppPaths ||
+        !_isAllowedAuthOwnedAppContinuationPath(normalizedPath)) {
+      return null;
+    }
+    return Uri(path: normalizedPath).toString();
+  }
+
+  if (!_isAllowedPublicPromotionContinuationPath(normalizedPath)) {
+    return null;
+  }
+
+  return Uri(
+    path: normalizedPath,
+    queryParameters: _allowedQueryParametersForPath(normalizedPath, uri),
+  ).toString();
+}
+
+bool _isAllowedPublicPromotionContinuationPath(String normalizedPath) {
+  if (normalizedPath == '/' ||
+      normalizedPath == '/privacy-policy' ||
+      normalizedPath == '/descobrir' ||
+      normalizedPath == '/mapa' ||
+      normalizedPath == '/mapa/poi' ||
+      normalizedPath == '/location/permission') {
+    return true;
+  }
+
+  if (_isEventDetailPath(normalizedPath)) {
+    return true;
+  }
+
+  final segments = _pathSegments(normalizedPath);
+  if (segments.length != 2) {
+    return false;
+  }
+
+  final prefix = segments.first;
+  return prefix == 'parceiro' || prefix == 'static';
+}
+
+bool _isExternalPromotionRedirectUri(Uri uri, String raw) {
+  return uri.hasScheme || uri.hasAuthority || raw.startsWith('//');
+}
+
+bool _isAllowedAuthOwnedAppContinuationPath(String normalizedPath) {
+  return normalizedPath == '/profile' ||
+      normalizedPath == '/convites/compartilhar';
+}
+
+Map<String, String>? _allowedQueryParametersForPath(
+  String normalizedPath,
+  Uri uri,
+) {
+  final allowedKeys = <String>{
+    if (_isEventDetailPath(normalizedPath)) 'occurrence',
+    if (normalizedPath == '/mapa' || normalizedPath == '/mapa/poi') ...{
+      'poi',
+      'stack',
+    },
+  };
+  if (allowedKeys.isEmpty) {
+    return null;
+  }
+
+  final result = <String, String>{};
+  for (final key in allowedKeys) {
+    final value = uri.queryParameters[key]?.trim();
+    if (value != null && value.isNotEmpty) {
+      result[key] = value;
+    }
+  }
+  return result.isEmpty ? null : result;
+}
+
+bool _isEventDetailPath(String normalizedPath) {
+  final segments = _pathSegments(normalizedPath);
+  return segments.length == 3 &&
+      segments[0] == 'agenda' &&
+      segments[1] == 'evento' &&
+      segments[2].trim().isNotEmpty;
+}
+
+List<String> _pathSegments(String normalizedPath) {
+  return normalizedPath
+      .split('/')
+      .where((segment) => segment.trim().isNotEmpty)
+      .toList(growable: false);
 }
 
 String _normalizePath(String path) {

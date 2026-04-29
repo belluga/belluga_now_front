@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_config.d
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
@@ -14,6 +15,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
@@ -150,6 +152,22 @@ void main() {
     expect(controller.pendingInviteCount(event.eventId), 1);
     expect(controller.distanceLabelFor(profile, event), '752 m');
   });
+
+  test('toggleFavorite is allowed for anonymous users', () {
+    final accountProfileRepository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: accountProfileRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    final result = controller.toggleFavorite('507f1f77bcf86cd799439011');
+
+    expect(result, AccountProfileFavoriteToggleOutcome.toggled);
+    expect(
+      accountProfileRepository.toggleFavoriteCalls,
+      ['507f1f77bcf86cd799439011'],
+    );
+  });
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
@@ -158,6 +176,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   final List<AccountProfileModel> _profiles = <AccountProfileModel>[];
+  final List<String> toggleFavoriteCalls = <String>[];
 
   @override
   Future<void> init() async {}
@@ -200,7 +219,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<void> toggleFavorite(
     AccountProfilesRepositoryContractPrimString accountProfileId,
-  ) async {}
+  ) async {
+    toggleFavoriteCalls.add(accountProfileId.value);
+  }
 
   @override
   AccountProfilesRepositoryContractPrimBool isFavorite(
@@ -214,6 +235,16 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+}
+
+class _FakeAuthRepository extends Fake
+    implements AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  bool get isAuthorized => authorized;
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {

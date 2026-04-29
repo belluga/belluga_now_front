@@ -144,6 +144,17 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> resendEmailSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> outboundIntegrationsSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> outboundOtpUseWhatsappWebhookStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> outboundOtpSmsSecondaryEnabledStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String> outboundOtpDeliveryChannelStreamValue =
+      StreamValue<String>(
+    defaultValue:
+        TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
+  );
   final StreamValue<bool> pushSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> telemetrySubmittingStreamValue =
@@ -213,6 +224,16 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController resendEmailBccController =
       TextEditingController();
   final TextEditingController resendEmailReplyToController =
+      TextEditingController();
+  final TextEditingController outboundWhatsappWebhookUrlController =
+      TextEditingController();
+  final TextEditingController outboundOtpWebhookUrlController =
+      TextEditingController();
+  final TextEditingController outboundOtpTtlMinutesController =
+      TextEditingController();
+  final TextEditingController outboundOtpResendCooldownSecondsController =
+      TextEditingController();
+  final TextEditingController outboundOtpMaxAttemptsController =
       TextEditingController();
 
   final TextEditingController pushMaxTtlDaysController =
@@ -424,6 +445,14 @@ class TenantAdminSettingsController implements Disposable {
         final resendEmailSettings =
             await _settingsRepository.fetchResendEmailSettings();
         _applyResendEmailSettings(resendEmailSettings);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final outboundIntegrationsSettings =
+            await _settingsRepository.fetchOutboundIntegrationsSettings();
+        _applyOutboundIntegrationsSettings(outboundIntegrationsSettings);
       } catch (error) {
         errors.add(error.toString());
       }
@@ -1005,6 +1034,27 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  Future<void> saveOutboundIntegrationsSettings() async {
+    final parsed = _buildOutboundIntegrationsSettings();
+    if (parsed == null) {
+      return;
+    }
+
+    outboundIntegrationsSubmittingStreamValue.addValue(true);
+    try {
+      final updated =
+          await _settingsRepository.updateOutboundIntegrationsSettings(
+        settings: parsed,
+      );
+      _applyOutboundIntegrationsSettings(updated);
+      _reportSuccess('Webhooks de saída atualizados com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      outboundIntegrationsSubmittingStreamValue.addValue(false);
+    }
+  }
+
   Future<void> savePushSettings() async {
     final parsed = _buildPushSettings();
     if (parsed == null) {
@@ -1305,6 +1355,7 @@ class TenantAdminSettingsController implements Disposable {
         .addValue(TenantAdminTelemetrySettingsSnapshot.empty());
     clearTelemetryForm();
     _resetResendEmailDraft();
+    _resetOutboundIntegrationsDraft();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
@@ -1360,6 +1411,23 @@ class TenantAdminSettingsController implements Disposable {
     resendEmailCcController.clear();
     resendEmailBccController.clear();
     resendEmailReplyToController.clear();
+  }
+
+  void _resetOutboundIntegrationsDraft() {
+    outboundIntegrationsSubmittingStreamValue.addValue(false);
+    outboundWhatsappWebhookUrlController.clear();
+    outboundOtpWebhookUrlController.clear();
+    outboundOtpUseWhatsappWebhookStreamValue.addValue(true);
+    outboundOtpSmsSecondaryEnabledStreamValue.addValue(false);
+    outboundOtpDeliveryChannelStreamValue.addValue(
+      TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
+    );
+    outboundOtpTtlMinutesController.text =
+        '${TenantAdminOutboundIntegrationsSettings.defaultOtpTtlMinutes}';
+    outboundOtpResendCooldownSecondsController.text =
+        '${TenantAdminOutboundIntegrationsSettings.defaultOtpResendCooldownSeconds}';
+    outboundOtpMaxAttemptsController.text =
+        '${TenantAdminOutboundIntegrationsSettings.defaultOtpMaxAttempts}';
   }
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
@@ -1463,6 +1531,69 @@ class TenantAdminSettingsController implements Disposable {
       bccRecipients: _resendEmailRecipients(bcc),
       replyToRecipients: _resendEmailRecipients(replyTo),
     );
+  }
+
+  TenantAdminOutboundIntegrationsSettings?
+      _buildOutboundIntegrationsSettings() {
+    final whatsappWebhookUrl =
+        _normalizeOptionalText(outboundWhatsappWebhookUrlController.text);
+    final smsSecondaryEnabled = outboundOtpSmsSecondaryEnabledStreamValue.value;
+    final otpWebhookUrl = smsSecondaryEnabled
+        ? _normalizeOptionalText(outboundOtpWebhookUrlController.text)
+        : null;
+
+    if (whatsappWebhookUrl == null) {
+      remoteErrorStreamValue.addValue(
+        'Configure uma URL de webhook WhatsApp válida.',
+      );
+      return null;
+    }
+    if (smsSecondaryEnabled && otpWebhookUrl == null) {
+      remoteErrorStreamValue.addValue('Configure a URL SMS secundária.');
+      return null;
+    }
+
+    final ttlMinutes = _parseBoundedInt(
+      outboundOtpTtlMinutesController.text,
+      min: 1,
+      max: 30,
+    );
+    final cooldownSeconds = _parseBoundedInt(
+      outboundOtpResendCooldownSecondsController.text,
+      min: 15,
+      max: 600,
+    );
+    final maxAttempts = _parseBoundedInt(
+      outboundOtpMaxAttemptsController.text,
+      min: 1,
+      max: 10,
+    );
+    if (ttlMinutes == null || cooldownSeconds == null || maxAttempts == null) {
+      remoteErrorStreamValue.addValue(
+        'OTP inválido. Use TTL 1-30 min, cooldown 15-600 s e tentativas 1-10.',
+      );
+      return null;
+    }
+
+    try {
+      return TenantAdminOutboundIntegrationsSettings(
+        whatsappWebhookUrlValue: _optionalUrlValue(whatsappWebhookUrl),
+        otpWebhookUrlValue:
+            otpWebhookUrl == null ? null : _optionalUrlValue(otpWebhookUrl),
+        otpUseWhatsappWebhookValue: _booleanValue(true),
+        otpDeliveryChannelValue: _tokenValue(
+          TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
+        ),
+        otpTtlMinutesValue: _positiveIntValue(ttlMinutes),
+        otpResendCooldownSecondsValue: _positiveIntValue(cooldownSeconds),
+        otpMaxAttemptsValue: _positiveIntValue(maxAttempts),
+      );
+    } catch (_) {
+      remoteErrorStreamValue.addValue(
+        'Webhooks inválidos. Use URLs completas com http(s) e revise os limites de OTP.',
+      );
+      return null;
+    }
   }
 
   TenantAdminPushSettings? _buildPushSettings() {
@@ -1627,12 +1758,59 @@ class TenantAdminSettingsController implements Disposable {
     resendEmailReplyToController.text = _recipientText(settings.replyTo);
   }
 
+  void _applyOutboundIntegrationsSettings(
+    TenantAdminOutboundIntegrationsSettings settings,
+  ) {
+    outboundWhatsappWebhookUrlController.text =
+        settings.whatsappWebhookUrl ?? '';
+    outboundOtpWebhookUrlController.text = settings.otpWebhookUrl ?? '';
+    outboundOtpUseWhatsappWebhookStreamValue.addValue(
+      true,
+    );
+    outboundOtpSmsSecondaryEnabledStreamValue.addValue(
+      settings.hasSmsSecondaryChannel,
+    );
+    outboundOtpDeliveryChannelStreamValue.addValue(
+      TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
+    );
+    outboundOtpTtlMinutesController.text = '${settings.otpTtlMinutes}';
+    outboundOtpResendCooldownSecondsController.text =
+        '${settings.otpResendCooldownSeconds}';
+    outboundOtpMaxAttemptsController.text = '${settings.otpMaxAttempts}';
+  }
+
+  void updateOutboundOtpUseWhatsappWebhook(bool value) {
+    outboundOtpUseWhatsappWebhookStreamValue.addValue(value);
+  }
+
+  void updateOutboundOtpSmsSecondaryEnabled(bool value) {
+    outboundOtpSmsSecondaryEnabledStreamValue.addValue(value);
+  }
+
+  void updateOutboundOtpDeliveryChannel(String? value) {
+    final normalized = (value ?? '').trim().toLowerCase();
+    if (!_isValidOutboundOtpDeliveryChannel(
+      normalized,
+    )) {
+      return;
+    }
+    outboundOtpDeliveryChannelStreamValue.addValue(normalized);
+  }
+
   TenantAdminResendEmailRecipients _resendEmailRecipients(
     Iterable<String> rawValues,
   ) {
     return TenantAdminResendEmailRecipients(
       rawValues.map(_emailAddressValue),
     );
+  }
+
+  bool _isValidOutboundOtpDeliveryChannel(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized ==
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp ||
+        normalized ==
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelSms;
   }
 
   EmailAddressValue _emailAddressValue(String raw) {
@@ -2102,6 +2280,18 @@ class TenantAdminSettingsController implements Disposable {
     return parsed;
   }
 
+  int? _parseBoundedInt(
+    String raw, {
+    required int min,
+    required int max,
+  }) {
+    final parsed = _parsePositiveInt(raw);
+    if (parsed == null || parsed < min || parsed > max) {
+      return null;
+    }
+    return parsed;
+  }
+
   TenantAdminPositiveIntValue _positiveIntValue(int raw) {
     final value = TenantAdminPositiveIntValue();
     value.parse(raw.toString());
@@ -2228,6 +2418,10 @@ class TenantAdminSettingsController implements Disposable {
     mapFilterRuleCatalogLoadingStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
     resendEmailSubmittingStreamValue.dispose();
+    outboundIntegrationsSubmittingStreamValue.dispose();
+    outboundOtpUseWhatsappWebhookStreamValue.dispose();
+    outboundOtpSmsSecondaryEnabledStreamValue.dispose();
+    outboundOtpDeliveryChannelStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
     brandingSubmittingStreamValue.dispose();
@@ -2260,6 +2454,11 @@ class TenantAdminSettingsController implements Disposable {
     resendEmailCcController.dispose();
     resendEmailBccController.dispose();
     resendEmailReplyToController.dispose();
+    outboundWhatsappWebhookUrlController.dispose();
+    outboundOtpWebhookUrlController.dispose();
+    outboundOtpTtlMinutesController.dispose();
+    outboundOtpResendCooldownSecondsController.dispose();
+    outboundOtpMaxAttemptsController.dispose();
     pushMaxTtlDaysController.dispose();
     pushMaxPerMinuteController.dispose();
     pushMaxPerHourController.dispose();

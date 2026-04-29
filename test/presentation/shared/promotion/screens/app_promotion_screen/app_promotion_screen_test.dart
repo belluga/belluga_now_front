@@ -43,7 +43,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('renders tester waitlist by default with proper field keyboards',
+  testWidgets('renders tester waitlist override with proper field keyboards',
       (tester) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
@@ -90,6 +90,28 @@ void main() {
 
     expect(emailField.keyboardType, TextInputType.emailAddress);
     expect(whatsappField.keyboardType, TextInputType.phone);
+  });
+
+  testWidgets('renders app download experience by default for store release',
+      (tester) async {
+    _registerDefaultControllers(
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_ios')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_waitlist_email_field')),
+      findsNothing,
+    );
   });
 
   testWidgets('submits tester waitlist lead and shows success state',
@@ -463,6 +485,25 @@ void _registerControllers({
       appDataRepository: appDataRepository,
       preferredStorePlatformResolver: preferredStorePlatformResolver,
       experienceResolver: () => experience,
+    ),
+  );
+  GetIt.I.registerSingleton<AppPromotionTesterWaitlistController>(
+    AppPromotionTesterWaitlistController(
+      appDataRepository: appDataRepository,
+      leadCaptureService: leadCaptureService,
+    ),
+  );
+}
+
+void _registerDefaultControllers({
+  required AppPromotionStorePlatformResolver preferredStorePlatformResolver,
+  required _FakeAppDataRepository appDataRepository,
+  required _FakePromotionLeadCaptureService leadCaptureService,
+}) {
+  GetIt.I.registerSingleton<AppPromotionScreenController>(
+    AppPromotionScreenController(
+      appDataRepository: appDataRepository,
+      preferredStorePlatformResolver: preferredStorePlatformResolver,
     ),
   );
   GetIt.I.registerSingleton<AppPromotionTesterWaitlistController>(

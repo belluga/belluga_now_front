@@ -351,6 +351,43 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminOutboundIntegrationsSettings>
+      fetchOutboundIntegrationsSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeOutboundIntegrationsSettings(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load outbound_integrations settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminOutboundIntegrationsSettings>
+      updateOutboundIntegrationsSettings({
+    required TenantAdminOutboundIntegrationsSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'outbound_integrations'),
+        data: _requestEncoder.encodeOutboundIntegrationsSettingsPatch(
+          settings,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeOutboundIntegrationsSettings(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update outbound_integrations settings');
+    }
+  }
+
+  @override
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   }) async {

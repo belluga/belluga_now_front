@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:belluga_now/application/time/timezone_converter.dart';
@@ -90,36 +91,58 @@ class InviteHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: SwipeableCard(
-                          onSwipeRight:
-                              requiresAuthentication ? null : onAccept,
-                          onSwipeLeft:
-                              requiresAuthentication ? null : onDecline,
-                          child: AspectRatio(
-                            aspectRatio: 13 / 18,
-                            child: InviteContentCard(
-                              heroImage: heroImage,
-                              title: invite.eventName,
-                              dateLabel: dateLabel,
-                              location: location,
-                              host: host,
-                              inviter: inviter,
-                              extraInviters: extraInviters,
-                              onAccept: onAccept,
-                              onDecline: onDecline,
-                              onRequestAuthentication: onRequestAuthentication,
-                              onViewDetails: onViewDetails,
-                              requiresAuthentication: requiresAuthentication,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final horizontalInset =
+                          constraints.maxWidth < 360 ? 8.0 : 16.0;
+                      final verticalInset =
+                          constraints.maxHeight < 480 ? 8.0 : 16.0;
+                      final cardWidth = math.max(
+                        0.0,
+                        math.min(
+                          420.0,
+                          constraints.maxWidth - horizontalInset * 2,
+                        ),
+                      );
+                      final cardHeight = math.max(
+                        0.0,
+                        constraints.maxHeight - verticalInset * 2,
+                      );
+
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalInset,
+                            vertical: verticalInset,
+                          ),
+                          child: SizedBox(
+                            width: cardWidth,
+                            height: cardHeight,
+                            child: SwipeableCard(
+                              onSwipeRight:
+                                  requiresAuthentication ? null : onAccept,
+                              onSwipeLeft:
+                                  requiresAuthentication ? null : onDecline,
+                              child: InviteContentCard(
+                                heroImage: heroImage,
+                                title: invite.eventName,
+                                dateLabel: dateLabel,
+                                location: location,
+                                host: host,
+                                inviter: inviter,
+                                extraInviters: extraInviters,
+                                onAccept: onAccept,
+                                onDecline: onDecline,
+                                onRequestAuthentication:
+                                    onRequestAuthentication,
+                                onViewDetails: onViewDetails,
+                                requiresAuthentication: requiresAuthentication,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
                 if (remainingCount > 0) ...[

@@ -70,4 +70,33 @@ class MockAuthBackend extends AuthBackendContract {
       identityState: 'authenticated',
     );
   }
+
+  @override
+  Future<PhoneOtpChallengeResponse> requestPhoneOtpChallenge({
+    required String phone,
+    String? deliveryChannel,
+  }) async {
+    return PhoneOtpChallengeResponse(
+      challengeId: 'mock-otp-challenge',
+      phone: phone,
+      deliveryChannel: deliveryChannel ?? 'whatsapp',
+      expiresAt: DateTime.utc(2026).toIso8601String(),
+      resendAvailableAt: DateTime.utc(2026).toIso8601String(),
+    );
+  }
+
+  @override
+  Future<PhoneOtpVerificationResponse> verifyPhoneOtpChallenge({
+    required String challengeId,
+    required String phone,
+    required String code,
+    List<String>? anonymousUserIds,
+  }) async {
+    return PhoneOtpVerificationResponse(
+      user: _mockUser,
+      token: _mockToken,
+      userId: _mockUserId,
+      identityState: 'registered',
+    );
+  }
 }

@@ -116,6 +116,14 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminResendEmailSettings settings,
   });
 
+  Future<TenantAdminOutboundIntegrationsSettings>
+      fetchOutboundIntegrationsSettings();
+
+  Future<TenantAdminOutboundIntegrationsSettings>
+      updateOutboundIntegrationsSettings({
+    required TenantAdminOutboundIntegrationsSettings settings,
+  });
+
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   });

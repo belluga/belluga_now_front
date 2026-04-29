@@ -21,4 +21,21 @@ abstract class InvitesBackendContract {
   Future<Map<String, dynamic>> materializeShareCode(String code);
 
   Future<Map<String, dynamic>> importContacts(Map<String, dynamic> payload);
+
+  Future<Map<String, dynamic>> fetchInviteableContacts();
+
+  Future<Map<String, dynamic>> fetchContactGroups();
+
+  Future<Map<String, dynamic>> createContactGroup({
+    required String name,
+    required List<String> recipientAccountProfileIds,
+  });
+
+  Future<Map<String, dynamic>> updateContactGroup({
+    required String groupId,
+    String? name,
+    List<String>? recipientAccountProfileIds,
+  });
+
+  Future<Map<String, dynamic>> deleteContactGroup(String groupId);
 }

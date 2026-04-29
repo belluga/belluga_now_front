@@ -18,7 +18,6 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -28,8 +27,6 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +66,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -81,7 +77,7 @@ void main() {
     controller.onDispose();
   });
 
-  test('toggle favorite requires authentication for anonymous users', () async {
+  test('toggle favorite is allowed for anonymous users', () async {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -93,14 +89,13 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: false),
     );
 
     await controller.init();
     final outcome = controller.toggleFavorite(artist.id);
 
-    expect(outcome, FavoriteToggleOutcome.requiresAuthentication);
-    expect(repository.toggleCalls, isEmpty);
+    expect(outcome, FavoriteToggleOutcome.toggled);
+    expect(repository.toggleCalls, [artist.id]);
     controller.onDispose();
   });
 
@@ -123,7 +118,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -168,7 +162,6 @@ void main() {
 
     final firstController = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
     );
     await firstController.init();
@@ -176,7 +169,6 @@ void main() {
 
     final secondController = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
     );
     await secondController.init();
@@ -205,14 +197,12 @@ void main() {
 
     final firstController = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     await firstController.init();
     firstController.onDispose();
 
     final secondController = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     final loadingTransitions = <bool>[];
     final subscription = secondController.isLoadingStreamValue.stream.listen(
@@ -269,7 +259,6 @@ void main() {
 
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -301,7 +290,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await repository.syncDiscoveryNearbyAccountProfiles();
@@ -326,7 +314,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -358,7 +345,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -387,7 +373,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -445,7 +430,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
     );
 
@@ -510,7 +494,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
     );
 
@@ -573,7 +556,6 @@ void main() {
 
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     final scheduleRepository = _FakeDiscoveryScheduleRepository(
@@ -642,7 +624,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       scheduleRepository: scheduleRepository,
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
@@ -725,7 +706,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -787,7 +767,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
         catalog: const DiscoveryFilterCatalog(
           surface: 'discovery.account_profiles',
@@ -912,7 +891,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -989,7 +967,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1050,7 +1027,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1123,7 +1099,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1186,7 +1161,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -1224,7 +1198,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -1287,7 +1260,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       discoveryFiltersRepository: filtersRepository,
     );
 
@@ -1326,7 +1298,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
         catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
       ),
@@ -1381,7 +1352,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
         catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
       ),
@@ -1434,7 +1404,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
         catalog: const DiscoveryFilterCatalog(
           surface: 'discovery.account_profiles',
@@ -1483,7 +1452,6 @@ void main() {
     final repository = _FailingAccountProfilesRepository();
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -1506,7 +1474,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -1533,7 +1500,6 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
     );
 
     await controller.init();
@@ -1588,7 +1554,6 @@ DiscoveryFilterCatalog
 
 DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
-  required AuthRepositoryContract authRepository,
   DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
 }) {
@@ -1613,7 +1578,6 @@ DiscoveryScreenController _buildDiscoveryController({
   }
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
-    authRepository: authRepository,
     discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
@@ -2025,77 +1989,6 @@ class _InitFailingAccountProfilesRepository
   List<AccountProfileModel> getFavoriteAccountProfiles() {
     return const <AccountProfileModel>[];
   }
-}
-
-class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({
-    required this.isAuthorizedValue,
-  });
-
-  final bool isAuthorizedValue;
-
-  @override
-  BackendContract get backend => throw UnimplementedError();
-
-  @override
-  String get userToken => 'token';
-
-  @override
-  void setUserToken(AuthRepositoryContractParamString? token) {}
-
-  @override
-  Future<String> getDeviceId() async => 'device-1';
-
-  @override
-  Future<String?> getUserId() async => 'user-1';
-
-  @override
-  bool get isUserLoggedIn => isAuthorizedValue;
-
-  @override
-  bool get isAuthorized => isAuthorizedValue;
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> autoLogin() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(
-    AuthRepositoryContractParamString email,
-    AuthRepositoryContractParamString password,
-  ) async {}
-
-  @override
-  Future<void> signUpWithEmailPassword(
-    AuthRepositoryContractParamString name,
-    AuthRepositoryContractParamString email,
-    AuthRepositoryContractParamString password,
-  ) async {}
-
-  @override
-  Future<void> sendTokenRecoveryPassword(
-    AuthRepositoryContractParamString email,
-    AuthRepositoryContractParamString codigoEnviado,
-  ) async {}
-
-  @override
-  Future<void> logout() async {}
-
-  @override
-  Future<void> createNewPassword(
-    AuthRepositoryContractParamString newPassword,
-    AuthRepositoryContractParamString confirmPassword,
-  ) async {}
-
-  @override
-  Future<void> sendPasswordResetEmail(
-    AuthRepositoryContractParamString email,
-  ) async {}
-
-  @override
-  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {

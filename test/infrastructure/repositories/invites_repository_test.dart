@@ -1,7 +1,15 @@
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -80,8 +88,7 @@ void main() {
     );
   });
 
-  test('acceptInviteByCode routes to share accept endpoint',
-      () async {
+  test('acceptInviteByCode routes to share accept endpoint', () async {
     final backend = _FakeInvitesBackend(
       acceptResponse: {
         'invite_id': 'invite-from-share',
@@ -170,6 +177,181 @@ void main() {
     expect(invites, hasLength(1));
     expect(invites.single.message, isEmpty);
   });
+
+  test('importContacts preserves account-profile recipient metadata', () async {
+    final repository = InvitesRepository(
+      backend: _FakeInvitesBackend(
+        importContactsResponse: {
+          'matches': [
+            {
+              'contact_hash': 'hash-1',
+              'type': 'phone',
+              'user_id': 'user-1',
+              'receiver_account_profile_id': 'profile-1',
+              'display_name': 'Matched Contact',
+              'avatar_url': null,
+              'profile_exposure_level': 'capped_profile',
+              'inviteable_reasons': ['contact_match'],
+              'is_inviteable': true,
+            },
+          ],
+        },
+      ),
+    );
+    final contacts = InviteContacts()
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Matched Contact',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    final matches = await repository.importContacts(contacts);
+
+    expect(matches.single.receiverAccountProfileId, 'profile-1');
+    expect(matches.single.profileExposureLevel, 'capped_profile');
+    expect(matches.single.inviteableReasons, ['contact_match']);
+  });
+
+  test('fetchInviteableRecipients reads backend-computed unified list',
+      () async {
+    final repository = InvitesRepository(
+      backend: _FakeInvitesBackend(
+        inviteableContactsResponse: {
+          'items': [
+            {
+              'receiver_user_id': 'user-1',
+              'receiver_account_profile_id': 'profile-1',
+              'display_name': 'Friend Contact',
+              'avatar_url': null,
+              'profile_exposure_level': 'full_profile',
+              'inviteable_reasons': [
+                'contact_match',
+                'favorite_by_you',
+                'favorited_you',
+                'friend',
+              ],
+              'is_inviteable': true,
+            },
+          ],
+        },
+      ),
+    );
+
+    final recipients = await repository.fetchInviteableRecipients();
+
+    expect(recipients, hasLength(1));
+    expect(recipients.single.receiverAccountProfileId, 'profile-1');
+    expect(recipients.single.isFriend, isTrue);
+  });
+
+  test('sendInvites targets receiver account profile when present', () async {
+    final backend = _FakeInvitesBackend(
+      sendInvitesResponse: {
+        'created': [
+          {
+            'invite_id': 'invite-1',
+            'receiver_user_id': 'user-1',
+            'receiver_account_profile_id': 'profile-1',
+          },
+        ],
+        'already_invited': [],
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+    final recipients = InviteRecipients()
+      ..add(
+        EventFriendResume(
+          idValue: UserIdValue()..parse('user-1'),
+          accountProfileIdValue: InviteAccountProfileIdValue()
+            ..parse('profile-1'),
+          displayNameValue: UserDisplayNameValue()..parse('Friend Contact'),
+          avatarUrlValue: UserAvatarValue(),
+        ),
+      );
+
+    await repository.sendInvites(
+      invitesRepoString('event-1', defaultValue: '', isRequired: true),
+      recipients,
+    );
+
+    expect(
+      backend.sentInvitePayloads.single['recipients'],
+      [
+        {'receiver_account_profile_id': 'profile-1'},
+      ],
+    );
+    expect(
+      (await repository.getSentInvitesForEvent(
+        invitesRepoString('event-1', defaultValue: '', isRequired: true),
+      ))
+          .single
+          .friend
+          .accountProfileId,
+      'profile-1',
+    );
+  });
+
+  test('contact group CRUD maps backend payloads', () async {
+    final backend = _FakeInvitesBackend(
+      contactGroupsResponse: {
+        'data': [
+          {
+            'id': 'group-1',
+            'name': 'Rolê',
+            'recipient_account_profile_ids': ['profile-1'],
+          },
+        ],
+      },
+      createContactGroupResponse: {
+        'data': {
+          'id': 'group-2',
+          'name': 'Amigos',
+          'recipient_account_profile_ids': ['profile-2'],
+        },
+      },
+      updateContactGroupResponse: {
+        'data': {
+          'id': 'group-2',
+          'name': 'Amigos próximos',
+          'recipient_account_profile_ids': ['profile-1', 'profile-2'],
+        },
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+
+    final groups = await repository.fetchContactGroups();
+    final created = await repository.createContactGroup(
+      nameValue: InviteContactGroupNameValue()..parse('Amigos'),
+      recipientAccountProfileIds: buildInviteAccountProfileIds(['profile-2']),
+    );
+    final updated = await repository.updateContactGroup(
+      groupIdValue: InviteContactGroupIdValue()..parse('group-2'),
+      nameValue: InviteContactGroupNameValue()..parse('Amigos próximos'),
+      recipientAccountProfileIds: buildInviteAccountProfileIds(
+        ['profile-1', 'profile-2'],
+      ),
+    );
+    await repository.deleteContactGroup(
+      InviteContactGroupIdValue()..parse('group-2'),
+    );
+
+    expect(groups.single.name, 'Rolê');
+    expect(groups.single.recipientAccountProfileIds, ['profile-1']);
+    expect(created?.id, 'group-2');
+    expect(updated?.name, 'Amigos próximos');
+    expect(backend.createdContactGroupPayloads.single, {
+      'name': 'Amigos',
+      'recipient_account_profile_ids': ['profile-2'],
+    });
+    expect(backend.updatedContactGroupPayloads.single, {
+      'group_id': 'group-2',
+      'name': 'Amigos próximos',
+      'recipient_account_profile_ids': ['profile-1', 'profile-2'],
+    });
+    expect(backend.deletedContactGroupIds, ['group-2']);
+  });
 }
 
 class _FakeInvitesBackend implements InvitesBackendContract {
@@ -179,6 +361,12 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? materializeResponse,
     Map<String, dynamic>? acceptResponse,
     Map<String, dynamic>? declineResponse,
+    Map<String, dynamic>? importContactsResponse,
+    Map<String, dynamic>? inviteableContactsResponse,
+    Map<String, dynamic>? contactGroupsResponse,
+    Map<String, dynamic>? createContactGroupResponse,
+    Map<String, dynamic>? updateContactGroupResponse,
+    Map<String, dynamic>? sendInvitesResponse,
   })  : _fetchInvitesResponse = fetchInvitesResponse ?? const {'invites': []},
         _previewResponse = previewResponse ?? const {'invite': null},
         _materializeResponse = materializeResponse ??
@@ -205,6 +393,32 @@ class _FakeInvitesBackend implements InvitesBackendContract {
               'status': 'declined',
               'group_has_other_pending': false,
               'declined_at': null,
+            },
+        _importContactsResponse =
+            importContactsResponse ?? const {'matches': []},
+        _inviteableContactsResponse =
+            inviteableContactsResponse ?? const {'items': []},
+        _contactGroupsResponse = contactGroupsResponse ?? const {'data': []},
+        _createContactGroupResponse = createContactGroupResponse ??
+            const {
+              'data': {
+                'id': 'group-1',
+                'name': 'Grupo',
+                'recipient_account_profile_ids': [],
+              },
+            },
+        _updateContactGroupResponse = updateContactGroupResponse ??
+            const {
+              'data': {
+                'id': 'group-1',
+                'name': 'Grupo',
+                'recipient_account_profile_ids': [],
+              },
+            },
+        _sendInvitesResponse = sendInvitesResponse ??
+            const {
+              'created': [],
+              'already_invited': [],
             };
 
   final Map<String, dynamic> _fetchInvitesResponse;
@@ -212,10 +426,23 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _materializeResponse;
   final Map<String, dynamic> _acceptResponse;
   final Map<String, dynamic> _declineResponse;
+  final Map<String, dynamic> _importContactsResponse;
+  final Map<String, dynamic> _inviteableContactsResponse;
+  final Map<String, dynamic> _contactGroupsResponse;
+  final Map<String, dynamic> _createContactGroupResponse;
+  final Map<String, dynamic> _updateContactGroupResponse;
+  final Map<String, dynamic> _sendInvitesResponse;
 
   int fetchInvitesCalls = 0;
   final List<String> acceptInviteCalls = <String>[];
   final List<String> acceptShareCodeCalls = <String>[];
+  final List<Map<String, dynamic>> sentInvitePayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> createdContactGroupPayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> updatedContactGroupPayloads =
+      <Map<String, dynamic>>[];
+  final List<String> deletedContactGroupIds = <String>[];
 
   @override
   Future<Map<String, dynamic>> acceptInvite(String inviteId) async {
@@ -263,7 +490,49 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> importContacts(
     Map<String, dynamic> payload,
   ) async =>
-      throw UnimplementedError();
+      _importContactsResponse;
+
+  @override
+  Future<Map<String, dynamic>> fetchInviteableContacts() async =>
+      _inviteableContactsResponse;
+
+  @override
+  Future<Map<String, dynamic>> fetchContactGroups() async =>
+      _contactGroupsResponse;
+
+  @override
+  Future<Map<String, dynamic>> createContactGroup({
+    required String name,
+    required List<String> recipientAccountProfileIds,
+  }) async {
+    final payload = {
+      'name': name,
+      'recipient_account_profile_ids': recipientAccountProfileIds,
+    };
+    createdContactGroupPayloads.add(payload);
+    return _createContactGroupResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateContactGroup({
+    required String groupId,
+    String? name,
+    List<String>? recipientAccountProfileIds,
+  }) async {
+    updatedContactGroupPayloads.add({
+      'group_id': groupId,
+      if (name != null) 'name': name,
+      if (recipientAccountProfileIds != null)
+        'recipient_account_profile_ids': recipientAccountProfileIds,
+    });
+    return _updateContactGroupResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteContactGroup(String groupId) async {
+    deletedContactGroupIds.add(groupId);
+    return const <String, dynamic>{};
+  }
 
   @override
   Future<Map<String, dynamic>> materializeShareCode(String code) async =>
@@ -272,8 +541,10 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   @override
   Future<Map<String, dynamic>> sendInvites(
     Map<String, dynamic> payload,
-  ) async =>
-      throw UnimplementedError();
+  ) async {
+    sentInvitePayloads.add(payload);
+    return _sendInvitesResponse;
+  }
 }
 
 Map<String, dynamic> _buildInvitePayload({

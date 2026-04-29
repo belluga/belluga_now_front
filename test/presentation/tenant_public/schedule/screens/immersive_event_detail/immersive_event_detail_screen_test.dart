@@ -161,7 +161,7 @@ void main() {
       ImmersiveEventDetailController(
         userEventsRepository: userEventsRepository,
         invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: true),
+        authRepository: _FakeAuthRepository(authorized: false),
       ),
     );
 
@@ -540,6 +540,71 @@ void main() {
         .tap(find.byKey(const Key('linkedProfileFavoriteButton_artist-1')));
     await tester.pumpAndSettle();
     expect(accountProfilesRepository.toggleFavoriteCalls, 1);
+  });
+
+  testWidgets('anonymous user can favorite linked profile in event detail',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final accountProfilesRepository = _FakeAccountProfilesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        accountProfilesRepository: accountProfilesRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                linkedProfiles: [
+                  _buildLinkedAccountProfile(
+                    id: 'artist-1',
+                    displayName: 'Ananda Torres',
+                    profileType: 'artist',
+                    slug: 'ananda-torres',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final favoriteButton =
+        find.byKey(const Key('linkedProfileFavoriteButton_artist-1'));
+    expect(favoriteButton, findsOneWidget);
+
+    final iconButton = tester.widget<IconButton>(favoriteButton);
+    expect(iconButton.onPressed, isNotNull);
+    iconButton.onPressed?.call();
+    await tester.pumpAndSettle();
+
+    expect(accountProfilesRepository.toggleFavoriteCalls, 1);
+    expect(router.lastReplacedPath, isNull);
+    expect(_takeAllExceptions(tester), isEmpty);
   });
 
   testWidgets(

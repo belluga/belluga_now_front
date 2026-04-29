@@ -42,6 +42,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_map_filter_rule_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_positive_int_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -92,6 +93,12 @@ TenantAdminHexColorValue _hexColor(String raw) {
 TenantAdminOptionalUrlValue _optionalUrl(String raw) {
   final value = TenantAdminOptionalUrlValue();
   value.parse(raw);
+  return value;
+}
+
+TenantAdminPositiveIntValue _positiveInt(int raw) {
+  final value = TenantAdminPositiveIntValue();
+  value.parse(raw.toString());
   return value;
 }
 
@@ -283,7 +290,15 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationOutbound),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(TenantAdminSettingsKeys.hubIntegrationAppLinks),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationPush),
       findsOneWidget,
     );
     expect(
@@ -1519,6 +1534,194 @@ void main() {
       _recipientStrings(settingsRepository.updatedResendEmailSettings!.to),
       equals(['owner@belluga.space', 'ops@belluga.space']),
     );
+  });
+
+  testWidgets('saves outbound webhook settings via remote repository',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.outbound,
+        ),
+      ),
+    );
+
+    final whatsappRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsOutboundWhatsappWebhookEdit,
+      skipOffstage: false,
+    );
+    final otpRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsOutboundOtpSmsUrlEdit,
+      skipOffstage: false,
+    );
+    final ttlRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsOutboundOtpTtlEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveOutbound,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      whatsappRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Webhook WhatsApp'), findsOneWidget);
+    expect(find.text('Secondary OTP Channel com SMS'), findsOneWidget);
+    expect(find.text('URL SMS'), findsOneWidget);
+    expect(find.text('Webhook OTP'), findsNothing);
+    expect(find.text('Usar webhook WhatsApp para OTP'), findsNothing);
+    expect(find.text('Canal OTP'), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: whatsappRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Webhook WhatsApp'),
+      'https://integrations.example/whatsapp-updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: otpRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'URL SMS'),
+      'https://integrations.example/otp-updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: ttlRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'TTL OTP (min)'),
+      '8',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedOutboundIntegrationsSettings, isNotNull);
+    expect(
+      settingsRepository
+          .updatedOutboundIntegrationsSettings!.whatsappWebhookUrl,
+      'https://integrations.example/whatsapp-updated',
+    );
+    expect(
+      settingsRepository.updatedOutboundIntegrationsSettings!.otpWebhookUrl,
+      'https://integrations.example/otp-updated',
+    );
+    expect(
+      settingsRepository
+          .updatedOutboundIntegrationsSettings!.otpUseWhatsappWebhook,
+      isTrue,
+    );
+    expect(
+      settingsRepository
+          .updatedOutboundIntegrationsSettings!.otpDeliveryChannel,
+      'whatsapp',
+    );
+    expect(
+      settingsRepository.updatedOutboundIntegrationsSettings!.otpTtlMinutes,
+      8,
+    );
+  });
+
+  testWidgets('shows SMS URL only when secondary OTP SMS channel is enabled',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository()
+      .._outboundIntegrationsSettings = TenantAdminOutboundIntegrationsSettings(
+        whatsappWebhookUrlValue:
+            _optionalUrl('https://integrations.example/whatsapp'),
+        otpUseWhatsappWebhookValue: _booleanValue(true),
+        otpDeliveryChannelValue: _token('whatsapp'),
+        otpTtlMinutesValue: _positiveInt(10),
+        otpResendCooldownSecondsValue: _positiveInt(60),
+        otpMaxAttemptsValue: _positiveInt(5),
+      );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.outbound,
+        ),
+      ),
+    );
+
+    final smsSwitch = find.byKey(
+      TenantAdminSettingsKeys
+          .technicalIntegrationsOutboundOtpSmsSecondarySwitch,
+      skipOffstage: false,
+    );
+    await tester.scrollUntilVisible(
+      smsSwitch,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Secondary OTP Channel com SMS'), findsOneWidget);
+    expect(find.text('URL SMS'), findsNothing);
+
+    await tester.tap(smsSwitch);
+    await tester.pumpAndSettle();
+
+    expect(find.text('URL SMS'), findsOneWidget);
   });
 
   testWidgets('saves and deletes telemetry integrations via remote repository',
@@ -2761,6 +2964,7 @@ class _FakeTenantAdminSettingsRepository
   final List<String> deletedDomainIds = <String>[];
   String? updatedFirebaseProjectId;
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
+  TenantAdminOutboundIntegrationsSettings? updatedOutboundIntegrationsSettings;
   TenantAdminTelemetryIntegration? lastTelemetryIntegration;
   final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
@@ -2819,6 +3023,17 @@ class _FakeTenantAdminSettingsRepository
     ccRecipients: _resendRecipients(['ops@belluga.space']),
     bccRecipients: TenantAdminResendEmailRecipients(),
     replyToRecipients: _resendRecipients(['reply@belluga.space']),
+  );
+  TenantAdminOutboundIntegrationsSettings _outboundIntegrationsSettings =
+      TenantAdminOutboundIntegrationsSettings(
+    whatsappWebhookUrlValue:
+        _optionalUrl('https://integrations.example/whatsapp'),
+    otpWebhookUrlValue: _optionalUrl('https://integrations.example/otp'),
+    otpUseWhatsappWebhookValue: _booleanValue(true),
+    otpDeliveryChannelValue: _token('whatsapp'),
+    otpTtlMinutesValue: _positiveInt(10),
+    otpResendCooldownSecondsValue: _positiveInt(60),
+    otpMaxAttemptsValue: _positiveInt(5),
   );
   TenantAdminTelemetrySettingsSnapshot _telemetrySnapshot =
       TenantAdminTelemetrySettingsSnapshot(
@@ -2940,6 +3155,12 @@ class _FakeTenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminOutboundIntegrationsSettings>
+      fetchOutboundIntegrationsSettings() async {
+    return _outboundIntegrationsSettings;
+  }
+
+  @override
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
     return _telemetrySnapshot;
   }
@@ -3008,6 +3229,16 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     updatedResendEmailSettings = settings;
     _resendEmailSettings = settings;
+    return settings;
+  }
+
+  @override
+  Future<TenantAdminOutboundIntegrationsSettings>
+      updateOutboundIntegrationsSettings({
+    required TenantAdminOutboundIntegrationsSettings settings,
+  }) async {
+    updatedOutboundIntegrationsSettings = settings;
+    _outboundIntegrationsSettings = settings;
     return settings;
   }
 

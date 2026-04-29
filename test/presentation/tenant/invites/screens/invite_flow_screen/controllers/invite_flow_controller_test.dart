@@ -39,6 +39,7 @@ class _TrackedEvent {
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_TrackedEvent> loggedEvents = [];
   final List<_TrackedEvent> startedEvents = [];
   int _seed = 0;
 
@@ -48,6 +49,15 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
   }) async {
+    loggedEvents.add(
+      _TrackedEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
     return telemetryRepoBool(true);
   }
 
@@ -237,8 +247,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
       confirmedEventIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-        defaultValue: const {},
-      );
+    defaultValue: const {},
+  );
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
@@ -431,17 +441,19 @@ void main() {
     await controller.onDispose();
   });
 
-  test('unauthenticated decision uses canonical invite accept (anonymous conversion)',
+  test(
+      'unauthenticated decision uses canonical invite accept (anonymous conversion)',
       () async {
     final repository = _FakeInvitesRepository(
       initialInvites: [_buildInvite('preview')],
       previewInvite: _buildInvite('preview'),
       materializedInviteId: 'preview',
     );
+    final telemetry = _FakeTelemetryRepository();
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
+      telemetryRepository: telemetry,
       authRepository: _FakeAuthRepository(authorized: false),
     );
 
@@ -451,6 +463,11 @@ void main() {
     expect(repository.previewedShareCodes, ['SHARE-ABC']);
     // Repository.acceptInvite should be called even while unauthorized
     expect(repository.acceptedInviteIds, ['preview']);
+    final acceptedEvent = telemetry.loggedEvents.singleWhere(
+      (event) => event.eventName == 'app_anonymous_invite_accepted',
+    );
+    expect(acceptedEvent.properties?['code'], 'SHARE-ABC');
+    expect(acceptedEvent.properties?['event_id'], 'event-preview');
     await controller.onDispose();
   });
 

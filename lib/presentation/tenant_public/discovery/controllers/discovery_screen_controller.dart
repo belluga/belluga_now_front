@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -32,17 +31,12 @@ class DiscoveryScreenController extends Object
     implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
-    AuthRepositoryContract? authRepository,
     DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
         _discoveryFiltersRepository = discoveryFiltersRepository ??
             (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
                 ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
@@ -56,7 +50,6 @@ class DiscoveryScreenController extends Object
             GetIt.I.get<LocationOriginServiceContract>();
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
-  final AuthRepositoryContract? _authRepository;
   final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
@@ -523,9 +516,6 @@ class DiscoveryScreenController extends Object
   }
 
   FavoriteToggleOutcome toggleFavorite(String accountProfileId) {
-    if (!_isAuthorized) {
-      return FavoriteToggleOutcome.requiresAuthentication;
-    }
     final current = Set<String>.from(favoriteIdsStreamValue.value);
     if (current.contains(accountProfileId)) {
       current.remove(accountProfileId);
@@ -781,8 +771,6 @@ class DiscoveryScreenController extends Object
     }
     return type;
   }
-
-  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
   bool _isLifecycleTokenActive(int lifecycleToken) {
     return !_isDisposed && lifecycleToken == _lifecycleToken;

@@ -153,9 +153,6 @@ class ImmersiveEventDetailController implements Disposable {
   LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
     String accountProfileId,
   ) {
-    if (!_isAuthorized) {
-      return LinkedProfileFavoriteToggleOutcome.requiresAuthentication;
-    }
     final repository = _accountProfilesRepository;
     if (repository == null) {
       return LinkedProfileFavoriteToggleOutcome.unavailable;

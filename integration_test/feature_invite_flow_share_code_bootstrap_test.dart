@@ -6,6 +6,8 @@ import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -92,7 +94,7 @@ void main() {
   });
 
   testWidgets(
-      'unauthenticated share code query param triggers preview instead of accept',
+      'anonymous share code query param previews decision actions without materializing',
       (tester) async {
     final repository = _RecordingInvitesRepository();
     final controller = InviteFlowScreenController(
@@ -124,20 +126,34 @@ void main() {
     await tester.pump();
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+      if (controller.displayInvitesStreamValue.value.isNotEmpty) {
         break;
       }
     }
 
     expect(repository.previewedShareCodes, ['SHARE-CODE-123']);
     expect(repository.materializedShareCodes, isEmpty);
-    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
     expect(controller.displayInvitesStreamValue.value, hasLength(1));
+    controller.markImageLoaded(
+      controller.displayInvitesStreamValue.value.first.eventImageUrl,
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Recusar').evaluate().isNotEmpty &&
+          find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
     expect(router.replaceAllCalled, isFalse);
   });
 
   testWidgets(
-      'invite auth round-trip keeps decision UI and does not fall back to home',
+      'anonymous share preview keeps decision UI and authenticated continuation materializes invite',
       (tester) async {
     final repository = _RecordingInvitesRepository();
     final authRepository = _FakeAuthRepository(authorized: false);
@@ -171,18 +187,34 @@ void main() {
 
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+      if (anonymousController.displayInvitesStreamValue.value.isNotEmpty) {
         break;
       }
     }
 
-    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
-    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
-    await tester.pump();
+    expect(repository.previewedShareCodes, ['SHARE-CODE-123']);
+    expect(repository.materializedShareCodes, isEmpty);
     expect(
-      router.lastPushedPath,
-      '/auth/login?redirect=%2Finvite%3Fcode%3DSHARE-CODE-123',
+      anonymousController.authRequiredForDecisionStreamValue.value,
+      isFalse,
     );
+    expect(anonymousController.displayInvitesStreamValue.value, hasLength(1));
+    anonymousController.markImageLoaded(
+      anonymousController.displayInvitesStreamValue.value.first.eventImageUrl,
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Recusar').evaluate().isNotEmpty &&
+          find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
+    expect(router.lastPushedPath, isNull);
     expect(router.replaceAllCalled, isFalse);
 
     authRepository.authorized = true;
@@ -396,7 +428,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts) async =>
+          InviteContacts contacts) async =>
       const [];
 
   @override
@@ -485,8 +517,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
@@ -601,7 +632,11 @@ RouteData _buildRouteData(
   required Map<String, dynamic> queryParams,
 }) {
   final match = RouteMatch(
-    config: AutoRoute(page: InviteFlowRoute.page, path: '/invite'),
+    config: AutoRoute(
+      page: InviteEntryRoute.page,
+      path: '/invite',
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteEntry),
+    ),
     segments: const ['invite'],
     stringMatch: '/invite',
     key: const ValueKey('invite'),

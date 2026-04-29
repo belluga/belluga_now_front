@@ -66,141 +66,170 @@ class InviteContentCard extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: InviterPill(
-                        inviter: inviter,
-                        extraInviters: extraInviters,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InviteInfoRow(
-                  icon: Icons.event,
-                  text: dateLabel,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 8),
-                InviteInfoRow(
-                  icon: Icons.place,
-                  text: location,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 8),
-                InviteInfoRow(
-                  icon: Icons.music_note,
-                  text: host,
-                  maxLines: 1,
-                ),
-                const Spacer(),
-                if (requiresAuthentication)
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: onRequestAuthentication,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      icon: const Icon(Icons.login),
-                      label: const Text('Entre para Aceitar ou Recusar'),
-                    ),
-                  )
-                else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact =
+                  constraints.maxHeight < 430 || constraints.maxWidth < 280;
+              final contentPadding = isCompact ? 12.0 : 16.0;
+              final primaryGap = isCompact ? 8.0 : 12.0;
+              final secondaryGap = isCompact ? 6.0 : 8.0;
+              final buttonPadding = EdgeInsets.symmetric(
+                horizontal: isCompact ? 8 : 12,
+                vertical: isCompact ? 10 : 14,
+              );
+              final detailsPadding = EdgeInsets.symmetric(
+                vertical: isCompact ? 8 : 10,
+              );
+              final titleStyle = (isCompact
+                      ? theme.textTheme.titleLarge
+                      : theme.textTheme.headlineMedium)
+                  ?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              );
+              final content = Column(
+                mainAxisSize: isCompact ? MainAxisSize.min : MainAxisSize.max,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onDecline,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 14,
-                            ),
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
-                          icon: const Icon(Icons.close),
-                          label: const Text('Recusar'),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Icon(
-                          Icons.swipe,
-                          color: Colors.white.withValues(alpha: 0.85),
-                          size: 20,
-                        ),
-                      ),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onAccept,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 14,
-                            ),
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
-                          icon: const Icon(BooraIcons.invite_solid),
-                          label: const Text('Aceitar'),
+                        child: InviterPill(
+                          inviter: inviter,
+                          extraInviters: extraInviters,
                         ),
                       ),
                     ],
                   ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: onViewDetails,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  SizedBox(height: primaryGap),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: titleStyle,
+                  ),
+                  SizedBox(height: primaryGap),
+                  InviteInfoRow(
+                    icon: Icons.event,
+                    text: dateLabel,
+                    maxLines: 1,
+                  ),
+                  SizedBox(height: secondaryGap),
+                  InviteInfoRow(
+                    icon: Icons.place,
+                    text: location,
+                    maxLines: 1,
+                  ),
+                  SizedBox(height: secondaryGap),
+                  InviteInfoRow(
+                    icon: Icons.music_note,
+                    text: host,
+                    maxLines: 1,
+                  ),
+                  if (isCompact)
+                    SizedBox(height: primaryGap)
+                  else
+                    const Spacer(),
+                  if (requiresAuthentication)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: onRequestAuthentication,
+                        style: FilledButton.styleFrom(
+                          padding: buttonPadding,
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        icon: const Icon(Icons.login),
+                        label: Text(
+                          'Entre para Aceitar ou Recusar',
+                          maxLines: isCompact ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onDecline,
+                            style: OutlinedButton.styleFrom(
+                              padding: buttonPadding,
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            icon: const Icon(Icons.close),
+                            label: const Text('Recusar'),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isCompact ? 6 : 10,
+                          ),
+                          child: Icon(
+                            Icons.swipe,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            size: isCompact ? 18 : 20,
+                          ),
+                        ),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: onAccept,
+                            style: FilledButton.styleFrom(
+                              padding: buttonPadding,
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            icon: const Icon(BooraIcons.invite_solid),
+                            label: const Text('Aceitar'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  SizedBox(height: isCompact ? 6 : 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: onViewDetails,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: detailsPadding,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ver detalhes do evento',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    child: const Text(
-                      'Ver detalhes do evento',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+
+              return Padding(
+                padding: EdgeInsets.all(contentPadding),
+                child: isCompact
+                    ? SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        child: content,
+                      )
+                    : content,
+              );
+            },
           ),
         ],
       ),

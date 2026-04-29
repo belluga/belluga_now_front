@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
@@ -22,6 +25,8 @@ import 'package:belluga_now/domain/invites/value_objects/invite_message_value.da
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -179,6 +184,52 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    final response = await _backend.fetchInviteableContacts();
+    return _responseDecoder.decodeInviteableRecipients(response['items']);
+  }
+
+  @override
+  Future<List<InviteContactGroup>> fetchContactGroups() async {
+    final response = await _backend.fetchContactGroups();
+    return _responseDecoder.decodeContactGroups(response['data']);
+  }
+
+  @override
+  Future<InviteContactGroup?> createContactGroup({
+    required InviteContactGroupNameValue nameValue,
+    required InviteAccountProfileIds recipientAccountProfileIds,
+  }) async {
+    final response = await _backend.createContactGroup(
+      name: nameValue.value,
+      recipientAccountProfileIds:
+          recipientAccountProfileIds.toList(growable: false),
+    );
+    return _responseDecoder.decodeContactGroup(response['data'] ?? response);
+  }
+
+  @override
+  Future<InviteContactGroup?> updateContactGroup({
+    required InviteContactGroupIdValue groupIdValue,
+    InviteContactGroupNameValue? nameValue,
+    InviteAccountProfileIds? recipientAccountProfileIds,
+  }) async {
+    final response = await _backend.updateContactGroup(
+      groupId: groupIdValue.value,
+      name: nameValue?.value,
+      recipientAccountProfileIds:
+          recipientAccountProfileIds?.toList(growable: false),
+    );
+    return _responseDecoder.decodeContactGroup(response['data'] ?? response);
+  }
+
+  @override
+  Future<void> deleteContactGroup(
+      InviteContactGroupIdValue groupIdValue) async {
+    await _backend.deleteContactGroup(groupIdValue.value);
+  }
+
+  @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
@@ -229,9 +280,13 @@ class InvitesRepository extends InvitesRepositoryContract
         if (normalizedOccurrenceId != null && normalizedOccurrenceId.isNotEmpty)
           'occurrence_id': normalizedOccurrenceId,
       },
-      'recipients': recipients.items
-          .map((recipient) => {'receiver_user_id': recipient.id})
-          .toList(growable: false),
+      'recipients': recipients.items.map((recipient) {
+        final accountProfileId = recipient.accountProfileId.trim();
+        if (accountProfileId.isNotEmpty) {
+          return {'receiver_account_profile_id': accountProfileId};
+        }
+        return {'receiver_user_id': recipient.id};
+      }).toList(growable: false),
       if (normalizedMessage != null && normalizedMessage.isNotEmpty)
         'message': normalizedMessage,
     });
@@ -254,7 +309,11 @@ class InvitesRepository extends InvitesRepositoryContract
     final now = DateTime.now();
 
     for (final recipient in recipients.items) {
-      if (!acknowledgedRecipientIds.contains(recipient.id)) {
+      final accountProfileId = recipient.accountProfileId.trim();
+      final acknowledged = acknowledgedRecipientIds.contains(recipient.id) ||
+          (accountProfileId.isNotEmpty &&
+              acknowledgedRecipientIds.contains(accountProfileId));
+      if (!acknowledged) {
         continue;
       }
       existingByRecipient[recipient.id] = SentInviteStatus(

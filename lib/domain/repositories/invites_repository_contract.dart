@@ -1,10 +1,15 @@
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -145,6 +150,28 @@ abstract class InvitesRepositoryContract {
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
   );
+
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
+      const <InviteableRecipient>[];
+
+  Future<List<InviteContactGroup>> fetchContactGroups() async =>
+      const <InviteContactGroup>[];
+
+  Future<InviteContactGroup?> createContactGroup({
+    required InviteContactGroupNameValue nameValue,
+    required InviteAccountProfileIds recipientAccountProfileIds,
+  }) async =>
+      null;
+
+  Future<InviteContactGroup?> updateContactGroup({
+    required InviteContactGroupIdValue groupIdValue,
+    InviteContactGroupNameValue? nameValue,
+    InviteAccountProfileIds? recipientAccountProfileIds,
+  }) async =>
+      null;
+
+  Future<void> deleteContactGroup(
+      InviteContactGroupIdValue groupIdValue) async {}
 
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,

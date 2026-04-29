@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
@@ -67,6 +68,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   bool throwOnImportContacts = false;
+  List<InviteableRecipient> inviteableRecipients =
+      const <InviteableRecipient>[];
+  final sentRecipientAccountProfileIds = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -137,6 +141,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
+      inviteableRecipients;
+
+  @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
@@ -154,7 +162,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InviteRecipients recipients, {
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? message,
-  }) async {}
+  }) async {
+    sentRecipientAccountProfileIds.addAll(
+      recipients.items.map((recipient) => recipient.accountProfileId),
+    );
+  }
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
@@ -270,6 +282,100 @@ void main() {
       expect(controller.friendsSuggestionsStreamValue.value, isEmpty);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
       expect(controller.shareCodeStreamValue.value?.code, 'SHARE-CODE');
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'init still shows backend inviteables when contact import fails',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato 1',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..throwOnImportContacts = true
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Favorite Contact',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(controller.friendsSuggestionsStreamValue.value, hasLength(1));
+      expect(
+        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        'Favorite Contact',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'init uses backend inviteables and sends account-profile recipient identity',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato 1',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Matched Contact',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>[
+              'contact_match',
+              'favorite_by_you',
+              'favorited_you',
+              'friend',
+            ],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      final suggestion =
+          controller.friendsSuggestionsStreamValue.value.single.friend;
+      expect(suggestion.accountProfileId, 'profile-1');
+      expect(suggestion.matchLabel, 'Amigo no Belluga');
+
+      controller.selectInviteableReason('friend');
+      expect(controller.selectedInviteableReasonStreamValue.value, 'friend');
+      controller.selectInviteableReason(null);
+      expect(controller.selectedInviteableReasonStreamValue.value, isNull);
+
+      await controller.sendInviteToFriend(suggestion);
+
+      expect(invitesRepository.sentRecipientAccountProfileIds, ['profile-1']);
 
       await controller.onDispose();
     },

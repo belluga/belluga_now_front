@@ -37,6 +37,8 @@ dependencies:
   image_picker: ^1.1.2
   image: ^4.5.4
   intl: ^0.20.2
+  phone_form_field: ^10.0.17
+  pinput: ^6.0.2
   google_fonts: ^6.3.2
   latlong2: ^0.9.1
   map_launcher: ^4.4.2

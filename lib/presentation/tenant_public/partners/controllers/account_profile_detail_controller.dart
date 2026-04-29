@@ -150,9 +150,6 @@ class AccountProfileDetailController implements Disposable {
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {
-    if (!_isAuthorized) {
-      return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
-    }
     _accountProfilesRepository.toggleFavorite(
       AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
     );
@@ -192,8 +189,6 @@ class AccountProfileDetailController implements Disposable {
     }
     return GetIt.I.get<AppData>().profileTypeRegistry;
   }
-
-  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
   String? get authenticatedUserDisplayName {
     final raw =

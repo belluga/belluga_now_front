@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 
 /// Unified application configuration model (all platforms).
 class AppData {
@@ -42,6 +43,7 @@ class AppData {
   final TelemetryContextSettings telemetryContextSettings;
   final FirebaseSettings? firebaseSettings;
   final PushSettings? pushSettings;
+  final DomainBooleanValue phoneOtpSmsFallbackEnabledValue;
   final CityCoordinate? tenantDefaultOrigin;
   final DistanceInMetersValue mapRadiusMinMetersValue;
   final DistanceInMetersValue mapRadiusDefaultMetersValue;
@@ -72,6 +74,7 @@ class AppData {
     required this.telemetryContextSettings,
     required this.firebaseSettings,
     required this.pushSettings,
+    DomainBooleanValue? phoneOtpSmsFallbackEnabledValue,
     required this.tenantDefaultOrigin,
     required this.mapRadiusMinMetersValue,
     required this.mapRadiusDefaultMetersValue,
@@ -82,7 +85,8 @@ class AppData {
     required this.mainColor,
     required this.mainLogoLightUrl,
     required this.mainLogoDarkUrl,
-  });
+  }) : phoneOtpSmsFallbackEnabledValue =
+            phoneOtpSmsFallbackEnabledValue ?? _defaultFalseBooleanValue();
 
   AppType get appType =>
       platformType.value ?? platformType.defaultValue ?? AppType.mobile;
@@ -94,6 +98,7 @@ class AppData {
   double get mapRadiusMinMeters => mapRadiusMinMetersValue.value;
   double get mapRadiusDefaultMeters => mapRadiusDefaultMetersValue.value;
   double get mapRadiusMaxMeters => mapRadiusMaxMetersValue.value;
+  bool get phoneOtpSmsFallbackEnabled => phoneOtpSmsFallbackEnabledValue.value;
   AppDataMapFilterCatalogKeysValue get mapFilterCatalogKeys =>
       mapFilterCatalogKeysValue;
 
@@ -102,6 +107,10 @@ class AppData {
   MainLogoUrlValue get mainLogoUrl => mainLogoDarkUrl;
 
   String get schema => href.split(hostname).first;
+
+  static DomainBooleanValue _defaultFalseBooleanValue() {
+    return DomainBooleanValue()..parse('false');
+  }
 
   @override
   String toString() {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_text_value.dart';
@@ -10,9 +12,18 @@ import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/c
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/form_field_controller_password_login.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/sliver_app_bar_controller.dart';
 import 'package:get_it/get_it.dart';
+import 'package:phone_form_field/phone_form_field.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+enum AuthPhoneOtpStep {
+  phoneEntry,
+  otpVerification,
+}
+
 abstract class AuthLoginControllerContract extends Object with Disposable {
+  static const phoneOtpDeliveryChannelWhatsapp = 'whatsapp';
+  static const phoneOtpDeliveryChannelSms = 'sms';
+
   AuthLoginControllerContract({
     AuthRepositoryContract? authRepository,
     String? initialEmail,
@@ -38,6 +49,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   AppData get appData => _appData;
 
   final loginFormKey = GlobalKey<FormState>();
+  final phoneOtpFormKey = GlobalKey<FormState>();
+  final otpCodeFormKey = GlobalKey<FormState>();
 
   final StreamValue<bool> buttonLoadingValue = StreamValue<bool>(
     defaultValue: false,
@@ -47,11 +60,23 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   final StreamValue<bool?> loginResultStreamValue = StreamValue<bool?>();
   final StreamValue<bool?> signUpResultStreamValue = StreamValue<bool?>();
+  final StreamValue<AuthPhoneOtpStep> phoneOtpStepStreamValue =
+      StreamValue<AuthPhoneOtpStep>(
+    defaultValue: AuthPhoneOtpStep.phoneEntry,
+  );
+  final StreamValue<AuthPhoneOtpChallenge?>
+      currentPhoneOtpChallengeStreamValue =
+      StreamValue<AuthPhoneOtpChallenge?>();
 
   bool get isAuthorized => _authRepository.isAuthorized;
+  bool get isPhoneOtpSmsFallbackAvailable =>
+      _appData.phoneOtpSmsFallbackEnabled;
   bool get isLandlordContext {
     if (_appData.typeValue.value == EnvironmentType.landlord) {
       return true;
+    }
+    if (_appData.appType != AppType.web) {
+      return false;
     }
     final landlordHost = _resolveLandlordHost(BellugaConstants.landlordDomain);
     return landlordHost != null && _appData.hostname == landlordHost;
@@ -65,6 +90,13 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final TextEditingController signupEmailController = TextEditingController();
   final TextEditingController signupPasswordController =
       TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController otpCodeController = TextEditingController();
+  final PhoneController phoneNumberController = PhoneController(
+    initialValue: const PhoneNumber(isoCode: IsoCode.BR, nsn: ''),
+  );
+  final FocusNode phoneFocusNode = FocusNode();
+  final FocusNode otpCodeFocusNode = FocusNode();
 
   final generalErrorStreamValue = StreamValue<String?>();
 
@@ -82,6 +114,59 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   bool validate() => loginFormKey.currentState?.validate() ?? false;
+  bool validatePhoneForm() {
+    final state = phoneOtpFormKey.currentState;
+    if (state != null) {
+      return state.validate();
+    }
+
+    if (phoneNumberController.value.nsn.trim().isNotEmpty) {
+      return validatePhoneNumberValue(phoneNumberController.value) == null;
+    }
+    return validatePhoneInput(phoneController.text) == null;
+  }
+
+  bool validateOtpCodeForm() {
+    final state = otpCodeFormKey.currentState;
+    if (state != null) {
+      return state.validate();
+    }
+
+    return validateOtpCode(otpCodeController.text) == null;
+  }
+
+  String? validatePhoneInput(String? raw) {
+    final value = (raw ?? '').trim();
+    final digits = value.replaceAll(RegExp(r'\D+'), '');
+    if (digits.length < 10) {
+      return 'Informe um telefone valido.';
+    }
+    if (digits.length > 15) {
+      return 'O telefone informado e muito longo.';
+    }
+
+    return null;
+  }
+
+  String? validatePhoneNumberValue(PhoneNumber? phoneNumber) {
+    if (phoneNumber == null || phoneNumber.nsn.trim().isEmpty) {
+      return 'Informe seu telefone.';
+    }
+    if (!phoneNumber.isValid()) {
+      return 'Informe um telefone valido.';
+    }
+
+    return null;
+  }
+
+  String? validateOtpCode(String? raw) {
+    final value = (raw ?? '').trim();
+    if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
+      return 'Informe o codigo de 6 digitos.';
+    }
+
+    return null;
+  }
 
   void resetSignupControllers() {
     signupNameController.clear();
@@ -144,6 +229,136 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
     buttonLoadingValue.addValue(false);
     fieldEnabled.addValue(true);
+  }
+
+  void updatePhoneOtpInput(PhoneNumber phoneNumber) {
+    phoneController.text = phoneNumber.international;
+  }
+
+  Future<void> requestPhoneOtpChallenge({
+    String deliveryChannel = phoneOtpDeliveryChannelWhatsapp,
+  }) async {
+    if (buttonLoadingValue.value || !fieldEnabled.value) {
+      return;
+    }
+
+    final normalizedDeliveryChannel =
+        deliveryChannel.trim().toLowerCase().isEmpty
+            ? phoneOtpDeliveryChannelWhatsapp
+            : deliveryChannel.trim().toLowerCase();
+
+    buttonLoadingValue.addValue(true);
+    fieldEnabled.addValue(false);
+    _cleanAllErrors();
+
+    try {
+      if (normalizedDeliveryChannel == phoneOtpDeliveryChannelSms &&
+          !isPhoneOtpSmsFallbackAvailable) {
+        generalErrorStreamValue.addValue(
+          'SMS indisponivel para este ambiente.',
+        );
+        return;
+      }
+
+      if (!validatePhoneForm()) {
+        return;
+      }
+
+      final phone = _normalizedPhoneForOtpChallenge();
+      phoneController.text = phone;
+      final challenge = await _authRepository.requestPhoneOtpChallenge(
+        _authTextValue(phone),
+        deliveryChannel: _authTextValue(normalizedDeliveryChannel),
+      );
+      currentPhoneOtpChallengeStreamValue.addValue(challenge);
+      phoneController.text = challenge.phone;
+      _syncPhoneNumberController(challenge.phone);
+      otpCodeController.clear();
+      phoneOtpStepStreamValue.addValue(AuthPhoneOtpStep.otpVerification);
+    } on BellugaAuthError catch (e) {
+      generalErrorStreamValue.addValue(e.message);
+    } catch (e) {
+      generalErrorStreamValue.addValue(_resolveUnknownError(e));
+    } finally {
+      buttonLoadingValue.addValue(false);
+      fieldEnabled.addValue(true);
+    }
+  }
+
+  Future<void> requestPhoneOtpSmsChallenge() {
+    return requestPhoneOtpChallenge(
+      deliveryChannel: phoneOtpDeliveryChannelSms,
+    );
+  }
+
+  Future<void> resendPhoneOtpChallenge() {
+    final deliveryChannel =
+        currentPhoneOtpChallengeStreamValue.value?.deliveryChannel ??
+            phoneOtpDeliveryChannelWhatsapp;
+    return requestPhoneOtpChallenge(deliveryChannel: deliveryChannel);
+  }
+
+  Future<void> verifyPhoneOtpChallenge() async {
+    buttonLoadingValue.addValue(true);
+    fieldEnabled.addValue(false);
+    _cleanAllErrors();
+
+    try {
+      if (!validateOtpCodeForm()) {
+        loginResultStreamValue.addValue(false);
+        return;
+      }
+
+      final challenge = currentPhoneOtpChallengeStreamValue.value;
+      if (challenge == null) {
+        generalErrorStreamValue.addValue(
+          'Solicite um novo codigo para continuar.',
+        );
+        loginResultStreamValue.addValue(false);
+        return;
+      }
+
+      await _authRepository.verifyPhoneOtpChallenge(
+        challengeId: _authTextValue(challenge.challengeId),
+        phone: _authTextValue(challenge.phone),
+        code: _authTextValue(otpCodeController.text.trim()),
+      );
+      loginResultStreamValue.addValue(_authRepository.isAuthorized);
+    } on BellugaAuthError catch (e) {
+      generalErrorStreamValue.addValue(e.message);
+      loginResultStreamValue.addValue(false);
+    } catch (e) {
+      generalErrorStreamValue.addValue(_resolveUnknownError(e));
+      loginResultStreamValue.addValue(false);
+    } finally {
+      buttonLoadingValue.addValue(false);
+      fieldEnabled.addValue(true);
+    }
+  }
+
+  void editPhoneNumber() {
+    otpCodeController.clear();
+    currentPhoneOtpChallengeStreamValue.addValue(null);
+    phoneOtpStepStreamValue.addValue(AuthPhoneOtpStep.phoneEntry);
+  }
+
+  String _normalizedPhoneForOtpChallenge() {
+    final phoneNumber = phoneNumberController.value;
+    if (phoneNumber.nsn.trim().isNotEmpty) {
+      return phoneNumber.international;
+    }
+    return phoneController.text.trim();
+  }
+
+  void _syncPhoneNumberController(String rawPhone) {
+    try {
+      phoneNumberController.value = PhoneNumber.parse(
+        rawPhone,
+        destinationCountry: IsoCode.BR,
+      );
+    } catch (_) {
+      // expected_control_flow: backend may return a legacy phone shape.
+    }
   }
 
   Future<void> signUpWithEmailPassword(
@@ -230,11 +445,18 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signupNameController.dispose();
     signupEmailController.dispose();
     signupPasswordController.dispose();
+    phoneController.dispose();
+    otpCodeController.dispose();
+    phoneNumberController.dispose();
+    phoneFocusNode.dispose();
+    otpCodeFocusNode.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();
     fieldEnabled.dispose();
     loginResultStreamValue.dispose();
     signUpResultStreamValue.dispose();
+    phoneOtpStepStreamValue.dispose();
+    currentPhoneOtpChallengeStreamValue.dispose();
     sliverAppBarController.dispose();
   }
 }
