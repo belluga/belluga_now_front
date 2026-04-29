@@ -220,7 +220,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       throw UnimplementedError();
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) =>
       throw UnimplementedError();

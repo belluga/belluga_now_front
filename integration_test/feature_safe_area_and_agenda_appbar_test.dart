@@ -308,17 +308,19 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
 
 class FakeUserEventsRepository implements UserEventsRepositoryContract {
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      _confirmedEventIdsStream =
+      _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedEventIdsStream => _confirmedEventIdsStream;
+      get confirmedOccurrenceIdsStream => _confirmedOccurrenceIdsStream;
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -327,16 +329,18 @@ class FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 }
 
 class FakeInvitesRepository extends InvitesRepositoryContract {
@@ -402,11 +406,11 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return [];
   }

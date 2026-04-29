@@ -22,7 +22,9 @@ final class InviteFromEventFactory {
     required Uri fallbackImageUri,
   }) {
     final eventName = event.title.value;
-    final rawEventDate = event.dateTimeStart.value;
+    final selectedOccurrence = event.selectedOccurrence;
+    final rawEventDate =
+        selectedOccurrence?.dateTimeStart ?? event.dateTimeStart.value;
     final eventDate = rawEventDate == null
         ? DateTime.now()
         : TimezoneConverter.utcToLocal(rawEventDate);
@@ -69,7 +71,7 @@ final class InviteFromEventFactory {
         defaultValue: 'free_confirmation_only',
       )..parse('free_confirmation_only'),
       occurrenceIdValue: InviteOccurrenceIdValue()
-        ..parse(event.dateTimeStart.value?.toIso8601String() ?? eventId),
+        ..parse(event.selectedOccurrenceId),
     );
   }
 

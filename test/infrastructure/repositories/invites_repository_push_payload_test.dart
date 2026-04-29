@@ -1,3 +1,4 @@
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,7 @@ void main() {
         {
           'id': 'invite-push-1',
           'event_id': 'event-123',
+          'occurrence_id': 'occurrence-123',
           'event_name': 'Evento Destaque',
           'event_date': DateTime.now().toIso8601String(),
           'event_image_url': 'https://example.com/event.png',
@@ -63,13 +65,12 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       throw UnimplementedError();
 
   @override
-  Future<Map<String, dynamic>> sendInvites(
-          Map<String, dynamic> payload) async =>
+  Future<Map<String, dynamic>> sendInvites(InviteSendRequest request) async =>
       throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> createShareCode(
-          Map<String, dynamic> payload) async =>
+          InviteShareCodeCreateRequest request) async =>
       throw UnimplementedError();
 
   @override
@@ -86,7 +87,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> importContacts(
-          Map<String, dynamic> payload) async =>
+          InviteContactImportRequest request) async =>
       throw UnimplementedError();
 
   @override

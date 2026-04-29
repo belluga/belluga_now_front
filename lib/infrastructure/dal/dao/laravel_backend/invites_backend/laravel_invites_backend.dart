@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:dio/dio.dart';
@@ -49,18 +50,20 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> sendInvites(Map<String, dynamic> payload) {
+  Future<Map<String, dynamic>> sendInvites(InviteSendRequest request) {
     return _post(
       '$_apiBaseUrl/v1/invites',
-      data: payload,
+      data: request.toJson(),
     );
   }
 
   @override
-  Future<Map<String, dynamic>> createShareCode(Map<String, dynamic> payload) {
+  Future<Map<String, dynamic>> createShareCode(
+    InviteShareCodeCreateRequest request,
+  ) {
     return _post(
       '$_apiBaseUrl/v1/invites/share',
-      data: payload,
+      data: request.toJson(),
     );
   }
 
@@ -80,10 +83,12 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> importContacts(Map<String, dynamic> payload) {
+  Future<Map<String, dynamic>> importContacts(
+    InviteContactImportRequest request,
+  ) {
     return _post(
       '$_apiBaseUrl/v1/contacts/import',
-      data: payload,
+      data: request.toJson(),
     );
   }
 

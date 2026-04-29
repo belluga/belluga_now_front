@@ -383,7 +383,7 @@ class TenantHomeAgendaController extends Object
       debugPrint('TenantHomeAgendaController.init invites failed: $error');
     }
     try {
-      await _userEventsRepository.refreshConfirmedEventIds();
+      await _userEventsRepository.refreshConfirmedOccurrenceIds();
     } catch (error) {
       debugPrint(
           'TenantHomeAgendaController.init confirmed ids failed: $error');
@@ -731,9 +731,11 @@ class TenantHomeAgendaController extends Object
     final filter = inviteFilterStreamValue.value;
     if (filter == InviteFilter.none) return events;
 
-    final confirmedIds = _userEventsRepository.confirmedEventIdsStream.value;
+    final confirmedIds =
+        _userEventsRepository.confirmedOccurrenceIdsStream.value;
     final pendingIds = _invitesRepository.pendingInvitesStreamValue.value
-        .map((invite) => invite.eventId)
+        .map((invite) => invite.occurrenceId?.trim() ?? '')
+        .where((occurrenceId) => occurrenceId.isNotEmpty)
         .toSet();
 
     bool isConfirmed(String id) =>
@@ -741,7 +743,7 @@ class TenantHomeAgendaController extends Object
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
-      final id = event.id.value;
+      final id = _eventOccurrenceIdentity(event);
       switch (filter) {
         case InviteFilter.none:
           return true;
@@ -799,20 +801,23 @@ class TenantHomeAgendaController extends Object
     return true;
   }
 
-  bool isEventConfirmed(String eventId) => _userEventsRepository
-      .isEventConfirmed(
+  bool isOccurrenceConfirmed(String occurrenceId) => _userEventsRepository
+      .isOccurrenceConfirmed(
         userEventsRepoString(
-          eventId,
+          occurrenceId,
           defaultValue: '',
           isRequired: true,
         ),
       )
       .value;
 
-  int pendingInviteCount(String eventId) =>
+  int pendingInviteCount(String occurrenceId) =>
       _invitesRepository.pendingInvitesStreamValue.value
-          .where((invite) => invite.eventId == eventId)
+          .where((invite) => invite.occurrenceId == occurrenceId)
           .length;
+
+  String _eventOccurrenceIdentity(EventModel event) =>
+      event.selectedOccurrenceId?.trim() ?? '';
 
   String? distanceLabelFor(VenueEventResume event) {
     final userCoordinate = _currentCacheReferenceOrigin();
@@ -885,7 +890,7 @@ class TenantHomeAgendaController extends Object
     _pendingInvitesSubscription?.cancel();
 
     _confirmedEventsSubscription =
-        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =

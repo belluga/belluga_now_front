@@ -36,7 +36,7 @@ abstract class InvitesRepositoryContract {
   final shareCodePreviewInviteStreamValue =
       StreamValue<InviteModel?>(defaultValue: null);
 
-  final sentInvitesByEventStreamValue = StreamValue<
+  final sentInvitesByOccurrenceStreamValue = StreamValue<
       Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>(
     defaultValue: const <InvitesRepositoryContractPrimString,
         List<SentInviteStatus>>{},
@@ -175,17 +175,17 @@ abstract class InvitesRepositoryContract {
 
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   });
 
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventId,
     InviteRecipients recipients, {
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? message,
   });
 
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
-      InvitesRepositoryContractPrimString eventId);
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
+      InvitesRepositoryContractPrimString occurrenceId);
 }

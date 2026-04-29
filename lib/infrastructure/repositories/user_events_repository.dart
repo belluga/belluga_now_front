@@ -52,31 +52,30 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     return thumbUriValue;
   }
 
-  /// Stream of confirmed event IDs
+  /// Stream of confirmed occurrence IDs.
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
 
-  /// In-memory storage for confirmed event IDs
+  /// In-memory storage for confirmed occurrence IDs.
   /// We use the stream value as the source of truth
-  Set<UserEventsRepositoryContractPrimString> get _confirmedEventIds =>
-      confirmedEventIdsStream.value;
+  Set<UserEventsRepositoryContractPrimString> get _confirmedOccurrenceIds =>
+      confirmedOccurrenceIdsStream.value;
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
-    final response = await _backend.fetchConfirmedEventIds();
-    final eventIdsRaw = response['confirmed_event_ids'];
-    if (eventIdsRaw is! List) {
-      confirmedEventIdsStream.addValue(
-        const <UserEventsRepositoryContractPrimString>{},
+  Future<void> refreshConfirmedOccurrenceIds() async {
+    final response = await _backend.fetchConfirmedOccurrenceIds();
+    final occurrenceIdsRaw = response['confirmed_occurrence_ids'];
+    if (occurrenceIdsRaw is! List) {
+      throw StateError(
+        'User events response missing confirmed_occurrence_ids.',
       );
-      return;
     }
 
-    final next = eventIdsRaw
+    final next = occurrenceIdsRaw
         .map(
           (item) => userEventsRepoString(
             item,
@@ -86,7 +85,7 @@ class UserEventsRepository implements UserEventsRepositoryContract {
         )
         .where((value) => value.value.isNotEmpty)
         .toSet();
-    confirmedEventIdsStream.addValue(next);
+    confirmedOccurrenceIdsStream.addValue(next);
   }
 
   @override
@@ -115,26 +114,34 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {
-    await _backend.confirmAttendance(eventId: eventId.value);
-    await refreshConfirmedEventIds();
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    await _backend.confirmAttendance(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+    );
+    await refreshConfirmedOccurrenceIds();
   }
 
   @override
   Future<void> unconfirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {
-    await _backend.unconfirmAttendance(eventId: eventId.value);
-    await refreshConfirmedEventIds();
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    await _backend.unconfirmAttendance(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+    );
+    await refreshConfirmedOccurrenceIds();
   }
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
-    UserEventsRepositoryContractPrimString eventId,
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
+    UserEventsRepositoryContractPrimString occurrenceId,
   ) {
-    final normalized = eventId.value;
-    final isConfirmed = _confirmedEventIds.any(
+    final normalized = occurrenceId.value;
+    final isConfirmed = _confirmedOccurrenceIds.any(
       (confirmed) => confirmed.value == normalized,
     );
     return userEventsRepoBool(

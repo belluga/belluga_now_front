@@ -7,31 +7,36 @@ typedef UserEventsRepositoryContractPrimString
 typedef UserEventsRepositoryContractPrimBool
     = UserEventsRepositoryContractBoolValue;
 
-/// Repository contract for user-specific event relationships
-/// Handles confirmed events, featured events, and user event actions
+/// Repository contract for user-specific event relationships.
+/// Attendance confirmation identity is occurrence-scoped; event IDs are route
+/// context only.
 abstract class UserEventsRepositoryContract {
-  /// Stream of confirmed event IDs to notify listeners of changes
+  /// Stream of confirmed occurrence IDs to notify listeners of changes.
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedEventIdsStream;
+      get confirmedOccurrenceIdsStream;
 
-  /// Refresh confirmed event IDs from backend authoritative source.
-  Future<void> refreshConfirmedEventIds();
+  /// Refresh confirmed occurrence IDs from backend authoritative source.
+  Future<void> refreshConfirmedOccurrenceIds();
 
-  /// Fetch events that the user has confirmed attendance for
+  /// Fetch occurrences that the user has confirmed attendance for.
   Future<List<VenueEventResume>> fetchMyEvents();
 
   /// Fetch featured/recommended events for the user
   Future<List<VenueEventResume>> fetchFeaturedEvents();
 
-  /// Mark an event as confirmed for the user
+  /// Mark an occurrence as confirmed for the user.
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId);
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  });
 
-  /// Remove confirmation for an event
+  /// Remove confirmation for an occurrence.
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId);
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  });
 
-  /// Check if user has confirmed attendance for an event
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
-      UserEventsRepositoryContractPrimString eventId);
+  /// Check if user has confirmed attendance for an occurrence.
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
+      UserEventsRepositoryContractPrimString occurrenceId);
 }

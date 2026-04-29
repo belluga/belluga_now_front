@@ -440,7 +440,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'SHARE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
@@ -450,7 +450,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
           InvitesRepositoryContractPrimString eventSlug) async =>
       const [];
 }
@@ -562,7 +562,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
@@ -574,17 +574,21 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }

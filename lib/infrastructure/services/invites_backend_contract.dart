@@ -1,3 +1,5 @@
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+
 abstract class InvitesBackendContract {
   Future<Map<String, dynamic>> fetchInvites({
     required int page,
@@ -10,9 +12,11 @@ abstract class InvitesBackendContract {
 
   Future<Map<String, dynamic>> declineInvite(String inviteId);
 
-  Future<Map<String, dynamic>> sendInvites(Map<String, dynamic> payload);
+  Future<Map<String, dynamic>> sendInvites(InviteSendRequest request);
 
-  Future<Map<String, dynamic>> createShareCode(Map<String, dynamic> payload);
+  Future<Map<String, dynamic>> createShareCode(
+    InviteShareCodeCreateRequest request,
+  );
 
   Future<Map<String, dynamic>> fetchShareCodePreview(String code);
 
@@ -20,7 +24,9 @@ abstract class InvitesBackendContract {
 
   Future<Map<String, dynamic>> materializeShareCode(String code);
 
-  Future<Map<String, dynamic>> importContacts(Map<String, dynamic> payload);
+  Future<Map<String, dynamic>> importContacts(
+    InviteContactImportRequest request,
+  );
 
   Future<Map<String, dynamic>> fetchInviteableContacts();
 

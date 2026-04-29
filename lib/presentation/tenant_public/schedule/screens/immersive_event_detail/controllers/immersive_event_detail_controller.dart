@@ -76,7 +76,10 @@ class ImmersiveEventDetailController implements Disposable {
     _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     _hydrateState(resolvedEvent);
     _bindFavoriteAccountProfileState();
-    unawaited(_refreshConfirmationState(resolvedEvent.id.value));
+    final occurrenceId = resolvedEvent.selectedOccurrenceId?.trim();
+    if (occurrenceId != null && occurrenceId.isNotEmpty) {
+      unawaited(_refreshConfirmationState(occurrenceId));
+    }
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -97,8 +100,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   // Delegate to repository for single source of truth
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
-      get sentInvitesByEventStreamValue =>
-          _invitesRepository.sentInvitesByEventStreamValue;
+      get sentInvitesByOccurrenceStreamValue =>
+          _invitesRepository.sentInvitesByOccurrenceStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
@@ -167,9 +170,10 @@ class ImmersiveEventDetailController implements Disposable {
     unawaited(_pendingInvitesSubscription?.cancel());
     _pendingInvitesSubscription = null;
 
-    final isConfirmedLocally = _userEventsRepository.isEventConfirmed(
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    final isConfirmedLocally = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
-        event.id.value,
+        occurrenceId ?? '',
         defaultValue: '',
         isRequired: true,
       ),
@@ -179,12 +183,12 @@ class ImmersiveEventDetailController implements Disposable {
 
     _updateReceivedInvites(
       _invitesRepository.pendingInvitesStreamValue.value,
-      event.id.value,
+      event,
     );
 
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
-        .listen((invites) => _updateReceivedInvites(invites, event.id.value));
+        .listen((invites) => _updateReceivedInvites(invites, event));
   }
 
   EventModel _eventWithSelectedOccurrence(
@@ -264,11 +268,11 @@ class ImmersiveEventDetailController implements Disposable {
     return _eventWithSelectedOccurrence(event, occurrenceId);
   }
 
-  Future<void> _refreshConfirmationState(String eventId) async {
-    await _userEventsRepository.refreshConfirmedEventIds();
-    final isConfirmedFromBackend = _userEventsRepository.isEventConfirmed(
+  Future<void> _refreshConfirmationState(String occurrenceId) async {
+    await _userEventsRepository.refreshConfirmedOccurrenceIds();
+    final isConfirmedFromBackend = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
-        eventId,
+        occurrenceId,
         defaultValue: '',
         isRequired: true,
       ),
@@ -280,9 +284,14 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  void _updateReceivedInvites(List<InviteModel> invites, String eventId) {
+  void _updateReceivedInvites(List<InviteModel> invites, EventModel event) {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
     final filtered = invites
-        .where((invite) => invite.eventIdValue.value == eventId)
+        .where((invite) =>
+            invite.eventIdValue.value == event.id.value &&
+            (occurrenceId == null ||
+                occurrenceId.isEmpty ||
+                invite.occurrenceIdValue.value == occurrenceId))
         .toList();
     _invitesRepository.setImmersiveReceivedInvites(filtered);
   }
@@ -320,6 +329,10 @@ class ImmersiveEventDetailController implements Disposable {
     if (event == null) {
       return AttendanceConfirmationResult.skipped;
     }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId == null || occurrenceId.isEmpty) {
+      return AttendanceConfirmationResult.skipped;
+    }
 
     isLoadingStreamValue.addValue(true);
 
@@ -330,8 +343,13 @@ class ImmersiveEventDetailController implements Disposable {
           defaultValue: '',
           isRequired: true,
         ),
+        occurrenceId: userEventsRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
       );
-      await _refreshConfirmationState(event.id.value);
+      await _refreshConfirmationState(occurrenceId);
 
       // Activate mission upon confirmation.
       missionStreamValue.addValue(MissionResume(
@@ -352,7 +370,6 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
-    final eventId = eventStreamValue.value?.id.value;
     isLoadingStreamValue.addValue(true);
     try {
       final result = await _invitesRepository.acceptInvite(
@@ -362,10 +379,11 @@ class ImmersiveEventDetailController implements Disposable {
           isRequired: true,
         ),
       );
+      final occurrenceId = eventStreamValue.value?.selectedOccurrenceId?.trim();
       if (result.status == 'accepted' &&
-          eventId != null &&
-          eventId.isNotEmpty) {
-        await _refreshConfirmationState(eventId);
+          occurrenceId != null &&
+          occurrenceId.isNotEmpty) {
+        await _refreshConfirmationState(occurrenceId);
       }
       return result;
     } finally {

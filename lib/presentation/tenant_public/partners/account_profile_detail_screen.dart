@@ -1556,8 +1556,8 @@ class _AccountProfileDetailScreenState
         venueAddress: _agendaVenueAddress(event),
       ),
       onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
-      isConfirmed: _controller.isEventConfirmed(event.eventId),
-      pendingInvitesCount: _controller.pendingInviteCount(event.eventId),
+      isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
+      pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
       statusIconSize: 24,
       keyNamespace: 'accountProfileAgendaCard',
       cardId: event.uniqueId,
@@ -1842,10 +1842,10 @@ class _AccountProfileDetailScreenState
     required ColorScheme colorScheme,
     required PartnerEventView event,
   }) {
-    if (_controller.isEventConfirmed(event.eventId)) {
+    if (_controller.isOccurrenceConfirmed(event.occurrenceId)) {
       return colorScheme.primary.withValues(alpha: 0.08);
     }
-    if (_controller.pendingInviteCount(event.eventId) > 0) {
+    if (_controller.pendingInviteCount(event.occurrenceId) > 0) {
       return colorScheme.secondary.withValues(alpha: 0.08);
     }
     return null;
@@ -1856,8 +1856,10 @@ class _AccountProfileDetailScreenState
     required Color backgroundColor,
     required double size,
   }) {
-    final isConfirmed = _controller.isEventConfirmed(event.eventId);
-    final pendingInvitesCount = _controller.pendingInviteCount(event.eventId);
+    final isConfirmed = _controller.isOccurrenceConfirmed(event.occurrenceId);
+    final pendingInvitesCount = _controller.pendingInviteCount(
+      event.occurrenceId,
+    );
     if (!isConfirmed && pendingInvitesCount == 0) {
       return null;
     }

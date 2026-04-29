@@ -108,15 +108,20 @@ class _ImmersiveEventDetailScreenState
                     return StreamValueBuilder<
                         Map<InvitesRepositoryContractPrimString,
                             List<SentInviteStatus>>>(
-                      streamValue: _controller.sentInvitesByEventStreamValue,
-                      builder: (context, sentInvitesByEvent) {
-                        final sentForEvent =
-                            sentInvitesByEvent[invitesRepoString(
-                                  resolvedEvent.id.value,
+                      streamValue:
+                          _controller.sentInvitesByOccurrenceStreamValue,
+                      builder: (context, sentInvitesByOccurrence) {
+                        final selectedOccurrenceId =
+                            resolvedEvent.selectedOccurrenceId?.trim();
+                        final sentForEvent = selectedOccurrenceId == null ||
+                                selectedOccurrenceId.isEmpty
+                            ? const <SentInviteStatus>[]
+                            : sentInvitesByOccurrence[invitesRepoString(
+                                  selectedOccurrenceId,
                                   defaultValue: '',
                                   isRequired: true,
                                 )] ??
-                                const [];
+                                const <SentInviteStatus>[];
 
                         final Widget? topBanner = receivedInvites.isNotEmpty
                             ? Padding(

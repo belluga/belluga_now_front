@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
@@ -7,9 +9,11 @@ import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -39,6 +43,7 @@ void main() {
           'invite': {
             'id': 'share:broken',
             'event_id': 'event-1',
+            'occurrence_id': 'occurrence-1',
           },
         },
       ),
@@ -221,7 +226,7 @@ void main() {
         inviteableContactsResponse: {
           'items': [
             {
-              'receiver_user_id': 'user-1',
+              'user_id': 'user-1',
               'receiver_account_profile_id': 'profile-1',
               'display_name': 'Friend Contact',
               'avatar_url': null,
@@ -246,13 +251,41 @@ void main() {
     expect(recipients.single.isFriend, isTrue);
   });
 
+  test('importContacts sends OTP-compatible Brazil phone hash variants',
+      () async {
+    final backend = _FakeInvitesBackend(
+      importContactsResponse: const {'matches': []},
+    );
+    final repository = InvitesRepository(backend: backend);
+    final contacts = InviteContacts()
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Local Contact',
+          phones: <String>['(27) 99999-9999'],
+        ),
+      );
+
+    await repository.importContacts(contacts);
+
+    final payloadContacts =
+        backend.importContactPayloads.single['contacts'] as List<dynamic>;
+    final phoneHashes = payloadContacts
+        .whereType<Map<String, dynamic>>()
+        .where((item) => item['type'] == 'phone')
+        .map((item) => item['hash'])
+        .toList();
+
+    expect(phoneHashes, contains(_sha256('27999999999')));
+    expect(phoneHashes, contains(_sha256('5527999999999')));
+  });
+
   test('sendInvites targets receiver account profile when present', () async {
     final backend = _FakeInvitesBackend(
       sendInvitesResponse: {
         'created': [
           {
             'invite_id': 'invite-1',
-            'receiver_user_id': 'user-1',
             'receiver_account_profile_id': 'profile-1',
           },
         ],
@@ -274,6 +307,8 @@ void main() {
     await repository.sendInvites(
       invitesRepoString('event-1', defaultValue: '', isRequired: true),
       recipients,
+      occurrenceId:
+          invitesRepoString('occurrence-1', defaultValue: '', isRequired: true),
     );
 
     expect(
@@ -283,14 +318,66 @@ void main() {
       ],
     );
     expect(
-      (await repository.getSentInvitesForEvent(
-        invitesRepoString('event-1', defaultValue: '', isRequired: true),
+      (await repository.getSentInvitesForOccurrence(
+        invitesRepoString('occurrence-1', defaultValue: '', isRequired: true),
       ))
           .single
           .friend
           .accountProfileId,
       'profile-1',
     );
+  });
+
+  test(
+      'importContacts chunks expanded payloads to backend cap and merges matches',
+      () async {
+    final expectedHash = _sha256('5527999990250');
+    final backend = _FakeInvitesBackend(
+      importContactsResponseBuilder: (payload) {
+        final contacts = payload['contacts'] as List<dynamic>;
+        final hasExpectedHash = contacts.whereType<Map<String, dynamic>>().any(
+              (item) => item['type'] == 'phone' && item['hash'] == expectedHash,
+            );
+        return {
+          'matches': hasExpectedHash
+              ? [
+                  {
+                    'contact_hash': expectedHash,
+                    'type': 'phone',
+                    'user_id': 'user-250',
+                    'receiver_account_profile_id': 'profile-250',
+                    'display_name': 'Contato 250',
+                    'avatar_url': null,
+                    'profile_exposure_level': 'capped_profile',
+                    'inviteable_reasons': ['contact_match'],
+                    'is_inviteable': true,
+                  },
+                ]
+              : [],
+        };
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+    final contacts = InviteContacts();
+    for (var index = 0; index <= 250; index += 1) {
+      contacts.add(
+        buildContactModel(
+          id: 'contact-$index',
+          displayName: 'Contato $index',
+          phones: <String>['(27) 99999-${index.toString().padLeft(4, '0')}'],
+        ),
+      );
+    }
+
+    final matches = await repository.importContacts(contacts);
+
+    expect(backend.importContactPayloads, hasLength(2));
+    expect(
+      backend.importContactPayloads
+          .map((payload) => (payload['contacts'] as List<dynamic>).length),
+      [500, 2],
+    );
+    expect(matches.single.receiverAccountProfileId, 'profile-250');
   });
 
   test('contact group CRUD maps backend payloads', () async {
@@ -367,6 +454,8 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? createContactGroupResponse,
     Map<String, dynamic>? updateContactGroupResponse,
     Map<String, dynamic>? sendInvitesResponse,
+    Map<String, dynamic> Function(Map<String, dynamic> payload)?
+        importContactsResponseBuilder,
   })  : _fetchInvitesResponse = fetchInvitesResponse ?? const {'invites': []},
         _previewResponse = previewResponse ?? const {'invite': null},
         _materializeResponse = materializeResponse ??
@@ -419,7 +508,8 @@ class _FakeInvitesBackend implements InvitesBackendContract {
             const {
               'created': [],
               'already_invited': [],
-            };
+            },
+        _importContactsResponseBuilder = importContactsResponseBuilder;
 
   final Map<String, dynamic> _fetchInvitesResponse;
   final Map<String, dynamic> _previewResponse;
@@ -432,11 +522,15 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _createContactGroupResponse;
   final Map<String, dynamic> _updateContactGroupResponse;
   final Map<String, dynamic> _sendInvitesResponse;
+  final Map<String, dynamic> Function(Map<String, dynamic> payload)?
+      _importContactsResponseBuilder;
 
   int fetchInvitesCalls = 0;
   final List<String> acceptInviteCalls = <String>[];
   final List<String> acceptShareCodeCalls = <String>[];
   final List<Map<String, dynamic>> sentInvitePayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> importContactPayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> createdContactGroupPayloads =
       <Map<String, dynamic>>[];
@@ -458,7 +552,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> createShareCode(
-    Map<String, dynamic> payload,
+    InviteShareCodeCreateRequest request,
   ) async =>
       throw UnimplementedError();
 
@@ -488,9 +582,16 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> importContacts(
-    Map<String, dynamic> payload,
-  ) async =>
-      _importContactsResponse;
+    InviteContactImportRequest request,
+  ) async {
+    final payload = request.toJson();
+    importContactPayloads.add(payload);
+    final builder = _importContactsResponseBuilder;
+    if (builder != null) {
+      return builder(payload);
+    }
+    return _importContactsResponse;
+  }
 
   @override
   Future<Map<String, dynamic>> fetchInviteableContacts() async =>
@@ -540,21 +641,26 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> sendInvites(
-    Map<String, dynamic> payload,
+    InviteSendRequest request,
   ) async {
+    final payload = request.toJson();
     sentInvitePayloads.add(payload);
     return _sendInvitesResponse;
   }
 }
 
+String _sha256(String raw) => sha256.convert(utf8.encode(raw)).toString();
+
 Map<String, dynamic> _buildInvitePayload({
   required String id,
   String eventId = 'event-1',
+  String occurrenceId = 'occurrence-1',
   String message = 'Bora?',
 }) {
   return {
     'id': id,
     'event_id': eventId,
+    'occurrence_id': occurrenceId,
     'event_name': 'Invite Event',
     'event_date': '2099-01-01T20:00:00Z',
     'event_image_url': 'https://example.com/event.png',

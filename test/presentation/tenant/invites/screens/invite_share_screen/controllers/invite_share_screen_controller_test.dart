@@ -8,14 +8,19 @@ import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -141,7 +146,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         contactHashValue: InviteContactHashValue()..parse('hash-1'),
         typeValue: InviteContactTypeValue()..parse('phone'),
         userIdValue: UserIdValue()..parse('user-1'),
+        receiverAccountProfileIdValue: InviteAccountProfileIdValue()
+          ..parse('profile-1'),
         displayNameValue: InviteInviterNameValue()..parse('Matched Contact'),
+        profileExposureLevelValue: InviteProfileExposureLevelValue()
+          ..parse('capped_profile'),
+        inviteableReasons: InviteableReasons([
+          InviteableReasonValue()..parse('contact_match'),
+        ]),
+        isInviteableValue: DomainBooleanValue()..parse('true'),
       ),
     ];
   }
@@ -156,7 +169,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
     createShareCodeCalls += 1;
@@ -166,7 +179,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     return buildInviteShareCodeResult(
       code: 'SHARE-CODE',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value,
+      occurrenceId: occurrenceId.value,
     );
   }
 
@@ -174,7 +187,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventSlug,
     InviteRecipients recipients, {
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? message,
   }) async {
     sentRecipientAccountProfileIds.addAll(
@@ -183,7 +196,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventSlug,
   ) async =>
       const <SentInviteStatus>[];
@@ -194,6 +207,7 @@ InviteModel _buildInvite() {
     id: 'invite-1',
     eventId: 'event-1',
     eventName: 'Evento Teste',
+    occurrenceId: 'occurrence-1',
     eventDateTime: DateTime(2026, 3, 13, 20),
     eventImageUrl: 'https://example.com/event.jpg',
     location: 'Guarapari',
@@ -433,6 +447,107 @@ void main() {
       expect(
         controller.friendsSuggestionsStreamValue.value.single.friend.name,
         'Bia Favorita',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'refreshFriends merges newly imported contact matches with backend inviteables',
+    () async {
+      final contactsRepository = _FakeContactsRepository();
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value
+            .map((item) => item.friend.name),
+        ['Bia Favorita'],
+      );
+
+      contactsRepository.contacts = <ContactModel>[
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Matched Contact',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      ];
+
+      await controller.refreshFriends();
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value
+            .map((item) => item.friend.name)
+            .toList(),
+        ['Bia Favorita', 'Matched Contact'],
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'refreshFriends surfaces import failure without dropping current inviteables',
+    () async {
+      final contactsRepository = _FakeContactsRepository();
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+      expect(
+        controller.friendsSuggestionsStreamValue.value
+            .map((item) => item.friend.name)
+            .toList(),
+        ['Bia Favorita'],
+      );
+
+      contactsRepository.contacts = <ContactModel>[
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Novo',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      ];
+      invitesRepository.throwOnImportContacts = true;
+
+      await controller.refreshFriends();
+
+      expect(controller.isInviteablesRefreshingStreamValue.value, isFalse);
+      expect(controller.inviteablesRefreshFailedStreamValue.value, isTrue);
+      expect(
+        controller.friendsSuggestionsStreamValue.value
+            .map((item) => item.friend.name)
+            .toList(),
+        ['Bia Favorita'],
       );
 
       await controller.onDispose();

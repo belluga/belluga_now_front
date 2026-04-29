@@ -143,18 +143,23 @@ void main() {
     );
   });
 
-  testWidgets('event detail shows pending invite actions for current event',
+  testWidgets(
+      'event detail shows pending invite actions for selected occurrence',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
     invitesRepository.pendingInvitesStreamValue.addValue([
       _buildInviteForEvent(
-        id: 'invite-current-event',
+        id: 'invite-current-occurrence',
         eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-selected',
+        eventDateTime: DateTime(2026, 3, 16, 9),
       ),
       _buildInviteForEvent(
-        id: 'invite-other-event',
-        eventId: '507f1f77bcf86cd799439012',
+        id: 'invite-other-occurrence',
+        eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-other',
+        eventDateTime: DateTime(2026, 3, 15, 20),
       ),
     ]);
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
@@ -181,7 +186,21 @@ void main() {
         child: MaterialApp(
           home: RouteDataScope(
             routeData: routeData,
-            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                  _buildOccurrence(
+                    id: 'occurrence-other',
+                    start: DateTime(2026, 3, 15, 20),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -192,6 +211,8 @@ void main() {
 
     expect(find.text('Agora não'), findsOneWidget);
     expect(find.text('Bóora!'), findsOneWidget);
+    expect(find.text('16/03 às 09:00'), findsOneWidget);
+    expect(find.text('15/03 às 20:00'), findsNothing);
   });
 
   testWidgets(
@@ -2310,7 +2331,7 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
@@ -2319,7 +2340,9 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
     confirmCalls += 1;
   }
 
@@ -2330,16 +2353,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -2378,7 +2403,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId.value);
+    return buildInviteShareCodeResult(
+      code: 'CODE123',
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+    );
   }
 
   @override
@@ -2409,7 +2438,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
   }
@@ -2825,17 +2854,20 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 InviteModel _buildInviteForEvent({
   required String id,
   required String eventId,
+  String occurrenceId = '507f1f77bcf86cd799439012',
+  DateTime? eventDateTime,
 }) {
   return buildInviteModelFromPrimitives(
     id: id,
     eventId: eventId,
     eventName: 'Evento $id',
-    eventDateTime: DateTime(2026, 3, 15, 20),
+    eventDateTime: eventDateTime ?? DateTime(2026, 3, 15, 20),
     eventImageUrl: 'https://example.com/$id.png',
     location: 'Guarapari',
     hostName: 'Host',
     message: 'Convite $id',
     tags: const ['show'],
+    occurrenceId: occurrenceId,
     inviterName: 'Convidador',
   );
 }

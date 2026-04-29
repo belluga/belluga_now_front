@@ -108,7 +108,7 @@ void main() {
       () async {
     final accountProfileRepository = _FakeAccountProfilesRepository();
     final userEventsRepository = _FakeUserEventsRepository(
-      confirmedIds: const {'507f1f77bcf86cd799439031'},
+      confirmedIds: const {'507f1f77bcf86cd799439131'},
     );
     final invitesRepository = _FakeInvitesRepository(
       invites: [
@@ -121,6 +121,7 @@ void main() {
           location: 'Casa Marracini',
           hostName: 'Casa Marracini',
           message: 'Convite pendente',
+          occurrenceId: '507f1f77bcf86cd799439131',
           tags: const [],
           inviterName: 'Tester',
         ),
@@ -148,8 +149,8 @@ void main() {
       venueTitle: 'Casa Marracini',
     );
 
-    expect(controller.isEventConfirmed(event.eventId), isTrue);
-    expect(controller.pendingInviteCount(event.eventId), 1);
+    expect(controller.isOccurrenceConfirmed(event.occurrenceId), isTrue);
+    expect(controller.pendingInviteCount(event.occurrenceId), 1);
     expect(controller.distanceLabelFor(profile, event), '752 m');
   });
 
@@ -250,7 +251,7 @@ class _FakeAuthRepository extends Fake
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   _FakeUserEventsRepository({Set<String> confirmedIds = const {}})
       : _confirmedIds = Set<String>.from(confirmedIds) {
-    confirmedEventIdsStream.addValue(
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -266,15 +267,16 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   final Set<String> _confirmedIds;
 
   @override
-  final confirmedEventIdsStream =
+  final confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
 
   @override
   Future<void> confirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -283,7 +285,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
   ) =>
       userEventsRepoBool(
@@ -293,12 +295,13 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       );
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -349,7 +352,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async =>
       const <SentInviteStatus>[];

@@ -32,6 +32,7 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
@@ -42,6 +43,8 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 class InvitesRepository extends InvitesRepositoryContract
     with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
     implements PushInvitePayloadAware {
+  static const int _maxContactImportItemsPerRequest = 500;
+
   InvitesRepository({
     InvitesBackendContract? backend,
     FriendsRepositoryContract? friendsRepository,
@@ -176,11 +179,22 @@ class InvitesRepository extends InvitesRepositoryContract
       return const <InviteContactMatch>[];
     }
 
-    final response = await _backend.importContacts({
-      'contacts': importItems,
-    });
-    final matchesRaw = response['matches'];
-    return _responseDecoder.decodeContactMatches(matchesRaw);
+    final matchesByProfileId = <String, InviteContactMatch>{};
+    for (final chunk in _chunkContactImportItems(importItems)) {
+      final response = await _backend.importContacts(
+        InviteContactImportRequest(contacts: chunk),
+      );
+      final matches =
+          _responseDecoder.decodeContactMatches(response['matches']);
+      for (final match in matches) {
+        matchesByProfileId.putIfAbsent(
+          match.receiverAccountProfileId,
+          () => match,
+        );
+      }
+    }
+
+    return matchesByProfileId.values.toList(growable: false);
   }
 
   @override
@@ -232,21 +246,27 @@ class InvitesRepository extends InvitesRepositoryContract
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    final normalizedOccurrenceId = occurrenceId?.value.trim();
+    final normalizedOccurrenceId = occurrenceId.value.trim();
+    if (normalizedOccurrenceId.isEmpty) {
+      throw ArgumentError.value(
+        occurrenceId.value,
+        'occurrenceId',
+        'Share-code invite targets require an occurrence identity.',
+      );
+    }
     final normalizedAccountProfileId = accountProfileId?.value.trim();
-    final response = await _backend.createShareCode({
-      'target_ref': {
-        'event_id': eventId.value,
-        if (normalizedOccurrenceId != null && normalizedOccurrenceId.isNotEmpty)
-          'occurrence_id': normalizedOccurrenceId,
-      },
-      if (normalizedAccountProfileId != null &&
-          normalizedAccountProfileId.isNotEmpty)
-        'account_profile_id': normalizedAccountProfileId,
-    });
+    final response = await _backend.createShareCode(
+      InviteShareCodeCreateRequest(
+        targetRef: InviteTargetRefRequest(
+          eventId: eventId.value,
+          occurrenceId: normalizedOccurrenceId,
+        ),
+        accountProfileId: normalizedAccountProfileId,
+      ),
+    );
 
     final targetRef = _responseDecoder.decodeShareCodeTargetRef(
       response['target_ref'],
@@ -256,8 +276,7 @@ class InvitesRepository extends InvitesRepositoryContract
     return InviteShareCodeResult(
       codeValue: InviteShareCodeValue(_stringOrEmpty(response['code'])),
       eventIdValue: _buildInviteEventIdValue(targetRef.eventId),
-      occurrenceIdValue:
-          _buildInviteOccurrenceIdValueOrNull(targetRef.occurrenceId),
+      occurrenceIdValue: _buildInviteOccurrenceIdValue(targetRef.occurrenceId),
     );
   }
 
@@ -265,31 +284,43 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventId,
     InviteRecipients recipients, {
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? message,
   }) async {
     if (recipients.isEmpty) {
       return;
     }
 
-    final normalizedOccurrenceId = occurrenceId?.value.trim();
+    final normalizedOccurrenceId = occurrenceId.value.trim();
+    if (normalizedOccurrenceId.isEmpty) {
+      throw ArgumentError.value(
+        occurrenceId.value,
+        'occurrenceId',
+        'Direct invite targets require an occurrence identity.',
+      );
+    }
     final normalizedMessage = message?.value.trim();
-    final response = await _backend.sendInvites({
-      'target_ref': {
-        'event_id': eventId.value,
-        if (normalizedOccurrenceId != null && normalizedOccurrenceId.isNotEmpty)
-          'occurrence_id': normalizedOccurrenceId,
-      },
-      'recipients': recipients.items.map((recipient) {
-        final accountProfileId = recipient.accountProfileId.trim();
-        if (accountProfileId.isNotEmpty) {
-          return {'receiver_account_profile_id': accountProfileId};
-        }
-        return {'receiver_user_id': recipient.id};
-      }).toList(growable: false),
-      if (normalizedMessage != null && normalizedMessage.isNotEmpty)
-        'message': normalizedMessage,
-    });
+    final recipientPayloads = recipients.items
+        .map((recipient) => recipient.accountProfileId.trim())
+        .where((accountProfileId) => accountProfileId.isNotEmpty)
+        .map((accountProfileId) => InviteSendRecipientRequest(
+              receiverAccountProfileId: accountProfileId,
+            ))
+        .toList(growable: false);
+    if (recipientPayloads.isEmpty) {
+      return;
+    }
+
+    final response = await _backend.sendInvites(
+      InviteSendRequest(
+        targetRef: InviteTargetRefRequest(
+          eventId: eventId.value,
+          occurrenceId: normalizedOccurrenceId,
+        ),
+        recipients: recipientPayloads,
+        message: normalizedMessage,
+      ),
+    );
 
     final acknowledgedRecipientIds = <String>{
       ..._parseRecipientIds(response['created']),
@@ -300,9 +331,15 @@ class InvitesRepository extends InvitesRepositoryContract
       return;
     }
 
-    final currentByEvent = sentInvitesByEventStreamValue.value;
-    final existing =
-        List<SentInviteStatus>.from(currentByEvent[eventId] ?? const []);
+    final currentByOccurrence = sentInvitesByOccurrenceStreamValue.value;
+    final occurrenceKey = invitesRepoString(
+      normalizedOccurrenceId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final existing = List<SentInviteStatus>.from(
+      currentByOccurrence[occurrenceKey] ?? const [],
+    );
     final existingByRecipient = <String, SentInviteStatus>{
       for (final invite in existing) invite.friend.id: invite,
     };
@@ -325,17 +362,17 @@ class InvitesRepository extends InvitesRepositoryContract
       );
     }
 
-    sentInvitesByEventStreamValue.addValue({
-      ...currentByEvent,
-      eventId: existingByRecipient.values.toList(growable: false),
+    sentInvitesByOccurrenceStreamValue.addValue({
+      ...currentByOccurrence,
+      occurrenceKey: existingByRecipient.values.toList(growable: false),
     });
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
-      InvitesRepositoryContractPrimString eventId) async {
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
+      InvitesRepositoryContractPrimString occurrenceId) async {
     return List<SentInviteStatus>.from(
-      sentInvitesByEventStreamValue.value[eventId] ??
+      sentInvitesByOccurrenceStreamValue.value[occurrenceId] ??
           const <SentInviteStatus>[],
       growable: false,
     );
@@ -351,11 +388,11 @@ class InvitesRepository extends InvitesRepositoryContract
     pendingInvitesStreamValue.addValue(next);
   }
 
-  List<Map<String, String>> _buildContactImportItems(
+  List<InviteContactImportItemRequest> _buildContactImportItems(
     List<ContactModel> contacts,
   ) {
     final seen = <String>{};
-    final items = <Map<String, String>>[];
+    final items = <InviteContactImportItemRequest>[];
 
     for (final contact in contacts) {
       for (final email in contact.emails) {
@@ -368,24 +405,62 @@ class InvitesRepository extends InvitesRepositoryContract
         if (!seen.add(signature)) {
           continue;
         }
-        items.add({'type': 'email', 'hash': hash});
+        items.add(InviteContactImportItemRequest(type: 'email', hash: hash));
       }
 
       for (final phone in contact.phones) {
-        final normalized = phone.value.replaceAll(RegExp(r'\D+'), '');
-        if (normalized.isEmpty) {
-          continue;
+        for (final normalized in _phoneHashInputs(phone.value)) {
+          final hash = sha256.convert(utf8.encode(normalized)).toString();
+          final signature = 'phone::$hash';
+          if (!seen.add(signature)) {
+            continue;
+          }
+          items.add(InviteContactImportItemRequest(type: 'phone', hash: hash));
         }
-        final hash = sha256.convert(utf8.encode(normalized)).toString();
-        final signature = 'phone::$hash';
-        if (!seen.add(signature)) {
-          continue;
-        }
-        items.add({'type': 'phone', 'hash': hash});
       }
     }
 
     return items;
+  }
+
+  List<List<InviteContactImportItemRequest>> _chunkContactImportItems(
+    List<InviteContactImportItemRequest> items,
+  ) {
+    final chunks = <List<InviteContactImportItemRequest>>[];
+    for (var start = 0; start < items.length;) {
+      final end = start + _maxContactImportItemsPerRequest > items.length
+          ? items.length
+          : start + _maxContactImportItemsPerRequest;
+      chunks.add(items.sublist(start, end));
+      start = end;
+    }
+    return chunks;
+  }
+
+  List<String> _phoneHashInputs(String rawPhone) {
+    final digits = rawPhone.replaceAll(RegExp(r'\D+'), '');
+    if (digits.isEmpty) {
+      return const <String>[];
+    }
+
+    final variants = <String>{digits};
+
+    final withoutTrunkPrefix = digits.replaceFirst(RegExp(r'^0+'), '');
+    if (withoutTrunkPrefix.isNotEmpty && withoutTrunkPrefix != digits) {
+      variants.add(withoutTrunkPrefix);
+    }
+
+    for (final candidate in List<String>.from(variants)) {
+      if (candidate.length == 10 || candidate.length == 11) {
+        variants.add('55$candidate');
+      }
+      if (candidate.startsWith('55') &&
+          (candidate.length == 12 || candidate.length == 13)) {
+        variants.add(candidate.substring(2));
+      }
+    }
+
+    return variants.toList(growable: false);
   }
 
   List<String> _parseRecipientIds(Object? raw) {
@@ -472,10 +547,7 @@ class InvitesRepository extends InvitesRepositoryContract
     return eventIdValue;
   }
 
-  InviteOccurrenceIdValue? _buildInviteOccurrenceIdValueOrNull(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
+  InviteOccurrenceIdValue _buildInviteOccurrenceIdValue(String value) {
     final occurrenceIdValue = InviteOccurrenceIdValue()..parse(value);
     return occurrenceIdValue;
   }

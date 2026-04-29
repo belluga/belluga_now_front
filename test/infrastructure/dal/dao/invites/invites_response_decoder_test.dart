@@ -12,6 +12,7 @@ void main() {
 
     expect(dto.id, 'invite-1');
     expect(dto.eventId, 'event-1');
+    expect(dto.occurrenceId, 'occurrence-1');
     expect(dto.eventName, 'Invite Event');
   });
 
@@ -58,16 +59,34 @@ void main() {
       {'event_name': 'missing-required-identifiers'},
     ]);
 
-    expect(decoded, hasLength(2));
+    expect(decoded, hasLength(1));
     expect(decoded.first.id, 'invite-valid');
-    expect(decoded.last.eventName, 'missing-required-identifiers');
+  });
+
+  test('decodeRequiredInviteDto rejects payload missing occurrence identity',
+      () {
+    final payload = _buildInvitePayload()..remove('occurrence_id');
+
+    expect(
+      () => decoder.decodeRequiredInviteDto(
+        payload,
+        context: 'preview',
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('missing occurrence_id'),
+        ),
+      ),
+    );
   });
 }
 
 Map<String, dynamic> _buildInvitePayload({
   String id = 'invite-1',
   String eventId = 'event-1',
-  String? occurrenceId,
+  String occurrenceId = 'occurrence-1',
 }) {
   return {
     'id': id,

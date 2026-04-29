@@ -338,12 +338,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     return buildInviteShareCodeResult(
       code: 'CODE123',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
     );
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async {
     return const [];

@@ -28,9 +28,12 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
@@ -47,6 +50,7 @@ import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -224,9 +228,9 @@ void main() {
       expect(userEventsRepository.confirmCalls, 1);
       expect(
         userEventsRepository
-            .isEventConfirmed(
+            .isOccurrenceConfirmed(
               userEventsRepoString(
-                event.id.value,
+                event.selectedOccurrenceId ?? '',
                 defaultValue: '',
                 isRequired: true,
               ),
@@ -611,7 +615,7 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
@@ -621,10 +625,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
     confirmCalls += 1;
-    _confirmedIds.add(eventId.value);
-    confirmedEventIdsStream.addValue(
+    _confirmedIds.add(occurrenceId.value);
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -644,18 +650,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
-    UserEventsRepositoryContractPrimString eventId,
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
+    UserEventsRepositoryContractPrimString occurrenceId,
   ) =>
       userEventsRepoBool(
-        _confirmedIds.contains(eventId.value),
+        _confirmedIds.contains(occurrenceId.value),
         defaultValue: false,
         isRequired: true,
       );
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
-    confirmedEventIdsStream.addValue(
+  Future<void> refreshConfirmedOccurrenceIds() async {
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -670,9 +676,11 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
-    _confirmedIds.remove(eventId.value);
-    confirmedEventIdsStream.addValue(
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    _confirmedIds.remove(occurrenceId.value);
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -720,7 +728,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId.value);
+    return buildInviteShareCodeResult(
+      code: 'CODE123',
+      eventId: eventId.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+    );
   }
 
   @override
@@ -751,7 +763,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
   }
@@ -950,6 +962,22 @@ EventModel _buildEvent({required String slug}) {
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
+    occurrences: [
+      EventOccurrenceOption(
+        occurrenceIdValue: EventLinkedAccountProfileTextValue(
+          '507f1f77bcf86cd799439012',
+        ),
+        occurrenceSlugValue: EventLinkedAccountProfileTextValue(
+          'evento-regressao-stack-2026-03-15',
+        ),
+        dateTimeStartValue: DateTimeValue(isRequired: true)
+          ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
+        dateTimeEndValue: DomainOptionalDateTimeValue(),
+        isSelectedValue: EventOccurrenceFlagValue()..parse('true'),
+        hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
+        programmingCountValue: EventProgrammingCountValue()..parse('0'),
+      ),
+    ],
     artists: const [],
     coordinate: null,
     tags: const <String>['show'],

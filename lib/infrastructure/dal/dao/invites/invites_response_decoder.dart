@@ -64,7 +64,9 @@ class InvitesResponseDecoder {
         continue;
       }
       try {
-        dtos.add(InviteDto.fromJson(Map<String, dynamic>.from(item)));
+        final dto = InviteDto.fromJson(Map<String, dynamic>.from(item));
+        _assertRequiredInviteFields(dto, context: 'invite feed item');
+        dtos.add(dto);
       } catch (_) {
         // Ignore malformed invite payload entries.
       }
@@ -173,16 +175,22 @@ class InvitesResponseDecoder {
     required String fallbackEventId,
   }) {
     if (rawTargetRef is! Map) {
-      return InviteShareCodeTargetRef(
-        eventId: fallbackEventId,
+      throw const FormatException(
+        'Malformed invite share-code payload: missing target_ref.',
       );
     }
 
     final targetRefMap = Map<String, dynamic>.from(rawTargetRef);
     final mappedEventId = _stringOrEmpty(targetRefMap['event_id']);
+    final occurrenceId = _stringOrEmpty(targetRefMap['occurrence_id']).trim();
+    if (occurrenceId.isEmpty) {
+      throw const FormatException(
+        'Malformed invite share-code payload: missing occurrence_id.',
+      );
+    }
     return InviteShareCodeTargetRef(
       eventId: mappedEventId.isEmpty ? fallbackEventId : mappedEventId,
-      occurrenceId: _stringOrNull(targetRefMap['occurrence_id']),
+      occurrenceId: occurrenceId,
     );
   }
 
@@ -203,10 +211,6 @@ class InvitesResponseDecoder {
 
     final ids = <String>{};
     for (final item in raw.whereType<Map>()) {
-      final userId = _stringOrEmpty(item['receiver_user_id']);
-      if (userId.isNotEmpty) {
-        ids.add(userId);
-      }
       final accountProfileId = _stringOrEmpty(
         item['receiver_account_profile_id'],
       );
@@ -268,9 +272,10 @@ class InvitesResponseDecoder {
     final accountProfileIdRaw = _stringOrEmpty(
       map['receiver_account_profile_id'],
     );
-    if (accountProfileIdRaw.isNotEmpty) {
-      accountProfileIdValue.parse(accountProfileIdRaw);
+    if (accountProfileIdRaw.isEmpty) {
+      return null;
     }
+    accountProfileIdValue.parse(accountProfileIdRaw);
 
     return InviteContactMatch(
       contactHashValue: contactHashValue,
@@ -290,7 +295,7 @@ class InvitesResponseDecoder {
   }
 
   InviteableRecipient? _mapInviteableRecipient(Map<String, dynamic> map) {
-    final userId = _stringOrEmpty(map['receiver_user_id'] ?? map['user_id']);
+    final userId = _stringOrEmpty(map['user_id']);
     final accountProfileId = _stringOrEmpty(map['receiver_account_profile_id']);
     final displayName = _stringOrEmpty(map['display_name']);
     if (userId.isEmpty || accountProfileId.isEmpty || displayName.isEmpty) {
@@ -434,6 +439,11 @@ class InvitesResponseDecoder {
     if (dto.eventId.trim().isEmpty) {
       throw FormatException(
         'Malformed invite payload for $context: missing event_id.',
+      );
+    }
+    if (dto.occurrenceId.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing occurrence_id.',
       );
     }
     if (dto.eventName.trim().isEmpty) {

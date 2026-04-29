@@ -91,13 +91,10 @@ InviteDeclineResult buildInviteDeclineResult({
 InviteShareCodeResult buildInviteShareCodeResult({
   required String code,
   required String eventId,
-  String? occurrenceId,
+  required String occurrenceId,
 }) {
   final eventIdValue = InviteEventIdValue()..parse(eventId);
-  InviteOccurrenceIdValue? occurrenceIdValue;
-  if (occurrenceId != null && occurrenceId.trim().isNotEmpty) {
-    occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
-  }
+  final occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
 
   return InviteShareCodeResult(
     codeValue: InviteShareCodeValue(code),

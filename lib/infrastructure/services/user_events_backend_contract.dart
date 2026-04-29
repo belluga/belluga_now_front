@@ -1,14 +1,13 @@
 abstract class UserEventsBackendContract {
-  Future<Map<String, dynamic>> fetchConfirmedEventIds();
+  Future<Map<String, dynamic>> fetchConfirmedOccurrenceIds();
 
   Future<Map<String, dynamic>> confirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   });
 
   Future<Map<String, dynamic>> unconfirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   });
 }
-

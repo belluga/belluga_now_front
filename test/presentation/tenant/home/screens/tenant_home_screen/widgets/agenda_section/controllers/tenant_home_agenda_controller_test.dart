@@ -4104,11 +4104,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return const [];
   }
@@ -4287,13 +4287,15 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -4302,16 +4304,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
+  Future<void> refreshConfirmedOccurrenceIds() async {
     if (throwOnRefreshConfirmedIds) {
       throw Exception('forced confirmed ids failure');
     }

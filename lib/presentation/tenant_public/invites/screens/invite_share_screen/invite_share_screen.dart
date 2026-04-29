@@ -106,6 +106,25 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                   );
                                 },
                               ),
+                              StreamValueBuilder<bool>(
+                                streamValue: _controller
+                                    .inviteablesRefreshFailedStreamValue,
+                                builder: (context, hasRefreshFailed) {
+                                  if (!hasRefreshFailed) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return const Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        'Não foi possível atualizar agora',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 8),
                               if (availableReasons.isNotEmpty)
                                 InviteShareRelationFilterChips(

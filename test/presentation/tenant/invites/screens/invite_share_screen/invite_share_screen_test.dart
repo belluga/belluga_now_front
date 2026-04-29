@@ -142,12 +142,15 @@ void main() {
 
     expect(find.text('Gerando...'), findsNothing);
     expect(find.text('Tentar novamente'), findsOneWidget);
+    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(invitesRepository.lastShareCodeOccurrenceId, 'occurrence-1');
 
     invitesRepository.throwOnCreateShareCode = false;
     await tester.tap(find.text('Tentar novamente'));
     await tester.pumpAndSettle();
 
     expect(invitesRepository.createShareCodeCalls, 2);
+    expect(invitesRepository.lastShareCodeOccurrenceId, 'occurrence-1');
     expect(find.text('Compartilhar'), findsOneWidget);
   });
 }
@@ -190,6 +193,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   bool throwOnCreateShareCode = false;
   int fetchInviteableRecipientsCalls = 0;
   int createShareCodeCalls = 0;
+  String? lastShareCodeOccurrenceId;
   List<InviteableRecipient> inviteableRecipients;
 
   @override
@@ -210,18 +214,19 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
     createShareCodeCalls += 1;
+    lastShareCodeOccurrenceId = occurrenceId?.value;
     if (throwOnCreateShareCode) {
       throw Exception('share code failed');
     }
     return buildInviteShareCodeResult(
       code: 'SHARE-CODE',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
     );
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async =>
       const <SentInviteStatus>[];
@@ -285,6 +290,7 @@ InviteModel _buildInvite() {
     id: 'invite-1',
     eventId: 'event-1',
     eventName: 'Evento Teste',
+    occurrenceId: 'occurrence-1',
     eventDateTime: DateTime(2026, 3, 13, 20),
     eventImageUrl: 'https://example.com/event.jpg',
     location: 'Guarapari',

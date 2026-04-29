@@ -32,9 +32,7 @@ import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dar
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
@@ -109,10 +107,13 @@ void main() {
       const {},
     );
     expect(
-      controller.pendingInviteCount(harness.pendingInviteEventId),
+      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
       1,
     );
-    expect(controller.isEventConfirmed(harness.pendingInviteEventId), isFalse);
+    expect(
+      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
+      isFalse,
+    );
     debugPrint('Home agenda test: invite filter checked');
 
     harness.invitesRepository.acceptInvite(
@@ -131,10 +132,13 @@ void main() {
       {harness.pendingInviteEventId},
     );
     expect(
-      controller.pendingInviteCount(harness.pendingInviteEventId),
+      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
       0,
     );
-    expect(controller.isEventConfirmed(harness.pendingInviteEventId), isTrue);
+    expect(
+      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
+      isTrue,
+    );
     debugPrint('Home agenda test: confirmed filter checked');
 
     controller.setInviteFilter(InviteFilter.none);
@@ -188,10 +192,13 @@ void main() {
       const {},
     );
     expect(
-      controller.pendingInviteCount(harness.pendingInviteEventId),
+      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
       1,
     );
-    expect(controller.isEventConfirmed(harness.pendingInviteEventId), isFalse);
+    expect(
+      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
+      isFalse,
+    );
     debugPrint('Agenda screen test: invite filter checked');
 
     harness.invitesRepository.acceptInvite(
@@ -210,10 +217,13 @@ void main() {
       {harness.pendingInviteEventId},
     );
     expect(
-      controller.pendingInviteCount(harness.pendingInviteEventId),
+      controller.pendingInviteCount(harness.pendingInviteOccurrenceId),
       0,
     );
-    expect(controller.isEventConfirmed(harness.pendingInviteEventId), isTrue);
+    expect(
+      controller.isOccurrenceConfirmed(harness.pendingInviteOccurrenceId),
+      isTrue,
+    );
     debugPrint('Agenda screen test: confirmed filter checked');
 
     controller.setInviteFilter(InviteFilter.none);
@@ -252,6 +262,7 @@ String _eventId(Object event) {
 class _AgendaFiltersHarness {
   _AgendaFiltersHarness()
       : pendingInviteEventId = _pendingInviteEventId,
+        pendingInviteOccurrenceId = _pendingInviteOccurrenceId,
         scheduleRepository = _TestScheduleRepository(_buildEvents()),
         userEventsRepository = _TestUserEventsRepository(),
         invitesRepository = _TestInvitesRepository(_buildInvites()),
@@ -262,7 +273,10 @@ class _AgendaFiltersHarness {
         );
 
   static final String _pendingInviteEventId = _mongoIdForSeed('event-invite');
+  static final String _pendingInviteOccurrenceId =
+      _mongoIdForSeed('event-invite-occurrence');
   final String pendingInviteEventId;
+  final String pendingInviteOccurrenceId;
   final _TestScheduleRepository scheduleRepository;
   final _TestUserEventsRepository userEventsRepository;
   final _TestInvitesRepository invitesRepository;
@@ -364,19 +378,21 @@ class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 
 class _TestUserEventsRepository implements UserEventsRepositoryContract {
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      _confirmedEventIdsStream =
+      _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedEventIdsStream => _confirmedEventIdsStream;
+      get confirmedOccurrenceIdsStream => _confirmedOccurrenceIdsStream;
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
-    final updated = {..._confirmedEventIdsStream.value, eventId};
-    _confirmedEventIdsStream.addValue(updated);
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    final updated = {..._confirmedOccurrenceIdsStream.value, occurrenceId};
+    _confirmedOccurrenceIdsStream.addValue(updated);
   }
 
   @override
@@ -386,23 +402,26 @@ class _TestUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
-          UserEventsRepositoryContractPrimString eventId) =>
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
+          UserEventsRepositoryContractPrimString occurrenceId) =>
       userEventsRepoBool(
-        _confirmedEventIdsStream.value.contains(eventId),
+        _confirmedOccurrenceIdsStream.value.contains(occurrenceId),
         defaultValue: false,
         isRequired: true,
       );
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
-    final updated = {..._confirmedEventIdsStream.value}..remove(eventId);
-    _confirmedEventIdsStream.addValue(updated);
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    final updated = {..._confirmedOccurrenceIdsStream.value}
+      ..remove(occurrenceId);
+    _confirmedOccurrenceIdsStream.addValue(updated);
   }
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 }
 
 class _TestInvitesRepository extends InvitesRepositoryContract {
@@ -421,6 +440,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
           orElse: () => null,
         );
     final resolvedEventId = matchedInvite?.eventId ?? inviteId.value;
+    final resolvedOccurrenceId = matchedInvite?.occurrenceId ?? resolvedEventId;
     _pendingInvites = _pendingInvites
         .where(
           (invite) =>
@@ -431,6 +451,11 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
     await GetIt.I.get<UserEventsRepositoryContract>().confirmEventAttendance(
           userEventsRepoString(
             resolvedEventId,
+            defaultValue: '',
+            isRequired: true,
+          ),
+          occurrenceId: userEventsRepoString(
+            resolvedOccurrenceId,
             defaultValue: '',
             isRequired: true,
           ),
@@ -497,11 +522,11 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return const [];
   }
@@ -655,6 +680,7 @@ List<InviteModel> _buildInvites() {
     buildInviteModelFromPrimitives(
       id: _mongoIdForSeed('invite-1'),
       eventId: _AgendaFiltersHarness._pendingInviteEventId,
+      occurrenceId: _AgendaFiltersHarness._pendingInviteOccurrenceId,
       eventName: 'Show Beta',
       eventDateTime: DateTime.now().add(const Duration(days: 2)),
       eventImageUrl: 'https://example.com/invite.png',
@@ -673,21 +699,23 @@ EventModel _buildEvent({
   required String location,
   required DateTime date,
 }) {
-  final dto = EventDTO(
-    id: _mongoIdForSeed(id),
-    slug: id,
-    type: EventTypeDTO(
-      id: _mongoIdForSeed('type-show'),
-      name: 'Show',
-      slug: 'show',
-      description: 'Show description for agenda regression tests.',
-      icon: 'music',
-      color: '#000000',
-    ),
-    title: title,
-    content: 'Content for $title',
-    location: location,
-    venue: {
+  final occurrenceId = _mongoIdForSeed('$id-occurrence');
+  final dto = EventDTO.fromJson({
+    'event_id': _mongoIdForSeed(id),
+    'occurrence_id': occurrenceId,
+    'slug': id,
+    'type': {
+      'id': _mongoIdForSeed('type-show'),
+      'name': 'Show',
+      'slug': 'show',
+      'description': 'Show description for agenda regression tests.',
+      'icon': 'music',
+      'color': '#000000',
+    },
+    'title': title,
+    'content': 'Content for $title',
+    'location': location,
+    'venue': {
       'id': _mongoIdForSeed('venue-$location'),
       'display_name': location,
       'avatar_url': 'https://example.com/$location.png',
@@ -699,15 +727,22 @@ EventModel _buildEvent({
       'country': 'BR',
       'partner_type': 'venue',
     },
-    dateTimeStart: date.toIso8601String(),
-    artists: [
-      EventArtistDTO(
-        id: _mongoIdForSeed('artist-$artistName'),
-        name: artistName,
-        avatarUrl: 'https://example.com/$artistName.png',
-      ),
+    'date_time_start': date.toIso8601String(),
+    'occurrences': [
+      {
+        'occurrence_id': occurrenceId,
+        'date_time_start': date.toIso8601String(),
+        'is_selected': true,
+      },
     ],
-  );
+    'artists': [
+      {
+        'id': _mongoIdForSeed('artist-$artistName'),
+        'name': artistName,
+        'avatar_url': 'https://example.com/$artistName.png',
+      },
+    ],
+  });
   return dto.toDomain();
 }
 

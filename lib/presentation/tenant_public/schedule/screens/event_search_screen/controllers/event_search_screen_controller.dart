@@ -188,7 +188,7 @@ class EventSearchScreenController
       _isDisposed = false;
     }
     await _invitesRepository.init();
-    await _userEventsRepository.refreshConfirmedEventIds();
+    await _userEventsRepository.refreshConfirmedOccurrenceIds();
     _resetInternalState();
     _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
     _ifAlive(
@@ -485,9 +485,11 @@ class EventSearchScreenController
     final filter = inviteFilterStreamValue.value;
     if (filter == InviteFilter.none) return events;
 
-    final confirmedIds = _userEventsRepository.confirmedEventIdsStream.value;
+    final confirmedIds =
+        _userEventsRepository.confirmedOccurrenceIdsStream.value;
     final pendingIds = _invitesRepository.pendingInvitesStreamValue.value
-        .map((invite) => invite.eventId)
+        .map((invite) => invite.occurrenceId?.trim() ?? '')
+        .where((occurrenceId) => occurrenceId.isNotEmpty)
         .toSet();
 
     bool isConfirmed(String id) =>
@@ -495,7 +497,7 @@ class EventSearchScreenController
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
-      final id = event.id.value;
+      final id = _eventOccurrenceIdentity(event);
       switch (filter) {
         case InviteFilter.none:
           return true;
@@ -541,22 +543,26 @@ class EventSearchScreenController
     }
   }
 
-  bool isEventConfirmed(String eventId) => _userEventsRepository
-      .isEventConfirmed(
+  bool isOccurrenceConfirmed(String occurrenceId) => _userEventsRepository
+      .isOccurrenceConfirmed(
         userEventsRepoString(
-          eventId,
+          occurrenceId,
           defaultValue: '',
           isRequired: true,
         ),
       )
       .value;
 
-  int pendingInviteCount(String eventId) =>
+  int pendingInviteCount(String occurrenceId) =>
       _invitesRepository.pendingInvitesStreamValue.value
-          .where((invite) => invite.eventId == eventId)
+          .where((invite) => invite.occurrenceId == occurrenceId)
           .length;
 
-  bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
+  bool hasPendingInvite(String occurrenceId) =>
+      pendingInviteCount(occurrenceId) > 0;
+
+  String _eventOccurrenceIdentity(EventModel event) =>
+      event.selectedOccurrenceId?.trim() ?? '';
 
   VenueEventResume _toVenueEventResume(EventModel event) {
     return VenueEventResume.fromScheduleEvent(
@@ -593,7 +599,7 @@ class EventSearchScreenController
     _pendingInvitesSubscription?.cancel();
 
     _confirmedEventsSubscription =
-        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =

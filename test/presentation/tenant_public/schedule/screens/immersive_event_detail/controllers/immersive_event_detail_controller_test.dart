@@ -81,17 +81,20 @@ void main() {
     expect(controller.missionStreamValue.value, isNotNull);
   });
 
-  test('event detail exposes pending invites only for current event', () async {
+  test('event detail exposes pending invites only for selected occurrence',
+      () async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
     invitesRepository.pendingInvitesStreamValue.addValue([
       _buildInviteForEvent(
-        id: 'invite-current-event',
+        id: 'invite-current-occurrence',
         eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-selected',
       ),
       _buildInviteForEvent(
-        id: 'invite-other-event',
-        eventId: '507f1f77bcf86cd799439012',
+        id: 'invite-other-occurrence',
+        eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-other',
       ),
     ]);
     final controller = ImmersiveEventDetailController(
@@ -100,16 +103,30 @@ void main() {
       authRepository: _FakeAuthRepository(authorized: true),
     );
 
-    controller.init(_buildEvent());
+    controller.init(
+      _buildEvent(
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-selected',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: true,
+          ),
+          _buildOccurrence(
+            id: 'occurrence-other',
+            start: DateTime(2026, 3, 16, 9),
+          ),
+        ],
+      ),
+    );
 
     expect(controller.receivedInvitesStreamValue.value, hasLength(1));
     expect(
       controller.receivedInvitesStreamValue.value.first.id,
-      'invite-current-event',
+      'invite-current-occurrence',
     );
     expect(
-      controller.receivedInvitesStreamValue.value.first.eventId,
-      '507f1f77bcf86cd799439011',
+      controller.receivedInvitesStreamValue.value.first.occurrenceId,
+      'occurrence-selected',
     );
   });
 
@@ -152,7 +169,7 @@ void main() {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
@@ -162,10 +179,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
     confirmCalls += 1;
-    _confirmedIds.add(eventId.value);
-    confirmedEventIdsStream.addValue(
+    _confirmedIds.add(occurrenceId.value);
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -185,7 +204,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
   ) =>
       userEventsRepoBool(
@@ -195,8 +214,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       );
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
-    confirmedEventIdsStream.addValue(
+  Future<void> refreshConfirmedOccurrenceIds() async {
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -211,9 +230,11 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {
-    _confirmedIds.remove(eventId.value);
-    confirmedEventIdsStream.addValue(
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {
+    _confirmedIds.remove(occurrenceId.value);
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -260,10 +281,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
-    InvitesRepositoryContractPrimString? occurrenceId,
+    required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
-    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId.value);
+    return buildInviteShareCodeResult(
+      code: 'CODE123',
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+    );
   }
 
   @override
@@ -294,7 +319,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
   }
@@ -307,9 +332,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventId,
-      InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
+  Future<void> sendInvites(
+      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
+      {required InvitesRepositoryContractPrimString occurrenceId,
       InvitesRepositoryContractPrimString? message}) async {}
 }
 
@@ -372,8 +397,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   ) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 
   @override
   String get userToken => authorized ? 'token' : '';
@@ -382,6 +406,16 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
 }) {
+  final resolvedOccurrences = occurrences.isEmpty
+      ? [
+          _buildOccurrence(
+            id: '507f1f77bcf86cd799439012',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: true,
+          ),
+        ]
+      : occurrences;
+
   return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     slugValue: SlugValue()..parse('evento-de-teste'),
@@ -408,7 +442,7 @@ EventModel _buildEvent({
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
-    occurrences: occurrences,
+    occurrences: resolvedOccurrences,
     coordinate: null,
     tags: const <String>['show'],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
@@ -443,11 +477,13 @@ EventOccurrenceOption _buildOccurrence({
 InviteModel _buildInviteForEvent({
   required String id,
   required String eventId,
+  String occurrenceId = '507f1f77bcf86cd799439012',
 }) {
   return buildInviteModelFromPrimitives(
     id: id,
     eventId: eventId,
     eventName: 'Evento $id',
+    occurrenceId: occurrenceId,
     eventDateTime: DateTime(2026, 3, 15, 20),
     eventImageUrl: 'https://example.com/$id.png',
     location: 'Guarapari',
