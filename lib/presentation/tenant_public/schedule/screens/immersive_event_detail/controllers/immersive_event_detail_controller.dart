@@ -1,10 +1,5 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/gamification/mission_resume.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_completion_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_progress_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_reward_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_total_required_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -20,8 +15,6 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -94,9 +87,6 @@ class ImmersiveEventDetailController implements Disposable {
 
   // Reactive state
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
-
-  // New state for Immersive Screen
-  final missionStreamValue = StreamValue<MissionResume?>();
 
   // Delegate to repository for single source of truth
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
@@ -350,19 +340,6 @@ class ImmersiveEventDetailController implements Disposable {
         ),
       );
       await _refreshConfirmationState(occurrenceId);
-
-      // Activate mission upon confirmation.
-      missionStreamValue.addValue(MissionResume(
-        titleValue: TitleValue(defaultValue: 'Missao VIP Ativa!')
-          ..parse('Missao VIP Ativa!'),
-        descriptionValue: DescriptionValue(
-            defaultValue: 'Traga 3 amigos para ganhar 1 drink.')
-          ..parse('Traga 3 amigos para ganhar 1 drink.'),
-        progressValue: const MissionProgressValue(0),
-        totalRequiredValue: const MissionTotalRequiredValue(3),
-        rewardValue: const MissionRewardValue('#DRINK123'),
-        isCompletedValue: const MissionCompletionValue(false),
-      ));
       return AttendanceConfirmationResult.confirmed;
     } finally {
       isLoadingStreamValue.addValue(false);
@@ -413,7 +390,6 @@ class ImmersiveEventDetailController implements Disposable {
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();
-    missionStreamValue.dispose();
     favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }

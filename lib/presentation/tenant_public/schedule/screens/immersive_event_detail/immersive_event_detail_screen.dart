@@ -29,7 +29,6 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/linked_profile_category_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
-import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/foundation.dart';
@@ -186,25 +185,6 @@ class _ImmersiveEventDetailScreenState
                                   )
                                 : null,
                           ),
-                          if (isConfirmed)
-                            ImmersiveTabItem(
-                              title: 'Ganhe Brindes',
-                              content: Align(
-                                alignment: Alignment.topCenter,
-                                child: UnconstrainedBox(
-                                  alignment: Alignment.topCenter,
-                                  constrainedAxis: Axis.horizontal,
-                                  child: StreamValueBuilder(
-                                    streamValue: _controller.missionStreamValue,
-                                    onNullWidget: const SizedBox.shrink(),
-                                    builder: (context, mission) {
-                                      return MissionWidget(mission: mission);
-                                    },
-                                  ),
-                                ),
-                              ),
-                              footer: null,
-                            ),
                         ];
 
                         final footer = isConfirmed

@@ -78,7 +78,6 @@ void main() {
     expect(userEventsRepository.confirmCalls, 1);
     expect(invitesRepository.acceptInviteCalls, 0);
     expect(controller.isConfirmedStreamValue.value, isTrue);
-    expect(controller.missionStreamValue.value, isNotNull);
   });
 
   test('event detail exposes pending invites only for selected occurrence',
