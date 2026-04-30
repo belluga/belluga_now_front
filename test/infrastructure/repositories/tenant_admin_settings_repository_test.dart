@@ -49,7 +49,31 @@ void main() {
 
     expect(settings, isNotNull);
     expect(settings!.projectId, 'project-a');
-    expect(adapter.requests.single.path, contains('tenant-a.test/admin/api'));
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
+  });
+
+  test('updateFirebaseSettings uses tenant public firebase settings endpoint',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateFirebaseSettings(
+      settings: TenantAdminFirebaseSettings(
+        apiKey: _requiredTextValue('api-key-b'),
+        appId: _requiredTextValue('app-id-b'),
+        projectId: _requiredTextValue('project-b'),
+        messagingSenderId: _requiredTextValue('sender-b'),
+        storageBucket: _requiredTextValue('bucket-b'),
+      ),
+    );
+
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
+    expect(updated.projectId, 'project-b');
   });
 
   test('fetchResendEmailSettings parses resend_email namespace payload',
@@ -103,6 +127,7 @@ void main() {
     );
 
     final requestData = adapter.requests.single.data as Map<String, dynamic>;
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/push');
     expect(requestData['push'], isA<Map<String, dynamic>>());
     expect(updated.maxTtlDays, 14);
     expect(updated.maxPerMinute, 20);

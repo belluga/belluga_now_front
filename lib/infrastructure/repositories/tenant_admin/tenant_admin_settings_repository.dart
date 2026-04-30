@@ -287,8 +287,8 @@ class TenantAdminSettingsRepository
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
     try {
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/settings/firebase',
+      final response = await _dio.getUri(
+        _buildTenantPublicApiUri('/settings/firebase'),
         options: Options(headers: _buildHeaders()),
       );
       return _responseDecoder.decodeFirebaseSettings(
@@ -304,8 +304,8 @@ class TenantAdminSettingsRepository
     required TenantAdminFirebaseSettings settings,
   }) async {
     try {
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/settings/firebase',
+      final response = await _dio.patchUri(
+        _buildTenantPublicApiUri('/settings/firebase'),
         data: {'firebase': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
@@ -392,8 +392,8 @@ class TenantAdminSettingsRepository
     required TenantAdminPushSettings settings,
   }) async {
     try {
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/settings/push',
+      final response = await _dio.patchUri(
+        _buildTenantPublicApiUri('/settings/push'),
         data: {'push': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
@@ -568,6 +568,13 @@ class TenantAdminSettingsRepository
       queryParameters: {
         '_ts': DateTime.now().microsecondsSinceEpoch.toString(),
       },
+    );
+  }
+
+  Uri _buildTenantPublicApiUri(String path) {
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return _resolveTenantOriginUri().replace(
+      path: '/api/v1$normalizedPath',
     );
   }
 
