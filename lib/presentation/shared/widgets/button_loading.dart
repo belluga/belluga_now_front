@@ -21,33 +21,33 @@ class ButtonLoading extends StatelessWidget {
       style: style,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (isLoading)
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: Theme.of(context).colorScheme.secondary,
-                      strokeWidth: 4,
-                    ),
-                  ),
+          if (isLoading)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Theme.of(context).colorScheme.secondary,
+                  strokeWidth: 4,
                 ),
-              SizedBox(
-                width: isLoading ? 24 : 0,
-              ), // Space between icon and text
-              Text(
+              ),
+            ),
+          if (isLoading) const SizedBox(width: 24),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
                 label,
+                maxLines: 1,
                 style: TextTheme.of(context).titleMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
               ),
-              if (isLoading) SizedBox(width: 32, height: 32),
-            ],
+            ),
           ),
+          if (isLoading) const SizedBox(width: 32, height: 32),
         ],
       ),
     );

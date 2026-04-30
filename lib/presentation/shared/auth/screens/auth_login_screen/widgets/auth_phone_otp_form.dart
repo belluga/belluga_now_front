@@ -12,9 +12,13 @@ class AuthPhoneOtpForm extends StatelessWidget {
   const AuthPhoneOtpForm({
     super.key,
     required this.controller,
+    this.showOtpDestinationHeader = true,
+    this.showOtpSecondaryActions = true,
   });
 
   final AuthLoginControllerContract controller;
+  final bool showOtpDestinationHeader;
+  final bool showOtpSecondaryActions;
 
   AuthLoginControllerContract get _controller => controller;
 
@@ -34,6 +38,8 @@ class AuthPhoneOtpForm extends StatelessWidget {
               AuthPhoneOtpStep.otpVerification => _OtpVerificationForm(
                   controller: _controller,
                   enabled: enabled,
+                  showDestinationHeader: showOtpDestinationHeader,
+                  showSecondaryActions: showOtpSecondaryActions,
                 ),
             };
           },
@@ -54,6 +60,9 @@ class _PhoneEntryForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Form(
       key: controller.phoneOtpFormKey,
       child: PhoneFormField(
@@ -74,12 +83,34 @@ class _PhoneEntryForm extends StatelessWidget {
             unawaited(controller.requestPhoneOtpChallenge());
           }
         },
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Telefone',
           hintText: '(27) 99999-0000',
           helperText: 'Enviaremos um codigo pelo WhatsApp.',
-          border: OutlineInputBorder(),
+          prefixIcon: const Icon(Icons.phone_outlined),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+          ),
+          fillColor: colorScheme.surfaceContainerHighest,
           filled: true,
+          helperMaxLines: 2,
         ),
       ),
     );
@@ -90,10 +121,14 @@ class _OtpVerificationForm extends StatelessWidget {
   const _OtpVerificationForm({
     required this.controller,
     required this.enabled,
+    required this.showDestinationHeader,
+    required this.showSecondaryActions,
   });
 
   final AuthLoginControllerContract controller;
   final bool enabled;
+  final bool showDestinationHeader;
+  final bool showSecondaryActions;
 
   @override
   Widget build(BuildContext context) {
@@ -112,41 +147,74 @@ class _OtpVerificationForm extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Codigo enviado por ${_deliveryChannelLabel(deliveryChannel)}',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+          if (showDestinationHeader) ...[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSms ? Icons.sms_outlined : Icons.chat_outlined,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Codigo enviado por '
+                            '${_deliveryChannelLabel(deliveryChannel)}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            phone,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            phone,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           _buildOtpInput(theme, colorScheme),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: enabled ? controller.editPhoneNumber : null,
-                child: const Text('Editar telefone'),
-              ),
-              TextButton(
-                onPressed: enabled ? _requestNewCode : null,
-                child: const Text('Reenviar codigo'),
-              ),
-              if (controller.isPhoneOtpSmsFallbackAvailable && !isSms)
-                TextButton.icon(
-                  onPressed: enabled ? _requestSmsCode : null,
-                  icon: const Icon(Icons.sms_outlined),
-                  label: const Text('Receber por SMS'),
+          if (showSecondaryActions) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: enabled ? controller.editPhoneNumber : null,
+                  child: const Text('Editar telefone'),
                 ),
-            ],
-          ),
+                TextButton(
+                  onPressed: enabled ? _requestNewCode : null,
+                  child: const Text('Reenviar codigo'),
+                ),
+                if (controller.isPhoneOtpSmsFallbackAvailable && !isSms)
+                  TextButton.icon(
+                    onPressed: enabled ? _requestSmsCode : null,
+                    icon: const Icon(Icons.sms_outlined),
+                    label: const Text('Receber por SMS'),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

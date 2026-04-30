@@ -14,6 +14,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/auth_login_controller.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_canva_content.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_phone_otp_experience.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -275,6 +276,76 @@ void main() {
       expect(find.byType(Pinput), findsOneWidget);
       expect(find.text('Codigo enviado por WhatsApp'), findsOneWidget);
       expect(find.text('Receber por SMS'), findsNothing);
+
+      await tester.enterText(find.byType(Pinput), '123456');
+      await tester.pump();
+
+      expect(controller.otpCodeController.text, '123456');
+    },
+  );
+
+  testWidgets(
+    'tenant public otp experience replaces the legacy login page structure',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
+
+      expect(find.byType(SliverAppBar), findsNothing);
+      expect(find.byType(AuthLoginCanvaContent), findsNothing);
+      expect(find.byKey(WidgetKeys.auth.loginPhoneField), findsOneWidget);
+      expect(find.byKey(WidgetKeys.auth.loginPasswordField), findsNothing);
+      expect(find.text('Passo 1 de 2'), findsOneWidget);
+      expect(find.text('Continuar via WhatsApp'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'otp experience hides SMS behind other ways when fallback is configured',
+    (tester) async {
+      await GetIt.I.reset();
+      GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
+
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+      controller.phoneController.text = '+5527999990000';
+      controller.currentPhoneOtpChallengeStreamValue.addValue(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+      controller.phoneOtpStepStreamValue.addValue(
+        AuthPhoneOtpStep.otpVerification,
+      );
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Outras formas'), findsOneWidget);
+      expect(find.text('Confirmar codigo'), findsOneWidget);
+      expect(find.text('Receber por SMS'), findsNothing);
+
+      await tester.ensureVisible(find.text('Outras formas'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Outras formas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receber por SMS'), findsOneWidget);
     },
   );
 
