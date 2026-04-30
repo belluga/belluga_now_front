@@ -54,6 +54,11 @@ abstract class AccountProfilesRepositoryContract {
   /// Initialize repository and load data
   Future<void> init();
 
+  /// Refresh authenticated/anonymous favorite ids from the backend authority.
+  Future<void> refreshFavoriteAccountProfileIds() async {
+    await init();
+  }
+
   /// Fetch paged account profiles for scrolling surfaces.
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required AccountProfilesRepositoryContractPrimInt page,

@@ -44,12 +44,15 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> init() async {
+    await refreshFavoriteAccountProfileIds();
+  }
+
+  @override
+  Future<void> refreshFavoriteAccountProfileIds() async {
     final remoteFavoriteIds = await _loadRemoteFavoriteIds();
-    if (remoteFavoriteIds.isNotEmpty) {
-      _favoriteAccountProfileIds
-        ..clear()
-        ..addAll(remoteFavoriteIds);
-    }
+    _favoriteAccountProfileIds
+      ..clear()
+      ..addAll(remoteFavoriteIds);
 
     favoriteAccountProfileIdsStreamValue.addValue(
       _toFavoriteIdValues(_favoriteAccountProfileIds),

@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:belluga_now/application/auth/post_auth_identity_hydration_coordinator.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
@@ -427,6 +428,7 @@ class _ApplicationContractState extends State<ApplicationContract>
   int _appInitRetryCount = 0;
   Timer? _appInitRetryTimer;
   bool _didMarkPushPresentationReady = false;
+  PostAuthIdentityHydrationCoordinator? _postAuthIdentityHydrationCoordinator;
 
   void _debugWebTelemetry(String message, [Object? details]) {
     if (kIsWeb) {
@@ -442,6 +444,7 @@ class _ApplicationContractState extends State<ApplicationContract>
     WidgetsBinding.instance.addObserver(this);
     _registerTelemetryLifecycleObserver();
     _registerRouterTelemetryObserver();
+    _initializePostAuthIdentityHydration();
     unawaited(_trackAppInit());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _didMarkPushPresentationReady) {
@@ -468,7 +471,18 @@ class _ApplicationContractState extends State<ApplicationContract>
     }
     _appInitRetryTimer?.cancel();
     _lifecycleDebounceTimer?.cancel();
+    _postAuthIdentityHydrationCoordinator?.dispose();
+    _postAuthIdentityHydrationCoordinator = null;
     super.dispose();
+  }
+
+  void _initializePostAuthIdentityHydration() {
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      return;
+    }
+    final coordinator = PostAuthIdentityHydrationCoordinator();
+    coordinator.bind();
+    _postAuthIdentityHydrationCoordinator = coordinator;
   }
 
   void _registerRouterTelemetryObserver() {

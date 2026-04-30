@@ -179,6 +179,32 @@ void main() {
     expect(repository.allAccountProfilesStreamValue.value, isEmpty);
   });
 
+  test(
+      'refreshFavoriteAccountProfileIds clears stale ids when current identity has no backend favorites',
+      () async {
+    const staleFavoriteId = 'stale-profile-id';
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: const <AccountProfileModel>[],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {staleFavoriteId},
+    );
+
+    await repository.refreshFavoriteAccountProfileIds();
+
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
+      isEmpty,
+    );
+  });
+
   test('toggleFavorite persists favorite and unfavorite through backend',
       () async {
     final validId = _generateMongoId();
