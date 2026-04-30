@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_phone_otp_form.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
@@ -146,7 +147,7 @@ class _AuthOtpStepHeader extends StatelessWidget {
         _AuthOtpStepIndicator(step: step),
         const SizedBox(height: 18),
         Text(
-          isPhoneEntry ? 'Entrar com telefone' : 'Confirme o codigo',
+          isPhoneEntry ? 'Entrar com telefone' : 'Confirme o código',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.w800,
@@ -156,8 +157,8 @@ class _AuthOtpStepHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           isPhoneEntry
-              ? 'Use seu numero para entrar ou criar sua conta.'
-              : 'Digite os 6 digitos recebidos para continuar.',
+              ? 'Use seu número para entrar ou criar sua conta.'
+              : 'Digite os 6 dígitos recebidos para continuar.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
             height: 1.35,
@@ -177,37 +178,25 @@ class _AuthOtpStepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final currentIndex = step == AuthPhoneOtpStep.phoneEntry ? 1 : 2;
 
     return Row(
       children: [
-        _AuthOtpStepDot(
-          label: '1',
-          selected: currentIndex == 1,
-          completed: currentIndex > 1,
-        ),
         Expanded(
-          child: Container(
-            height: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            color: currentIndex > 1
-                ? colorScheme.primary
-                : colorScheme.surfaceContainerHighest,
+          child: _AuthOtpStepPill(
+            number: '1',
+            label: 'Telefone',
+            selected: currentIndex == 1,
+            completed: currentIndex > 1,
           ),
         ),
-        _AuthOtpStepDot(
-          label: '2',
-          selected: currentIndex == 2,
-          completed: false,
-        ),
-        const SizedBox(width: 12),
-        Text(
-          'Passo $currentIndex de 2',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
+        const SizedBox(width: 8),
+        Expanded(
+          child: _AuthOtpStepPill(
+            number: '2',
+            label: 'Código',
+            selected: currentIndex == 2,
+            completed: false,
           ),
         ),
       ],
@@ -215,48 +204,85 @@ class _AuthOtpStepIndicator extends StatelessWidget {
   }
 }
 
-class _AuthOtpStepDot extends StatelessWidget {
-  const _AuthOtpStepDot({
+class _AuthOtpStepPill extends StatelessWidget {
+  const _AuthOtpStepPill({
+    required this.number,
     required this.label,
     required this.selected,
     required this.completed,
   });
 
+  final String number;
   final String label;
   final bool selected;
   final bool completed;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = selected || completed
-        ? colorScheme.primary
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final active = selected || completed;
+    final backgroundColor = active
+        ? colorScheme.primaryContainer
         : colorScheme.surfaceContainerHighest;
-    final foregroundColor = selected || completed
-        ? colorScheme.onPrimary
-        : colorScheme.onSurfaceVariant;
+    final borderColor =
+        active ? colorScheme.primary : colorScheme.outlineVariant;
+    final labelColor =
+        active ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant;
 
-    return Container(
-      width: 32,
-      height: 32,
-      alignment: Alignment.center,
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
       ),
-      child: completed
-          ? Icon(
-              Icons.check,
-              size: 18,
-              color: foregroundColor,
-            )
-          : Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: foregroundColor,
-                    fontWeight: FontWeight.w800,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: completed
+                  ? Icon(
+                      Icons.check,
+                      size: 16,
+                      color: colorScheme.onPrimary,
+                    )
+                  : Text(
+                      number,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: active
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
             ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: labelColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -296,10 +322,22 @@ class _AuthOtpPanel extends StatelessWidget {
                   step == AuthPhoneOtpStep.otpVerification,
               showOtpSecondaryActions: false,
             ),
-            if (generalError != null && generalError!.trim().isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _AuthOtpErrorMessage(message: generalError!),
-            ],
+            FormValidationGlobalErrorsBuilder(
+              validationStreamValue: controller.phoneOtpValidationStreamValue,
+              targetId:
+                  AuthLoginControllerContract.phoneOtpValidationTargetGlobal,
+              builder: (context, messages) {
+                final message =
+                    messages.isNotEmpty ? messages.first : generalError?.trim();
+                if (message == null || message.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: _AuthOtpErrorMessage(message: message),
+                );
+              },
+            ),
             const SizedBox(height: 18),
             Semantics(
               identifier: 'auth_login_submit_button',
@@ -334,7 +372,7 @@ class _AuthOtpPanel extends StatelessWidget {
   String _primaryButtonLabel() {
     return switch (step) {
       AuthPhoneOtpStep.phoneEntry => 'Continuar via WhatsApp',
-      AuthPhoneOtpStep.otpVerification => 'Confirmar codigo',
+      AuthPhoneOtpStep.otpVerification => 'Confirmar código',
     };
   }
 
@@ -420,7 +458,7 @@ class _OtpSecondaryActions extends StatelessWidget {
         TextButton.icon(
           onPressed: enabled ? _requestNewCode : null,
           icon: const Icon(Icons.refresh_outlined),
-          label: const Text('Reenviar codigo'),
+          label: const Text('Reenviar código'),
         ),
         if (showSmsFallback)
           PopupMenuButton<String>(
@@ -483,8 +521,8 @@ class _AuthOtpTrustNote extends StatelessWidget {
 
     return Text(
       step == AuthPhoneOtpStep.phoneEntry
-          ? 'WhatsApp e o canal principal desta etapa.'
-          : 'O codigo expira em alguns minutos. Solicite outro se necessario.',
+          ? 'Enviaremos o código para seu número WhatsApp.'
+          : 'O código expira em alguns minutos. Solicite outro se necessário.',
       textAlign: TextAlign.center,
       style: theme.textTheme.bodySmall?.copyWith(
         color: colorScheme.onSurfaceVariant,

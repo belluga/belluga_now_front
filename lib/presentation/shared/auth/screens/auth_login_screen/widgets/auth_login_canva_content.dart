@@ -145,8 +145,8 @@ class AuthLoginCanvaContent extends StatelessWidget {
 
   String _phoneOtpButtonLabel(AuthPhoneOtpStep step) {
     return switch (step) {
-      AuthPhoneOtpStep.phoneEntry => 'Receber codigo',
-      AuthPhoneOtpStep.otpVerification => 'Confirmar codigo',
+      AuthPhoneOtpStep.phoneEntry => 'Receber código',
+      AuthPhoneOtpStep.otpVerification => 'Confirmar código',
     };
   }
 

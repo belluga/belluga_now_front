@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phone_form_field/phone_form_field.dart';
@@ -86,7 +87,7 @@ class _PhoneEntryForm extends StatelessWidget {
         decoration: InputDecoration(
           labelText: 'Telefone',
           hintText: '(27) 99999-0000',
-          helperText: 'Enviaremos um codigo pelo WhatsApp.',
+          helperText: 'Use o seletor de país para informar o número.',
           prefixIcon: const Icon(Icons.phone_outlined),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -167,7 +168,7 @@ class _OtpVerificationForm extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Codigo enviado por '
+                            'Código enviado por '
                             '${_deliveryChannelLabel(deliveryChannel)}',
                             style: Theme.of(context)
                                 .textTheme
@@ -190,7 +191,13 @@ class _OtpVerificationForm extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          _buildOtpInput(theme, colorScheme),
+          FormValidationFieldErrorBuilder(
+            validationStreamValue: controller.phoneOtpValidationStreamValue,
+            fieldId: AuthLoginControllerContract.phoneOtpValidationTargetCode,
+            builder: (context, errorText) {
+              return _buildOtpInput(theme, colorScheme, errorText);
+            },
+          ),
           if (showSecondaryActions) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -204,7 +211,7 @@ class _OtpVerificationForm extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: enabled ? _requestNewCode : null,
-                  child: const Text('Reenviar codigo'),
+                  child: const Text('Reenviar código'),
                 ),
                 if (controller.isPhoneOtpSmsFallbackAvailable && !isSms)
                   TextButton.icon(
@@ -228,9 +235,16 @@ class _OtpVerificationForm extends StatelessWidget {
     unawaited(controller.requestPhoneOtpSmsChallenge());
   }
 
-  Widget _buildOtpInput(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildOtpInput(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String? errorText,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final normalizedErrorText = errorText?.trim();
+        final hasBackendError =
+            normalizedErrorText != null && normalizedErrorText.isNotEmpty;
         final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
@@ -261,7 +275,14 @@ class _OtpVerificationForm extends StatelessWidget {
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(6),
           ],
+          onChanged: (_) => controller.clearPhoneOtpCodeError(),
           validator: controller.validateOtpCode,
+          forceErrorState: hasBackendError,
+          errorText: hasBackendError ? normalizedErrorText : null,
+          errorTextStyle: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.error,
+            height: 1.25,
+          ),
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           defaultPinTheme: basePinTheme,
           focusedPinTheme: basePinTheme.copyDecorationWith(

@@ -223,6 +223,90 @@ void main() {
   );
 
   testWidgets(
+    'verifyPhoneOtpChallenge maps raw backend failures to the otp field',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository()
+        ..verifyFailure = Exception(
+          'Failed to verify OTP [422] '
+          '(/v1/auth/otp/verify?tenant_id=tenant-1): '
+          '{"message":"The code is invalid.","errors":{"code":["Invalid"]}}',
+        );
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.phoneNumberController.value = phoneNumber;
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      await controller.requestPhoneOtpChallenge();
+      controller.otpCodeController.text = '000000';
+      await controller.verifyPhoneOtpChallenge();
+      await tester.pump();
+
+      expect(controller.loginResultStreamValue.value, isFalse);
+      expect(controller.generalErrorStreamValue.value, isNull);
+      expect(
+        controller.phoneOtpValidationController.errorForField(
+          AuthLoginControllerContract.phoneOtpValidationTargetCode,
+        ),
+        'Código inválido. Confira os 6 dígitos e tente novamente.',
+      );
+      expect(
+        controller.phoneOtpValidationController.errorForField(
+          AuthLoginControllerContract.phoneOtpValidationTargetCode,
+        ),
+        isNot(contains('/v1/auth/otp/verify')),
+      );
+      expect(
+        controller.phoneOtpValidationController.errorForField(
+          AuthLoginControllerContract.phoneOtpValidationTargetCode,
+        ),
+        isNot(contains('errors')),
+      );
+    },
+  );
+
+  testWidgets(
+    'resendPhoneOtpChallenge shows a production-safe request error',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository()
+        ..requestFailure = Exception(
+          'Failed to request OTP [500] '
+          '(/v1/auth/otp/challenge?tenant_id=tenant-1): '
+          '{"message":"Webhook transport failure","trace":"secret"}',
+        );
+      final controller = AuthLoginController(authRepository: repository);
+      controller.phoneController.text = '+5527999990000';
+      controller.currentPhoneOtpChallengeStreamValue.addValue(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+      controller.phoneOtpStepStreamValue.addValue(
+        AuthPhoneOtpStep.otpVerification,
+      );
+
+      await controller.resendPhoneOtpChallenge();
+      await tester.pump();
+
+      expect(controller.generalErrorStreamValue.value, isNull);
+      expect(
+        controller.phoneOtpValidationController.errorsForGlobal(),
+        <String>[
+          'Não conseguimos enviar o código agora. Tente novamente em instantes.',
+        ],
+      );
+      expect(
+        controller.phoneOtpValidationController.errorsForGlobal().join(' '),
+        isNot(contains('/v1/auth/otp/challenge')),
+      );
+      expect(
+        controller.phoneOtpValidationController.errorsForGlobal().join(' '),
+        isNot(contains('trace')),
+      );
+    },
+  );
+
+  testWidgets(
     'tenant public login surface shows phone otp instead of password signup',
     (tester) async {
       final repository = _PhoneOtpAuthRepository();
@@ -274,7 +358,7 @@ void main() {
       );
 
       expect(find.byType(Pinput), findsOneWidget);
-      expect(find.text('Codigo enviado por WhatsApp'), findsOneWidget);
+      expect(find.text('Código enviado por WhatsApp'), findsOneWidget);
       expect(find.text('Receber por SMS'), findsNothing);
 
       await tester.enterText(find.byType(Pinput), '123456');
@@ -303,8 +387,74 @@ void main() {
       expect(find.byType(AuthLoginCanvaContent), findsNothing);
       expect(find.byKey(WidgetKeys.auth.loginPhoneField), findsOneWidget);
       expect(find.byKey(WidgetKeys.auth.loginPasswordField), findsNothing);
-      expect(find.text('Passo 1 de 2'), findsOneWidget);
+      expect(find.text('Passo 1 de 2'), findsNothing);
+      expect(
+        find.text('Enviaremos o código para seu número WhatsApp.'),
+        findsOneWidget,
+      );
       expect(find.text('Continuar via WhatsApp'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'tenant public otp experience renders sanitized backend errors in context',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository()
+        ..verifyFailure = Exception(
+          'Failed to verify OTP [422] '
+          '(/v1/auth/otp/verify?tenant_id=tenant-1): '
+          '{"message":"The code is invalid.","errors":{"code":["Invalid"]}}',
+        )
+        ..requestFailure = Exception(
+          'Failed to request OTP [500] '
+          '(/v1/auth/otp/challenge?tenant_id=tenant-1): '
+          '{"message":"Webhook transport failure","trace":"secret"}',
+        );
+      final controller = AuthLoginController(authRepository: repository);
+      controller.phoneController.text = '+5527999990000';
+      controller.currentPhoneOtpChallengeStreamValue.addValue(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+      controller.phoneOtpStepStreamValue.addValue(
+        AuthPhoneOtpStep.otpVerification,
+      );
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(Pinput), '000000');
+      await tester.tap(find.text('Confirmar código'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Código inválido. Confira os 6 dígitos e tente novamente.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('/v1/auth/otp/verify'), findsNothing);
+      expect(find.textContaining('errors'), findsNothing);
+
+      await tester.ensureVisible(find.text('Reenviar código'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reenviar código'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Não conseguimos enviar o código agora. Tente novamente em instantes.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('/v1/auth/otp/challenge'), findsNothing);
+      expect(find.textContaining('trace'), findsNothing);
     },
   );
 
@@ -337,7 +487,7 @@ void main() {
       );
 
       expect(find.text('Outras formas'), findsOneWidget);
-      expect(find.text('Confirmar codigo'), findsOneWidget);
+      expect(find.text('Confirmar código'), findsOneWidget);
       expect(find.text('Receber por SMS'), findsNothing);
 
       await tester.ensureVisible(find.text('Outras formas'));
@@ -391,6 +541,8 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
   final requestedPhones = <String>[];
   final requestedDeliveryChannels = <String>[];
   final verifiedChallengeIds = <String>[];
+  Object? requestFailure;
+  Object? verifyFailure;
   bool _authorized = false;
 
   @override
@@ -431,6 +583,10 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
     AuthRepositoryContractParamString phone, {
     AuthRepositoryContractParamString? deliveryChannel,
   }) async {
+    final failure = requestFailure;
+    if (failure != null) {
+      throw failure;
+    }
     requestedPhones.add(phone.value);
     final channel = deliveryChannel?.value ?? 'whatsapp';
     requestedDeliveryChannels.add(channel);
@@ -446,6 +602,10 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
     required AuthRepositoryContractParamString phone,
     required AuthRepositoryContractParamString code,
   }) async {
+    final failure = verifyFailure;
+    if (failure != null) {
+      throw failure;
+    }
     verifiedChallengeIds.add(challengeId.value);
     _authorized = true;
   }

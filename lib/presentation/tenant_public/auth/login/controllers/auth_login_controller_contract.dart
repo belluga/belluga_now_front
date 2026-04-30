@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
@@ -20,9 +21,37 @@ enum AuthPhoneOtpStep {
   otpVerification,
 }
 
+final authPhoneOtpValidationConfig = FormValidationConfig(
+  formId: 'auth_phone_otp',
+  bindings: <FormValidationBinding>[
+    fieldAny(
+      const <String>[
+        'code',
+        'otp_code',
+        'verification_code',
+        'codigo',
+        'código',
+      ],
+      targetId: AuthLoginControllerContract.phoneOtpValidationTargetCode,
+    ),
+    globalAny(
+      const <String>[
+        'global',
+        'phone',
+        'delivery_channel',
+        'challenge',
+        'challenge_id',
+      ],
+      targetId: AuthLoginControllerContract.phoneOtpValidationTargetGlobal,
+    ),
+  ],
+);
+
 abstract class AuthLoginControllerContract extends Object with Disposable {
   static const phoneOtpDeliveryChannelWhatsapp = 'whatsapp';
   static const phoneOtpDeliveryChannelSms = 'sms';
+  static const phoneOtpValidationTargetGlobal = 'global';
+  static const phoneOtpValidationTargetCode = 'code';
 
   AuthLoginControllerContract({
     AuthRepositoryContract? authRepository,
@@ -99,6 +128,11 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final FocusNode otpCodeFocusNode = FocusNode();
 
   final generalErrorStreamValue = StreamValue<String?>();
+  final FormValidationControllerAdapter phoneOtpValidationController =
+      FormValidationControllerAdapter(config: authPhoneOtpValidationConfig);
+
+  StreamValue<FormValidationState> get phoneOtpValidationStreamValue =>
+      phoneOtpValidationController.stateStreamValue;
 
   void cleanEmailError(Object? _) => authEmailFieldController.cleanError();
   void cleanPasswordError(Object? _) => passwordController.cleanError();
@@ -107,10 +141,16 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     cleanEmailError(null);
     cleanPasswordError(null);
     generalErrorStreamValue.addValue(null);
+    phoneOtpValidationController.clearAll();
   }
 
   void clearGeneralError() {
     generalErrorStreamValue.addValue(null);
+    phoneOtpValidationController.clearGlobal(phoneOtpValidationTargetGlobal);
+  }
+
+  void clearPhoneOtpCodeError() {
+    phoneOtpValidationController.clearField(phoneOtpValidationTargetCode);
   }
 
   bool validate() => loginFormKey.currentState?.validate() ?? false;
@@ -162,7 +202,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   String? validateOtpCode(String? raw) {
     final value = (raw ?? '').trim();
     if (!RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-      return 'Informe o codigo de 6 digitos.';
+      return 'Informe o código de 6 dígitos.';
     }
 
     return null;
@@ -254,8 +294,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     try {
       if (normalizedDeliveryChannel == phoneOtpDeliveryChannelSms &&
           !isPhoneOtpSmsFallbackAvailable) {
-        generalErrorStreamValue.addValue(
-          'SMS indisponivel para este ambiente.',
+        _applyPhoneOtpGlobalError(
+          'SMS indisponível para este ambiente.',
         );
         return;
       }
@@ -275,10 +315,12 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
       _syncPhoneNumberController(challenge.phone);
       otpCodeController.clear();
       phoneOtpStepStreamValue.addValue(AuthPhoneOtpStep.otpVerification);
+    } on FormValidationFailure catch (e) {
+      _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } on BellugaAuthError catch (e) {
-      generalErrorStreamValue.addValue(e.message);
+      _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } catch (e) {
-      generalErrorStreamValue.addValue(_resolveUnknownError(e));
+      _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } finally {
       buttonLoadingValue.addValue(false);
       fieldEnabled.addValue(true);
@@ -311,8 +353,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
       final challenge = currentPhoneOtpChallengeStreamValue.value;
       if (challenge == null) {
-        generalErrorStreamValue.addValue(
-          'Solicite um novo codigo para continuar.',
+        _applyPhoneOtpGlobalError(
+          'Solicite um novo código para continuar.',
         );
         loginResultStreamValue.addValue(false);
         return;
@@ -324,11 +366,14 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         code: _authTextValue(otpCodeController.text.trim()),
       );
       loginResultStreamValue.addValue(_authRepository.isAuthorized);
+    } on FormValidationFailure catch (e) {
+      _applyPhoneOtpVerificationFailure(e);
+      loginResultStreamValue.addValue(false);
     } on BellugaAuthError catch (e) {
-      generalErrorStreamValue.addValue(e.message);
+      _applyPhoneOtpVerificationFailure(e);
       loginResultStreamValue.addValue(false);
     } catch (e) {
-      generalErrorStreamValue.addValue(_resolveUnknownError(e));
+      _applyPhoneOtpVerificationFailure(e);
       loginResultStreamValue.addValue(false);
     } finally {
       buttonLoadingValue.addValue(false);
@@ -338,6 +383,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   void editPhoneNumber() {
     otpCodeController.clear();
+    phoneOtpValidationController.clearAll();
     currentPhoneOtpChallengeStreamValue.addValue(null);
     phoneOtpStepStreamValue.addValue(AuthPhoneOtpStep.phoneEntry);
   }
@@ -422,6 +468,89 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     return message.isEmpty ? 'Erro desconhecido' : message;
   }
 
+  void _applyPhoneOtpCodeError(String message) {
+    phoneOtpValidationController.replaceWithResolved(
+      fieldErrors: <String, List<String>>{
+        phoneOtpValidationTargetCode: <String>[message],
+      },
+    );
+  }
+
+  void _applyPhoneOtpGlobalError(String message) {
+    phoneOtpValidationController.replaceWithResolved(
+      globalErrors: <String, List<String>>{
+        phoneOtpValidationTargetGlobal: <String>[message],
+      },
+    );
+  }
+
+  void _applyPhoneOtpVerificationFailure(Object error) {
+    if (_isOtpCodeVerificationError(error)) {
+      _applyPhoneOtpCodeError(_resolveOtpCodeError(error));
+      return;
+    }
+    _applyPhoneOtpGlobalError(
+      'Não conseguimos confirmar o código agora. Tente novamente em instantes.',
+    );
+  }
+
+  String _resolveOtpRequestError(Object error) {
+    final normalized = error.toString().toLowerCase();
+    if (normalized.contains('sms') && normalized.contains('indispon')) {
+      return 'SMS indisponível para este ambiente.';
+    }
+    if (normalized.contains('429') ||
+        normalized.contains('too many') ||
+        normalized.contains('rate') ||
+        normalized.contains('cooldown') ||
+        normalized.contains('retry_after')) {
+      return 'Aguarde alguns instantes antes de pedir um novo código.';
+    }
+    return 'Não conseguimos enviar o código agora. Tente novamente em instantes.';
+  }
+
+  String _resolveOtpCodeError(Object error) {
+    final normalized = error.toString().toLowerCase();
+    if (normalized.contains('expir')) {
+      return 'Código expirado. Solicite um novo código para continuar.';
+    }
+    if (normalized.contains('attempt') ||
+        normalized.contains('tentativa') ||
+        normalized.contains('too many')) {
+      return 'Muitas tentativas. Solicite um novo código para continuar.';
+    }
+    return 'Código inválido. Confira os 6 dígitos e tente novamente.';
+  }
+
+  bool _isOtpCodeVerificationError(Object error) {
+    if (error is FormValidationFailure) {
+      if (error.statusCode == 422) {
+        return true;
+      }
+      return error.fieldErrors.keys.any(_isOtpCodeValidationKey);
+    }
+
+    final normalized = error.toString().toLowerCase();
+    return normalized.contains('[422]') ||
+        normalized.contains('statuscode: 422') ||
+        normalized.contains('validation') ||
+        normalized.contains('invalid') ||
+        normalized.contains('expir') ||
+        normalized.contains('"code"') ||
+        normalized.contains("'code'") ||
+        normalized.contains('codigo') ||
+        normalized.contains('código');
+  }
+
+  bool _isOtpCodeValidationKey(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized == 'code' ||
+        normalized == 'otp_code' ||
+        normalized == 'verification_code' ||
+        normalized == 'codigo' ||
+        normalized == 'código';
+  }
+
   String? _resolveLandlordHost(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
@@ -451,6 +580,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     phoneFocusNode.dispose();
     otpCodeFocusNode.dispose();
     generalErrorStreamValue.dispose();
+    phoneOtpValidationController.dispose();
     buttonLoadingValue.dispose();
     fieldEnabled.dispose();
     loginResultStreamValue.dispose();
