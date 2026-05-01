@@ -40,7 +40,8 @@ class TenantAdminMapMarkerIconPickerField extends StatelessWidget {
       builder: (context, value, _) {
         final selected = MapMarkerIconToken.fromStorage(value.text);
         final resolvedIcon = selected?.iconData ??
-            MapMarkerIconResolver.resolve(value.text.isEmpty ? null : value.text);
+            MapMarkerIconResolver.resolve(
+                value.text.isEmpty ? null : value.text);
         final selectedLabel = selected?.label ?? 'Selecionar ícone';
 
         return InkWell(
@@ -119,10 +120,27 @@ class _TenantAdminMapMarkerIconPickerSheet extends StatelessWidget {
                         runSpacing: 8,
                         children: items.map((item) {
                           final isSelected = item == selected;
+                          final colorScheme = Theme.of(context).colorScheme;
+                          final foregroundColor = isSelected
+                              ? colorScheme.onPrimary
+                              : colorScheme.onSurfaceVariant;
                           return FilterChip(
                             selected: isSelected,
-                            avatar: Icon(item.iconData, size: 18),
-                            label: Text(item.label),
+                            showCheckmark: false,
+                            selectedColor: colorScheme.primary,
+                            labelStyle: TextStyle(color: foregroundColor),
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  item.iconData,
+                                  size: 16,
+                                  color: foregroundColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(item.label),
+                              ],
+                            ),
                             onSelected: (_) => context.router.pop(item),
                           );
                         }).toList(growable: false),

@@ -281,8 +281,18 @@ class BooraIcons {
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
+  static const IconData kiosk = IconData(
+    0xf037,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData iceCream = IconData(
+    0xf038,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
 
-  static const int fontIconCount = 55;
+  static const int fontIconCount = 57;
 
   static const List<IconData> fontIcons = <IconData>[
     clapperboard,
@@ -340,6 +350,8 @@ class BooraIcons {
     local,
     ticket,
     ticket1,
+    kiosk,
+    iceCream,
   ];
 
   static const IconData inviteSolid = ticket;

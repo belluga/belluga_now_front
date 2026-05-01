@@ -114,6 +114,12 @@ enum MapMarkerIconToken {
     iconData: BooraIcons.market,
     group: MapMarkerIconGroup.commerce,
   ),
+  kiosk(
+    storageKey: 'kiosk',
+    label: 'Quiosque',
+    iconData: BooraIcons.kiosk,
+    group: MapMarkerIconGroup.commerce,
+  ),
   fireworks(
     storageKey: 'fireworks',
     label: 'Fogos',
@@ -202,6 +208,12 @@ enum MapMarkerIconToken {
     storageKey: 'lunch',
     label: 'Almoço',
     iconData: BooraIcons.lunch,
+    group: MapMarkerIconGroup.gastronomy,
+  ),
+  iceCream(
+    storageKey: 'ice-cream',
+    label: 'Sorvete',
+    iconData: BooraIcons.iceCream,
     group: MapMarkerIconGroup.gastronomy,
   ),
   restaurant(
@@ -399,8 +411,12 @@ enum MapMarkerIconToken {
     'attraction': MapMarkerIconToken.destination,
     'store': MapMarkerIconToken.market,
     'storefront': MapMarkerIconToken.market,
+    'quiosque': MapMarkerIconToken.kiosk,
+    'kiosk': MapMarkerIconToken.kiosk,
     'bag': MapMarkerIconToken.shoppingBag,
     'shopping': MapMarkerIconToken.shoppingBag,
+    'icecream': MapMarkerIconToken.iceCream,
+    'sorvete': MapMarkerIconToken.iceCream,
     'music': MapMarkerIconToken.musicalNote,
     'musicnote': MapMarkerIconToken.musicalNote,
     'audiotrack': MapMarkerIconToken.musicalNote,

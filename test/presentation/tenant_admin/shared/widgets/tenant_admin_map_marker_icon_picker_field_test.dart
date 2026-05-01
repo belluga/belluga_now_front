@@ -27,7 +27,34 @@ void main() {
     expect(find.text('Local'), findsWidgets);
     expect(find.text('Cinema'), findsOneWidget);
     expect(find.text('Promoção'), findsOneWidget);
+    expect(find.text('Quiosque'), findsOneWidget);
+    expect(find.text('Sorvete'), findsOneWidget);
     expect(find.text('Primeiros socorros'), findsOneWidget);
     expect(find.text('Ingresso alternativo'), findsOneWidget);
+
+    for (final token in MapMarkerIconToken.values) {
+      final chip = tester.widget<FilterChip>(
+        find.widgetWithText(FilterChip, token.label),
+      );
+      expect(
+        chip.showCheckmark,
+        isFalse,
+        reason: 'Selection must not replace the ${token.storageKey} glyph.',
+      );
+      expect(
+        chip.label,
+        isA<Row>()
+            .having(
+              (row) => row.children.whereType<Icon>().single.icon,
+              'embedded icon',
+              token.iconData,
+            )
+            .having(
+              (row) => row.children.whereType<Text>().single.data,
+              'label text',
+              token.label,
+            ),
+      );
+    }
   });
 }

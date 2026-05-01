@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_icon_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +22,14 @@ void main() {
     expect(
       MapMarkerIconToken.fromStorage(' CULTURE '),
       MapMarkerIconToken.museum,
+    );
+    expect(
+      MapMarkerIconToken.fromStorage('sorvete'),
+      MapMarkerIconToken.iceCream,
+    );
+    expect(
+      MapMarkerIconToken.fromStorage('quiosque'),
+      MapMarkerIconToken.kiosk,
     );
     expect(
       MapMarkerIconToken.fromStorage('unknown-token'),
@@ -43,67 +54,9 @@ void main() {
   });
 
   test('all uploaded Boora font storage keys are present', () {
-    const expectedKeys = <String>{
-      'clapperboard',
-      'running',
-      'jubs',
-      'group',
-      'small-talk',
-      'creative-team',
-      'presentation',
-      'workshop',
-      'reading-book',
-      'guitar-instrument',
-      'live-music',
-      'microphone',
-      'users-linked',
-      'stage',
-      'bus-station',
-      'market',
-      'fireworks',
-      'mountains',
-      'destination',
-      'chef',
-      'chef1',
-      'united',
-      'theater',
-      'handshake',
-      'open-book',
-      'luggage',
-      'airplane',
-      'coupon',
-      'promo',
-      'discount',
-      'lunch',
-      'restaurant',
-      'museum',
-      'bank',
-      'church',
-      'musical-note',
-      'vinyl',
-      'beach-umbrella',
-      'hotel',
-      'nature',
-      'wave',
-      'sunset',
-      'wave1',
-      'paddling',
-      'swimmer',
-      'drug',
-      'pharmacy',
-      'first-aid-kit',
-      'hospital',
-      'grocery-store',
-      'shopping-bag',
-      'event',
-      'local',
-      'ticket',
-      'ticket1',
-    };
-
     expect(
       MapMarkerIconToken.values.map((entry) => entry.storageKey).toSet(),
-      expectedKeys,
+      _uploadedBooraIconNames(),
     );
   });
 
@@ -122,4 +75,12 @@ void main() {
       isTrue,
     );
   });
+}
+
+Set<String> _uploadedBooraIconNames() {
+  final json = jsonDecode(
+    File('assets/fonts/boora_icons_configs/config.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+  final glyphs = (json['glyphs'] as List<dynamic>).cast<Map<String, dynamic>>();
+  return glyphs.map((glyph) => glyph['name'] as String).toSet();
 }
