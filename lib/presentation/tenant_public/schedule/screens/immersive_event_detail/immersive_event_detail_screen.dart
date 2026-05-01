@@ -737,7 +737,7 @@ Widget _buildInviteFooter(
             ],
           ),
     buttonText: 'BORA? Agitar a galera!',
-    buttonIcon: BooraIcons.invite_solid,
+    buttonIcon: BooraIcons.inviteSolid,
     buttonColor: primary,
     onActionPressed: onInviteFriends,
   );

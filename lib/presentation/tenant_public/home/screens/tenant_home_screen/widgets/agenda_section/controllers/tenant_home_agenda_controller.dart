@@ -637,18 +637,7 @@ class TenantHomeAgendaController extends Object
 
   @override
   void cycleInviteFilter() {
-    final current = inviteFilterStreamValue.value;
-    switch (current) {
-      case InviteFilter.none:
-        setInviteFilter(InviteFilter.invitesAndConfirmed);
-        break;
-      case InviteFilter.invitesAndConfirmed:
-        setInviteFilter(InviteFilter.confirmedOnly);
-        break;
-      case InviteFilter.confirmedOnly:
-        setInviteFilter(InviteFilter.none);
-        break;
-    }
+    setInviteFilter(inviteFilterStreamValue.value.next);
   }
 
   void setSearchActive(bool active) {
@@ -747,8 +736,8 @@ class TenantHomeAgendaController extends Object
       switch (filter) {
         case InviteFilter.none:
           return true;
-        case InviteFilter.invitesAndConfirmed:
-          return isConfirmed(id) || hasPending(id);
+        case InviteFilter.pendingOnly:
+          return hasPending(id);
         case InviteFilter.confirmedOnly:
           return isConfirmed(id);
       }

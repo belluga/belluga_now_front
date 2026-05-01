@@ -61,6 +61,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -101,9 +102,11 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
     final filteredByCategory = _filterByCategories(timeFiltered, categories);
     final filteredByTags = _filterByTags(filteredByCategory, tags);
+    final filteredByOccurrences =
+        _filterByOccurrenceIds(filteredByTags, occurrenceIds);
 
     final locationFiltered = _filterWithinRadiusIfAvailable(
-      filteredByTags,
+      filteredByOccurrences,
       radiusMeters: radiusMeters,
       originLat: originLat,
       originLng: originLng,
@@ -251,6 +254,35 @@ class MockScheduleBackend implements ScheduleBackendContract {
         .toList();
   }
 
+  List<EventDTO> _filterByOccurrenceIds(
+    List<EventDTO> input,
+    List<String>? occurrenceIds,
+  ) {
+    if (occurrenceIds == null || occurrenceIds.isEmpty) return input;
+    final normalized = occurrenceIds.map((id) => id.trim()).toSet();
+    normalized.remove('');
+    if (normalized.isEmpty) return input;
+
+    return input
+        .where((event) => normalized.contains(_selectedOccurrenceId(event)))
+        .toList(growable: false);
+  }
+
+  String _selectedOccurrenceId(EventDTO event) {
+    for (final occurrence in event.occurrences) {
+      final occurrenceId = occurrence.occurrenceId.trim();
+      if (occurrence.isSelected && occurrenceId.isNotEmpty) {
+        return occurrenceId;
+      }
+    }
+
+    if (event.occurrences.isEmpty) {
+      return '';
+    }
+
+    return event.occurrences.first.occurrenceId.trim();
+  }
+
   @override
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
@@ -258,6 +290,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,

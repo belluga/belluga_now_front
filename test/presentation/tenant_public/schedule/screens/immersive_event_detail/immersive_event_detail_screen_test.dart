@@ -215,6 +215,49 @@ void main() {
     expect(find.text('15/03 às 20:00'), findsNothing);
   });
 
+  testWidgets('event detail hero renders explicit schedule range with às',
+      (tester) async {
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                endDateTime: DateTime(2026, 3, 15, 22),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('20:00 às'), findsOneWidget);
+    expect(find.textContaining('20:00 -'), findsNothing);
+  });
+
   testWidgets(
       'event detail renders pending invite actions from share-code session context',
       (tester) async {
@@ -1361,7 +1404,7 @@ void main() {
       find.byKey(const Key('eventProgrammingProfilesOverflow_0')),
       findsOneWidget,
     );
-    expect(find.text('+20 perfis'), findsOneWidget);
+    expect(find.text('e mais 20'), findsOneWidget);
     expect(find.byKey(const Key('eventProgrammingProfile_artist-0')),
         findsOneWidget);
     expect(find.byKey(const Key('eventProgrammingProfile_artist-3')),
@@ -2717,6 +2760,7 @@ EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProgrammingItem> programmingItems = const [],
   String? contentHtml,
+  DateTime? endDateTime,
   bool isConfirmed = false,
 }) {
   return eventModelFromRaw(
@@ -2744,7 +2788,10 @@ EventModel _buildEvent({
     ),
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
-    dateTimeEnd: null,
+    dateTimeEnd: endDateTime == null
+        ? null
+        : (DateTimeValue(isRequired: true)
+          ..parse(endDateTime.toIso8601String())),
     artists: const [],
     linkedAccountProfiles: linkedProfiles,
     occurrences: occurrences,

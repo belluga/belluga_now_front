@@ -46,7 +46,7 @@ class InviteStatusIcon extends StatelessWidget {
               child: Transform.translate(
                 offset: const Offset(-2.0, 0.6),
                 child: Icon(
-                  BooraIcons.invite_solid,
+                  BooraIcons.inviteSolid,
                   color: iconColor,
                   size: size * 0.9,
                 ),

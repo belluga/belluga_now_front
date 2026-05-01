@@ -54,7 +54,8 @@ class PoiContentResolver {
 
     final localStart = TimezoneConverter.utcToLocal(start);
     final localReference = _resolveLocalReferenceTime(referenceTime);
-    final startDay = DateTime(localStart.year, localStart.month, localStart.day);
+    final startDay =
+        DateTime(localStart.year, localStart.month, localStart.day);
     final referenceDay = DateTime(
       localReference.year,
       localReference.month,
@@ -91,9 +92,9 @@ class PoiContentResolver {
     final endDate = DateFormat('dd/MM').format(localEnd);
     final endTime = DateFormat('HH:mm').format(localEnd);
     if (startDate == endDate) {
-      return '$startDate • $startTime - $endTime';
+      return '$startDate • $startTime às $endTime';
     }
-    return '$startDate $startTime - $endDate $endTime';
+    return '$startDate $startTime às $endDate $endTime';
   }
 
   static String typeLabel(CityPoiModel poi) {

@@ -41,7 +41,7 @@ class InviteShareFooter extends StatelessWidget {
             backgroundColor: theme.colorScheme.secondaryContainer,
             foregroundColor: theme.colorScheme.onSecondaryContainer,
             child: const Icon(
-              BooraIcons.invite_solid,
+              BooraIcons.inviteSolid,
               size: 18,
             ),
           ),

@@ -47,6 +47,7 @@ void main() {
       taxonomy: const [
         {'type': 'genre', 'value': 'jazz'},
       ],
+      occurrenceIds: const ['507f1f77bcf86cd799439091'],
       lastEventId: 'cursor-1',
     );
 
@@ -59,6 +60,10 @@ void main() {
     expect(uri.queryParametersAll['tags[]'], ['live']);
     expect(uri.queryParameters['taxonomy[0][type]'], 'genre');
     expect(uri.queryParameters['taxonomy[0][value]'], 'jazz');
+    expect(
+      uri.queryParametersAll['occurrence_ids[]'],
+      ['507f1f77bcf86cd799439091'],
+    );
     expect(sseClient.lastEventId, 'cursor-1');
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
   });
@@ -179,6 +184,36 @@ void main() {
     expect(params?['categories'], const ['show']);
     expect(params?['taxonomy[0][type]'], 'music_styles');
     expect(params?['taxonomy[0][value]'], 'rock');
+  });
+
+  test('fetchEventsPage serializes occurrence id filters', () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      showPastOnly: false,
+      occurrenceIds: const [
+        '507f1f77bcf86cd799439091',
+        '507f1f77bcf86cd799439092',
+      ],
+    );
+
+    final params = adapter.lastOptions?.queryParameters;
+    expect(params?['occurrence_ids'], [
+      '507f1f77bcf86cd799439091',
+      '507f1f77bcf86cd799439092',
+    ]);
   });
 
   test('fetchEventsPage bootstraps auth when token is empty', () async {

@@ -275,6 +275,15 @@ class EventSearchScreenController
         return;
       }
 
+      if (_shouldShortCircuitPendingOnlyQuery) {
+        _hasMore = false;
+        _ifAlive(() => hasMoreStreamValue.addValue(false));
+        _ifAlive(
+          () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+        );
+        return;
+      }
+
       _hasMore = true;
       _ifAlive(() => hasMoreStreamValue.addValue(true));
       await _fetchFirstPage();
@@ -306,6 +315,7 @@ class EventSearchScreenController
       final queryConfirmedOnly = _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       );
+      final queryOccurrenceIds = _activeOccurrenceIdsFilter();
       final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
       final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
       final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
@@ -313,6 +323,7 @@ class EventSearchScreenController
         showPastOnly: queryShowPastOnly,
         searchQuery: querySearch,
         confirmedOnly: queryConfirmedOnly,
+        occurrenceIds: queryOccurrenceIds,
         originLat: queryOriginLat,
         originLng: queryOriginLng,
         maxDistanceMeters: queryMaxDistance,
@@ -347,6 +358,7 @@ class EventSearchScreenController
       final queryConfirmedOnly = _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       );
+      final queryOccurrenceIds = _activeOccurrenceIdsFilter();
       final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
       final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
       final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
@@ -354,6 +366,7 @@ class EventSearchScreenController
         showPastOnly: queryShowPastOnly,
         searchQuery: querySearch,
         confirmedOnly: queryConfirmedOnly,
+        occurrenceIds: queryOccurrenceIds,
         originLat: queryOriginLat,
         originLng: queryOriginLng,
         maxDistanceMeters: queryMaxDistance,
@@ -385,23 +398,13 @@ class EventSearchScreenController
   void setInviteFilter(InviteFilter filter) {
     _ifAlive(() => inviteFilterStreamValue.addValue(filter));
     _applyFiltersAndPublish();
+    unawaited(_refresh(warmUpIfPossible: false));
     _restartEventStream();
   }
 
   @override
   void cycleInviteFilter() {
-    final current = inviteFilterStreamValue.value;
-    switch (current) {
-      case InviteFilter.none:
-        setInviteFilter(InviteFilter.invitesAndConfirmed);
-        break;
-      case InviteFilter.invitesAndConfirmed:
-        setInviteFilter(InviteFilter.confirmedOnly);
-        break;
-      case InviteFilter.confirmedOnly:
-        setInviteFilter(InviteFilter.none);
-        break;
-    }
+    setInviteFilter(inviteFilterStreamValue.value.next);
   }
 
   void setSearchActive(bool active) {
@@ -501,8 +504,8 @@ class EventSearchScreenController
       switch (filter) {
         case InviteFilter.none:
           return true;
-        case InviteFilter.invitesAndConfirmed:
-          return isConfirmed(id) || hasPending(id);
+        case InviteFilter.pendingOnly:
+          return hasPending(id);
         case InviteFilter.confirmedOnly:
           return isConfirmed(id);
       }
@@ -519,7 +522,10 @@ class EventSearchScreenController
   }
 
   void _maybeAutoPage(List<EventModel> filtered) {
-    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
+    if (filtered.isNotEmpty ||
+        !_hasMore ||
+        _isAutoPaging ||
+        inviteFilterStreamValue.value == InviteFilter.pendingOnly) {
       return;
     }
     unawaited(_autoPageToFirstMatch());
@@ -564,6 +570,39 @@ class EventSearchScreenController
   String _eventOccurrenceIdentity(EventModel event) =>
       event.selectedOccurrenceId?.trim() ?? '';
 
+  bool get _shouldShortCircuitPendingOnlyQuery =>
+      inviteFilterStreamValue.value == InviteFilter.pendingOnly &&
+      _pendingInviteOccurrenceIds().isEmpty;
+
+  List<ScheduleRepoString>? _activeOccurrenceIdsFilter() {
+    if (inviteFilterStreamValue.value != InviteFilter.pendingOnly) {
+      return null;
+    }
+
+    final pendingIds = _pendingInviteOccurrenceIds();
+    if (pendingIds.isEmpty) {
+      return null;
+    }
+
+    return pendingIds
+        .map(
+          (occurrenceId) => _toScheduleText(occurrenceId),
+        )
+        .toList(growable: false);
+  }
+
+  List<String> _pendingInviteOccurrenceIds() {
+    final ids = <String>{};
+    for (final invite in _invitesRepository.pendingInvitesStreamValue.value) {
+      final occurrenceId = invite.occurrenceId?.trim() ?? '';
+      if (occurrenceId.isNotEmpty) {
+        ids.add(occurrenceId);
+      }
+    }
+
+    return ids.toList(growable: false)..sort();
+  }
+
   VenueEventResume _toVenueEventResume(EventModel event) {
     return VenueEventResume.fromScheduleEvent(
       event,
@@ -600,10 +639,20 @@ class EventSearchScreenController
 
     _confirmedEventsSubscription =
         _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
+      if (inviteFilterStreamValue.value == InviteFilter.confirmedOnly) {
+        unawaited(_refresh(warmUpIfPossible: false));
+        _restartEventStream();
+        return;
+      }
       _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =
         _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
+      if (inviteFilterStreamValue.value == InviteFilter.pendingOnly) {
+        unawaited(_refresh(warmUpIfPossible: false));
+        _restartEventStream();
+        return;
+      }
       _applyFiltersAndPublish();
     });
   }
@@ -740,6 +789,11 @@ class EventSearchScreenController
       _lastEventStreamId = null;
       return;
     }
+    if (_shouldShortCircuitPendingOnlyQuery) {
+      _lastEventStreamId = null;
+      return;
+    }
+    final queryOccurrenceIds = _activeOccurrenceIdsFilter();
     _eventsStreamSubscription = _scheduleRepository
         .watchEventsSignal(
       onDelta: ScheduleRepositoryContractDeltaHandler((delta) {
@@ -751,6 +805,7 @@ class EventSearchScreenController
       confirmedOnly: _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       ),
+      occurrenceIds: queryOccurrenceIds,
       originLat: _toNullableScheduleDouble(_effectiveOriginLat),
       originLng: _toNullableScheduleDouble(_effectiveOriginLng),
       maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),

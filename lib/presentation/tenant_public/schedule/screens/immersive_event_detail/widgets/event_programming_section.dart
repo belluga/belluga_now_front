@@ -317,6 +317,8 @@ class _ProgrammingCard extends StatelessWidget {
     final hasProfiles = item.linkedAccountProfiles.isNotEmpty;
     final hasLocation = item.locationProfile != null;
     final hasSecondaryContent = hasProfiles || hasLocation;
+    final timeLabel =
+        item.endTime == null ? item.time : '${item.time} às ${item.endTime}';
     final visibleProfiles = item.linkedAccountProfiles
         .take(_visibleProgrammingProfilesPerItem)
         .toList(growable: false);
@@ -338,7 +340,7 @@ class _ProgrammingCard extends StatelessWidget {
               : CrossAxisAlignment.center,
           children: [
             Container(
-              width: 64,
+              width: 82,
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer,
@@ -346,10 +348,15 @@ class _ProgrammingCard extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                item.time,
+                timeLabel,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: colorScheme.onPrimaryContainer,
+                  fontSize: item.endTime == null ? null : 12,
                   fontWeight: FontWeight.w900,
+                  height: 1.1,
                 ),
               ),
             ),
@@ -465,9 +472,7 @@ class _ProgrammingProfileOverflowChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final label = remainingProfileCount == 1
-        ? '+1 perfil'
-        : '+$remainingProfileCount perfis';
+    final label = 'e mais $remainingProfileCount';
     return Container(
       key: Key('eventProgrammingProfilesOverflow_$itemIndex'),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

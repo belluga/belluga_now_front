@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_value
 class EventProgrammingItem {
   EventProgrammingItem({
     required this.timeValue,
+    this.endTimeValue,
     this.titleValue,
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
     this.locationProfile,
@@ -13,11 +14,13 @@ class EventProgrammingItem {
         );
 
   final EventProgrammingTimeValue timeValue;
+  final EventProgrammingTimeValue? endTimeValue;
   final EventLinkedAccountProfileTextValue? titleValue;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final EventLinkedAccountProfile? locationProfile;
 
   String get time => timeValue.value;
+  String? get endTime => endTimeValue?.value;
   String? get title => titleValue?.value;
   String get displayTitle {
     final explicitTitle = title?.trim();

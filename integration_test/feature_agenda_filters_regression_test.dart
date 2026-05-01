@@ -97,7 +97,7 @@ void main() {
     debugPrint('Home agenda test: initial events ready');
 
     debugPrint('Home agenda test: set invite filter');
-    controller.setInviteFilter(InviteFilter.invitesAndConfirmed);
+    controller.setInviteFilter(InviteFilter.pendingOnly);
     debugPrint('Home agenda test: pump after invite filter');
     await _pumpFor(tester);
     debugPrint('Home agenda test: pump done');
@@ -184,7 +184,7 @@ void main() {
     controller.toggleHistory();
     await _pumpFor(tester);
 
-    controller.setInviteFilter(InviteFilter.invitesAndConfirmed);
+    controller.setInviteFilter(InviteFilter.pendingOnly);
     await _pumpFor(tester);
     _expectOnlyInviteFiltered(
       controller.displayedEventsStreamValue.value,
@@ -739,6 +739,7 @@ EventModel _buildEvent({
       {
         'id': _mongoIdForSeed('artist-$artistName'),
         'name': artistName,
+        'slug': artistName.toLowerCase(),
         'avatar_url': 'https://example.com/$artistName.png',
       },
     ],

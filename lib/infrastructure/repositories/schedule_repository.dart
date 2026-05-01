@@ -207,6 +207,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -215,10 +216,22 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       showPastOnly.value.toString(),
       searchQuery?.value ?? '',
       (confirmedOnly?.value ?? false).toString(),
+      _occurrenceIdsKey(occurrenceIds),
       originLat?.value.toString() ?? '',
       originLng?.value.toString() ?? '',
       maxDistanceMeters?.value.toString() ?? '',
     ].join('::');
+  }
+
+  String _occurrenceIdsKey(List<ScheduleRepoString>? occurrenceIds) {
+    final values = (occurrenceIds ?? const <ScheduleRepoString>[])
+        .map((entry) => entry.value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    values.sort();
+
+    return values.join('|');
   }
 
   Future<_SchedulePageSlice> _fetchEventsPageSlice({
@@ -231,6 +244,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -251,6 +265,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
             growable: false,
           ),
       confirmedOnly: confirmedOnly?.value ?? false,
+      occurrenceIds: occurrenceIds?.map((entry) => entry.value).toList(
+            growable: false,
+          ),
       originLat: originLat?.value,
       originLng: originLng?.value,
       maxDistanceMeters: maxDistanceMeters?.value,
@@ -394,6 +411,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -402,6 +420,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
@@ -411,6 +430,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
@@ -427,6 +447,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -435,6 +456,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
@@ -449,6 +471,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
@@ -506,6 +529,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -525,6 +549,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
                 growable: false,
               ),
           confirmedOnly: confirmedOnly?.value ?? false,
+          occurrenceIds: occurrenceIds?.map((entry) => entry.value).toList(
+                growable: false,
+              ),
           originLat: originLat?.value,
           originLng: originLng?.value,
           maxDistanceMeters: maxDistanceMeters?.value,
@@ -542,6 +569,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -554,6 +582,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,

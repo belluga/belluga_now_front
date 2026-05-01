@@ -86,7 +86,7 @@ class InvitesBannerView extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              BooraIcons.invite_outlined,
+                              BooraIcons.inviteOutlined,
                               size: 16,
                               color: theme.colorScheme.onSecondaryContainer,
                             ),

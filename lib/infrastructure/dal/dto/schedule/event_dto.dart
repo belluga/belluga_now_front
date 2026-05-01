@@ -511,6 +511,7 @@ class EventDTO {
       }
 
       final title = _asNullableString(item['title'])?.trim() ?? '';
+      final endTime = _asNullableString(item['end_time'])?.trim() ?? '';
       final locationProfile = _toLinkedAccountProfile(
         _asMap(
           item['location_profile'] ??
@@ -521,6 +522,8 @@ class EventDTO {
       resolved.add(
         EventProgrammingItem(
           timeValue: EventProgrammingTimeValue(time),
+          endTimeValue:
+              endTime.isEmpty ? null : EventProgrammingTimeValue(endTime),
           titleValue:
               title.isEmpty ? null : EventLinkedAccountProfileTextValue(title),
           linkedAccountProfiles: _resolveLinkedAccountProfiles(

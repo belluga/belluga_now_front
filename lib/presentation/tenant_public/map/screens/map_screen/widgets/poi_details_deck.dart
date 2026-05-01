@@ -353,7 +353,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
     if (_isEventPoi(poi)) {
       return PoiCardSecondaryAction(
-        icon: BooraIcons.invite_solid,
+        icon: BooraIcons.inviteSolid,
         tooltip: 'Convidar',
         onTap: () => unawaited(_openEventInvite(poi)),
       );

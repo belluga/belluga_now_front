@@ -30,7 +30,7 @@ class MyEventsCarouselCard extends StatelessWidget {
     final isLiveNow = now.isAfter(start) && now.isBefore(inferredEnd);
     final timeLabel = explicitEnd == null
         ? start.timeLabel
-        : '${start.timeLabel} - ${explicitEnd.timeLabel}';
+        : '${start.timeLabel} às ${explicitEnd.timeLabel}';
     final scheduleLabel = isLiveNow
         ? timeLabel
         : '${start.dayLabel} ${start.monthLabel} • $timeLabel';

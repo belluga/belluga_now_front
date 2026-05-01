@@ -2082,14 +2082,17 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final ignoredSearchQuery = searchQuery;
     final ignoredConfirmedOnly = confirmedOnly;
+    final ignoredOccurrenceIds = occurrenceIds;
     Object? _keepIgnoredValuesAlive = ignoredSearchQuery;
     _keepIgnoredValuesAlive = ignoredConfirmedOnly ?? _keepIgnoredValuesAlive;
+    _keepIgnoredValuesAlive = ignoredOccurrenceIds ?? _keepIgnoredValuesAlive;
     liveNowFetchCalls += 1;
     if (!_firstLiveNowFetchStarted.isCompleted) {
       _firstLiveNowFetchStarted.complete();
@@ -2117,6 +2120,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -2128,6 +2132,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -2164,6 +2169,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -2181,6 +2187,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,

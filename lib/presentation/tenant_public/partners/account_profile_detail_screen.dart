@@ -1178,7 +1178,7 @@ class _AccountProfileDetailScreenState
                       ),
                     ),
                     child: Icon(
-                      BooraIcons.store_mall_directory,
+                      BooraIcons.storeMallDirectory,
                       color: colorScheme.onPrimary,
                     ),
                   ),
@@ -1217,7 +1217,7 @@ class _AccountProfileDetailScreenState
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                BooraIcons.store_mall_directory,
+                BooraIcons.storeMallDirectory,
                 color: colorScheme.onPrimary,
               ),
             ),
@@ -1692,24 +1692,33 @@ class _AccountProfileDetailScreenState
           fontWeight: FontWeight.w700,
         );
     final counterparts = _agendaCounterparts(accountProfile, event);
+    final visibleCounterparts = counterparts.length > 1
+        ? counterparts.take(1).toList(growable: false)
+        : counterparts;
+    final hiddenCount = counterparts.length - visibleCounterparts.length;
     return Wrap(
       key: Key('${keyPrefix}_${event.uniqueId}'),
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 6,
       runSpacing: 6,
-      children: counterparts
-          .asMap()
-          .entries
-          .map(
-            (entry) => _buildAgendaCounterpartBadge(
-              entry.value,
-              labelStyle: textStyle,
-              iconColor: iconColor,
-              chipBackground: chipBackground,
-              key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+      children: [
+        ...visibleCounterparts.asMap().entries.map(
+              (entry) => _buildAgendaCounterpartBadge(
+                entry.value,
+                labelStyle: textStyle,
+                iconColor: iconColor,
+                chipBackground: chipBackground,
+                key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+              ),
             ),
-          )
-          .toList(growable: false),
+        if (hiddenCount > 0)
+          _buildAgendaCounterpartOverflowBadge(
+            hiddenCount,
+            labelStyle: textStyle,
+            chipBackground: chipBackground,
+            key: Key('${keyPrefix}More_${event.uniqueId}'),
+          ),
+      ],
     );
   }
 
@@ -1734,6 +1743,28 @@ class _AccountProfileDetailScreenState
           const SizedBox(width: 6),
           Text(counterpart.label, style: labelStyle),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAgendaCounterpartOverflowBadge(
+    int hiddenCount, {
+    required TextStyle? labelStyle,
+    required Color chipBackground,
+    required Key key,
+  }) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipBackground,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'e mais $hiddenCount',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: labelStyle?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -1824,7 +1855,20 @@ class _AccountProfileDetailScreenState
     final start = event.startDateTime;
     final weekday = DateFormat.E().format(start);
     final day = start.day.toString().padLeft(2, '0');
-    return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
+    final end = event.endDateTime;
+    if (end == null) {
+      return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
+    }
+    final sameDay = start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    if (sameDay) {
+      return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às ${end.timeLabel}';
+    }
+    final endWeekday = DateFormat.E().format(end).toUpperCase();
+    final endDay = end.day.toString().padLeft(2, '0');
+    return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às '
+        '$endWeekday, $endDay • ${end.timeLabel}';
   }
 
   String _eventExpandedTimeRangeLabel(PartnerEventView event) {
@@ -1834,7 +1878,7 @@ class _AccountProfileDetailScreenState
     final startDay = start.day.toString().padLeft(2, '0');
     final endWeekday = DateFormat.E().format(end).toUpperCase();
     final endDay = end.day.toString().padLeft(2, '0');
-    return '$startWeekday, $startDay • ${start.timeLabel} - '
+    return '$startWeekday, $startDay • ${start.timeLabel} às '
         '$endWeekday, $endDay • ${end.timeLabel}';
   }
 

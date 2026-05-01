@@ -126,7 +126,7 @@ class InviteDeckCard extends StatelessWidget {
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
                         ),
-                        icon: const Icon(BooraIcons.invite_solid, size: 18),
+                        icon: const Icon(BooraIcons.inviteSolid, size: 18),
                         label: const Text('Bóora!'),
                       ),
                     ),

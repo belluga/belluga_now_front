@@ -7,6 +7,7 @@ class TenantAdminEventProgrammingItemDraft {
   TenantAdminEventProgrammingItemDraft({
     required TenantAdminEventProgrammingItem? existing,
   })  : time = existing?.time ?? '',
+        endTime = existing?.endTime ?? '',
         title = existing?.title ?? '',
         selectedLocationProfileId = existing?.placeRef?.id,
         linkedProfileIds = existing?.accountProfileIds.toList(growable: true) ??
@@ -17,6 +18,7 @@ class TenantAdminEventProgrammingItemDraft {
             <TenantAdminAccountProfile>[];
 
   String time;
+  String endTime;
   String title;
   String? selectedLocationProfileId;
   final List<TenantAdminAccountProfileIdValue> linkedProfileIds;
@@ -50,9 +52,18 @@ class TenantAdminEventProgrammingItemDraft {
 
   String? validate() {
     final normalizedTime = time.trim();
+    final normalizedEndTime = endTime.trim();
     final normalizedTitle = title.trim();
     if (!_isValidProgrammingTime(normalizedTime)) {
       return 'Horário deve estar no formato HH:mm.';
+    }
+    if (normalizedEndTime.isNotEmpty &&
+        !_isValidProgrammingTime(normalizedEndTime)) {
+      return 'Horário de fim deve estar no formato HH:mm.';
+    }
+    if (normalizedEndTime.isNotEmpty &&
+        normalizedEndTime.compareTo(normalizedTime) <= 0) {
+      return 'Horário de fim deve ser posterior ao horário inicial.';
     }
     if (normalizedTitle.isEmpty && linkedProfileIds.isEmpty) {
       return 'Informe um título ou vincule um perfil.';
@@ -67,6 +78,9 @@ class TenantAdminEventProgrammingItemDraft {
     final normalizedTitle = title.trim();
     return TenantAdminEventProgrammingItem(
       timeValue: tenantAdminRequiredText(time.trim()),
+      endTimeValue: tenantAdminOptionalText(
+        endTime.trim().isEmpty ? null : endTime.trim(),
+      ),
       titleValue: tenantAdminOptionalText(
         normalizedTitle.isEmpty ? null : normalizedTitle,
       ),

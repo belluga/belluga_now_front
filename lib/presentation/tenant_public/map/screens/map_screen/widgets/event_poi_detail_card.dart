@@ -53,6 +53,8 @@ class EventPoiDetailCard extends PoiBaseCard {
         Expanded(
           child: Text(
             scheduleLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -66,18 +68,59 @@ class EventPoiDetailCard extends PoiBaseCard {
     if (poi.linkedProfiles.isEmpty) {
       return const SizedBox.shrink();
     }
+    final visibleProfiles = poi.linkedProfiles.length > 1
+        ? poi.linkedProfiles.take(1).toList(growable: false)
+        : poi.linkedProfiles;
+    final hiddenCount = poi.linkedProfiles.length - visibleProfiles.length;
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: poi.linkedProfiles
-          .map(
-            (profile) => _LinkedProfileChip(
-              profile: profile,
-              colorScheme: colorScheme,
-            ),
-          )
-          .toList(growable: false),
+      children: [
+        ...visibleProfiles.map(
+          (profile) => _LinkedProfileChip(
+            profile: profile,
+            colorScheme: colorScheme,
+          ),
+        ),
+        if (hiddenCount > 0)
+          _LinkedProfileOverflowChip(
+            hiddenCount: hiddenCount,
+            colorScheme: colorScheme,
+          ),
+      ],
+    );
+  }
+}
+
+class _LinkedProfileOverflowChip extends StatelessWidget {
+  const _LinkedProfileOverflowChip({
+    required this.hiddenCount,
+    required this.colorScheme,
+  });
+
+  final int hiddenCount;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Text(
+          'e mais $hiddenCount',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+      ),
     );
   }
 }

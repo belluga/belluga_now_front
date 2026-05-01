@@ -1,6 +1,6 @@
-import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/event_live_now_card.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,15 +18,15 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('home event card shows explicit end time when provided',
+  testWidgets('live now card prefers explicit end time and uses as separator',
       (tester) async {
     final event = buildVenueEventResume(
       id: 'event-1',
       slug: 'event-1',
-      title: 'Evento Longo',
+      title: 'Evento ao Vivo',
       imageUri: Uri.parse('https://tenant.test/media/event.png'),
       startDateTime: DateTime.utc(2026, 4, 1, 10, 0),
-      endDateTime: DateTime.utc(2026, 4, 1, 13, 0),
+      endDateTime: DateTime.utc(2026, 4, 1, 12, 0),
       location: 'Carvoeiro',
     );
 
@@ -36,12 +36,10 @@ void main() {
         child: MaterialApp(
           home: Scaffold(
             body: SizedBox(
-              width: 320,
-              child: MyEventsCarouselCard(
+              width: 360,
+              child: EventLiveNowCard(
                 event: event,
-                isConfirmed: true,
-                pendingInvitesCount: 0,
-                distanceLabel: '760m',
+                assumedDuration: const Duration(hours: 5),
               ),
             ),
           ),
@@ -49,43 +47,9 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 às 10:00'), findsOneWidget);
+    expect(find.textContaining('07:00 às 09:00'), findsOneWidget);
     expect(find.textContaining('07:00 -'), findsNothing);
-  });
-
-  testWidgets('home event card does not show inferred end time',
-      (tester) async {
-    final event = buildVenueEventResume(
-      id: 'event-1',
-      slug: 'event-1',
-      title: 'Evento Longo',
-      imageUri: Uri.parse('https://tenant.test/media/event.png'),
-      startDateTime: DateTime.utc(2026, 4, 1, 10, 0),
-      location: 'Carvoeiro',
-    );
-
-    await tester.pumpWidget(
-      MediaQuery(
-        data: const MediaQueryData(size: Size(360, 800)),
-        child: MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 320,
-              child: MyEventsCarouselCard(
-                event: event,
-                isConfirmed: true,
-                pendingInvitesCount: 0,
-                distanceLabel: '760m',
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.textContaining('07:00 às 10:00'), findsNothing);
-    expect(find.textContaining('07:00 -'), findsNothing);
-    expect(find.textContaining('07:00'), findsOneWidget);
+    expect(find.textContaining('12:00'), findsNothing);
   });
 }
 

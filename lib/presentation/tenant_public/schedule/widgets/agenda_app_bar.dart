@@ -95,57 +95,34 @@ class AgendaAppBar extends StatelessWidget {
                 ),
               ),
             if (!isSearchActive) ...actions.leadingActions,
-            if (!isSearchActive && actions.showRadius)
-              StreamValueBuilder<bool>(
-                streamValue: controller.isRadiusRefreshLoadingStreamValue,
-                builder: (context, isRadiusLoading) {
-                  return StreamValueBuilder<double>(
-                    streamValue: controller.maxRadiusMetersStreamValue,
-                    builder: (context, maxRadiusMeters) {
-                      return StreamValueBuilder<double>(
-                        streamValue: controller.radiusMetersStreamValue,
-                        builder: (context, radiusMeters) {
-                          return StreamValueBuilder<bool>(
-                            streamValue:
-                                controller.isRadiusActionCompactStreamValue,
-                            builder: (context, isCompact) {
-                              final onPressed = isRadiusLoading
-                                  ? null
-                                  : () => _showRadiusSelector(
-                                        context,
-                                        radiusMeters,
-                                        controller.minRadiusMeters,
-                                        maxRadiusMeters,
-                                        actions.radiusSheetPresentation,
-                                      );
-                              final tooltip = isRadiusLoading
-                                  ? 'Atualizando raio...'
-                                  : 'Raio ${_formatRadiusLabel(radiusMeters)}';
-
-                              return _buildRadiusAction(
-                                context: context,
-                                radiusMeters: radiusMeters,
-                                tooltip: tooltip,
-                                onPressed: onPressed,
-                                isLoading: isRadiusLoading,
-                                isCompact: isCompact,
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            if (!isSearchActive && actions.showInviteFilter)
+            if (!isSearchActive &&
+                (actions.showRadius || actions.showInviteFilter))
               StreamValueBuilder<InviteFilter>(
                 streamValue: controller.inviteFilterStreamValue,
                 builder: (context, filter) {
-                  return IconButton(
-                    tooltip: _inviteFilterTooltip(filter),
-                    onPressed: controller.cycleInviteFilter,
-                    icon: _inviteFilterIcon(theme, filter),
+                  final chromeState = _AgendaActionChromeState(
+                    radiusActionCompact:
+                        actions.showInviteFilter && filter.isStatusExtended,
+                    inviteFilterActionExtended: filter.isStatusExtended,
+                  );
+
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (actions.showRadius)
+                        _buildRadiusActionStream(
+                          context: context,
+                          forceCompact: chromeState.radiusActionCompact,
+                          radiusSheetPresentation:
+                              actions.radiusSheetPresentation,
+                        ),
+                      if (actions.showInviteFilter)
+                        _buildInviteFilterAction(
+                          context: context,
+                          filter: filter,
+                          isExtended: chromeState.inviteFilterActionExtended,
+                        ),
+                    ],
                   );
                 },
               ),
@@ -169,26 +146,166 @@ class AgendaAppBar extends StatelessWidget {
     );
   }
 
+  Widget _buildRadiusActionStream({
+    required BuildContext context,
+    required bool forceCompact,
+    required AgendaRadiusSheetPresentation? radiusSheetPresentation,
+  }) {
+    return StreamValueBuilder<bool>(
+      streamValue: controller.isRadiusRefreshLoadingStreamValue,
+      builder: (context, isRadiusLoading) {
+        return StreamValueBuilder<double>(
+          streamValue: controller.maxRadiusMetersStreamValue,
+          builder: (context, maxRadiusMeters) {
+            return StreamValueBuilder<double>(
+              streamValue: controller.radiusMetersStreamValue,
+              builder: (context, radiusMeters) {
+                return StreamValueBuilder<bool>(
+                  streamValue: controller.isRadiusActionCompactStreamValue,
+                  builder: (context, isCompact) {
+                    final onPressed = isRadiusLoading
+                        ? null
+                        : () => _showRadiusSelector(
+                              context,
+                              radiusMeters,
+                              controller.minRadiusMeters,
+                              maxRadiusMeters,
+                              radiusSheetPresentation,
+                            );
+                    final tooltip = isRadiusLoading
+                        ? 'Atualizando raio...'
+                        : 'Raio ${_formatRadiusLabel(radiusMeters)}';
+
+                    return _buildRadiusAction(
+                      context: context,
+                      radiusMeters: radiusMeters,
+                      tooltip: tooltip,
+                      onPressed: onPressed,
+                      isLoading: isRadiusLoading,
+                      isCompact: forceCompact || isCompact,
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInviteFilterAction({
+    required BuildContext context,
+    required InviteFilter filter,
+    required bool isExtended,
+  }) {
+    if (!isExtended) {
+      return IconButton(
+        key: const ValueKey<String>('agenda-invite-filter-compact'),
+        tooltip: _inviteFilterTooltip(filter),
+        onPressed: controller.cycleInviteFilter,
+        icon: _inviteFilterIcon(Theme.of(context), filter),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final label = _inviteFilterLabel(filter);
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(end: 4),
+        child: Tooltip(
+          message: _inviteFilterTooltip(filter),
+          child: Semantics(
+            button: true,
+            enabled: true,
+            label: label,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              width: 132,
+              height: 40,
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                shape: const StadiumBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: const ValueKey<String>(
+                    'agenda-invite-filter-expanded',
+                  ),
+                  onTap: controller.cycleInviteFilter,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      12,
+                      8,
+                      12,
+                      8,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _inviteFilterIcon(theme, filter),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            label,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Icon _inviteFilterIcon(ThemeData theme, InviteFilter filter) {
     switch (filter) {
       case InviteFilter.none:
         return Icon(
-          BooraIcons.invite_outlined,
+          BooraIcons.inviteOutlined,
           color: theme.iconTheme.color,
           size: 20,
         );
-      case InviteFilter.invitesAndConfirmed:
+      case InviteFilter.pendingOnly:
         return Icon(
-          BooraIcons.invite_outlined,
+          BooraIcons.inviteOutlined,
           color: theme.colorScheme.tertiary,
           size: 20,
         );
       case InviteFilter.confirmedOnly:
         return Icon(
-          BooraIcons.invite_solid,
+          BooraIcons.inviteSolid,
           color: theme.colorScheme.primary,
           size: 20,
         );
+    }
+  }
+
+  String _inviteFilterLabel(InviteFilter filter) {
+    switch (filter) {
+      case InviteFilter.none:
+        return 'Todos';
+      case InviteFilter.pendingOnly:
+        return 'Convites';
+      case InviteFilter.confirmedOnly:
+        return 'Confirmados';
     }
   }
 
@@ -196,8 +313,8 @@ class AgendaAppBar extends StatelessWidget {
     switch (filter) {
       case InviteFilter.none:
         return 'Todos os eventos';
-      case InviteFilter.invitesAndConfirmed:
-        return 'Convites pendentes e confirmados';
+      case InviteFilter.pendingOnly:
+        return 'Convites pendentes';
       case InviteFilter.confirmedOnly:
         return 'Somente confirmados';
     }
@@ -678,4 +795,14 @@ class AgendaAppBar extends StatelessWidget {
       },
     );
   }
+}
+
+class _AgendaActionChromeState {
+  const _AgendaActionChromeState({
+    required this.radiusActionCompact,
+    required this.inviteFilterActionExtended,
+  });
+
+  final bool radiusActionCompact;
+  final bool inviteFilterActionExtended;
 }

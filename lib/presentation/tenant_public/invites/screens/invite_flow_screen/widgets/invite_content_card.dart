@@ -193,7 +193,7 @@ class InviteContentCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(24),
                               ),
                             ),
-                            icon: const Icon(BooraIcons.invite_solid),
+                            icon: const Icon(BooraIcons.inviteSolid),
                             label: const Text('Aceitar'),
                           ),
                         ),

@@ -56,6 +56,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 List<EventModel>? _displayedEvents(TenantHomeAgendaController controller) =>
     controller.displayStateStreamValue.value?.events;
@@ -2073,6 +2074,116 @@ void main() {
       controller.onDispose();
     });
 
+    test('invite filter cycles from compact all to Convites and Confirmados',
+        () {
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        ),
+      );
+
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+
+      controller.cycleInviteFilter();
+      expect(
+          controller.inviteFilterStreamValue.value, InviteFilter.pendingOnly);
+
+      controller.cycleInviteFilter();
+      expect(
+        controller.inviteFilterStreamValue.value,
+        InviteFilter.confirmedOnly,
+      );
+
+      controller.cycleInviteFilter();
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+
+      controller.onDispose();
+    });
+
+    test(
+      'Convites filters pending received invites while Confirmados filters direct attendance confirmations',
+      () async {
+        const pendingOccurrenceId = '507f1f77bcf86cd799439551';
+        const confirmedOccurrenceId = '507f1f77bcf86cd799439552';
+        const unrelatedOccurrenceId = '507f1f77bcf86cd799439553';
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        scheduleRepository.writeHomeAgendaCache(
+          events: <EventModel>[
+            _buildHomeAgendaEvent(
+              occurrenceId: pendingOccurrenceId,
+              title: 'Convite pendente',
+              slug: 'convite-pendente',
+            ),
+            _buildHomeAgendaEvent(
+              occurrenceId: confirmedOccurrenceId,
+              title: 'Presença confirmada direta',
+              slug: 'presenca-confirmada-direta',
+            ),
+            _buildHomeAgendaEvent(
+              occurrenceId: unrelatedOccurrenceId,
+              title: 'Evento comum',
+              slug: 'evento-comum',
+            ),
+          ],
+          hasMore: false,
+          maxDistanceMeters: appData.mapRadiusDefaultMeters,
+          originLat: appData.tenantDefaultOrigin?.latitude,
+          originLng: appData.tenantDefaultOrigin?.longitude,
+        );
+        final invitesRepository = _FakeInvitesRepository();
+        invitesRepository.pendingInvitesStreamValue.addValue([
+          _buildPendingInvite(occurrenceId: pendingOccurrenceId),
+        ]);
+        final userEventsRepository = _FakeUserEventsRepository();
+        userEventsRepository.confirmedOccurrenceIdsStream.addValue({
+          userEventsRepoString(
+            confirmedOccurrenceId,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        });
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        controller.setInviteFilter(InviteFilter.pendingOnly);
+        expect(
+          _displayedEvents(controller)?.map((event) => event.title.value),
+          <String>['Convite pendente'],
+        );
+
+        controller.setInviteFilter(InviteFilter.confirmedOnly);
+        expect(
+          _displayedEvents(controller)?.map((event) => event.title.value),
+          <String>['Presença confirmada direta'],
+          reason:
+              'Confirmed attendance is sourced from confirmed occurrence ids, not invite acceptance.',
+        );
+
+        controller.onDispose();
+      },
+    );
+
     testWidgets('home agenda body does not load next page on initial build',
         (tester) async {
       final appData = _buildAppData(
@@ -2476,6 +2587,53 @@ void main() {
   });
 }
 
+EventModel _buildHomeAgendaEvent({
+  required String occurrenceId,
+  required String title,
+  required String slug,
+}) {
+  return EventDTO.fromJson({
+    'event_id': occurrenceId.replaceRange(23, 24, '0'),
+    'occurrence_id': occurrenceId,
+    'slug': slug,
+    'title': title,
+    'content': 'Conteudo',
+    'type': {
+      'id': 'type-1',
+      'name': 'Show',
+      'slug': 'show',
+      'description': null,
+    },
+    'location': {
+      'mode': 'physical',
+      'display_name': 'Praia do Morro',
+      'geo': {
+        'type': 'Point',
+        'coordinates': [-40.495395, -20.671339],
+      },
+    },
+    'date_time_start': '2026-03-06T20:00:00+00:00',
+    'linked_account_profiles': const [],
+    'tags': const ['music'],
+  }).toDomain();
+}
+
+InviteModel _buildPendingInvite({required String occurrenceId}) {
+  return buildInviteModelFromPrimitives(
+    id: 'invite-$occurrenceId',
+    eventId: occurrenceId.replaceRange(23, 24, '0'),
+    eventName: 'Convite pendente',
+    eventDateTime: DateTime.utc(2026, 3, 6, 20),
+    eventImageUrl: 'https://tenant.test/invite.jpg',
+    location: 'Praia do Morro',
+    hostName: 'Boora',
+    message: 'Vamos?',
+    tags: const ['music'],
+    occurrenceId: occurrenceId,
+    inviterName: 'Ana',
+  );
+}
+
 class _DeferredAttachScrollController extends ScrollController {
   bool _hasAttachedClients = false;
   double _attachedOffset = 0;
@@ -2872,6 +3030,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     bool showPastOnly = false,
     String searchQuery = '',
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3040,6 +3199,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3059,6 +3219,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3095,6 +3256,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3112,6 +3274,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3264,6 +3427,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3285,6 +3449,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3352,6 +3517,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3377,6 +3543,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3469,6 +3636,7 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3554,6 +3722,7 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3636,6 +3805,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3660,6 +3830,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3715,6 +3886,7 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3761,6 +3933,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3803,6 +3976,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3865,6 +4039,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3889,6 +4064,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3952,6 +4128,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -4000,6 +4177,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,

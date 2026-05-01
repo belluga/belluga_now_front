@@ -126,14 +126,14 @@ class ProfileHeader extends StatelessWidget {
                   children: [
                     ProfileMetricPill(
                       value: invitesSent,
-                      icon: BooraIcons.invite_outlined,
+                      icon: BooraIcons.inviteOutlined,
                       iconColor: colorScheme.secondary,
                       backgroundColor:
                           colorScheme.secondary.withValues(alpha: 0.14),
                     ),
                     ProfileMetricPill(
                       value: invitesAccepted,
-                      icon: BooraIcons.invite_solid,
+                      icon: BooraIcons.inviteSolid,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),
