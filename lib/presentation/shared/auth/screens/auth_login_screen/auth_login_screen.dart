@@ -83,8 +83,10 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
           SliverAppBar(
             elevation: 0,
             automaticallyImplyLeading: false,
-            leading: BackButton(
+            leading: IconButton(
+              tooltip: 'Voltar',
               onPressed: backPolicy.handleBack,
+              icon: const Icon(Icons.arrow_back),
             ),
             collapsedHeight:
                 _controller.sliverAppBarController.collapsedBarHeight,

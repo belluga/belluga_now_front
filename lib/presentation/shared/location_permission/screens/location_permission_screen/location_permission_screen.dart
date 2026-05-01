@@ -259,8 +259,7 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     final onResult = widget.onResult;
     if (onResult != null) {
       onResult(result);
-      final shouldDismissBoundaryRoute =
-          widget.popRouteAfterResult &&
+      final shouldDismissBoundaryRoute = widget.popRouteAfterResult &&
           result == LocationPermissionGateResult.cancelled;
       if (!shouldDismissBoundaryRoute) {
         return;
@@ -364,7 +363,7 @@ class _TopBar extends StatelessWidget {
       children: [
         IconButton(
           onPressed: onBackPressed,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back),
           tooltip: 'Voltar',
         ),
         Expanded(

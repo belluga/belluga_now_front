@@ -51,7 +51,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             key: const ValueKey<String>('discovery-safe-back-button'),
             tooltip: 'Voltar',
             onPressed: backPolicy.handleBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: const Icon(Icons.arrow_back),
           ),
           title: StreamValueBuilder<bool>(
             streamValue: _controller.isSearchingStreamValue,

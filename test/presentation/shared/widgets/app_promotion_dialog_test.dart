@@ -36,6 +36,25 @@ void main() {
     expect(result?.queryParameters['store_channel'], 'web');
   });
 
+  test('buildTenantPromotionUri preserves /invite entry without code', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/invite',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/invite');
+    expect(result?.queryParameters.containsKey('code'), isFalse);
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
   test('buildTenantPromotionUri uses /open-app home fallback without code', () {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(

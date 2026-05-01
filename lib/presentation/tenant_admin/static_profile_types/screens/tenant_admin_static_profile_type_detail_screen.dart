@@ -143,7 +143,7 @@ class _TenantAdminStaticProfileTypeDetailScreenState
                 leading: IconButton(
                   tooltip: 'Voltar',
                   onPressed: backPolicy.handleBack,
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: const Icon(Icons.arrow_back),
                 ),
                 title: Text(definition.label),
                 actions: [

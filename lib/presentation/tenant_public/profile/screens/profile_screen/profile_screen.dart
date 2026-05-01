@@ -58,8 +58,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          leading: BackButton(
+          leading: IconButton(
+            tooltip: 'Voltar',
             onPressed: backPolicy.handleBack,
+            icon: const Icon(Icons.arrow_back),
           ),
           actions: [
             StreamValueBuilder<UserContract?>(
