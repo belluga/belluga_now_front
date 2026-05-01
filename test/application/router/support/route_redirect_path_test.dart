@@ -34,13 +34,12 @@ void main() {
     expect(result, '/agenda/evento/evento-de-teste');
   });
 
-  test('resolveWebPromotionPath preserves invite entry when code is missing',
-      () {
+  test('resolveWebPromotionPath falls back to home when code is missing', () {
     final result = resolveWebPromotionPath(
       redirectPath: '/invite',
     );
 
-    expect(result, '/invite');
+    expect(result, '/');
   });
 
   test('resolveWebPromotionPath falls back to home when path is empty', () {

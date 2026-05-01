@@ -257,7 +257,7 @@ String? _resolveAllowedPromotionRedirectPath({
   }
 
   if (normalizedPath == '/invite' || normalizedPath == '/convites') {
-    return Uri(path: normalizedPath).toString();
+    return null;
   }
 
   if (isAuthOwnedPromotionRedirectPath(normalizedPath)) {
