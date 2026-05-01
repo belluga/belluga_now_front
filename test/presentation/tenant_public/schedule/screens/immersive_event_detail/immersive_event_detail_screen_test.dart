@@ -216,6 +216,72 @@ void main() {
   });
 
   testWidgets(
+      'event detail renders pending invite actions from share-code session context',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    invitesRepository.setShareCodeSessionContext(
+      code: invitesRepoString(
+        'SHARE-ABC',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      invite: _buildInviteForEvent(
+        id: 'session-preview',
+        eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-selected',
+        eventDateTime: DateTime(2026, 3, 16, 9),
+      ),
+    );
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Agora não'), findsOneWidget);
+    expect(find.text('Bóora!'), findsOneWidget);
+    expect(find.text('16/03 às 09:00'), findsOneWidget);
+  });
+
+  testWidgets(
       'event detail visible back falls back to home when no history exists',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -2369,6 +2435,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
+  final List<String> acceptedShareCodes = <String>[];
+
   @override
   Future<InviteAcceptResult> acceptInvite(
       InvitesRepositoryContractPrimString inviteId) async {
@@ -2386,7 +2454,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
       InvitesRepositoryContractPrimString code) async {
-    acceptInviteCalls += 1;
+    acceptedShareCodes.add(code.value);
+    clearShareCodeSessionContext(code: code);
     return buildInviteAcceptResult(
       inviteId: 'mock-${code.value}',
       status: 'accepted',

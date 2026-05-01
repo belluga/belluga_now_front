@@ -117,6 +117,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
+  final List<String> acceptedShareCodes = <String>[];
   final List<String> declinedInviteIds = <String>[];
 
   @override
@@ -155,7 +156,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<InviteAcceptResult> acceptInviteByCode(
           InvitesRepositoryContractPrimString code) async =>
       (() {
-        acceptedInviteIds.add('mock-${code.value}');
+        acceptedShareCodes.add(code.value);
         return buildInviteAcceptResult(
           inviteId: 'mock-${code.value}',
           status: 'accepted',
@@ -358,6 +359,7 @@ InviteModel _buildInvite(String id) {
     hostName: 'Host $id',
     message: 'Invite $id',
     tags: const ['music'],
+    occurrenceId: 'occurrence-$id',
     inviterName: 'Inviter $id',
   );
 }
@@ -439,12 +441,19 @@ void main() {
     expect(repository.materializedShareCodes, isEmpty);
     expect(controller.displayInvitesStreamValue.value, hasLength(1));
     expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
-    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+    expect(
+      repository.shareCodeSessionContextStreamValue.value?.shareCode,
+      'SHARE-ABC',
+    );
+    expect(
+      repository.shareCodeSessionContextStreamValue.value?.invite.id,
+      'preview',
+    );
+    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
     await controller.onDispose();
   });
 
-  test(
-      'unauthenticated decision uses canonical invite accept (anonymous conversion)',
+  test('unauthenticated decision does not call invite accept endpoints',
       () async {
     final repository = _FakeInvitesRepository(
       initialInvites: [_buildInvite('preview')],
@@ -463,13 +472,9 @@ void main() {
     await controller.requestDecision(InviteDecision.accepted);
 
     expect(repository.previewedShareCodes, ['SHARE-ABC']);
-    // Repository.acceptInvite should be called even while unauthorized
-    expect(repository.acceptedInviteIds, ['preview']);
-    final acceptedEvent = telemetry.loggedEvents.singleWhere(
-      (event) => event.eventName == 'app_anonymous_invite_accepted',
-    );
-    expect(acceptedEvent.properties?['code'], 'SHARE-ABC');
-    expect(acceptedEvent.properties?['event_id'], 'event-preview');
+    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.acceptedInviteIds, isEmpty);
+    expect(telemetry.loggedEvents, isEmpty);
     await controller.onDispose();
   });
 

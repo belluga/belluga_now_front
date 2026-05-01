@@ -60,6 +60,7 @@ class InviteFlowScreenController with Disposable {
   bool get hasPendingInvites => displayInvitesStreamValue.value.isNotEmpty;
   bool get requiresAuthenticationForDecision =>
       authRequiredForDecisionStreamValue.value;
+  bool get isAuthorized => _isAuthorized;
   String? get redirectPath => redirectPathStreamValue.value;
 
   final Map<String, InviteDecision> _decisions = <String, InviteDecision>{};
@@ -75,7 +76,6 @@ class InviteFlowScreenController with Disposable {
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
   String? _activeMaterializedInviteId;
-  String? _activeShareCode;
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
@@ -90,10 +90,9 @@ class InviteFlowScreenController with Disposable {
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
-    _activeShareCode = normalizedShareCode.isEmpty ? null : normalizedShareCode;
 
-    if (kIsWeb) {
-      // Web policy: keep invite landing preview-only and avoid mutation/materialization.
+    if (kIsWeb && !_isAuthorized) {
+      // Anonymous web policy: preview only; actions hand off to app promotion.
       authRequiredForDecisionStreamValue.addValue(false);
       _finishActiveInviteTimedEvent();
       final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
@@ -105,8 +104,7 @@ class InviteFlowScreenController with Disposable {
     }
 
     if (!_isAuthorized) {
-      // Allow anonymous invite acceptance (invert auth-first to anonymous-first)
-      authRequiredForDecisionStreamValue.addValue(false);
+      authRequiredForDecisionStreamValue.addValue(true);
       _finishActiveInviteTimedEvent();
       final preview = await _fetchAnonymousPreviewInvites(normalizedShareCode);
       _setPendingInvites(preview);
@@ -323,8 +321,7 @@ class InviteFlowScreenController with Disposable {
     InviteDecision decision, {
     String? inviteId,
   }) async {
-    // Allow decision even if not authorized (anonymous acceptance flow)
-    if (authRequiredForDecisionStreamValue.value) {
+    if (!_isAuthorized || authRequiredForDecisionStreamValue.value) {
       return null;
     }
 
@@ -354,8 +351,6 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      final isAnonymousDecision = !_isAuthorized;
-      final acceptedInviteId = resolvedInviteId;
       final result = await _repository.acceptInvite(
         invitesRepoString(
           resolvedInviteId,
@@ -363,14 +358,6 @@ class InviteFlowScreenController with Disposable {
           isRequired: true,
         ),
       );
-      if (isAnonymousDecision) {
-        unawaited(
-          _trackAnonymousInviteAccepted(
-            invite: current,
-            inviteId: acceptedInviteId,
-          ),
-        );
-      }
       final updatedInvites =
           List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
       _setPendingInvites(updatedInvites);
@@ -568,51 +555,10 @@ class InviteFlowScreenController with Disposable {
     return properties;
   }
 
-  Future<void> _trackAnonymousInviteAccepted({
-    required InviteModel invite,
-    required String inviteId,
-  }) async {
-    final properties = <String, dynamic>{
-      'event_id': invite.eventId,
-      'invite_id': inviteId,
-      'source': 'invite_flow',
-    };
-
-    final shareCode = _extractShareCode(inviteId) ?? _activeShareCode;
-    if (shareCode != null) {
-      properties['code'] = shareCode;
-    }
-
-    final inviterPrincipal = invite.inviterPrincipal;
-    if (inviterPrincipal != null) {
-      properties['inviter_kind'] = inviterPrincipal.type.name;
-      properties['inviter_id'] = inviterPrincipal.id;
-    }
-
-    await _telemetryRepository.logEvent(
-      EventTrackerEvents.buttonClick,
-      eventName: telemetryRepoString('app_anonymous_invite_accepted'),
-      properties: telemetryRepoMap(properties),
-    );
-  }
-
   InviteIdValue _inviteIdValue(String raw) {
     final value = InviteIdValue();
     value.parse(raw);
     return value;
-  }
-
-  String? _extractShareCode(String inviteId) {
-    final normalized = inviteId.trim();
-    const prefix = 'share:';
-    if (!normalized.startsWith(prefix)) {
-      return null;
-    }
-    final code = normalized.substring(prefix.length).trim();
-    if (code.isEmpty) {
-      return null;
-    }
-    return code;
   }
 
   void syncTopCardIndex(int invitesLength) {

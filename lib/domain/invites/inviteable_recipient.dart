@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
@@ -20,11 +22,15 @@ class InviteableRecipient {
     InviteProfileExposureLevelValue? profileExposureLevelValue,
     InviteableReasons? inviteableReasons,
     DomainBooleanValue? isInviteableValue,
+    InviteContactHashValue? contactHashValue,
+    InviteContactTypeValue? contactTypeValue,
   })  : avatarValue = avatarValue ?? InviteInviterAvatarValue(),
         profileExposureLevelValue =
             profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
         inviteableReasons = inviteableReasons ?? InviteableReasons(),
-        isInviteableValue = isInviteableValue ?? DomainBooleanValue();
+        isInviteableValue = isInviteableValue ?? DomainBooleanValue(),
+        contactHashValue = contactHashValue ?? InviteContactHashValue(),
+        contactTypeValue = contactTypeValue ?? InviteContactTypeValue();
 
   final UserIdValue userIdValue;
   final InviteAccountProfileIdValue receiverAccountProfileIdValue;
@@ -33,6 +39,8 @@ class InviteableRecipient {
   final InviteProfileExposureLevelValue profileExposureLevelValue;
   final InviteableReasons inviteableReasons;
   final DomainBooleanValue isInviteableValue;
+  final InviteContactHashValue contactHashValue;
+  final InviteContactTypeValue contactTypeValue;
 
   String get userId => userIdValue.value;
   String get receiverAccountProfileId => receiverAccountProfileIdValue.value;
@@ -41,6 +49,8 @@ class InviteableRecipient {
   String get profileExposureLevel => profileExposureLevelValue.value;
   bool get isInviteable => isInviteableValue.value;
   bool get isFriend => inviteableReasons.contains('friend');
+  String get contactHash => contactHashValue.value;
+  String get contactType => contactTypeValue.value;
 
   InviteFriendResume toFriendResume() {
     final friendAvatarValue = FriendAvatarValue();

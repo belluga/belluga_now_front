@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
+import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_phone_otp_form.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
@@ -321,6 +322,8 @@ class _AuthOtpPanel extends StatelessWidget {
               showOtpDestinationHeader:
                   step == AuthPhoneOtpStep.otpVerification,
               showOtpSecondaryActions: false,
+              autoVerifyOnCodeComplete:
+                  step == AuthPhoneOtpStep.otpVerification,
             ),
             FormValidationGlobalErrorsBuilder(
               validationStreamValue: controller.phoneOtpValidationStreamValue,
@@ -439,62 +442,39 @@ class _OtpSecondaryActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final challenge = controller.currentPhoneOtpChallengeStreamValue.value;
-    final isSms = challenge?.deliveryChannel ==
-        AuthLoginControllerContract.phoneOtpDeliveryChannelSms;
-    final showSmsFallback = controller.isPhoneOtpSmsFallbackAvailable && !isSms;
+    return StreamValueBuilder<AuthPhoneOtpChallenge?>(
+      streamValue: controller.currentPhoneOtpChallengeStreamValue,
+      builder: (context, challenge) {
+        final isSms = challenge?.deliveryChannel ==
+            AuthLoginControllerContract.phoneOtpDeliveryChannelSms;
+        final showSmsFallback =
+            controller.isPhoneOtpSmsFallbackAvailable && !isSms;
 
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 8,
-      runSpacing: 4,
-      children: [
-        TextButton.icon(
-          onPressed: enabled ? controller.editPhoneNumber : null,
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('Editar telefone'),
-        ),
-        TextButton.icon(
-          onPressed: enabled ? _requestNewCode : null,
-          icon: const Icon(Icons.refresh_outlined),
-          label: const Text('Reenviar código'),
-        ),
-        if (showSmsFallback)
-          PopupMenuButton<String>(
-            enabled: enabled,
-            tooltip: 'Outras formas',
-            onSelected: (_) => _requestSmsCode(),
-            itemBuilder: (context) => const [
-              PopupMenuItem<String>(
-                value: AuthLoginControllerContract.phoneOtpDeliveryChannelSms,
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.sms_outlined),
-                  title: Text('Receber por SMS'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.more_horiz_outlined),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Outras formas',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ],
-              ),
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            TextButton.icon(
+              onPressed: enabled ? controller.editPhoneNumber : null,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Editar telefone'),
             ),
-          ),
-      ],
+            TextButton.icon(
+              onPressed: enabled ? _requestNewCode : null,
+              icon: const Icon(Icons.refresh_outlined),
+              label: const Text('Reenviar código'),
+            ),
+            if (showSmsFallback)
+              TextButton.icon(
+                onPressed: enabled ? _requestSmsCode : null,
+                icon: const Icon(Icons.sms_outlined),
+                label: const Text('Receber por SMS'),
+              ),
+          ],
+        );
+      },
     );
   }
 

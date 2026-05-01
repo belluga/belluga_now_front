@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
@@ -253,13 +254,13 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleConfirmAttendance() async {
-    final redirectPath =
+    final routeRedirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
+        redirectPath: routeRedirectPath,
+        actionType: AuthWallActionType.confirmAttendance,
       );
       return;
     }
@@ -269,7 +270,7 @@ class _ImmersiveEventDetailScreenState
         result != AttendanceConfirmationResult.requiresAuthentication) {
       return;
     }
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+    final encodedRedirect = Uri.encodeQueryComponent(routeRedirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
@@ -302,7 +303,7 @@ class _ImmersiveEventDetailScreenState
               isFavoritable: (profile) =>
                   _controller.isLinkedProfileFavoritable(profile.profileType),
               onFavoriteTap: (profile) =>
-                  _handleLinkedProfileFavoriteTap(profile.id),
+                  _handleLinkedProfileFavoriteTap(profile),
             ),
             footer: null,
           );
@@ -398,15 +399,11 @@ class _ImmersiveEventDetailScreenState
   void _openInviteFlow(EventModel event) {
     final redirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.sendInvite,
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
+        actionType: AuthWallActionType.sendInvite,
       );
       return;
     }
@@ -416,6 +413,21 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleAcceptInvite(InviteModel invite) {
+    if (!_controller.isAuthorized) {
+      final redirectPath = _inviteOccurrenceRedirectPath(invite);
+      if (kIsWeb) {
+        launchWebInstalledAppHandoffOrPromotion(
+          context: context,
+          redirectPath: redirectPath,
+          actionType: AuthWallActionType.acceptInvite,
+        );
+      } else {
+        final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+        context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+      }
+      return Future<void>.value();
+    }
+
     final router = context.router;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -473,6 +485,34 @@ class _ImmersiveEventDetailScreenState
         ),
       ),
     );
+  }
+
+  String _inviteAwarePromotionRedirectPath({InviteModel? invite}) {
+    final shareCode = (invite == null
+            ? _controller.shareCodeForSelectedEvent()
+            : _controller.shareCodeForInvite(invite))
+        ?.trim();
+    if (shareCode != null && shareCode.isNotEmpty) {
+      return Uri(
+        path: '/invite',
+        queryParameters: <String, String>{'code': shareCode},
+      ).toString();
+    }
+    return buildRedirectPathFromRouteMatch(context.routeData.route);
+  }
+
+  String _inviteOccurrenceRedirectPath(InviteModel invite) {
+    final eventSlug = invite.eventId.trim();
+    if (eventSlug.isEmpty) {
+      return _inviteAwarePromotionRedirectPath(invite: invite);
+    }
+    final occurrenceId = invite.occurrenceId?.trim() ?? '';
+    return Uri(
+      path: '/agenda/evento/$eventSlug',
+      queryParameters: occurrenceId.isEmpty
+          ? null
+          : <String, String>{'occurrence': occurrenceId},
+    ).toString();
   }
 
   void _openEventMap(EventModel event) {
@@ -599,19 +639,15 @@ class _ImmersiveEventDetailScreenState
     );
   }
 
-  void _handleLinkedProfileFavoriteTap(String accountProfileId) {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.favorite,
+  void _handleLinkedProfileFavoriteTap(EventLinkedAccountProfile profile) {
+    final accountProfileId = profile.id;
+    final redirectPath = _linkedProfileRedirectPath(profile);
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
+        actionType: AuthWallActionType.favorite,
         payload: {'partnerId': accountProfileId},
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
       );
       return;
     }
@@ -627,6 +663,14 @@ class _ImmersiveEventDetailScreenState
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  String _linkedProfileRedirectPath(EventLinkedAccountProfile profile) {
+    final slug = profile.slug.trim();
+    if (slug.isEmpty) {
+      return buildRedirectPathFromRouteMatch(context.routeData.route);
+    }
+    return '/parceiro/$slug';
   }
 }
 

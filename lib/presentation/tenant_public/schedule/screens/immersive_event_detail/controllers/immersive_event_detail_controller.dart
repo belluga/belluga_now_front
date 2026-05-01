@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_share_session_context.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_decline_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_declined_at_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pending_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -55,6 +60,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
+  StreamSubscription<InviteShareSessionContext?>?
+      _shareSessionContextSubscription;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteProfileIdsSubscription;
   StreamValue<EventModel?> get eventStreamValue =>
@@ -123,6 +130,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
+  bool get isAuthorized => _isAuthorized;
+
   bool isLinkedProfileFavoritable(String profileType) {
     final normalized = profileType.trim();
     if (normalized.isEmpty) {
@@ -158,7 +167,9 @@ class ImmersiveEventDetailController implements Disposable {
 
   void _hydrateState(EventModel event) {
     unawaited(_pendingInvitesSubscription?.cancel());
+    unawaited(_shareSessionContextSubscription?.cancel());
     _pendingInvitesSubscription = null;
+    _shareSessionContextSubscription = null;
 
     final occurrenceId = event.selectedOccurrenceId?.trim();
     final isConfirmedLocally = _userEventsRepository.isOccurrenceConfirmed(
@@ -171,14 +182,14 @@ class ImmersiveEventDetailController implements Disposable {
     isConfirmedStreamValue
         .addValue(isConfirmedLocally.value || event.isConfirmedValue.value);
 
-    _updateReceivedInvites(
-      _invitesRepository.pendingInvitesStreamValue.value,
-      event,
-    );
+    _refreshReceivedInvitesFor(event);
 
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
-        .listen((invites) => _updateReceivedInvites(invites, event));
+        .listen((_) => _refreshReceivedInvitesFor(event));
+    _shareSessionContextSubscription = _invitesRepository
+        .shareCodeSessionContextStreamValue.stream
+        .listen((_) => _refreshReceivedInvitesFor(event));
   }
 
   EventModel _eventWithSelectedOccurrence(
@@ -274,7 +285,19 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  void _updateReceivedInvites(List<InviteModel> invites, EventModel event) {
+  void _refreshReceivedInvitesFor(EventModel event) {
+    _updateReceivedInvites(
+      _invitesRepository.pendingInvitesStreamValue.value,
+      event,
+      _invitesRepository.shareCodeSessionContextStreamValue.value,
+    );
+  }
+
+  void _updateReceivedInvites(
+    List<InviteModel> invites,
+    EventModel event,
+    InviteShareSessionContext? shareSessionContext,
+  ) {
     final occurrenceId = event.selectedOccurrenceId?.trim();
     final filtered = invites
         .where((invite) =>
@@ -283,7 +306,107 @@ class ImmersiveEventDetailController implements Disposable {
                 occurrenceId.isEmpty ||
                 invite.occurrenceIdValue.value == occurrenceId))
         .toList();
+    final sessionInvite =
+        _matchingShareSessionContextInvite(event, shareSessionContext);
+    if (sessionInvite != null &&
+        !_hasInviteForSameOccurrence(filtered, sessionInvite)) {
+      filtered.add(sessionInvite);
+    }
     _invitesRepository.setImmersiveReceivedInvites(filtered);
+  }
+
+  InviteModel? _matchingShareSessionContextInvite(
+    EventModel event,
+    InviteShareSessionContext? shareSessionContext,
+  ) {
+    if (shareSessionContext == null) {
+      return null;
+    }
+    final invite = shareSessionContext.invite;
+    if (invite.eventIdValue.value != event.id.value) {
+      return null;
+    }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId != null &&
+        occurrenceId.isNotEmpty &&
+        invite.occurrenceIdValue.value != occurrenceId) {
+      return null;
+    }
+    return invite;
+  }
+
+  bool _hasInviteForSameOccurrence(
+    List<InviteModel> invites,
+    InviteModel candidate,
+  ) {
+    return invites.any((invite) =>
+        invite.id == candidate.id ||
+        (invite.eventIdValue.value == candidate.eventIdValue.value &&
+            invite.occurrenceIdValue.value ==
+                candidate.occurrenceIdValue.value));
+  }
+
+  InviteShareSessionContext? _shareSessionContextForInviteId(
+    String inviteId,
+  ) {
+    final current = _invitesRepository.shareCodeSessionContextStreamValue.value;
+    if (current == null) {
+      return null;
+    }
+    final inviteIdValue = InviteIdValue();
+    try {
+      inviteIdValue.parse(inviteId);
+    } catch (_) {
+      return null;
+    }
+    if (!current.matchesInviteId(inviteIdValue)) {
+      return null;
+    }
+    return current;
+  }
+
+  String? shareCodeForInvite(InviteModel invite) {
+    final direct = _shareSessionContextForInviteId(invite.id)?.shareCode;
+    if (direct != null && direct.trim().isNotEmpty) {
+      return direct;
+    }
+
+    final primaryInviteId = invite.primaryInviteId?.trim();
+    if (primaryInviteId != null && primaryInviteId.isNotEmpty) {
+      final primary =
+          _shareSessionContextForInviteId(primaryInviteId)?.shareCode.trim();
+      if (primary != null && primary.isNotEmpty) {
+        return primary;
+      }
+    }
+
+    for (final inviter in invite.inviters) {
+      final inviteId = inviter.inviteId.trim();
+      if (inviteId.isEmpty) {
+        continue;
+      }
+      final shareCode =
+          _shareSessionContextForInviteId(inviteId)?.shareCode.trim();
+      if (shareCode != null && shareCode.isNotEmpty) {
+        return shareCode;
+      }
+    }
+    return null;
+  }
+
+  String? shareCodeForSelectedEvent() {
+    final event = eventStreamValue.value;
+    if (event == null) {
+      return null;
+    }
+    final shareSessionContext =
+        _invitesRepository.shareCodeSessionContextStreamValue.value;
+    if (_matchingShareSessionContextInvite(event, shareSessionContext) ==
+        null) {
+      return null;
+    }
+    final shareCode = shareSessionContext?.shareCode.trim();
+    return shareCode == null || shareCode.isEmpty ? null : shareCode;
   }
 
   void _bindFavoriteAccountProfileState() {
@@ -349,13 +472,22 @@ class ImmersiveEventDetailController implements Disposable {
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
     try {
-      final result = await _invitesRepository.acceptInvite(
-        invitesRepoString(
-          inviteId,
-          defaultValue: '',
-          isRequired: true,
-        ),
-      );
+      final shareSessionContext = _shareSessionContextForInviteId(inviteId);
+      final result = shareSessionContext == null
+          ? await _invitesRepository.acceptInvite(
+              invitesRepoString(
+                inviteId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+          : await _invitesRepository.acceptInviteByCode(
+              invitesRepoString(
+                shareSessionContext.shareCode,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            );
       final occurrenceId = eventStreamValue.value?.selectedOccurrenceId?.trim();
       if (result.status == 'accepted' &&
           occurrenceId != null &&
@@ -371,6 +503,22 @@ class ImmersiveEventDetailController implements Disposable {
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
     try {
+      final shareSessionContext = _shareSessionContextForInviteId(inviteId);
+      if (shareSessionContext != null) {
+        _invitesRepository.clearShareCodeSessionContext(
+          code: invitesRepoString(
+            shareSessionContext.shareCode,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+        return InviteDeclineResult(
+          inviteIdValue: InviteIdValue()..parse(inviteId),
+          statusValue: const InviteDeclineStatusValue('declined'),
+          groupHasOtherPendingValue: const InviteHasOtherPendingValue(false),
+          declinedAtValue: InviteDeclinedAtValue(DateTime.now()),
+        );
+      }
       return await _invitesRepository.declineInvite(
         invitesRepoString(
           inviteId,
@@ -386,6 +534,7 @@ class ImmersiveEventDetailController implements Disposable {
   @override
   void onDispose() {
     _pendingInvitesSubscription?.cancel();
+    _shareSessionContextSubscription?.cancel();
     _favoriteProfileIdsSubscription?.cancel();
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();

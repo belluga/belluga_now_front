@@ -17,6 +17,7 @@ import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/w
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_phone_otp_experience.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -247,7 +248,7 @@ void main() {
         controller.phoneOtpValidationController.errorForField(
           AuthLoginControllerContract.phoneOtpValidationTargetCode,
         ),
-        'Código inválido. Confira os 6 dígitos e tente novamente.',
+        'Código incorreto',
       );
       expect(
         controller.phoneOtpValidationController.errorForField(
@@ -327,6 +328,125 @@ void main() {
       expect(find.byKey(WidgetKeys.auth.loginPasswordField), findsNothing);
       expect(find.text('Criar conta'), findsNothing);
       expect(find.text('Esqueci minha senha.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'tenant public phone entry makes country selection and mask visible',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('BR'), findsOneWidget);
+      expect(find.text('+ 55'), findsOneWidget);
+      expect(find.text('(27) 99999-0000'), findsNothing);
+
+      await tester.enterText(find.byType(EditableText).last, '2');
+      await tester.pump();
+
+      var editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(2');
+
+      await tester.enterText(find.byType(EditableText).last, '27');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27)');
+
+      await tester.enterText(find.byType(EditableText).last, '279');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27) 9');
+
+      await tester.enterText(find.byType(EditableText).last, '27999990000');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27) 99999-0000');
+
+      await tester.enterText(find.byType(EditableText).last, '2799');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27) 99');
+
+      await tester.showKeyboard(find.byType(EditableText).last);
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27) 9');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(27)');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(2');
+
+      controller.updatePhoneOtpCountry(IsoCode.US);
+      await tester.pump();
+
+      expect(find.text('US'), findsOneWidget);
+      expect(find.text('+ 1'), findsOneWidget);
+
+      await tester.enterText(find.byType(EditableText).last, '4');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(4');
+
+      await tester.enterText(find.byType(EditableText).last, '4155');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(415) 5');
+
+      await tester.enterText(find.byType(EditableText).last, '4155552671');
+      await tester.pump();
+
+      editable = tester.widget<EditableText>(
+        find.byType(EditableText).last,
+      );
+      expect(editable.controller.text, '(415) 555-2671');
+      expect(controller.phoneNumberController.value.isoCode, IsoCode.US);
+      expect(
+          controller.phoneNumberController.value.international, '+14155552671');
     },
   );
 
@@ -436,7 +556,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Código inválido. Confira os 6 dígitos e tente novamente.'),
+        find.text('Código incorreto'),
         findsOneWidget,
       );
       expect(find.textContaining('/v1/auth/otp/verify'), findsNothing);
@@ -459,7 +579,7 @@ void main() {
   );
 
   testWidgets(
-    'otp experience hides SMS behind other ways when fallback is configured',
+    'otp experience shows SMS fallback visibly when configured',
     (tester) async {
       await GetIt.I.reset();
       GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
@@ -486,16 +606,104 @@ void main() {
         ),
       );
 
-      expect(find.text('Outras formas'), findsOneWidget);
+      expect(find.text('Outras formas'), findsNothing);
       expect(find.text('Confirmar código'), findsOneWidget);
-      expect(find.text('Receber por SMS'), findsNothing);
+      expect(find.text('Receber por SMS'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Outras formas'));
+      await tester.ensureVisible(find.text('Receber por SMS'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Outras formas'));
+      await tester.tap(find.text('Receber por SMS'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Código enviado por SMS'), findsOneWidget);
+      expect(find.text('Receber por SMS'), findsNothing);
+      expect(repository.requestedDeliveryChannels, ['sms']);
+      expect(
+        controller.currentPhoneOtpChallengeStreamValue.value?.deliveryChannel,
+        'sms',
+      );
+    },
+  );
+
+  testWidgets(
+    'otp experience updates SMS fallback from the challenge stream',
+    (tester) async {
+      await GetIt.I.reset();
+      GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
+
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+      controller.phoneController.text = '+5527999990000';
+      controller.phoneOtpStepStreamValue.addValue(
+        AuthPhoneOtpStep.otpVerification,
+      );
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
 
       expect(find.text('Receber por SMS'), findsOneWidget);
+
+      controller.currentPhoneOtpChallengeStreamValue.addValue(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'sms',
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Código enviado por SMS'), findsOneWidget);
+      expect(find.text('Receber por SMS'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'otp experience verifies automatically once when code is completed',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+      controller.beginPhoneOtpPageSession();
+      controller.phoneController.text = '+5527999990000';
+      controller.currentPhoneOtpChallengeStreamValue.addValue(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+      controller.phoneOtpStepStreamValue.addValue(
+        AuthPhoneOtpStep.otpVerification,
+      );
+
+      await tester.pumpWidget(
+        _buildLocalizedTestApp(
+          home: AuthPhoneOtpExperience(
+            controller: controller,
+            onBack: () {},
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(Pinput), '123456');
+      await tester.pumpAndSettle();
+
+      expect(repository.verifiedChallengeIds, ['challenge-1']);
+      expect(repository.verifiedCodes, ['123456']);
+      expect(controller.loginResultStreamValue.value, isTrue);
+
+      await tester.enterText(find.byType(Pinput), '654321');
+      await tester.pumpAndSettle();
+
+      expect(repository.verifiedCodes, ['123456']);
+
+      await tester.tap(find.text('Confirmar código'));
+      await tester.pumpAndSettle();
+
+      expect(repository.verifiedCodes, ['123456', '654321']);
     },
   );
 
@@ -541,6 +749,7 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
   final requestedPhones = <String>[];
   final requestedDeliveryChannels = <String>[];
   final verifiedChallengeIds = <String>[];
+  final verifiedCodes = <String>[];
   Object? requestFailure;
   Object? verifyFailure;
   bool _authorized = false;
@@ -607,6 +816,7 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
       throw failure;
     }
     verifiedChallengeIds.add(challengeId.value);
+    verifiedCodes.add(code.value);
     _authorized = true;
   }
 
@@ -680,9 +890,9 @@ AppData _buildAppData({bool smsFallback = false}) {
       'telemetry': {'trackers': []},
       if (smsFallback)
         'settings': {
-          'outbound_integrations': {
-            'otp': {
-              'webhook_url': 'https://example.com/sms',
+          'tenant_public_auth': {
+            'phone_otp': {
+              'sms_fallback_enabled': true,
             },
           },
         },

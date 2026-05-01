@@ -143,10 +143,79 @@ void main() {
       expect(venue!.capabilities.isReferenceLocationEnabled, isTrue);
     });
   });
+
+  group('AppDataDTO publication settings', () {
+    test('parses active store targets from app_links settings', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          settings: const {
+            'app_links': {
+              'android': {
+                'enabled': true,
+                'store_url':
+                    'https://play.google.com/store/apps/details?id=app',
+              },
+              'ios': {
+                'enabled': false,
+                'store_url': 'https://apps.apple.com/br/app/id123',
+              },
+            },
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(appData.publicationSettings.hasExplicitConfig, isTrue);
+      expect(appData.publicationSettings.android.isPublished, isTrue);
+      expect(appData.publicationSettings.ios.isPublished, isFalse);
+      expect(
+        appData.publicationSettings.android.storeUrl,
+        'https://play.google.com/store/apps/details?id=app',
+      );
+    });
+  });
+
+  group('AppDataDTO OTP delivery flags', () {
+    test('enables SMS fallback from public tenant auth flag only', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          settings: const {
+            'tenant_public_auth': {
+              'phone_otp': {
+                'sms_fallback_enabled': true,
+              },
+            },
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(appData.phoneOtpSmsFallbackEnabled, isTrue);
+    });
+
+    test('does not infer SMS fallback from webhook URLs in public app data',
+        () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          settings: const {
+            'outbound_integrations': {
+              'otp': {
+                'webhook_url': 'https://integrations.example/sms',
+              },
+            },
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(appData.phoneOtpSmsFallbackEnabled, isFalse);
+    });
+  });
 }
 
 Map<String, dynamic> _basePayload({
   required List<Map<String, dynamic>> profileTypes,
+  Map<String, dynamic>? settings,
 }) {
   return {
     'tenant_id': 'tenant-1',
@@ -158,6 +227,7 @@ Map<String, dynamic> _basePayload({
       'primary_seed_color': '#4FA0E3',
       'secondary_seed_color': '#E80D5D',
     },
+    if (settings != null) 'settings': settings,
   };
 }
 

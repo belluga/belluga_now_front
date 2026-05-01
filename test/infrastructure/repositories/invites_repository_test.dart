@@ -10,8 +10,10 @@ import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
@@ -232,6 +234,8 @@ void main() {
               'display_name': 'Friend Contact',
               'avatar_url': null,
               'profile_exposure_level': 'full_profile',
+              'contact_hash': 'hash-1',
+              'contact_type': 'phone',
               'inviteable_reasons': [
                 'contact_match',
                 'favorite_by_you',
@@ -249,6 +253,8 @@ void main() {
 
     expect(recipients, hasLength(1));
     expect(recipients.single.receiverAccountProfileId, 'profile-1');
+    expect(recipients.single.contactHash, 'hash-1');
+    expect(recipients.single.contactType, 'phone');
     expect(recipients.single.isFriend, isTrue);
   });
 
@@ -279,6 +285,123 @@ void main() {
 
     expect(phoneHashes, contains(_sha256('27999999999')));
     expect(phoneHashes, contains(_sha256('5527999999999')));
+  });
+
+  test(
+      'importContacts skips repeated unchanged hash import while cache is fresh',
+      () async {
+    final importedAt = DateTime.utc(2026, 5);
+    var now = importedAt;
+    final backend = _FakeInvitesBackend(
+      importContactsResponse: const {'matches': []},
+    );
+    final cache = _FakeInviteContactImportCache();
+    final repository = InvitesRepository(
+      backend: backend,
+      contactImportCache: cache,
+      now: () => now,
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => 'tenant-1',
+    );
+
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    await repository.importContacts(contacts);
+    now = importedAt.add(const Duration(minutes: 10));
+    await repository.importContacts(contacts);
+
+    expect(backend.importContactPayloads, hasLength(1));
+    expect(cache.writeCount, 1);
+  });
+
+  test('importContacts scopes fresh import cache by tenant', () async {
+    final importedAt = DateTime.utc(2026, 5);
+    var tenantScope = 'tenant-1';
+    final backend = _FakeInvitesBackend(
+      importContactsResponse: const {'matches': []},
+    );
+    final cache = _FakeInviteContactImportCache();
+    final repository = InvitesRepository(
+      backend: backend,
+      contactImportCache: cache,
+      now: () => importedAt,
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => tenantScope,
+    );
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    await repository.importContacts(contacts);
+    tenantScope = 'tenant-2';
+    await repository.importContacts(contacts);
+
+    expect(backend.importContactPayloads, hasLength(2));
+    expect(cache.writeCount, 2);
+  });
+
+  test('importContacts reimports changed hashes and explicit refreshes',
+      () async {
+    final importedAt = DateTime.utc(2026, 5);
+    var now = importedAt;
+    final backend = _FakeInvitesBackend(
+      importContactsResponse: const {'matches': []},
+    );
+    final cache = _FakeInviteContactImportCache();
+    final repository = InvitesRepository(
+      backend: backend,
+      contactImportCache: cache,
+      now: () => now,
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => 'tenant-1',
+    );
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+    final changedContacts =
+        InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+          ..add(
+            buildContactModel(
+              id: 'contact-2',
+              displayName: 'Contato Novo',
+              phones: <String>['+55 27 98888-7777'],
+            ),
+          );
+    final forcedContacts = InviteContacts(
+      regionCodeValue: _regionCodeValue('BR'),
+      forceImportValue: DomainBooleanValue()..parse('true'),
+    )..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    await repository.importContacts(contacts);
+    now = importedAt.add(const Duration(minutes: 10));
+    await repository.importContacts(changedContacts);
+    await repository.importContacts(forcedContacts);
+
+    expect(backend.importContactPayloads, hasLength(3));
+    expect(cache.writeCount, 3);
   });
 
   test('sendInvites targets receiver account profile when present', () async {
@@ -327,6 +450,43 @@ void main() {
           .accountProfileId,
       'profile-1',
     );
+  });
+
+  test('createShareCode sends and returns the selected occurrence identity',
+      () async {
+    final backend = _FakeInvitesBackend(
+      createShareCodeResponse: {
+        'code': 'SHARE-CODE',
+        'target_ref': {
+          'event_id': 'event-1',
+          'occurrence_id': 'occurrence-2',
+        },
+      },
+    );
+    final repository = InvitesRepository(backend: backend);
+
+    final result = await repository.createShareCode(
+      eventId: invitesRepoString(
+        'event-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      occurrenceId: invitesRepoString(
+        'occurrence-2',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+
+    expect(result.code, 'SHARE-CODE');
+    expect(result.eventId, 'event-1');
+    expect(result.occurrenceId, 'occurrence-2');
+    expect(backend.createdShareCodePayloads.single, {
+      'target_ref': {
+        'event_id': 'event-1',
+        'occurrence_id': 'occurrence-2',
+      },
+    });
   });
 
   test(
@@ -442,6 +602,28 @@ void main() {
   });
 }
 
+class _FakeInviteContactImportCache
+    implements InviteContactImportCacheContract {
+  final entries = <String, InviteContactImportCacheEntry>{};
+  int readCount = 0;
+  int writeCount = 0;
+
+  @override
+  Future<InviteContactImportCacheEntry?> read(String cacheKey) async {
+    readCount += 1;
+    return entries[cacheKey];
+  }
+
+  @override
+  Future<void> write(
+    String cacheKey,
+    InviteContactImportCacheEntry entry,
+  ) async {
+    writeCount += 1;
+    entries[cacheKey] = entry;
+  }
+}
+
 class _FakeInvitesBackend implements InvitesBackendContract {
   _FakeInvitesBackend({
     Map<String, dynamic>? fetchInvitesResponse,
@@ -455,6 +637,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? createContactGroupResponse,
     Map<String, dynamic>? updateContactGroupResponse,
     Map<String, dynamic>? sendInvitesResponse,
+    Map<String, dynamic>? createShareCodeResponse,
     Map<String, dynamic> Function(Map<String, dynamic> payload)?
         importContactsResponseBuilder,
   })  : _fetchInvitesResponse = fetchInvitesResponse ?? const {'invites': []},
@@ -510,6 +693,14 @@ class _FakeInvitesBackend implements InvitesBackendContract {
               'created': [],
               'already_invited': [],
             },
+        _createShareCodeResponse = createShareCodeResponse ??
+            const {
+              'code': 'SHARE-CODE',
+              'target_ref': {
+                'event_id': 'event-1',
+                'occurrence_id': 'occurrence-1',
+              },
+            },
         _importContactsResponseBuilder = importContactsResponseBuilder;
 
   final Map<String, dynamic> _fetchInvitesResponse;
@@ -523,6 +714,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _createContactGroupResponse;
   final Map<String, dynamic> _updateContactGroupResponse;
   final Map<String, dynamic> _sendInvitesResponse;
+  final Map<String, dynamic> _createShareCodeResponse;
   final Map<String, dynamic> Function(Map<String, dynamic> payload)?
       _importContactsResponseBuilder;
 
@@ -530,6 +722,8 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final List<String> acceptInviteCalls = <String>[];
   final List<String> acceptShareCodeCalls = <String>[];
   final List<Map<String, dynamic>> sentInvitePayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> createdShareCodePayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> importContactPayloads =
       <Map<String, dynamic>>[];
@@ -554,8 +748,11 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   @override
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,
-  ) async =>
-      throw UnimplementedError();
+  ) async {
+    final payload = request.toJson();
+    createdShareCodePayloads.add(payload);
+    return _createShareCodeResponse;
+  }
 
   @override
   Future<Map<String, dynamic>> declineInvite(String inviteId) async =>

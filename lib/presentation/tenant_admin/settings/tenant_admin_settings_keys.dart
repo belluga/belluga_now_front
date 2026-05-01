@@ -159,8 +159,20 @@ class TenantAdminSettingsKeys {
   static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_android_package_edit',
   );
+  static const technicalIntegrationsAppLinksAndroidPublicationSwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_android_publication_switch',
+  );
+  static const technicalIntegrationsAppLinksAndroidStoreUrlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_android_store_url_edit',
+  );
   static const technicalIntegrationsAppLinksFingerprintsEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_fingerprints_edit',
+  );
+  static const technicalIntegrationsAppLinksIosPublicationSwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_publication_switch',
+  );
+  static const technicalIntegrationsAppLinksIosStoreUrlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_store_url_edit',
   );
   static const technicalIntegrationsAppLinksIosTeamIdEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_ios_team_id_edit',

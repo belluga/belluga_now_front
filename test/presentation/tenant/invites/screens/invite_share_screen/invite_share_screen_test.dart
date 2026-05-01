@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -72,7 +73,7 @@ void main() {
     expect(find.text('Bia Favorita'), findsOneWidget);
   });
 
-  testWidgets('refresh action refetches the inviteable friends list', (
+  testWidgets('agenda refresh appears only on Telefone pane', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -94,6 +95,9 @@ void main() {
 
     expect(find.text('Ana Contato'), findsOneWidget);
     expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+    expect(find.text('Atualizar agenda'), findsNothing);
+    expect(find.text('Gerenciar grupos'), findsNothing);
+    expect(find.byTooltip('Gerenciar grupos'), findsOneWidget);
 
     invitesRepository.inviteableRecipients = [
       buildInviteableRecipient(
@@ -105,12 +109,62 @@ void main() {
       ),
     ];
 
-    await tester.tap(find.text('Atualizar lista de amigos'));
+    await tester.tap(find.text('Telefone'));
     await tester.pumpAndSettle();
 
-    expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
+    expect(find.text('Atualizar agenda'), findsOneWidget);
+    expect(find.text('Gerenciar grupos'), findsNothing);
+
+    await tester.tap(find.text('Atualizar agenda'));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.fetchInviteableRecipientsCalls, 3);
+
+    await tester.tap(find.text('Pessoas'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Ana Contato'), findsNothing);
     expect(find.text('Caio Amigo'), findsOneWidget);
+  });
+
+  testWidgets('inviteable list builds visible cards lazily', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository()
+      ..inviteableRecipients = List<InviteableRecipient>.generate(
+        80,
+        (index) => buildInviteableRecipient(
+          userId: 'user-$index',
+          accountProfileId: 'profile-$index',
+          displayName: 'Pessoa $index',
+          inviteableReasons: const <String>['contact_match'],
+        ),
+      );
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InviteShareFriendCard).evaluate().length, lessThan(80));
+    expect(find.text('Pessoa 79'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Pessoa 79'),
+      700,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pessoa 79'), findsOneWidget);
   });
 
   testWidgets('share CTA leaves Gerando state after failure and can retry', (
@@ -391,6 +445,16 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
   @override
   Future<void> initializeContacts() async {}
+
+  @override
+  Future<void> loadCachedContacts() async {
+    contactsStreamValue.addValue(contacts);
+  }
+
+  @override
+  Future<void> refreshCachedContacts() async {
+    contactsStreamValue.addValue(contacts);
+  }
 
   @override
   Future<void> refreshContacts() async {

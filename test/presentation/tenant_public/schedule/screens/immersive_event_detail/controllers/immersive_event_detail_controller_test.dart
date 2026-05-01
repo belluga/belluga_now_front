@@ -129,6 +129,85 @@ void main() {
     );
   });
 
+  test(
+      'event detail exposes share-code session context for selected occurrence',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    invitesRepository.setShareCodeSessionContext(
+      code: invitesRepoString(
+        'SHARE-ABC',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      invite: _buildInviteForEvent(
+        id: 'session-preview',
+        eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-selected',
+      ),
+    );
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    controller.init(
+      _buildEvent(
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-selected',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: true,
+          ),
+        ],
+      ),
+    );
+
+    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+    expect(
+      controller.receivedInvitesStreamValue.value.single.id,
+      'session-preview',
+    );
+    expect(controller.shareCodeForSelectedEvent(), 'SHARE-ABC');
+    expect(
+      controller.shareCodeForInvite(
+        controller.receivedInvitesStreamValue.value.single,
+      ),
+      'SHARE-ABC',
+    );
+  });
+
+  test('authenticated app session-context invite acceptance uses share-code endpoint',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    invitesRepository.setShareCodeSessionContext(
+      code: invitesRepoString(
+        'SHARE-ABC',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      invite: _buildInviteForEvent(
+        id: 'session-preview',
+        eventId: '507f1f77bcf86cd799439011',
+      ),
+    );
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+    final result = await controller.acceptInvite('session-preview');
+
+    expect(result.status, 'accepted');
+    expect(invitesRepository.acceptInviteCalls, 0);
+    expect(invitesRepository.acceptedShareCodes, ['SHARE-ABC']);
+    expect(invitesRepository.shareCodeSessionContextStreamValue.value, isNull);
+  });
+
   test('select occurrence uses the selected occurrence start and end pair', () {
     final controller = ImmersiveEventDetailController(
       userEventsRepository: _FakeUserEventsRepository(),
@@ -249,6 +328,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
+  final List<String> acceptedShareCodes = <String>[];
+
   @override
   Future<InviteAcceptResult> acceptInvite(
       InvitesRepositoryContractPrimString inviteId) async {
@@ -266,7 +347,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
       InvitesRepositoryContractPrimString code) async {
-    acceptInviteCalls += 1;
+    acceptedShareCodes.add(code.value);
+    clearShareCodeSessionContext(code: code);
     return buildInviteAcceptResult(
       inviteId: 'mock-${code.value}',
       status: 'accepted',

@@ -7,9 +7,11 @@ import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_session_context.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -35,6 +37,8 @@ abstract class InvitesRepositoryContract {
       StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
   final shareCodePreviewInviteStreamValue =
       StreamValue<InviteModel?>(defaultValue: null);
+  final shareCodeSessionContextStreamValue =
+      StreamValue<InviteShareSessionContext?>(defaultValue: null);
 
   final sentInvitesByOccurrenceStreamValue = StreamValue<
       Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>(
@@ -141,10 +145,57 @@ abstract class InvitesRepositoryContract {
       InvitesRepositoryContractPrimString code) async {
     final preview = await previewShareCode(code);
     shareCodePreviewInviteStreamValue.addValue(preview);
+    if (preview == null) {
+      clearShareCodeSessionContext(code: code);
+      return;
+    }
+    setShareCodeSessionContext(code: code, invite: preview);
   }
 
   void clearShareCodePreview() {
     shareCodePreviewInviteStreamValue.addValue(null);
+    clearShareCodeSessionContext();
+  }
+
+  void setShareCodeSessionContext({
+    required InvitesRepositoryContractPrimString code,
+    required InviteModel invite,
+  }) {
+    final normalizedCode = code.value.trim();
+    final normalizedOccurrenceId = invite.occurrenceId?.trim() ?? '';
+    if (normalizedCode.isEmpty || normalizedOccurrenceId.isEmpty) {
+      clearShareCodeSessionContext(code: code);
+      return;
+    }
+    shareCodeSessionContextStreamValue.addValue(
+      InviteShareSessionContext(
+        shareCodeValue: InviteShareCodeValue(normalizedCode),
+        invite: invite,
+      ),
+    );
+  }
+
+  void clearShareCodeSessionContext({
+    InvitesRepositoryContractPrimString? code,
+    InvitesRepositoryContractPrimString? occurrenceId,
+  }) {
+    final current = shareCodeSessionContextStreamValue.value;
+    if (current == null) {
+      return;
+    }
+    final codeFilter = code?.value.trim();
+    if (codeFilter != null &&
+        codeFilter.isNotEmpty &&
+        current.shareCode != codeFilter) {
+      return;
+    }
+    final occurrenceFilter = occurrenceId?.value.trim();
+    if (occurrenceFilter != null &&
+        occurrenceFilter.isNotEmpty &&
+        (current.occurrenceId ?? '') != occurrenceFilter) {
+      return;
+    }
+    shareCodeSessionContextStreamValue.addValue(null);
   }
 
   Future<List<InviteContactMatch>> importContacts(

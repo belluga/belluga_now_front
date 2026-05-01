@@ -133,6 +133,7 @@ Uri? buildTenantPromotionUriFromAppContext({
   String? shareCode,
   String? platformTarget,
   Uri? mainDomainUri,
+  bool fallbackToPromotionBoundary = false,
 }) {
   final normalizedRedirectPath = redirectPath?.trim();
   final hasRedirectPath =
@@ -164,7 +165,7 @@ Uri? buildTenantPromotionUriFromAppContext({
               .appData
               .mainDomainValue
               .value
-          : Uri.tryParse(Uri.base.origin));
+          : null);
   if (resolvedBaseUri == null || resolvedBaseUri.host.trim().isEmpty) {
     return null;
   }
@@ -176,10 +177,38 @@ Uri? buildTenantPromotionUriFromAppContext({
     if (normalizedCode != null) 'code': normalizedCode,
     if (normalizedPlatformTarget != null)
       'platform_target': normalizedPlatformTarget,
+    if (fallbackToPromotionBoundary) 'fallback': 'promotion',
   };
   return targetUri.replace(
     queryParameters: query.isEmpty ? null : query,
   );
+}
+
+Uri? buildTenantPromotionUriFromCanonicalWebContext({
+  required String redirectPath,
+  required String platformTarget,
+  bool fallbackToPromotionBoundary = false,
+}) {
+  final origin = _resolveCanonicalWebOriginFromAppData();
+  if (origin == null) {
+    return null;
+  }
+
+  return buildTenantPromotionUriFromAppContext(
+    redirectPath: redirectPath,
+    platformTarget: platformTarget,
+    mainDomainUri: origin,
+    fallbackToPromotionBoundary: fallbackToPromotionBoundary,
+  );
+}
+
+Uri? _resolveCanonicalWebOriginFromAppData() {
+  if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+    return null;
+  }
+
+  final appData = GetIt.I.get<AppDataRepositoryContract>().appData;
+  return appData.mainDomainValue.value;
 }
 
 String? _resolveAllowedPromotionRedirectPath({

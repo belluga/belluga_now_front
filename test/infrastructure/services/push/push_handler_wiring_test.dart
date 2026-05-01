@@ -358,6 +358,16 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 
   @override
+  Future<void> loadCachedContacts() async {
+    contactsStreamValue.addValue(await getContacts());
+  }
+
+  @override
+  Future<void> refreshCachedContacts() async {
+    contactsStreamValue.addValue(await getContacts());
+  }
+
+  @override
   Future<void> refreshContacts() async {
     contactsStreamValue.addValue(await getContacts());
   }

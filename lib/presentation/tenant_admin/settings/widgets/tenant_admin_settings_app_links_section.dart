@@ -21,6 +21,8 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
         controller.appLinksAndroidFingerprintsController,
         controller.appLinksIosTeamIdController,
         controller.appLinksIosBundleIdController,
+        controller.appLinksAndroidStoreUrlController,
+        controller.appLinksIosStoreUrlController,
       ],
     );
   }
@@ -46,6 +48,7 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
     required String title,
     required String label,
     String? helperText,
+    TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) async {
     final result = await showTenantAdminFieldEditSheet(
@@ -55,7 +58,7 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
       initialValue: fieldController.text,
       helperText: helperText,
       confirmLabel: 'Aplicar',
-      keyboardType: TextInputType.text,
+      keyboardType: keyboardType,
       textCapitalization: TextCapitalization.none,
       autocorrect: false,
       enableSuggestions: false,
@@ -181,6 +184,21 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
     return null;
   }
 
+  String? _validateOptionalStoreUrl(String? raw) {
+    final normalized = raw?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(normalized);
+    if (uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'https' && uri.scheme != 'http') ||
+        uri.host.trim().isEmpty) {
+      return 'Informe uma URL completa com http(s).';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<bool>(
@@ -193,6 +211,90 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
             builder: (context, _) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Publicação',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                StreamValueBuilder<bool>(
+                  streamValue:
+                      controller.appLinksAndroidPublicationEnabledStreamValue,
+                  builder: (context, androidEnabled) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PublicationSwitchRow(
+                        key: TenantAdminSettingsKeys
+                            .technicalIntegrationsAppLinksAndroidPublicationSwitch,
+                        title: 'Android ativo',
+                        value: androidEnabled,
+                        onChanged: isSaving
+                            ? null
+                            : controller
+                                .updateAppLinksAndroidPublicationEnabled,
+                      ),
+                      if (androidEnabled)
+                        TenantAdminSettingsEditableValueRow(
+                          key: TenantAdminSettingsKeys
+                              .technicalIntegrationsAppLinksAndroidStoreUrlEdit,
+                          label: 'URL Android',
+                          value:
+                              controller.appLinksAndroidStoreUrlController.text,
+                          onEdit: isSaving
+                              ? null
+                              : () => _editField(
+                                    context: context,
+                                    fieldController: controller
+                                        .appLinksAndroidStoreUrlController,
+                                    title: 'Editar URL Android',
+                                    label: 'URL Android',
+                                    helperText: 'Informe a URL da Play Store.',
+                                    keyboardType: TextInputType.url,
+                                    validator: _validateOptionalStoreUrl,
+                                  ),
+                        ),
+                    ],
+                  ),
+                ),
+                StreamValueBuilder<bool>(
+                  streamValue:
+                      controller.appLinksIosPublicationEnabledStreamValue,
+                  builder: (context, iosEnabled) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PublicationSwitchRow(
+                        key: TenantAdminSettingsKeys
+                            .technicalIntegrationsAppLinksIosPublicationSwitch,
+                        title: 'iOS ativo',
+                        value: iosEnabled,
+                        onChanged: isSaving
+                            ? null
+                            : controller.updateAppLinksIosPublicationEnabled,
+                      ),
+                      if (iosEnabled)
+                        TenantAdminSettingsEditableValueRow(
+                          key: TenantAdminSettingsKeys
+                              .technicalIntegrationsAppLinksIosStoreUrlEdit,
+                          label: 'URL iOS',
+                          value: controller.appLinksIosStoreUrlController.text,
+                          onEdit: isSaving
+                              ? null
+                              : () => _editField(
+                                    context: context,
+                                    fieldController: controller
+                                        .appLinksIosStoreUrlController,
+                                    title: 'Editar URL iOS',
+                                    label: 'URL iOS',
+                                    helperText: 'Informe a URL da App Store.',
+                                    keyboardType: TextInputType.url,
+                                    validator: _validateOptionalStoreUrl,
+                                  ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 28),
                 TenantAdminSettingsEditableValueRow(
                   key: TenantAdminSettingsKeys
                       .technicalIntegrationsAppLinksAndroidPackageEdit,
@@ -305,6 +407,30 @@ class TenantAdminSettingsAppLinksSection extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _PublicationSwitchRow extends StatelessWidget {
+  const _PublicationSwitchRow({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: Text(title),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }

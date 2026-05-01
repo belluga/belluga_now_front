@@ -229,6 +229,29 @@ void main() {
     expect(result?.queryParameters['path'], '/profile');
     expect(result?.queryParameters['platform_target'], 'ios');
   });
+
+  test('buildTenantPromotionUri can request promotion fallback boundary', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/agenda/evento/show-rock?occurrence=occ-1',
+      platformTarget: 'android',
+      fallbackToPromotionBoundary: true,
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(
+      result?.queryParameters['path'],
+      '/agenda/evento/show-rock?occurrence=occ-1',
+    );
+    expect(result?.queryParameters['platform_target'], 'android');
+    expect(result?.queryParameters['fallback'], 'promotion');
+  });
 }
 
 String _nestedAuthRedirect({

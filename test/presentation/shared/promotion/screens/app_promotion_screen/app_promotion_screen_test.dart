@@ -6,11 +6,14 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_publication_store_url_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/app_promotion_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_experience.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
@@ -472,6 +475,48 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('renders only active publication store targets', (tester) async {
+    final repository = _FakeAppDataRepository(
+      appName: 'Bóora!',
+      mainDomain: Uri.parse('https://tenant.example'),
+      iconLightUrl: Uri.parse('https://tenant.example/icon-light.png'),
+      iconDarkUrl: Uri.parse('https://tenant.example/icon-dark.png'),
+      publicationSettings: AppPublicationSettings(
+        hasExplicitConfigValue: _publicationBool(true),
+        android: AppPublicationPlatformSettings(
+          enabledValue: _publicationBool(true),
+          storeUrlValue: _publicationStoreUrl(
+            'https://play.google.com/store/apps/details?id=app',
+          ),
+        ),
+        ios: AppPublicationPlatformSettings(
+          enabledValue: _publicationBool(false),
+          storeUrlValue: _publicationStoreUrl(
+            'https://apps.apple.com/br/app/id123',
+          ),
+        ),
+      ),
+    );
+    _registerControllers(
+      experience: AppPromotionExperience.appDownload,
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+      appDataRepository: repository,
+      leadCaptureService: leadCaptureService,
+    );
+
+    await tester.pumpWidget(_buildWidget(router: router));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_ios')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+  });
 }
 
 void _registerControllers({
@@ -683,17 +728,32 @@ class _FakePromotionLeadCaptureService
   }
 }
 
+DomainBooleanValue _publicationBool(bool raw) {
+  final value = DomainBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+AppPublicationStoreUrlValue _publicationStoreUrl(String? raw) {
+  final value = AppPublicationStoreUrlValue();
+  value.parse(raw);
+  return value;
+}
+
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     required String appName,
     required Uri mainDomain,
     required Uri iconLightUrl,
     required Uri iconDarkUrl,
+    AppPublicationSettings? publicationSettings,
   }) : _appData = _FakeAppData(
           appName: appName,
           mainDomain: mainDomain,
           iconLightUrl: iconLightUrl,
           iconDarkUrl: iconDarkUrl,
+          publicationSettings:
+              publicationSettings ?? AppPublicationSettings.empty(),
         );
 
   final AppData _appData;
@@ -737,15 +797,18 @@ class _FakeAppData extends Fake implements AppData {
     required Uri mainDomain,
     required Uri iconLightUrl,
     required Uri iconDarkUrl,
+    required AppPublicationSettings publicationSettings,
   })  : _mainDomainValue = DomainValue(defaultValue: mainDomain),
         _nameValue = EnvironmentNameValue()..parse(appName),
         _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
-        _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl);
+        _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl),
+        _publicationSettings = publicationSettings;
 
   final DomainValue _mainDomainValue;
   final EnvironmentNameValue _nameValue;
   final IconUrlValue _mainIconLightUrl;
   final IconUrlValue _mainIconDarkUrl;
+  final AppPublicationSettings _publicationSettings;
 
   @override
   DomainValue get mainDomainValue => _mainDomainValue;
@@ -758,4 +821,7 @@ class _FakeAppData extends Fake implements AppData {
 
   @override
   IconUrlValue get mainIconDarkUrl => _mainIconDarkUrl;
+
+  @override
+  AppPublicationSettings get publicationSettings => _publicationSettings;
 }

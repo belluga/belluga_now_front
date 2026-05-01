@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
 import 'package:belluga_now/domain/app_data/firebase_settings.dart';
 import 'package:belluga_now/domain/app_data/push_settings.dart';
 import 'package:belluga_now/domain/app_data/telemetry_context_settings.dart';
@@ -44,6 +45,7 @@ class AppData {
   final FirebaseSettings? firebaseSettings;
   final PushSettings? pushSettings;
   final DomainBooleanValue phoneOtpSmsFallbackEnabledValue;
+  final AppPublicationSettings publicationSettings;
   final CityCoordinate? tenantDefaultOrigin;
   final DistanceInMetersValue mapRadiusMinMetersValue;
   final DistanceInMetersValue mapRadiusDefaultMetersValue;
@@ -75,6 +77,7 @@ class AppData {
     required this.firebaseSettings,
     required this.pushSettings,
     DomainBooleanValue? phoneOtpSmsFallbackEnabledValue,
+    AppPublicationSettings? publicationSettings,
     required this.tenantDefaultOrigin,
     required this.mapRadiusMinMetersValue,
     required this.mapRadiusDefaultMetersValue,
@@ -85,8 +88,10 @@ class AppData {
     required this.mainColor,
     required this.mainLogoLightUrl,
     required this.mainLogoDarkUrl,
-  }) : phoneOtpSmsFallbackEnabledValue =
-            phoneOtpSmsFallbackEnabledValue ?? _defaultFalseBooleanValue();
+  })  : phoneOtpSmsFallbackEnabledValue =
+            phoneOtpSmsFallbackEnabledValue ?? _defaultFalseBooleanValue(),
+        publicationSettings =
+            publicationSettings ?? AppPublicationSettings.empty();
 
   AppType get appType =>
       platformType.value ?? platformType.defaultValue ?? AppType.mobile;

@@ -308,6 +308,18 @@ class InvitesResponseDecoder {
       avatarValue.parse(normalizedAvatarUrl);
     }
 
+    final contactHashValue = InviteContactHashValue();
+    final contactHashRaw = _stringOrEmpty(map['contact_hash']);
+    if (contactHashRaw.isNotEmpty) {
+      contactHashValue.parse(contactHashRaw);
+    }
+
+    final contactTypeValue = InviteContactTypeValue();
+    final contactTypeRaw = _stringOrEmpty(map['contact_type'] ?? map['type']);
+    if (contactTypeRaw.isNotEmpty) {
+      contactTypeValue.parse(contactTypeRaw);
+    }
+
     return InviteableRecipient(
       userIdValue: UserIdValue()..parse(userId),
       receiverAccountProfileIdValue: InviteAccountProfileIdValue()
@@ -321,6 +333,8 @@ class InvitesResponseDecoder {
       ),
       isInviteableValue: DomainBooleanValue()
         ..set(map['is_inviteable'] != false),
+      contactHashValue: contactHashValue,
+      contactTypeValue: contactTypeValue,
     );
   }
 

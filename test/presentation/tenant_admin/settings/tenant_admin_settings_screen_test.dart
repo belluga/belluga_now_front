@@ -1862,6 +1862,15 @@ void main() {
       TenantAdminSettingsKeys.technicalIntegrationsAppLinksAndroidPackageEdit,
       skipOffstage: false,
     );
+    final androidPublicationSwitch = find.byKey(
+      TenantAdminSettingsKeys
+          .technicalIntegrationsAppLinksAndroidPublicationSwitch,
+      skipOffstage: false,
+    );
+    final androidStoreUrlRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsAppLinksAndroidStoreUrlEdit,
+      skipOffstage: false,
+    );
     final fingerprintsRow = find.byKey(
       TenantAdminSettingsKeys.technicalIntegrationsAppLinksFingerprintsEdit,
       skipOffstage: false,
@@ -1877,6 +1886,37 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('Publicação'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      androidPublicationSwitch,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(androidPublicationSwitch);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      androidStoreUrlRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: androidStoreUrlRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'URL Android'),
+      'https://play.google.com/store/apps/details?id=com.guarappari.app',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.descendant(
           of: packageRow, matching: find.byIcon(Icons.edit_outlined)),
@@ -1930,6 +1970,14 @@ void main() {
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
         ],
       ),
+    );
+    expect(
+      settingsRepository.updatedAppLinksSettings!.androidPublicationEnabled,
+      isTrue,
+    );
+    expect(
+      settingsRepository.updatedAppLinksSettings!.androidStoreUrl,
+      'https://play.google.com/store/apps/details?id=com.guarappari.app',
     );
   });
 

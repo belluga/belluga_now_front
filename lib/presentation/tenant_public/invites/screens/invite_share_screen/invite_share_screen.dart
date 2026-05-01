@@ -6,6 +6,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
@@ -23,8 +24,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-typedef InviteExternalUrlLauncher =
-    Future<bool> Function(Uri uri, {required LaunchMode mode});
+typedef InviteExternalUrlLauncher = Future<bool> Function(Uri uri,
+    {required LaunchMode mode});
 typedef InviteSystemShareLauncher = Future<void> Function(ShareParams params);
 
 class InviteShareScreen extends StatefulWidget {
@@ -44,8 +45,8 @@ class InviteShareScreen extends StatefulWidget {
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-  late final InviteShareScreenController _controller = GetIt.I
-      .get<InviteShareScreenController>();
+  late final InviteShareScreenController _controller =
+      GetIt.I.get<InviteShareScreenController>();
 
   @override
   void initState() {
@@ -92,8 +93,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                   streamValue: _controller.sentInvitesStreamValue,
                   builder: (context, sentInvites) {
                     return StreamValueBuilder<
-                      List<InviteExternalContactShareTarget>
-                    >(
+                        List<InviteExternalContactShareTarget>>(
                       streamValue:
                           _controller.externalContactShareTargetsStreamValue,
                       builder: (context, externalTargets) {
@@ -102,56 +102,25 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                           builder: (context, selectedPane) {
                             return StreamValueBuilder<bool>(
                               streamValue: _controller
-                                  .isInviteablesRefreshingStreamValue,
+                                  .isPhoneContactsRefreshingStreamValue,
                               builder: (context, isRefreshing) {
                                 return StreamValueBuilder<bool>(
                                   streamValue: _controller
-                                      .inviteablesRefreshFailedStreamValue,
+                                      .phoneContactsRefreshFailedStreamValue,
                                   builder: (context, hasRefreshFailed) {
                                     return Column(
                                       children: [
                                         Expanded(
-                                          child: ListView(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 12,
-                                            ),
-                                            children: [
-                                              InviteEventHero(
-                                                invite: widget.invite,
-                                              ),
-                                              const SizedBox(height: 16),
-                                              InviteShareSummary(
-                                                invites: sentInvites,
-                                              ),
-                                              const SizedBox(height: 16),
-                                              _buildControls(
-                                                selectedPane: selectedPane,
-                                                phoneContactCount:
-                                                    externalTargets.length,
-                                                isRefreshing: isRefreshing,
-                                                hasRefreshFailed:
-                                                    hasRefreshFailed,
-                                              ),
-                                              const SizedBox(height: 16),
-                                              if (selectedPane ==
-                                                  InviteSharePane.app)
-                                                ..._buildAppInviteablePane(
-                                                  context: context,
-                                                  availableReasons:
-                                                      availableReasons,
-                                                  selectedReason:
-                                                      selectedReason,
-                                                  filteredFriends:
-                                                      filteredFriends,
-                                                )
-                                              else
-                                                ..._buildPhoneContactsPane(
-                                                  context: context,
-                                                  externalTargets:
-                                                      externalTargets,
-                                                ),
-                                            ],
+                                          child: _buildScrollableContent(
+                                            selectedPane: selectedPane,
+                                            phoneContactCount:
+                                                externalTargets.length,
+                                            isRefreshing: isRefreshing,
+                                            hasRefreshFailed: hasRefreshFailed,
+                                            availableReasons: availableReasons,
+                                            selectedReason: selectedReason,
+                                            filteredFriends: filteredFriends,
+                                            externalTargets: externalTargets,
                                           ),
                                         ),
                                         Padding(
@@ -164,32 +133,30 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                           child: StreamValueBuilder<bool>(
                                             streamValue: _controller
                                                 .isShareCodeLoadingStreamValue,
-                                            builder:
-                                                (
-                                                  context,
-                                                  isGeneratingShareCode,
-                                                ) {
-                                                  return StreamValueBuilder<
-                                                    InviteShareCodeResult?
-                                                  >(
-                                                    streamValue: _controller
-                                                        .shareCodeStreamValue,
-                                                    builder: (context, shareCode) {
-                                                      return InviteShareFooter(
-                                                        invite: widget.invite,
-                                                        shareUri: _controller
-                                                            .buildShareUri(
-                                                              shareCode,
-                                                            ),
-                                                        isGeneratingShareCode:
-                                                            isGeneratingShareCode,
-                                                        onRetryShareCode:
-                                                            _controller
-                                                                .reloadShareCode,
-                                                      );
-                                                    },
+                                            builder: (
+                                              context,
+                                              isGeneratingShareCode,
+                                            ) {
+                                              return StreamValueBuilder<
+                                                  InviteShareCodeResult?>(
+                                                streamValue: _controller
+                                                    .shareCodeStreamValue,
+                                                builder: (context, shareCode) {
+                                                  return InviteShareFooter(
+                                                    invite: widget.invite,
+                                                    shareUri: _controller
+                                                        .buildShareUri(
+                                                      shareCode,
+                                                    ),
+                                                    isGeneratingShareCode:
+                                                        isGeneratingShareCode,
+                                                    onRetryShareCode:
+                                                        _controller
+                                                            .reloadShareCode,
                                                   );
                                                 },
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -210,6 +177,106 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildScrollableContent({
+    required InviteSharePane selectedPane,
+    required int phoneContactCount,
+    required bool isRefreshing,
+    required bool hasRefreshFailed,
+    required List<String> availableReasons,
+    required String? selectedReason,
+    required List<InviteFriendResumeWithStatus> filteredFriends,
+    required List<InviteExternalContactShareTarget> externalTargets,
+  }) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _contentItemCount(
+        selectedPane: selectedPane,
+        availableReasons: availableReasons,
+        filteredFriends: filteredFriends,
+        externalTargets: externalTargets,
+      ),
+      itemBuilder: (context, index) {
+        return _buildContentItem(
+          context: context,
+          index: index,
+          selectedPane: selectedPane,
+          phoneContactCount: phoneContactCount,
+          isRefreshing: isRefreshing,
+          hasRefreshFailed: hasRefreshFailed,
+          availableReasons: availableReasons,
+          selectedReason: selectedReason,
+          filteredFriends: filteredFriends,
+          externalTargets: externalTargets,
+        );
+      },
+    );
+  }
+
+  int _contentItemCount({
+    required InviteSharePane selectedPane,
+    required List<String> availableReasons,
+    required List<InviteFriendResumeWithStatus> filteredFriends,
+    required List<InviteExternalContactShareTarget> externalTargets,
+  }) {
+    final paneCount = selectedPane == InviteSharePane.app
+        ? _appPaneItemCount(
+            availableReasons: availableReasons,
+            filteredFriends: filteredFriends,
+          )
+        : _phonePaneItemCount(externalTargets);
+    return 6 + paneCount;
+  }
+
+  Widget _buildContentItem({
+    required BuildContext context,
+    required int index,
+    required InviteSharePane selectedPane,
+    required int phoneContactCount,
+    required bool isRefreshing,
+    required bool hasRefreshFailed,
+    required List<String> availableReasons,
+    required String? selectedReason,
+    required List<InviteFriendResumeWithStatus> filteredFriends,
+    required List<InviteExternalContactShareTarget> externalTargets,
+  }) {
+    switch (index) {
+      case 0:
+        return InviteEventHero(invite: widget.invite);
+      case 1:
+      case 3:
+      case 5:
+        return const SizedBox(height: 16);
+      case 2:
+        return StreamValueBuilder<List<SentInviteStatus>>(
+          streamValue: _controller.sentInvitesStreamValue,
+          builder: (context, invites) => InviteShareSummary(invites: invites),
+        );
+      case 4:
+        return _buildControls(
+          selectedPane: selectedPane,
+          phoneContactCount: phoneContactCount,
+          isRefreshing: isRefreshing,
+          hasRefreshFailed: hasRefreshFailed,
+        );
+      default:
+        final paneIndex = index - 6;
+        if (selectedPane == InviteSharePane.app) {
+          return _buildAppPaneItem(
+            context: context,
+            index: paneIndex,
+            availableReasons: availableReasons,
+            selectedReason: selectedReason,
+            filteredFriends: filteredFriends,
+          );
+        }
+        return _buildPhonePaneItem(
+          context: context,
+          index: paneIndex,
+          externalTargets: externalTargets,
+        );
+    }
   }
 
   Widget _buildControls({
@@ -240,7 +307,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
           ],
           selected: {selectedPane},
           onSelectionChanged: (selection) {
-            _controller.selectPane(selection.single);
+            unawaited(_controller.selectPane(selection.single));
           },
         ),
         const SizedBox(height: 10),
@@ -249,26 +316,23 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
           runSpacing: 8,
           alignment: WrapAlignment.end,
           children: [
-            TextButton.icon(
-              onPressed: isRefreshing ? null : _controller.refreshFriends,
-              icon: isRefreshing
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh),
-              label: Text(
-                isRefreshing ? 'Atualizando...' : 'Atualizar lista de amigos',
+            if (selectedPane == InviteSharePane.phone)
+              TextButton.icon(
+                onPressed:
+                    isRefreshing ? null : _controller.refreshPhoneContacts,
+                icon: isRefreshing
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(
+                  isRefreshing ? 'Atualizando...' : 'Atualizar agenda',
+                ),
               ),
-            ),
-            OutlinedButton.icon(
-              onPressed: _openGroupManagement,
-              icon: const Icon(Icons.group_outlined),
-              label: const Text('Gerenciar grupos'),
-            ),
           ],
         ),
-        if (hasRefreshFailed)
+        if (selectedPane == InviteSharePane.phone && hasRefreshFailed)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Align(
@@ -300,71 +364,90 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  List<Widget> _buildAppInviteablePane({
+  int _appPaneItemCount({
+    required List<String> availableReasons,
+    required List<InviteFriendResumeWithStatus> filteredFriends,
+  }) {
+    return (availableReasons.isNotEmpty ? 1 : 0) +
+        (filteredFriends.isEmpty ? 1 : filteredFriends.length);
+  }
+
+  Widget _buildAppPaneItem({
     required BuildContext context,
+    required int index,
     required List<String> availableReasons,
     required String? selectedReason,
     required List<InviteFriendResumeWithStatus> filteredFriends,
   }) {
-    return [
-      if (availableReasons.isNotEmpty)
-        InviteShareRelationFilterChips(
+    var itemIndex = index;
+    if (availableReasons.isNotEmpty) {
+      if (itemIndex == 0) {
+        return InviteShareRelationFilterChips(
           selectedReason: selectedReason,
           availableReasons: availableReasons,
           onSelectReason: _controller.selectInviteableReason,
-        ),
-      if (filteredFriends.isEmpty)
-        _buildEmptyState(
-          context: context,
-          icon: Icons.person_search_outlined,
-          text: 'Nenhum contato convidável para este filtro.',
-        ),
-      ...filteredFriends.map(
-        (item) => InviteShareFriendCard(
-          friend: item.friend,
-          status: item.inviteStatus,
-          onInvite: () => _controller.sendInviteToFriend(item.friend),
-          isPlaceholder: false,
-        ),
-      ),
-    ];
+        );
+      }
+      itemIndex -= 1;
+    }
+
+    if (filteredFriends.isEmpty) {
+      return _buildEmptyState(
+        context: context,
+        icon: Icons.person_search_outlined,
+        text: 'Nenhum contato convidável para este filtro.',
+      );
+    }
+
+    final item = filteredFriends[itemIndex];
+    return InviteShareFriendCard(
+      key: ValueKey(_inviteableCardKey(item.friend)),
+      friend: item.friend,
+      status: item.inviteStatus,
+      onInvite: () => _controller.sendInviteToFriend(item.friend),
+      isPlaceholder: false,
+    );
   }
 
-  List<Widget> _buildPhoneContactsPane({
+  int _phonePaneItemCount(List<InviteExternalContactShareTarget> targets) {
+    return targets.isEmpty ? 1 : targets.length;
+  }
+
+  Widget _buildPhonePaneItem({
     required BuildContext context,
+    required int index,
     required List<InviteExternalContactShareTarget> externalTargets,
   }) {
-    return [
-      StreamValueBuilder<InviteShareCodeResult?>(
-        streamValue: _controller.shareCodeStreamValue,
-        builder: (context, shareCode) {
-          final shareUri = _controller.buildShareUri(shareCode);
-          if (externalTargets.isEmpty) {
-            return _buildEmptyState(
-              context: context,
-              icon: Icons.contact_phone_outlined,
-              text: 'Nenhum contato do telefone disponível.',
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ...externalTargets.map(
-                (target) => InviteExternalContactCard(
-                  target: target,
-                  onShare: shareUri == null
-                      ? null
-                      : () => unawaited(
-                          _shareWithExternalContact(target, shareUri),
-                        ),
-                ),
-              ),
-            ],
+    return StreamValueBuilder<InviteShareCodeResult?>(
+      streamValue: _controller.shareCodeStreamValue,
+      builder: (context, shareCode) {
+        final shareUri = _controller.buildShareUri(shareCode);
+        if (externalTargets.isEmpty) {
+          return _buildEmptyState(
+            context: context,
+            icon: Icons.contact_phone_outlined,
+            text: 'Nenhum contato do telefone disponível.',
           );
-        },
-      ),
-    ];
+        }
+
+        final target = externalTargets[index];
+        return InviteExternalContactCard(
+          key: ValueKey('external-contact:${target.id}'),
+          target: target,
+          onShare: shareUri == null
+              ? null
+              : () => unawaited(_shareWithExternalContact(target, shareUri)),
+        );
+      },
+    );
+  }
+
+  String _inviteableCardKey(InviteFriendResume friend) {
+    final accountProfileId = friend.accountProfileId.trim();
+    if (accountProfileId.isNotEmpty) {
+      return 'inviteable-account-profile:$accountProfileId';
+    }
+    return 'inviteable-user:${friend.id}';
   }
 
   Widget _buildEmptyState({
@@ -461,8 +544,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 
   String? _currentCountryCode() {
-    final countryCode =
-        Localizations.maybeLocaleOf(context)?.countryCode ??
+    final countryCode = Localizations.maybeLocaleOf(context)?.countryCode ??
         WidgetsBinding.instance.platformDispatcher.locale.countryCode;
     if (countryCode == null || countryCode.trim().isEmpty) {
       return null;

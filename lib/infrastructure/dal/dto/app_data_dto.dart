@@ -1,4 +1,5 @@
 import 'package:belluga_now/application/functions/to_hex.dart';
+import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/firebase_settings.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/domain/app_data/value_object/app_data_href_value.dar
 import 'package:belluga_now/domain/app_data/value_object/app_data_map_filter_catalog_keys_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_port_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_required_text_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_publication_store_url_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/push_enabled_value.dart';
@@ -276,6 +278,7 @@ class AppDataDTO {
       phoneOtpSmsFallbackEnabledValue: _buildBooleanValue(
         _resolvePhoneOtpSmsFallbackEnabled(settings),
       ),
+      publicationSettings: _resolvePublicationSettings(settings),
       tenantDefaultOrigin: tenantDefaultOrigin,
       mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
       mapRadiusDefaultMetersValue: _buildDistanceValue(
@@ -800,18 +803,98 @@ class AppDataDTO {
     Map<String, dynamic>? rawSettings,
   ) {
     final settings = rawSettings ?? const <String, dynamic>{};
-    final outbound = settings['outbound_integrations'] is Map
-        ? Map<String, dynamic>.from(settings['outbound_integrations'] as Map)
+    final tenantPublicAuth = settings['tenant_public_auth'] is Map
+        ? Map<String, dynamic>.from(settings['tenant_public_auth'] as Map)
         : const <String, dynamic>{};
-    final otp = outbound['otp'] is Map
-        ? Map<String, dynamic>.from(outbound['otp'] as Map)
+    final phoneOtp = tenantPublicAuth['phone_otp'] is Map
+        ? Map<String, dynamic>.from(tenantPublicAuth['phone_otp'] as Map)
         : const <String, dynamic>{};
 
-    final smsWebhookUrl = _firstNonEmpty(
-      otp['webhook_url']?.toString(),
-      settings['outbound_integrations.otp.webhook_url']?.toString(),
+    if (_resolveLooseBoolean(phoneOtp['sms_fallback_enabled'])) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static AppPublicationSettings _resolvePublicationSettings(
+    Map<String, dynamic>? rawSettings,
+  ) {
+    final settings = rawSettings ?? const <String, dynamic>{};
+    final hasExplicitConfig = settings.containsKey('app_links');
+    final appLinks = settings['app_links'] is Map
+        ? Map<String, dynamic>.from(settings['app_links'] as Map)
+        : const <String, dynamic>{};
+
+    return AppPublicationSettings(
+      hasExplicitConfigValue: _publicationBooleanValue(hasExplicitConfig),
+      android: _resolvePublicationPlatform(appLinks['android']),
+      ios: _resolvePublicationPlatform(appLinks['ios']),
     );
-    return smsWebhookUrl != null && smsWebhookUrl.trim().isNotEmpty;
+  }
+
+  static AppPublicationPlatformSettings _resolvePublicationPlatform(
+    Object? rawPlatform,
+  ) {
+    if (rawPlatform is! Map) {
+      return AppPublicationPlatformSettings(
+        enabledValue: _publicationBooleanValue(false),
+        storeUrlValue: _publicationStoreUrlValue(null),
+      );
+    }
+    final platform = Map<String, dynamic>.from(rawPlatform);
+    return AppPublicationPlatformSettings(
+      enabledValue: _publicationBooleanValue(
+        _resolveLooseBoolean(platform['enabled']),
+      ),
+      storeUrlValue: _publicationStoreUrlValue(
+        _normalizeOptionalUrl(platform['store_url']),
+      ),
+    );
+  }
+
+  static DomainBooleanValue _publicationBooleanValue(bool raw) {
+    final value = DomainBooleanValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  static AppPublicationStoreUrlValue _publicationStoreUrlValue(String? raw) {
+    final value = AppPublicationStoreUrlValue();
+    value.parse(raw);
+    return value;
+  }
+
+  static bool _resolveLooseBoolean(Object? raw) {
+    if (raw is bool) {
+      return raw;
+    }
+    if (raw is num) {
+      return raw != 0;
+    }
+    if (raw is String) {
+      final normalized = raw.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  static String? _normalizeOptionalUrl(Object? raw) {
+    if (raw is! String) {
+      return null;
+    }
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(normalized);
+    if (uri == null || !uri.hasScheme || uri.host.trim().isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   static T _parseRequired<T extends ValueObject<dynamic>>(

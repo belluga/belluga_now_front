@@ -32,6 +32,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _controller.beginPhoneOtpPageSession();
   }
 
   @override

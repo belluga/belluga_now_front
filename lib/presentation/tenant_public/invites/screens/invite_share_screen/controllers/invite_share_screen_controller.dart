@@ -4,6 +4,7 @@ import 'package:belluga_now/application/invites/invite_contact_import_hashes.dar
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.d
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:flutter/foundation.dart';
@@ -35,13 +37,13 @@ class InviteShareScreenController with Disposable {
     AppData? appData,
     bool? isWebRuntime,
     String? contactRegionCode,
-  }) : _invitesRepository =
-           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-       _contactsRepository =
-           contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
-       _appData = appData ?? GetIt.I.get<AppData>(),
-       _isWebRuntime = isWebRuntime ?? kIsWeb,
-       _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
+  })  : _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _contactsRepository =
+            contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
+        _appData = appData ?? GetIt.I.get<AppData>(),
+        _isWebRuntime = isWebRuntime ?? kIsWeb,
+        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
 
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
@@ -63,10 +65,10 @@ class InviteShareScreenController with Disposable {
     defaultValue: null,
   );
   final isShareCodeLoadingStreamValue = StreamValue<bool>(defaultValue: true);
-  final isInviteablesRefreshingStreamValue = StreamValue<bool>(
+  final isPhoneContactsRefreshingStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
-  final inviteablesRefreshFailedStreamValue = StreamValue<bool>(
+  final phoneContactsRefreshFailedStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
   final selectedInviteableReasonStreamValue = StreamValue<String?>(
@@ -77,12 +79,15 @@ class InviteShareScreenController with Disposable {
   );
   final externalContactShareTargetsStreamValue =
       StreamValue<List<InviteExternalContactShareTarget>>(
-        defaultValue: const [],
-      );
+    defaultValue: const [],
+  );
 
   List<ContactModel> _availableContacts = const [];
+  List<InviteContactMatch> _importedContactMatches =
+      const <InviteContactMatch>[];
+  bool _hasLoadedPhoneContacts = false;
   bool _isShareCodeLoading = false;
-  bool _isInviteablesRefreshing = false;
+  bool _isPhoneContactsRefreshing = false;
 
   void setContactRegionCode(String? regionCode) {
     _contactRegionCodeValue = _buildRegionCodeValue(regionCode);
@@ -90,13 +95,21 @@ class InviteShareScreenController with Disposable {
 
   Future<void> init(InviteModel invite) async {
     _currentInvite = invite;
+    _availableContacts = const [];
+    _importedContactMatches = const <InviteContactMatch>[];
+    _hasLoadedPhoneContacts = false;
+    externalContactShareTargetsStreamValue.addValue(
+      const <InviteExternalContactShareTarget>[],
+    );
+    selectedPaneStreamValue.addValue(InviteSharePane.app);
+    await _loadCachedContactsForDisplay();
     await Future.wait([
       _loadInviteTargetsWithStatusSafe(),
       _loadShareCodeSafe(),
     ]);
   }
 
-  Future<void> loadContacts() async {
+  Future<void> loadContacts({bool forceDeviceReload = false}) async {
     try {
       final granted = await _contactsRepository.requestPermission();
       if (_isDisposed) return;
@@ -107,18 +120,13 @@ class InviteShareScreenController with Disposable {
         return;
       }
 
-      await _contactsRepository.refreshContacts();
+      if (forceDeviceReload) {
+        await _contactsRepository.refreshContacts();
+      } else {
+        await _contactsRepository.refreshCachedContacts();
+      }
       if (_isDisposed) return;
-      final contacts =
-          _contactsRepository.contactsStreamValue.value ??
-          const <ContactModel>[];
-
-      final validContacts = contacts
-          .where(
-            (contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty,
-          )
-          .toList(growable: false);
-      _availableContacts = validContacts;
+      _syncAvailableContactsFromRepository();
     } catch (_) {
       if (_isDisposed) return;
       contactsPermissionGranted.addValue(false);
@@ -138,11 +146,16 @@ class InviteShareScreenController with Disposable {
     selectedFriendsSuggestionsStreamValue.addValue(selected);
   }
 
-  Future<void> refreshFriends() async {
+  Future<void> refreshPhoneContacts() async {
     await _loadInviteTargetsWithStatusSafe(
+      loadPhoneContacts: true,
       forceReloadContacts: true,
       exposeRefreshState: true,
     );
+  }
+
+  Future<void> refreshFriends() async {
+    await refreshPhoneContacts();
   }
 
   void selectInviteableReason(String? reason) {
@@ -152,8 +165,11 @@ class InviteShareScreenController with Disposable {
     );
   }
 
-  void selectPane(InviteSharePane pane) {
+  Future<void> selectPane(InviteSharePane pane) async {
     selectedPaneStreamValue.addValue(pane);
+    if (pane == InviteSharePane.phone && !_hasLoadedPhoneContacts) {
+      await _loadInviteTargetsWithStatusSafe(loadPhoneContacts: true);
+    }
   }
 
   Future<void> sendInvites() async {
@@ -200,36 +216,49 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> _loadInviteTargetsWithStatus({
+    bool loadPhoneContacts = false,
     bool forceReloadContacts = false,
   }) async {
     final invite = _currentInvite;
     if (invite == null) return;
 
-    if (forceReloadContacts || _availableContacts.isEmpty) {
-      await loadContacts();
+    var contactClassificationAvailable = true;
+    if (loadPhoneContacts) {
+      await loadContacts(forceDeviceReload: forceReloadContacts);
+      _hasLoadedPhoneContacts = true;
+      final matches = await _importContactsOpportunistically(
+        suppressFailures: !forceReloadContacts,
+      );
+      if (_isDisposed) return;
+      contactClassificationAvailable = matches != null;
+      _importedContactMatches = matches ?? const <InviteContactMatch>[];
     }
-
-    final matches = await _importContactsOpportunistically(
-      suppressFailures: !forceReloadContacts,
-    );
+    final inviteableRecipients =
+        await _invitesRepository.fetchInviteableRecipients();
     if (_isDisposed) return;
-    if (matches == null) {
-      externalContactShareTargetsStreamValue.addValue(const []);
-    } else {
+
+    if (_hasLoadedPhoneContacts) {
       externalContactShareTargetsStreamValue.addValue(
-        _buildExternalShareTargets(matches),
+        contactClassificationAvailable
+            ? _buildExternalShareTargets(
+                importedMatches: _importedContactMatches,
+                backendRecipients: inviteableRecipients,
+              )
+            : const <InviteExternalContactShareTarget>[],
       );
     }
 
-    final inviteableRecipients = await _invitesRepository
-        .fetchInviteableRecipients();
-    if (_isDisposed) return;
-
+    final localContactDisplaysByHash = _localContactDisplaysByHash();
     final recipients = _mergeInviteableRecipients(
       backendRecipients: inviteableRecipients
-          .map((recipient) => recipient.toFriendResume())
+          .map(
+            (recipient) => _toInviteFriendResumeFromRecipient(
+              recipient,
+              localContactDisplaysByHash,
+            ),
+          )
           .toList(growable: false),
-      importedMatches: (matches ?? const <InviteContactMatch>[])
+      importedMatches: _importedContactMatches
           .map((match) => _toInviteFriendResume(match))
           .toList(growable: false),
     )..sort((left, right) => left.name.compareTo(right.name));
@@ -254,37 +283,45 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> _loadInviteTargetsWithStatusSafe({
+    bool loadPhoneContacts = false,
     bool forceReloadContacts = false,
     bool exposeRefreshState = false,
   }) async {
-    if (exposeRefreshState && _isInviteablesRefreshing) {
+    if (loadPhoneContacts && _isPhoneContactsRefreshing) {
       return;
     }
+    if (loadPhoneContacts) {
+      _isPhoneContactsRefreshing = true;
+    }
     if (exposeRefreshState) {
-      _isInviteablesRefreshing = true;
       if (!_isDisposed) {
-        inviteablesRefreshFailedStreamValue.addValue(false);
-        isInviteablesRefreshingStreamValue.addValue(true);
+        phoneContactsRefreshFailedStreamValue.addValue(false);
+        isPhoneContactsRefreshingStreamValue.addValue(true);
       }
     }
     try {
       await _loadInviteTargetsWithStatus(
+        loadPhoneContacts: loadPhoneContacts,
         forceReloadContacts: forceReloadContacts,
       );
     } catch (_) {
       if (_isDisposed) return;
       externalContactShareTargetsStreamValue.addValue(const []);
       if (exposeRefreshState) {
-        inviteablesRefreshFailedStreamValue.addValue(true);
+        phoneContactsRefreshFailedStreamValue.addValue(true);
+      } else if (loadPhoneContacts) {
+        return;
       } else {
         sentInvitesStreamValue.addValue(const []);
         friendsSuggestionsStreamValue.addValue(const []);
       }
     } finally {
+      if (loadPhoneContacts) {
+        _isPhoneContactsRefreshing = false;
+      }
       if (exposeRefreshState) {
-        _isInviteablesRefreshing = false;
         if (!_isDisposed) {
-          isInviteablesRefreshingStreamValue.addValue(false);
+          isPhoneContactsRefreshingStreamValue.addValue(false);
         }
       }
     }
@@ -298,6 +335,8 @@ class InviteShareScreenController with Disposable {
         (() {
           final contacts = InviteContacts(
             regionCodeValue: _contactRegionCodeValue,
+            forceImportValue: DomainBooleanValue()
+              ..parse((!suppressFailures).toString()),
           );
           for (final availableContact in _availableContacts) {
             contacts.add(availableContact);
@@ -431,17 +470,26 @@ class InviteShareScreenController with Disposable {
     return merged.values.toList(growable: false);
   }
 
-  List<InviteExternalContactShareTarget> _buildExternalShareTargets(
-    List<InviteContactMatch> importedMatches,
-  ) {
+  List<InviteExternalContactShareTarget> _buildExternalShareTargets({
+    required List<InviteContactMatch> importedMatches,
+    required List<InviteableRecipient> backendRecipients,
+  }) {
     if (_isWebRuntime) {
       return const <InviteExternalContactShareTarget>[];
     }
 
-    final matchedHashes = importedMatches
-        .map((match) => match.contactHash.trim())
-        .where((hash) => hash.isNotEmpty)
-        .toSet();
+    final matchedHashes = {
+      ...importedMatches
+          .map((match) => match.contactHash.trim())
+          .where((hash) => hash.isNotEmpty),
+      ...backendRecipients
+          .where(
+            (recipient) =>
+                recipient.inviteableReasons.contains('contact_match'),
+          )
+          .map((recipient) => recipient.contactHash.trim())
+          .where((hash) => hash.isNotEmpty),
+    };
 
     return _availableContacts
         .where(_isShareableExternalContact)
@@ -482,6 +530,145 @@ class InviteShareScreenController with Disposable {
       }
     }
     return null;
+  }
+
+  Future<void> _loadCachedContactsForDisplay() async {
+    try {
+      await _contactsRepository.loadCachedContacts();
+      if (_isDisposed) return;
+      _syncAvailableContactsFromRepository();
+    } catch (_) {
+      if (_isDisposed) return;
+      _availableContacts = const [];
+    }
+  }
+
+  void _syncAvailableContactsFromRepository() {
+    final contacts =
+        _contactsRepository.contactsStreamValue.value ?? const <ContactModel>[];
+
+    _availableContacts = contacts
+        .where(
+          (contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty,
+        )
+        .toList(growable: false);
+  }
+
+  Map<String, _LocalContactDisplay> _localContactDisplaysByHash() {
+    final displaysByHash = <String, _LocalContactDisplay>{};
+
+    for (final contact in _availableContacts) {
+      final display = _LocalContactDisplay(
+        name: _displayNameCandidate(contact.displayName),
+        phone: _firstNonEmpty(contact.phones.map((phone) => phone.value)),
+      );
+
+      if (!display.hasDisplayFallback) {
+        continue;
+      }
+
+      final hashes = InviteContactImportHashes.contactHashes(
+        contact,
+        regionCode: _contactRegionCodeValue?.value,
+      );
+
+      for (final hash in hashes) {
+        displaysByHash.putIfAbsent(hash, () => display);
+      }
+    }
+
+    return displaysByHash;
+  }
+
+  InviteFriendResume _toInviteFriendResumeFromRecipient(
+    InviteableRecipient recipient,
+    Map<String, _LocalContactDisplay> localContactDisplaysByHash,
+  ) {
+    final friendAvatarValue = FriendAvatarValue();
+    final normalizedAvatar = recipient.avatarUrl?.trim();
+    if (normalizedAvatar != null && normalizedAvatar.isNotEmpty) {
+      friendAvatarValue.parse(normalizedAvatar);
+    }
+
+    final localDisplay =
+        localContactDisplaysByHash[recipient.contactHash.trim()];
+    final displayName = _recipientDisplayName(
+      recipient: recipient,
+      localDisplay: localDisplay,
+    );
+
+    return InviteFriendResume(
+      idValue: FriendIdValue()..parse(recipient.userId),
+      accountProfileIdValue: recipient.receiverAccountProfileIdValue,
+      nameValue: TitleValue()..parse(displayName),
+      avatarValue: friendAvatarValue,
+      matchLabelValue: FriendMatchLabelValue()..parse(recipient.matchLabel),
+      inviteableReasons: recipient.inviteableReasons,
+      profileExposureLevelValue: recipient.profileExposureLevelValue,
+    );
+  }
+
+  String _recipientDisplayName({
+    required InviteableRecipient recipient,
+    required _LocalContactDisplay? localDisplay,
+  }) {
+    final accountName = _displayNameCandidate(recipient.displayName);
+    if (accountName != null) {
+      return accountName;
+    }
+
+    final localName = localDisplay?.name;
+    if (localName != null) {
+      return localName;
+    }
+
+    final localPhone = localDisplay?.phone;
+    if (localPhone != null) {
+      return localPhone;
+    }
+
+    final accountPhone = _phoneDisplayCandidate(recipient.displayName);
+    if (accountPhone != null) {
+      return accountPhone;
+    }
+
+    final fallback = recipient.displayName.trim();
+    if (fallback.isNotEmpty) {
+      return fallback;
+    }
+
+    return 'Contato sem nome';
+  }
+
+  String? _displayNameCandidate(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || _looksLikePhoneNumber(normalized)) {
+      return null;
+    }
+
+    if (!RegExp(r'[A-Za-zÀ-ÖØ-öø-ÿ]').hasMatch(normalized)) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  String? _phoneDisplayCandidate(String value) {
+    final normalized = value.trim();
+    return _looksLikePhoneNumber(normalized) ? normalized : null;
+  }
+
+  bool _looksLikePhoneNumber(String value) {
+    if (RegExp(r'[A-Za-zÀ-ÖØ-öø-ÿ]').hasMatch(value)) {
+      return false;
+    }
+
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 8) {
+      return false;
+    }
+
+    return RegExp(r'^[\d\s()+\-.]+$').hasMatch(value);
   }
 
   static InviteContactRegionCodeValue? _buildRegionCodeValue(
@@ -532,7 +719,7 @@ class InviteShareScreenController with Disposable {
       accountProfileIdValue: match.receiverAccountProfileId.isEmpty
           ? null
           : (InviteAccountProfileIdValue()
-              ..parse(match.receiverAccountProfileId)),
+            ..parse(match.receiverAccountProfileId)),
       nameValue: TitleValue()..parse(match.displayName),
       avatarValue: avatarValue,
       matchLabelValue: FriendMatchLabelValue()
@@ -557,10 +744,22 @@ class InviteShareScreenController with Disposable {
     sentInvitesStreamValue.dispose();
     shareCodeStreamValue.dispose();
     isShareCodeLoadingStreamValue.dispose();
-    isInviteablesRefreshingStreamValue.dispose();
-    inviteablesRefreshFailedStreamValue.dispose();
+    isPhoneContactsRefreshingStreamValue.dispose();
+    phoneContactsRefreshFailedStreamValue.dispose();
     selectedInviteableReasonStreamValue.dispose();
     selectedPaneStreamValue.dispose();
     externalContactShareTargetsStreamValue.dispose();
   }
+}
+
+class _LocalContactDisplay {
+  const _LocalContactDisplay({
+    required this.name,
+    required this.phone,
+  });
+
+  final String? name;
+  final String? phone;
+
+  bool get hasDisplayFallback => name != null || phone != null;
 }

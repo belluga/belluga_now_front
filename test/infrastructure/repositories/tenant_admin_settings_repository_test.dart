@@ -396,6 +396,13 @@ void main() {
     expect(settings.iosTeamId, 'TEAMID1234');
     expect(settings.iosBundleId, 'com.guarappari.app');
     expect(settings.iosPaths, equals(['/invite*', '/convites*']));
+    expect(settings.androidPublicationEnabled, isTrue);
+    expect(
+      settings.androidStoreUrl,
+      'https://play.google.com/store/apps/details?id=com.guarappari.app',
+    );
+    expect(settings.iosPublicationEnabled, isFalse);
+    expect(settings.iosStoreUrl, isNull);
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.uri.path, '/admin/api/v1/settings/values');
     expect(adapter.requests.last.uri.path, '/admin/api/v1/appdomains');
@@ -632,6 +639,11 @@ void main() {
       iosTeamId: 'TEAMID1234',
       iosBundleId: 'com.guarappari.app',
       iosPaths: ['/invite*', '/convites*'],
+      androidPublicationEnabled: true,
+      androidStoreUrl:
+          'https://play.google.com/store/apps/details?id=com.guarappari.app',
+      iosPublicationEnabled: true,
+      iosStoreUrl: 'https://apps.apple.com/br/app/id123456789',
     );
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
@@ -646,8 +658,16 @@ void main() {
     expect(request.uri.path, '/admin/api/v1/settings/values/app_links');
     final payload = request.data as Map<String, dynamic>;
     expect(payload['android.sha256_cert_fingerprints'], isA<List<dynamic>>());
+    expect(payload['android.enabled'], isTrue);
+    expect(
+      payload['android.store_url'],
+      'https://play.google.com/store/apps/details?id=com.guarappari.app',
+    );
     expect(payload['ios.team_id'], 'TEAMID1234');
     expect(payload['ios.paths'], equals(['/invite*', '/convites*']));
+    expect(payload['ios.enabled'], isTrue);
+    expect(
+        payload['ios.store_url'], 'https://apps.apple.com/br/app/id123456789');
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(updated.iosTeamId, 'TEAMID1234');
     expect(updated.iosBundleId, 'com.guarappari.app');
@@ -1764,11 +1784,15 @@ class _RoutingAdapter implements HttpClientAdapter {
               'data': {
                 'app_links': {
                   'android': {
+                    'enabled': true,
+                    'store_url':
+                        'https://play.google.com/store/apps/details?id=com.guarappari.app',
                     'sha256_cert_fingerprints': [
                       '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
                     ],
                   },
                   'ios': {
+                    'enabled': false,
                     'team_id': 'TEAMID1234',
                     'paths': ['/invite*', '/convites*'],
                   },

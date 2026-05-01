@@ -115,14 +115,27 @@ class AppPromotionDownloadExperience extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                storePlatforms.length == 1
-                    ? 'Baixe para continuar'
-                    : 'Escolha sua loja',
+                storePlatforms.isEmpty
+                    ? 'App em preparação'
+                    : storePlatforms.length == 1
+                        ? 'Baixe para continuar'
+                        : 'Escolha sua loja',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 12),
+              if (storePlatforms.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'A publicação nas lojas ainda não está ativa.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               if (storePlatforms.contains(AppPromotionStorePlatform.ios))
                 _StoreBadgeButton(
                   key: const Key('app_promotion_store_badge_ios'),

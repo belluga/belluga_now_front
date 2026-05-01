@@ -120,6 +120,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final TextEditingController signupPasswordController =
       TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController phoneNationalNumberTextController =
+      TextEditingController();
   final TextEditingController otpCodeController = TextEditingController();
   final PhoneController phoneNumberController = PhoneController(
     initialValue: const PhoneNumber(isoCode: IsoCode.BR, nsn: ''),
@@ -130,9 +132,14 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final generalErrorStreamValue = StreamValue<String?>();
   final FormValidationControllerAdapter phoneOtpValidationController =
       FormValidationControllerAdapter(config: authPhoneOtpValidationConfig);
+  bool _phoneOtpAutoVerificationAttempted = false;
 
   StreamValue<FormValidationState> get phoneOtpValidationStreamValue =>
       phoneOtpValidationController.stateStreamValue;
+
+  void beginPhoneOtpPageSession() {
+    _phoneOtpAutoVerificationAttempted = false;
+  }
 
   void cleanEmailError(Object? _) => authEmailFieldController.cleanError();
   void cleanPasswordError(Object? _) => passwordController.cleanError();
@@ -272,7 +279,36 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   void updatePhoneOtpInput(PhoneNumber phoneNumber) {
+    phoneNumberController.value = phoneNumber;
     phoneController.text = phoneNumber.international;
+    _syncPhoneNationalNumberText(phoneNumber);
+  }
+
+  void updatePhoneOtpCountry(IsoCode isoCode) {
+    final phoneNumber = parsePhoneNationalInputForCountry(
+      phoneNationalNumberTextController.text,
+      isoCode,
+    );
+    updatePhoneOtpInput(phoneNumber);
+  }
+
+  void updatePhoneOtpNationalInput(String rawText) {
+    final trimmed = rawText.trim();
+    final phoneNumber = trimmed.startsWith('+')
+        ? _parseInternationalPhoneInput(trimmed)
+        : parsePhoneNationalInputForCountry(
+            rawText,
+            phoneNumberController.value.isoCode,
+          );
+    updatePhoneOtpInput(phoneNumber);
+  }
+
+  String? validatePhoneNationalInput(String? raw) {
+    final digits = _digitsOnly(raw ?? phoneNationalNumberTextController.text);
+    if (digits.isEmpty) {
+      return 'Informe seu telefone.';
+    }
+    return validatePhoneNumberValue(phoneNumberController.value);
   }
 
   Future<void> requestPhoneOtpChallenge({
@@ -341,6 +377,10 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   Future<void> verifyPhoneOtpChallenge() async {
+    if (buttonLoadingValue.value || !fieldEnabled.value) {
+      return;
+    }
+
     buttonLoadingValue.addValue(true);
     fieldEnabled.addValue(false);
     _cleanAllErrors();
@@ -381,6 +421,18 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     }
   }
 
+  Future<void> verifyPhoneOtpChallengeOnceOnCodeComplete() async {
+    if (_phoneOtpAutoVerificationAttempted) {
+      return;
+    }
+    if (validateOtpCode(otpCodeController.text) != null) {
+      return;
+    }
+
+    _phoneOtpAutoVerificationAttempted = true;
+    await verifyPhoneOtpChallenge();
+  }
+
   void editPhoneNumber() {
     otpCodeController.clear();
     phoneOtpValidationController.clearAll();
@@ -398,13 +450,122 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   void _syncPhoneNumberController(String rawPhone) {
     try {
-      phoneNumberController.value = PhoneNumber.parse(
+      updatePhoneOtpInput(PhoneNumber.parse(
         rawPhone,
         destinationCountry: IsoCode.BR,
-      );
+      ));
     } catch (_) {
       // expected_control_flow: backend may return a legacy phone shape.
     }
+  }
+
+  static PhoneNumber parsePhoneNationalInputForCountry(
+    String raw,
+    IsoCode isoCode,
+  ) {
+    final digits = _digitsOnly(raw);
+    if (digits.isEmpty) {
+      return PhoneNumber(isoCode: isoCode, nsn: '');
+    }
+    try {
+      return PhoneNumber.parse(digits, destinationCountry: isoCode);
+    } catch (_) {
+      return PhoneNumber(isoCode: isoCode, nsn: digits);
+    }
+  }
+
+  static String formatPhoneNationalNumberForInput(PhoneNumber phoneNumber) {
+    return formatPhoneNationalDigitsForInput(
+      phoneNumber.isoCode,
+      phoneNumber.nsn,
+    );
+  }
+
+  static String formatPhoneNationalDigitsForInput(
+    IsoCode isoCode,
+    String rawDigits,
+  ) {
+    final digits = _digitsOnly(rawDigits);
+    if (digits.isEmpty) {
+      return '';
+    }
+    if (isoCode == IsoCode.BR) {
+      return _formatBrazilPhoneDigits(digits);
+    }
+    if ((PhoneNumber(isoCode: isoCode, nsn: '')).countryCode == '1') {
+      return _formatNanpPhoneDigits(digits);
+    }
+    try {
+      return PhoneNumber(isoCode: isoCode, nsn: digits).formatNsn();
+    } catch (_) {
+      return digits;
+    }
+  }
+
+  static String _formatBrazilPhoneDigits(String rawDigits) {
+    final digits = _digitsOnly(rawDigits);
+    if (digits.length <= 1) {
+      return '($digits';
+    }
+
+    final areaCode = digits.substring(0, 2);
+    final localNumber = digits.substring(2);
+    if (localNumber.isEmpty) {
+      return '($areaCode)';
+    }
+
+    final isMobile = localNumber.startsWith('9');
+    final prefixLength = isMobile ? 5 : 4;
+    if (localNumber.length <= prefixLength) {
+      return '($areaCode) $localNumber';
+    }
+
+    final prefix = localNumber.substring(0, prefixLength);
+    final suffix = localNumber.substring(prefixLength);
+    return '($areaCode) $prefix-$suffix';
+  }
+
+  static String _formatNanpPhoneDigits(String rawDigits) {
+    final digits = _digitsOnly(rawDigits);
+    if (digits.length <= 3) {
+      return '($digits';
+    }
+
+    final areaCode = digits.substring(0, 3);
+    final remainder = digits.substring(3);
+    if (remainder.length <= 3) {
+      return '($areaCode) $remainder';
+    }
+
+    final prefix = remainder.substring(0, 3);
+    final suffix = remainder.substring(3);
+    return '($areaCode) $prefix-$suffix';
+  }
+
+  static String _digitsOnly(String raw) {
+    return raw.replaceAll(RegExp(r'\D+'), '');
+  }
+
+  PhoneNumber _parseInternationalPhoneInput(String raw) {
+    try {
+      return PhoneNumber.parse(raw);
+    } catch (_) {
+      return parsePhoneNationalInputForCountry(
+        raw,
+        phoneNumberController.value.isoCode,
+      );
+    }
+  }
+
+  void _syncPhoneNationalNumberText(PhoneNumber phoneNumber) {
+    final formatted = formatPhoneNationalNumberForInput(phoneNumber);
+    if (phoneNationalNumberTextController.text == formatted) {
+      return;
+    }
+    phoneNationalNumberTextController.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 
   Future<void> signUpWithEmailPassword(
@@ -519,7 +680,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         normalized.contains('too many')) {
       return 'Muitas tentativas. Solicite um novo código para continuar.';
     }
-    return 'Código inválido. Confira os 6 dígitos e tente novamente.';
+    return 'Código incorreto';
   }
 
   bool _isOtpCodeVerificationError(Object error) {
@@ -575,6 +736,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signupEmailController.dispose();
     signupPasswordController.dispose();
     phoneController.dispose();
+    phoneNationalNumberTextController.dispose();
     otpCodeController.dispose();
     phoneNumberController.dispose();
     phoneFocusNode.dispose();

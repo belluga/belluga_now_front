@@ -132,6 +132,10 @@ class TenantAdminSettingsController implements Disposable {
       growable: false,
     ),
   );
+  final StreamValue<bool> appLinksAndroidPublicationEnabledStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> appLinksIosPublicationEnabledStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminMapFilterRuleCatalog>
       mapFilterRuleCatalogStreamValue =
       StreamValue<TenantAdminMapFilterRuleCatalog>(
@@ -273,6 +277,10 @@ class TenantAdminSettingsController implements Disposable {
       TextEditingController();
   final TextEditingController appLinksIosBundleIdController =
       TextEditingController();
+  final TextEditingController appLinksAndroidStoreUrlController =
+      TextEditingController();
+  final TextEditingController appLinksIosStoreUrlController =
+      TextEditingController();
   static const int _mapFilterKeyMaxLength = 64;
 
   bool _initialized = false;
@@ -325,6 +333,14 @@ class TenantAdminSettingsController implements Disposable {
           ? List<String>.from(appLinksCanonicalIosPaths, growable: false)
           : sanitized,
     );
+  }
+
+  void updateAppLinksAndroidPublicationEnabled(bool value) {
+    appLinksAndroidPublicationEnabledStreamValue.addValue(value);
+  }
+
+  void updateAppLinksIosPublicationEnabled(bool value) {
+    appLinksIosPublicationEnabledStreamValue.addValue(value);
   }
 
   Future<void> init({
@@ -1397,10 +1413,14 @@ class TenantAdminSettingsController implements Disposable {
         growable: false,
       ),
     );
+    appLinksAndroidPublicationEnabledStreamValue.addValue(false);
+    appLinksIosPublicationEnabledStreamValue.addValue(false);
     appLinksAndroidPackageNameController.clear();
     appLinksAndroidFingerprintsController.clear();
     appLinksIosTeamIdController.clear();
     appLinksIosBundleIdController.clear();
+    appLinksAndroidStoreUrlController.clear();
+    appLinksIosStoreUrlController.clear();
   }
 
   void _resetResendEmailDraft() {
@@ -1671,6 +1691,26 @@ class TenantAdminSettingsController implements Disposable {
       );
       return null;
     }
+    final androidPublicationEnabled =
+        appLinksAndroidPublicationEnabledStreamValue.value;
+    final iosPublicationEnabled =
+        appLinksIosPublicationEnabledStreamValue.value;
+    final androidStoreUrl =
+        _normalizeOptionalText(appLinksAndroidStoreUrlController.text);
+    final iosStoreUrl =
+        _normalizeOptionalText(appLinksIosStoreUrlController.text);
+    if (androidPublicationEnabled && androidStoreUrl == null) {
+      remoteErrorStreamValue.addValue(
+        'Informe a URL Android para ativar a publicação.',
+      );
+      return null;
+    }
+    if (iosPublicationEnabled && iosStoreUrl == null) {
+      remoteErrorStreamValue.addValue(
+        'Informe a URL iOS para ativar a publicação.',
+      );
+      return null;
+    }
 
     try {
       return appLinksSettingsStreamValue.value.applyValues(
@@ -1681,10 +1721,18 @@ class TenantAdminSettingsController implements Disposable {
         iosBundleId:
             iosBundleId == null ? null : _iosBundleIdValue(iosBundleId),
         iosPathValues: iosPaths.map(_appLinkPathValue).toList(growable: false),
+        androidPublicationEnabled: _booleanValue(androidPublicationEnabled),
+        androidStoreUrl: androidStoreUrl == null
+            ? TenantAdminOptionalUrlValue()
+            : _optionalUrlValue(androidStoreUrl),
+        iosPublicationEnabled: _booleanValue(iosPublicationEnabled),
+        iosStoreUrl: iosStoreUrl == null
+            ? TenantAdminOptionalUrlValue()
+            : _optionalUrlValue(iosStoreUrl),
       );
     } catch (_) {
       remoteErrorStreamValue.addValue(
-        'App Links inválido. Revise package, fingerprints, team_id e bundle_id.',
+        'App Links inválido. Revise package, fingerprints, URLs, team_id e bundle_id.',
       );
       return null;
     }
@@ -1834,12 +1882,20 @@ class TenantAdminSettingsController implements Disposable {
     appLinksIosPathsSelectionStreamValue.addValue(
       List<String>.from(settings.iosPaths, growable: false),
     );
+    appLinksAndroidPublicationEnabledStreamValue.addValue(
+      settings.androidPublicationEnabled,
+    );
+    appLinksIosPublicationEnabledStreamValue.addValue(
+      settings.iosPublicationEnabled,
+    );
     appLinksAndroidPackageNameController.text =
         settings.androidAppIdentifier ?? '';
     appLinksAndroidFingerprintsController.text =
         settings.androidSha256CertFingerprints.join(', ');
     appLinksIosTeamIdController.text = settings.iosTeamId ?? '';
     appLinksIosBundleIdController.text = settings.iosBundleId ?? '';
+    appLinksAndroidStoreUrlController.text = settings.androidStoreUrl ?? '';
+    appLinksIosStoreUrlController.text = settings.iosStoreUrl ?? '';
   }
 
   void _applyBrandingSettings(TenantAdminBrandingSettings settings) {
@@ -2414,6 +2470,8 @@ class TenantAdminSettingsController implements Disposable {
     appLinksSubmittingStreamValue.dispose();
     appLinksSettingsStreamValue.dispose();
     appLinksIosPathsSelectionStreamValue.dispose();
+    appLinksAndroidPublicationEnabledStreamValue.dispose();
+    appLinksIosPublicationEnabledStreamValue.dispose();
     mapFilterRuleCatalogStreamValue.dispose();
     mapFilterRuleCatalogLoadingStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
@@ -2478,6 +2536,8 @@ class TenantAdminSettingsController implements Disposable {
     appLinksAndroidFingerprintsController.dispose();
     appLinksIosTeamIdController.dispose();
     appLinksIosBundleIdController.dispose();
+    appLinksAndroidStoreUrlController.dispose();
+    appLinksIosStoreUrlController.dispose();
     _tenantScopeSubscription?.cancel();
     _maxRadiusSubscription?.cancel();
     _brandingSubscription?.cancel();

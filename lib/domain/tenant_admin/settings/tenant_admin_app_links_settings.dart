@@ -1,8 +1,10 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
@@ -14,6 +16,7 @@ class TenantAdminAppLinksSettings {
     '/agenda*',
     '/agenda/evento/*',
     '/mapa*',
+    '/parceiro/*',
     '/profile*',
     '/home',
     '/',
@@ -58,6 +61,75 @@ class TenantAdminAppLinksSettings {
   String? get iosTeamId => iosTeamIdValue?.value;
   String? get iosBundleId => iosBundleIdValue?.value;
   TenantAdminTrimmedStringListValue get iosPaths => iosPathsValue;
+  bool get androidPublicationEnabled {
+    final platformRaw = rawAppLinksValue.value['android'];
+    if (platformRaw is! Map) {
+      return false;
+    }
+    final value = platformRaw['enabled'];
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  bool get iosPublicationEnabled {
+    final platformRaw = rawAppLinksValue.value['ios'];
+    if (platformRaw is! Map) {
+      return false;
+    }
+    final value = platformRaw['enabled'];
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  String? get androidStoreUrl {
+    final platformRaw = rawAppLinksValue.value['android'];
+    if (platformRaw is! Map) {
+      return null;
+    }
+    final value = platformRaw['store_url'];
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  String? get iosStoreUrl {
+    final platformRaw = rawAppLinksValue.value['ios'];
+    if (platformRaw is! Map) {
+      return null;
+    }
+    final value = platformRaw['store_url'];
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
 
   TenantAdminAppLinksSettings applyValues({
     required TenantAdminAndroidAppIdentifierValue? androidAppIdentifier,
@@ -66,6 +138,10 @@ class TenantAdminAppLinksSettings {
     required TenantAdminIosTeamIdValue? iosTeamId,
     required TenantAdminIosBundleIdentifierValue? iosBundleId,
     required List<TenantAdminAppLinkPathValue> iosPathValues,
+    TenantAdminBooleanValue? androidPublicationEnabled,
+    TenantAdminOptionalUrlValue? androidStoreUrl,
+    TenantAdminBooleanValue? iosPublicationEnabled,
+    TenantAdminOptionalUrlValue? iosStoreUrl,
   }) {
     final nextRaw = Map<String, dynamic>.from(rawAppLinksValue.value);
 
@@ -74,6 +150,12 @@ class TenantAdminAppLinksSettings {
         : <String, dynamic>{};
     android['sha256_cert_fingerprints'] =
         _fingerprintListValue(androidSha256CertFingerprintValues).value;
+    if (androidPublicationEnabled != null) {
+      android['enabled'] = androidPublicationEnabled.value;
+    }
+    if (androidStoreUrl != null) {
+      android['store_url'] = androidStoreUrl.nullableValue;
+    }
     nextRaw['android'] = android;
 
     final ios = nextRaw['ios'] is Map
@@ -81,6 +163,12 @@ class TenantAdminAppLinksSettings {
         : <String, dynamic>{};
     ios['team_id'] = iosTeamId?.value;
     ios['paths'] = _sanitizeIosPaths(iosPathValues).value;
+    if (iosPublicationEnabled != null) {
+      ios['enabled'] = iosPublicationEnabled.value;
+    }
+    if (iosStoreUrl != null) {
+      ios['store_url'] = iosStoreUrl.nullableValue;
+    }
     nextRaw['ios'] = ios;
 
     TenantAdminAndroidAppIdentifierValue? parsedAndroidAppIdentifier;

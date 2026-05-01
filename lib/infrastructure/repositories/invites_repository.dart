@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
@@ -26,29 +29,47 @@ import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_valu
 import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
+import 'package:crypto/crypto.dart';
+import 'package:get_it/get_it.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesRepository extends InvitesRepositoryContract
     with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
     implements PushInvitePayloadAware {
   static const int _maxContactImportItemsPerRequest = 500;
+  static const Duration _contactImportCacheTtl = Duration(hours: 12);
 
   InvitesRepository({
     InvitesBackendContract? backend,
     FriendsRepositoryContract? friendsRepository,
-  }) : _backend = backend ?? LaravelInvitesBackend();
+    InviteContactImportCacheContract? contactImportCache,
+    DateTime Function()? now,
+    Future<String?> Function()? currentUserIdProvider,
+    Future<String?> Function()? tenantCacheScopeProvider,
+  })  : _backend = backend ?? LaravelInvitesBackend(),
+        _contactImportCache = contactImportCache ?? InviteContactImportCache(),
+        _now = now ?? DateTime.now,
+        _currentUserIdProvider = currentUserIdProvider,
+        _tenantCacheScopeProvider = tenantCacheScopeProvider;
 
   final InvitesBackendContract _backend;
+  final InviteContactImportCacheContract _contactImportCache;
+  final DateTime Function() _now;
+  final Future<String?> Function()? _currentUserIdProvider;
+  final Future<String?> Function()? _tenantCacheScopeProvider;
   final InvitesResponseDecoder _responseDecoder =
       const InvitesResponseDecoder();
 
@@ -113,6 +134,7 @@ class InvitesRepository extends InvitesRepositoryContract
     InvitesRepositoryContractPrimString code,
   ) async {
     final response = await _backend.acceptShareCode(code.value);
+    clearShareCodeSessionContext(code: code);
     await fetchInvites();
     return _decodeAcceptResult(response);
   }
@@ -180,6 +202,18 @@ class InvitesRepository extends InvitesRepositoryContract
       return const <InviteContactMatch>[];
     }
 
+    final cacheKey = await _contactImportCacheKey(
+      regionCode: contacts.regionCode,
+    );
+    final importSignature = _contactImportSignature(importItems);
+    final cachedImport = await _contactImportCache.read(cacheKey);
+    if (!contacts.forceImport &&
+        cachedImport != null &&
+        cachedImport.signature == importSignature &&
+        cachedImport.isFresh(_now(), _contactImportCacheTtl)) {
+      return const <InviteContactMatch>[];
+    }
+
     final matchesByProfileId = <String, InviteContactMatch>{};
     for (final chunk in _chunkContactImportItems(importItems)) {
       final response = await _backend.importContacts(
@@ -194,6 +228,14 @@ class InvitesRepository extends InvitesRepositoryContract
         );
       }
     }
+
+    await _contactImportCache.write(
+      cacheKey,
+      InviteContactImportCacheEntry(
+        signature: importSignature,
+        importedAt: _now(),
+      ),
+    );
 
     return matchesByProfileId.values.toList(growable: false);
   }
@@ -451,6 +493,68 @@ class InvitesRepository extends InvitesRepositoryContract
       start = end;
     }
     return chunks;
+  }
+
+  Future<String> _contactImportCacheKey({
+    required String? regionCode,
+  }) async {
+    final userId = await _currentUserId();
+    final tenantScope = await _tenantCacheScope();
+    return sha256
+        .convert(
+          utf8.encode([
+            'tenant=${tenantScope ?? 'unknown'}',
+            'user=${userId ?? 'anonymous'}',
+            'region=${regionCode ?? ''}',
+          ].join('|')),
+        )
+        .toString();
+  }
+
+  Future<String?> _tenantCacheScope() async {
+    final provider = _tenantCacheScopeProvider;
+    if (provider != null) {
+      return _normalizeNullable(await provider());
+    }
+
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+
+    return _normalizeNullable(GetIt.I.get<AppData>().tenantIdValue.value);
+  }
+
+  Future<String?> _currentUserId() async {
+    final provider = _currentUserIdProvider;
+    if (provider != null) {
+      return _normalizeNullable(await provider());
+    }
+
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      return null;
+    }
+
+    return _normalizeNullable(
+      await GetIt.I.get<AuthRepositoryContract>().getUserId(),
+    );
+  }
+
+  String _contactImportSignature(
+    List<InviteContactImportItemRequest> items,
+  ) {
+    final normalized = items
+        .map((item) => '${item.type}:${item.hash}')
+        .toList(growable: false)
+      ..sort();
+    return sha256.convert(utf8.encode(normalized.join('|'))).toString();
+  }
+
+  String? _normalizeNullable(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   List<String> _parseRecipientIds(Object? raw) {

@@ -25,6 +25,7 @@ final class AuthWallTelemetry {
   static String? _lastAuthWallActionType;
   static String? _lastAuthWallRedirectPath;
   static Map<String, dynamic>? _lastAuthWallPayload;
+  static bool _lastAuthWallAllowsPendingActionReplay = false;
   static DateTime? _lastAuthWallAt;
 
   static String? resolveActionTypeForPath(String path) {
@@ -39,11 +40,13 @@ final class AuthWallTelemetry {
     required String actionType,
     required String redirectPath,
     Map<String, dynamic>? payload,
+    bool allowPendingActionReplay = true,
   }) {
     _rememberAuthWallContext(
       actionType: actionType,
       redirectPath: redirectPath,
       payload: payload,
+      allowPendingActionReplay: allowPendingActionReplay,
     );
 
     if (_shouldSuppressDuplicate(actionType)) {
@@ -105,7 +108,8 @@ final class AuthWallTelemetry {
     }
 
     final normalizedCurrent = _normalizePath(currentPath);
-    if (normalizedCurrent == _lastAuthWallRedirectPath) {
+    if (_lastAuthWallAllowsPendingActionReplay &&
+        normalizedCurrent == _lastAuthWallRedirectPath) {
       final action = AuthWallAction(
         actionType: _lastAuthWallActionType!,
         payload: _lastAuthWallPayload,
@@ -127,10 +131,12 @@ final class AuthWallTelemetry {
     required String actionType,
     required String redirectPath,
     Map<String, dynamic>? payload,
+    required bool allowPendingActionReplay,
   }) {
     _lastAuthWallActionType = actionType;
     _lastAuthWallRedirectPath = _normalizePath(redirectPath);
     _lastAuthWallPayload = payload;
+    _lastAuthWallAllowsPendingActionReplay = allowPendingActionReplay;
     _lastAuthWallAt = TimezoneConverter.localToUtc(DateTime.now());
   }
 
@@ -169,6 +175,7 @@ final class AuthWallTelemetry {
     _lastAuthWallActionType = null;
     _lastAuthWallRedirectPath = null;
     _lastAuthWallPayload = null;
+    _lastAuthWallAllowsPendingActionReplay = false;
     _lastAuthWallAt = null;
   }
 

@@ -10,6 +10,7 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -482,6 +483,9 @@ class _AccountProfileDetailScreenState
   }
 
   void _checkPendingIntent() {
+    if (kIsWeb) {
+      return;
+    }
     final redirectPath = _safeRedirectPath();
     final action = AuthWallTelemetry.consumePendingAction(redirectPath);
     if (action != null && action.actionType == AuthWallActionType.favorite) {
@@ -495,15 +499,11 @@ class _AccountProfileDetailScreenState
   void _handleFavoriteTap(String accountProfileId) {
     final redirectPath = _safeRedirectPath();
     if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.favorite,
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
+        actionType: AuthWallActionType.favorite,
         payload: {'partnerId': accountProfileId},
-      );
-      _safeRouterPushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
       );
       return;
     }

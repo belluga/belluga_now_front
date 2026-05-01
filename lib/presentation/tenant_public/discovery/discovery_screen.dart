@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discove
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
@@ -385,6 +386,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _checkPendingIntent() {
+    if (kIsWeb) {
+      return;
+    }
     final redirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
     final action = AuthWallTelemetry.consumePendingAction(redirectPath);
@@ -401,18 +405,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _handleFavoriteTap(AccountProfileModel partner) {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final redirectPath = _partnerDetailRedirectPath(partner);
     if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.favorite,
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
+        actionType: AuthWallActionType.favorite,
         payload: {'partnerId': partner.id},
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
       );
       return;
     }
@@ -428,6 +427,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  String _partnerDetailRedirectPath(AccountProfileModel partner) {
+    final slug = partner.slug.trim();
+    if (slug.isEmpty) {
+      return buildRedirectPathFromRouteMatch(context.routeData.route);
+    }
+    return '/parceiro/$slug';
   }
 
   Widget _buildBrandAppBarTitle() {

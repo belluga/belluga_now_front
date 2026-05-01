@@ -4,7 +4,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
@@ -14,6 +13,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/single_poi_card.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -411,14 +411,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
 
     if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.sendInvite,
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: eventPath,
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: eventPath,
-        ),
+        actionType: AuthWallActionType.sendInvite,
       );
       return;
     }

@@ -59,18 +59,21 @@ class AppPromotionScreenController implements Disposable {
 
   List<AppPromotionStorePlatform> get storePlatformsToRender {
     final preferred = _preferredStorePlatformResolver();
-    if (preferred != null) {
+    if (preferred != null && _isStorePlatformActive(preferred)) {
       return <AppPromotionStorePlatform>[preferred];
     }
     return const <AppPromotionStorePlatform>[
       AppPromotionStorePlatform.ios,
       AppPromotionStorePlatform.android,
-    ];
+    ].where(_isStorePlatformActive).toList(growable: false);
   }
 
   Uri? buildAndroidPromotionUri({
     required String redirectPath,
   }) {
+    if (!_isStorePlatformActive(AppPromotionStorePlatform.android)) {
+      return null;
+    }
     return buildTenantPromotionUriFromAppContext(
       redirectPath: normalizeRedirectPath(redirectPath),
       platformTarget: 'android',
@@ -81,6 +84,9 @@ class AppPromotionScreenController implements Disposable {
   Uri? buildIosPromotionUri({
     required String redirectPath,
   }) {
+    if (!_isStorePlatformActive(AppPromotionStorePlatform.ios)) {
+      return null;
+    }
     return buildTenantPromotionUriFromAppContext(
       redirectPath: normalizeRedirectPath(redirectPath),
       platformTarget: 'ios',
@@ -102,6 +108,18 @@ class AppPromotionScreenController implements Disposable {
 
   @override
   void onDispose() {}
+
+  bool _isStorePlatformActive(AppPromotionStorePlatform platform) {
+    final publicationSettings = _appDataRepository.appData.publicationSettings;
+    if (!publicationSettings.hasExplicitConfig) {
+      return true;
+    }
+    return switch (platform) {
+      AppPromotionStorePlatform.android =>
+        publicationSettings.android.isPublished,
+      AppPromotionStorePlatform.ios => publicationSettings.ios.isPublished,
+    };
+  }
 }
 
 AppPromotionExperience _resolveHardcodedPromotionExperience() {
