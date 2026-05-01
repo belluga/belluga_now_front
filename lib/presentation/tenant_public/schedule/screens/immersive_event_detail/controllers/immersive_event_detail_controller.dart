@@ -77,7 +77,9 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(resolvedEvent);
     _bindFavoriteAccountProfileState();
     final occurrenceId = resolvedEvent.selectedOccurrenceId?.trim();
-    if (occurrenceId != null && occurrenceId.isNotEmpty) {
+    if (occurrenceId != null &&
+        occurrenceId.isNotEmpty &&
+        !_mustRevalidateReceivedInvitesBeforeDisplay(resolvedEvent)) {
       unawaited(_refreshConfirmationState(occurrenceId));
     }
   }
@@ -182,14 +184,20 @@ class ImmersiveEventDetailController implements Disposable {
     isConfirmedStreamValue
         .addValue(isConfirmedLocally.value || event.isConfirmedValue.value);
 
-    _refreshReceivedInvitesFor(event);
-
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
         .listen((_) => _refreshReceivedInvitesFor(event));
     _shareSessionContextSubscription = _invitesRepository
         .shareCodeSessionContextStreamValue.stream
         .listen((_) => _refreshReceivedInvitesFor(event));
+
+    if (_mustRevalidateReceivedInvitesBeforeDisplay(event)) {
+      _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
+      unawaited(_revalidateReceivedInviteDisplayState(event));
+      return;
+    }
+
+    _refreshReceivedInvitesFor(event);
   }
 
   EventModel _eventWithSelectedOccurrence(
@@ -271,6 +279,42 @@ class ImmersiveEventDetailController implements Disposable {
 
   Future<void> _refreshConfirmationState(String occurrenceId) async {
     await _userEventsRepository.refreshConfirmedOccurrenceIds();
+    _applyConfirmationState(occurrenceId);
+    final event = eventStreamValue.value;
+    if (event != null) {
+      _refreshReceivedInvitesFor(event);
+    }
+  }
+
+  Future<void> _revalidateReceivedInviteDisplayState(EventModel event) async {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId == null || occurrenceId.isEmpty) {
+      _refreshReceivedInvitesFor(event);
+      return;
+    }
+
+    try {
+      await Future.wait([
+        _userEventsRepository.refreshConfirmedOccurrenceIds(),
+        _invitesRepository.refreshPendingInvites(),
+      ]);
+    } catch (_) {
+      final current = eventStreamValue.value;
+      if (current != null && _isSameInviteDisplayTarget(current, event)) {
+        _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
+      }
+      return;
+    }
+
+    final current = eventStreamValue.value;
+    if (current == null || !_isSameInviteDisplayTarget(current, event)) {
+      return;
+    }
+    _applyConfirmationState(occurrenceId);
+    _refreshReceivedInvitesFor(current);
+  }
+
+  void _applyConfirmationState(String occurrenceId) {
     final isConfirmedFromBackend = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
         occurrenceId,
@@ -284,6 +328,14 @@ class ImmersiveEventDetailController implements Disposable {
       isConfirmedFromBackend.value || eventConfirmed,
     );
   }
+
+  bool _mustRevalidateReceivedInvitesBeforeDisplay(EventModel event) =>
+      _isAuthorized && (event.selectedOccurrenceId?.trim().isNotEmpty ?? false);
+
+  bool _isSameInviteDisplayTarget(EventModel current, EventModel expected) =>
+      current.id.value == expected.id.value &&
+      current.selectedOccurrenceId?.trim() ==
+          expected.selectedOccurrenceId?.trim();
 
   void _refreshReceivedInvitesFor(EventModel event) {
     _updateReceivedInvites(
@@ -299,6 +351,11 @@ class ImmersiveEventDetailController implements Disposable {
     InviteShareSessionContext? shareSessionContext,
   ) {
     final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (_isSelectedOccurrenceConfirmed(occurrenceId)) {
+      _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
+      return;
+    }
+
     final filtered = invites
         .where((invite) =>
             invite.eventIdValue.value == event.id.value &&
@@ -313,6 +370,25 @@ class ImmersiveEventDetailController implements Disposable {
       filtered.add(sessionInvite);
     }
     _invitesRepository.setImmersiveReceivedInvites(filtered);
+  }
+
+  bool _isSelectedOccurrenceConfirmed(String? occurrenceId) {
+    final normalized = occurrenceId?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return false;
+    }
+    if (isConfirmedStreamValue.value) {
+      return true;
+    }
+    final repositoryState = _userEventsRepository.isOccurrenceConfirmed(
+      userEventsRepoString(
+        normalized,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    return repositoryState.value ||
+        (eventStreamValue.value?.isConfirmedValue.value ?? false);
   }
 
   InviteModel? _matchingShareSessionContextInvite(
@@ -462,10 +538,29 @@ class ImmersiveEventDetailController implements Disposable {
           isRequired: true,
         ),
       );
+      await _refreshInviteStateAfterDirectConfirmation(event, occurrenceId);
       await _refreshConfirmationState(occurrenceId);
       return AttendanceConfirmationResult.confirmed;
     } finally {
       isLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> _refreshInviteStateAfterDirectConfirmation(
+    EventModel event,
+    String occurrenceId,
+  ) async {
+    _invitesRepository.clearShareCodeSessionContext(
+      occurrenceId: invitesRepoString(
+        occurrenceId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    try {
+      await _invitesRepository.refreshPendingInvites();
+    } catch (_) {
+      _refreshReceivedInvitesFor(event);
     }
   }
 

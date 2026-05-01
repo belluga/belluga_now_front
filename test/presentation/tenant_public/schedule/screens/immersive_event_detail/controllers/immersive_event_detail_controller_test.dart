@@ -80,11 +80,77 @@ void main() {
     expect(controller.isConfirmedStreamValue.value, isTrue);
   });
 
-  test('event detail exposes pending invites only for selected occurrence',
+  test(
+      'authenticated confirm attendance clears superseded pending invite state',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final invite = _buildInviteForEvent(
+      id: 'pending-direct-confirm',
+      eventId: '507f1f77bcf86cd799439011',
+    );
+    invitesRepository.pendingInvitesStreamValue.addValue([invite]);
+    invitesRepository.fetchInvitesResult = [invite];
+    invitesRepository.setShareCodeSessionContext(
+      code: invitesRepoString(
+        'SHARE-ABC',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      invite: invite,
+    );
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+
+    invitesRepository.fetchInvitesResult = const <InviteModel>[];
+    final result = await controller.confirmAttendance();
+
+    expect(result, AttendanceConfirmationResult.confirmed);
+    expect(invitesRepository.fetchInvitesCalls, 2);
+    expect(invitesRepository.pendingInvitesStreamValue.value, isEmpty);
+    expect(invitesRepository.shareCodeSessionContextStreamValue.value, isNull);
+    expect(controller.receivedInvitesStreamValue.value, isEmpty);
+  });
+
+  test('event detail revalidates pending invites before displaying them',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
     invitesRepository.pendingInvitesStreamValue.addValue([
+      _buildInviteForEvent(
+        id: 'stale-pending-from-other-device',
+        eventId: '507f1f77bcf86cd799439011',
+      ),
+    ]);
+    invitesRepository.fetchInvitesResult = const <InviteModel>[];
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+
+    expect(controller.receivedInvitesStreamValue.value, isEmpty);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(invitesRepository.fetchInvitesCalls, 1);
+    expect(invitesRepository.pendingInvitesStreamValue.value, isEmpty);
+    expect(controller.receivedInvitesStreamValue.value, isEmpty);
+  });
+
+  test('event detail exposes pending invites only for selected occurrence',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final pendingInvites = [
       _buildInviteForEvent(
         id: 'invite-current-occurrence',
         eventId: '507f1f77bcf86cd799439011',
@@ -95,7 +161,9 @@ void main() {
         eventId: '507f1f77bcf86cd799439011',
         occurrenceId: 'occurrence-other',
       ),
-    ]);
+    ];
+    invitesRepository.pendingInvitesStreamValue.addValue(pendingInvites);
+    invitesRepository.fetchInvitesResult = pendingInvites;
     final controller = ImmersiveEventDetailController(
       userEventsRepository: userEventsRepository,
       invitesRepository: invitesRepository,
@@ -117,6 +185,7 @@ void main() {
         ],
       ),
     );
+    await Future<void>.delayed(Duration.zero);
 
     expect(controller.receivedInvitesStreamValue.value, hasLength(1));
     expect(
@@ -178,7 +247,8 @@ void main() {
     );
   });
 
-  test('authenticated app session-context invite acceptance uses share-code endpoint',
+  test(
+      'authenticated app session-context invite acceptance uses share-code endpoint',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -328,7 +398,9 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
+  int fetchInvitesCalls = 0;
   final List<String> acceptedShareCodes = <String>[];
+  List<InviteModel> fetchInvitesResult = const <InviteModel>[];
 
   @override
   Future<InviteAcceptResult> acceptInvite(
@@ -386,7 +458,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites(
       {InvitesRepositoryContractPrimInt? page,
       InvitesRepositoryContractPrimInt? pageSize}) async {
-    return const <InviteModel>[];
+    fetchInvitesCalls += 1;
+    return fetchInvitesResult;
   }
 
   @override

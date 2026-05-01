@@ -1111,6 +1111,20 @@ class MockInvitesBannerBuilderController extends _i1.Mock
       ) as _i2.StreamValue<List<_i38.InviteModel>>);
 
   @override
+  _i2.StreamValue<bool> get isPendingInvitesDisplayReadyStreamValue =>
+      (super.noSuchMethod(
+        Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        returnValue: _FakeStreamValue_0<bool>(
+          this,
+          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        ),
+        returnValueForMissingStub: _FakeStreamValue_0<bool>(
+          this,
+          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        ),
+      ) as _i2.StreamValue<bool>);
+
+  @override
   bool get hasPendingInvites => (super.noSuchMethod(
         Invocation.getter(#hasPendingInvites),
         returnValue: false,

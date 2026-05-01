@@ -546,6 +546,10 @@ void main() {
     mockito
         .when(mockInvitesBannerController.pendingInvitesStreamValue)
         .thenReturn(pendingInviteStream);
+    mockito
+        .when(
+            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+        .thenReturn(StreamValue<bool>(defaultValue: true));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
