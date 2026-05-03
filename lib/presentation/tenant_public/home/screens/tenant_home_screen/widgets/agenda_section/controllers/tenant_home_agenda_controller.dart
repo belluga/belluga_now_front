@@ -413,9 +413,16 @@ class TenantHomeAgendaController extends Object
     try {
       final stopwatch = Stopwatch()..start();
       int locationElapsed = 0;
-      if (shouldShowInitialLoading && resolveOrigin) {
-        _ifAlive(
-            () => initialLoadingLabelStreamValue.addValue('Localizando...'));
+      final shouldResolveOrigin = resolveOrigin &&
+          (shouldShowInitialLoading ||
+              _effectiveOriginLat == null ||
+              _effectiveOriginLng == null);
+      if (shouldResolveOrigin) {
+        if (shouldShowInitialLoading) {
+          _ifAlive(
+            () => initialLoadingLabelStreamValue.addValue('Localizando...'),
+          );
+        }
         await _resolveEffectiveOrigin(
           warmUpIfPossible: shouldShowInitialLoading,
         );
