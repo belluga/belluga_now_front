@@ -35,6 +35,29 @@ void main() {
         TenantPublicWebDesktopFrame.shouldFrameRoute(InviteShareRoute.name),
         isTrue,
       );
+      expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(
+          ContactGroupManagementRoute.name,
+        ),
+        isTrue,
+      );
+      expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(
+          TenantPrivacyPolicyRoute.name,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not frame the map route family', () {
+      expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(CityMapRoute.name),
+        isFalse,
+      );
+      expect(
+        TenantPublicWebDesktopFrame.shouldFrameRoute(PoiDetailsRoute.name),
+        isFalse,
+      );
     });
 
     test('does not frame admin or landlord routes', () {
@@ -117,6 +140,42 @@ void main() {
       );
 
       expect(tester.getSize(find.byKey(childKey)).width, 1200);
+    });
+
+    testWidgets('keeps map routes full width on wide web viewports', (
+      tester,
+    ) async {
+      await pumpFrame(
+        tester,
+        routeName: CityMapRoute.name,
+        isWebRuntime: true,
+        viewportSize: const Size(1200, 800),
+      );
+
+      expect(tester.getSize(find.byKey(childKey)).width, 1200);
+    });
+
+    testWidgets('keeps other tenant-public routes framed on wide web viewports',
+        (
+      tester,
+    ) async {
+      await pumpFrame(
+        tester,
+        routeName: TenantPrivacyPolicyRoute.name,
+        isWebRuntime: true,
+        viewportSize: const Size(1200, 800),
+      );
+
+      expect(tester.getSize(find.byKey(childKey)).width, 430);
+
+      await pumpFrame(
+        tester,
+        routeName: ContactGroupManagementRoute.name,
+        isWebRuntime: true,
+        viewportSize: const Size(1200, 800),
+      );
+
+      expect(tester.getSize(find.byKey(childKey)).width, 430);
     });
   });
 }

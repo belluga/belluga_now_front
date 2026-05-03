@@ -12,6 +12,7 @@ class TenantAdminEventOccurrence {
         const <TenantAdminAccountProfile>[],
     List<TenantAdminEventProgrammingItem> programmingItems =
         const <TenantAdminEventProgrammingItem>[],
+    TenantAdminTaxonomyTerms? taxonomyTerms,
   })  : dateTimeEndValue =
             dateTimeEndValue ?? TenantAdminOptionalDateTimeValue(null),
         occurrenceIdValue = occurrenceIdValue ?? TenantAdminOptionalTextValue(),
@@ -26,7 +27,8 @@ class TenantAdminEventOccurrence {
         ),
         programmingItems = List<TenantAdminEventProgrammingItem>.unmodifiable(
           programmingItems,
-        );
+        ),
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
   final TenantAdminDateTimeValue dateTimeStartValue;
   final TenantAdminOptionalDateTimeValue dateTimeEndValue;
@@ -35,6 +37,7 @@ class TenantAdminEventOccurrence {
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
   final List<TenantAdminAccountProfile> relatedAccountProfiles;
   final List<TenantAdminEventProgrammingItem> programmingItems;
+  final TenantAdminTaxonomyTerms taxonomyTerms;
 
   DateTime get dateTimeStart => dateTimeStartValue.value;
   DateTime? get dateTimeEnd => dateTimeEndValue.value;

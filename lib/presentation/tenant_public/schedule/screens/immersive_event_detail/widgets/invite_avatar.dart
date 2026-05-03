@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +11,8 @@ class InviteAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badge = invite.status == InviteStatus.accepted
-        ? Icons.check_circle
-        : Icons.hourglass_bottom;
+        ? BooraIcons.confirmedAttendance
+        : BooraIcons.inviteOutlined;
     final badgeColor =
         invite.status == InviteStatus.accepted ? Colors.green : Colors.orange;
 

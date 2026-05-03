@@ -10,6 +10,7 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -482,6 +483,9 @@ class _AccountProfileDetailScreenState
   }
 
   void _checkPendingIntent() {
+    if (kIsWeb) {
+      return;
+    }
     final redirectPath = _safeRedirectPath();
     final action = AuthWallTelemetry.consumePendingAction(redirectPath);
     if (action != null && action.actionType == AuthWallActionType.favorite) {
@@ -495,15 +499,11 @@ class _AccountProfileDetailScreenState
   void _handleFavoriteTap(String accountProfileId) {
     final redirectPath = _safeRedirectPath();
     if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.favorite,
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
+        actionType: AuthWallActionType.favorite,
         payload: {'partnerId': accountProfileId},
-      );
-      _safeRouterPushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
       );
       return;
     }
@@ -1178,7 +1178,7 @@ class _AccountProfileDetailScreenState
                       ),
                     ),
                     child: Icon(
-                      BooraIcons.store_mall_directory,
+                      BooraIcons.storeMallDirectory,
                       color: colorScheme.onPrimary,
                     ),
                   ),
@@ -1217,7 +1217,7 @@ class _AccountProfileDetailScreenState
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                BooraIcons.store_mall_directory,
+                BooraIcons.storeMallDirectory,
                 color: colorScheme.onPrimary,
               ),
             ),
@@ -1556,8 +1556,8 @@ class _AccountProfileDetailScreenState
         venueAddress: _agendaVenueAddress(event),
       ),
       onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
-      isConfirmed: _controller.isEventConfirmed(event.eventId),
-      pendingInvitesCount: _controller.pendingInviteCount(event.eventId),
+      isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
+      pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
       statusIconSize: 24,
       keyNamespace: 'accountProfileAgendaCard',
       cardId: event.uniqueId,
@@ -1692,24 +1692,33 @@ class _AccountProfileDetailScreenState
           fontWeight: FontWeight.w700,
         );
     final counterparts = _agendaCounterparts(accountProfile, event);
+    final visibleCounterparts = counterparts.length > 1
+        ? counterparts.take(1).toList(growable: false)
+        : counterparts;
+    final hiddenCount = counterparts.length - visibleCounterparts.length;
     return Wrap(
       key: Key('${keyPrefix}_${event.uniqueId}'),
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 6,
       runSpacing: 6,
-      children: counterparts
-          .asMap()
-          .entries
-          .map(
-            (entry) => _buildAgendaCounterpartBadge(
-              entry.value,
-              labelStyle: textStyle,
-              iconColor: iconColor,
-              chipBackground: chipBackground,
-              key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+      children: [
+        ...visibleCounterparts.asMap().entries.map(
+              (entry) => _buildAgendaCounterpartBadge(
+                entry.value,
+                labelStyle: textStyle,
+                iconColor: iconColor,
+                chipBackground: chipBackground,
+                key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+              ),
             ),
-          )
-          .toList(growable: false),
+        if (hiddenCount > 0)
+          _buildAgendaCounterpartOverflowBadge(
+            hiddenCount,
+            labelStyle: textStyle,
+            chipBackground: chipBackground,
+            key: Key('${keyPrefix}More_${event.uniqueId}'),
+          ),
+      ],
     );
   }
 
@@ -1734,6 +1743,28 @@ class _AccountProfileDetailScreenState
           const SizedBox(width: 6),
           Text(counterpart.label, style: labelStyle),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAgendaCounterpartOverflowBadge(
+    int hiddenCount, {
+    required TextStyle? labelStyle,
+    required Color chipBackground,
+    required Key key,
+  }) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipBackground,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'e mais $hiddenCount',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: labelStyle?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -1824,7 +1855,20 @@ class _AccountProfileDetailScreenState
     final start = event.startDateTime;
     final weekday = DateFormat.E().format(start);
     final day = start.day.toString().padLeft(2, '0');
-    return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
+    final end = event.endDateTime;
+    if (end == null) {
+      return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
+    }
+    final sameDay = start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    if (sameDay) {
+      return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às ${end.timeLabel}';
+    }
+    final endWeekday = DateFormat.E().format(end).toUpperCase();
+    final endDay = end.day.toString().padLeft(2, '0');
+    return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às '
+        '$endWeekday, $endDay • ${end.timeLabel}';
   }
 
   String _eventExpandedTimeRangeLabel(PartnerEventView event) {
@@ -1834,7 +1878,7 @@ class _AccountProfileDetailScreenState
     final startDay = start.day.toString().padLeft(2, '0');
     final endWeekday = DateFormat.E().format(end).toUpperCase();
     final endDay = end.day.toString().padLeft(2, '0');
-    return '$startWeekday, $startDay • ${start.timeLabel} - '
+    return '$startWeekday, $startDay • ${start.timeLabel} às '
         '$endWeekday, $endDay • ${end.timeLabel}';
   }
 
@@ -1842,10 +1886,10 @@ class _AccountProfileDetailScreenState
     required ColorScheme colorScheme,
     required PartnerEventView event,
   }) {
-    if (_controller.isEventConfirmed(event.eventId)) {
+    if (_controller.isOccurrenceConfirmed(event.occurrenceId)) {
       return colorScheme.primary.withValues(alpha: 0.08);
     }
-    if (_controller.pendingInviteCount(event.eventId) > 0) {
+    if (_controller.pendingInviteCount(event.occurrenceId) > 0) {
       return colorScheme.secondary.withValues(alpha: 0.08);
     }
     return null;
@@ -1856,8 +1900,10 @@ class _AccountProfileDetailScreenState
     required Color backgroundColor,
     required double size,
   }) {
-    final isConfirmed = _controller.isEventConfirmed(event.eventId);
-    final pendingInvitesCount = _controller.pendingInviteCount(event.eventId);
+    final isConfirmed = _controller.isOccurrenceConfirmed(event.occurrenceId);
+    final pendingInvitesCount = _controller.pendingInviteCount(
+      event.occurrenceId,
+    );
     if (!isConfirmed && pendingInvitesCount == 0) {
       return null;
     }

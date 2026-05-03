@@ -1,7 +1,9 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_canonical_state_repair_after_mutation_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_controller_dependency_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_snapshot_field_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_direct_navigation_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_write_forbidden_rule.dart';
@@ -19,6 +21,7 @@ import 'package:belluga_analysis_plugin/src/rules/flutter_sentry_unreported_debu
 import 'package:belluga_analysis_plugin/src/rules/global_ui_controller_naming_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/location_origin_canonical_resolution_required_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/location_origin_canonical_stream_subscription_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/module_direct_getit_registration_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_public_class_file_warning_rule.dart';
@@ -111,6 +114,12 @@ class BellugaAnalysisPlugin extends Plugin {
       ControllerBuildContextDependencyForbiddenRule(),
     );
     registry.registerWarningRule(ControllerControllerDependencyForbiddenRule());
+    registry.registerWarningRule(
+      ControllerCanonicalStateRepairAfterMutationForbiddenRule(),
+    );
+    registry.registerWarningRule(
+      ControllerDelegatedStreamValueSnapshotFieldForbiddenRule(),
+    );
     registry.registerWarningRule(ControllerDirectNavigationForbiddenRule());
     registry.registerWarningRule(
       ControllerRepositoryAsyncModelFetchForbiddenRule(),
@@ -155,6 +164,9 @@ class BellugaAnalysisPlugin extends Plugin {
     );
     registry.registerWarningRule(
       LocationOriginCanonicalResolutionRequiredRule(),
+    );
+    registry.registerWarningRule(
+      LocationOriginCanonicalStreamSubscriptionRequiredRule(),
     );
     registry.registerWarningRule(
       FlutterSentryUnreportedDebugPrintCatchForbiddenRule(),

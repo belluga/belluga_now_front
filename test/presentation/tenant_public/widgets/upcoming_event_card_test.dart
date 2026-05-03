@@ -42,8 +42,9 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('01 • 07:00 -'), findsOneWidget);
+    expect(find.textContaining('01 • 07:00 às'), findsOneWidget);
     expect(find.textContaining('30 • 07:00'), findsOneWidget);
+    expect(find.textContaining('07:00 -'), findsNothing);
   });
 
   testWidgets('agenda card omits inferred end time when absent',
@@ -96,8 +97,93 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 - 10:00'), findsOneWidget);
-    expect(find.textContaining('01 • 07:00 - 01 • 10:00'), findsNothing);
+    expect(find.textContaining('07:00 às 10:00'), findsOneWidget);
+    expect(find.textContaining('07:00 -'), findsNothing);
+    expect(find.textContaining('01 • 07:00 às 01 • 10:00'), findsNothing);
+  });
+
+  testWidgets('agenda card compresses linked profiles as e mais X',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: UpcomingEventCard(
+            keyNamespace: 'homeAgendaCard',
+            cardId: 'event-1',
+            isConfirmed: true,
+            data: UpcomingEventCardData(
+              imageUri: Uri.parse('https://tenant.test/media/event.png'),
+              headline: 'Encontro na Praia',
+              metaLabel: 'QUA, 01 • 07:00 às 10:00',
+              counterparts: const [
+                (
+                  label: 'Ananda Torres',
+                  thumbUrl: null,
+                  fallbackIcon: Icons.person_outline,
+                ),
+                (
+                  label: 'DJ Lua',
+                  thumbUrl: null,
+                  fallbackIcon: Icons.person_outline,
+                ),
+                (
+                  label: 'Coletivo Sol',
+                  thumbUrl: null,
+                  fallbackIcon: Icons.person_outline,
+                ),
+              ],
+              venueName: null,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Ananda Torres'), findsOneWidget);
+    expect(find.text('e mais 2'), findsOneWidget);
+    expect(find.text('DJ Lua'), findsNothing);
+    expect(find.text('Coletivo Sol'), findsNothing);
+  });
+
+  testWidgets('agenda card reserves status slot without constrained overflow',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 300,
+              child: UpcomingEventCard(
+                isConfirmed: true,
+                data: UpcomingEventCardData(
+                  imageUri: Uri.parse('https://tenant.test/media/event.png'),
+                  headline:
+                      'Titulo grande para validar a linha do icone de status',
+                  metaLabel: 'QUA, 01 • 07:00 às 10:00',
+                  counterparts: const [
+                    (
+                      label: 'Ananda Torres com nome bem grande',
+                      thumbUrl: null,
+                      fallbackIcon: Icons.person_outline,
+                    ),
+                    (
+                      label: 'DJ Lua',
+                      thumbUrl: null,
+                      fallbackIcon: Icons.person_outline,
+                    ),
+                  ],
+                  venueName: null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('e mais 1'), findsOneWidget);
   });
 }
 

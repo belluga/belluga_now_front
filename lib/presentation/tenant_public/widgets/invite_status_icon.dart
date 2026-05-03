@@ -26,6 +26,9 @@ class InviteStatusIcon extends StatelessWidget {
     final iconColor =
         isConfirmed ? colorScheme.onPrimary : colorScheme.secondary;
     final badgeTextColor = colorScheme.onPrimary;
+    final statusIcon = isConfirmed
+        ? BooraIcons.confirmedAttendance
+        : BooraIcons.inviteOutlined;
 
     final iconSize = size;
     final badgeSize = iconSize * 0.9;
@@ -43,13 +46,10 @@ class InviteStatusIcon extends StatelessWidget {
             child: CircleAvatar(
               backgroundColor: bgColor,
               radius: (size + 14) / 2,
-              child: Transform.translate(
-                offset: const Offset(-2.0, 0.6),
-                child: Icon(
-                  BooraIcons.invite_solid,
-                  color: iconColor,
-                  size: size * 0.9,
-                ),
+              child: Icon(
+                statusIcon,
+                color: iconColor,
+                size: size * 0.9,
               ),
             ),
           ),

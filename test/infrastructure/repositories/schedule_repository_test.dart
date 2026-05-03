@@ -260,6 +260,75 @@ void main() {
     expect(backend.requests.single.liveNowOnly, isFalse);
   });
 
+  test('loadEventSearch forwards occurrence id filters to backend query',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439071',
+              occurrenceId: '507f1f77bcf86cd799439072',
+              startsAtIso: '2099-01-01T22:00:00+00:00',
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(backend: backend);
+
+    await repository.loadEventSearch(
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      occurrenceIds: [
+        ScheduleRepoString.fromRaw(
+          '507f1f77bcf86cd799439072',
+          defaultValue: '',
+        ),
+      ],
+    );
+
+    expect(backend.requests, hasLength(1));
+    expect(
+      backend.requests.single.occurrenceIds,
+      ['507f1f77bcf86cd799439072'],
+    );
+  });
+
+  test('loadMoreEventSearch keys pagination by occurrence id filters',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(events: const [], hasMore: true),
+        EventPageDTO(events: const [], hasMore: false),
+      ],
+    );
+    final repository = ScheduleRepository(backend: backend);
+    final firstIds = [
+      ScheduleRepoString.fromRaw(
+        '507f1f77bcf86cd799439081',
+        defaultValue: '',
+      ),
+    ];
+    final secondIds = [
+      ScheduleRepoString.fromRaw(
+        '507f1f77bcf86cd799439082',
+        defaultValue: '',
+      ),
+    ];
+
+    await repository.loadEventSearch(
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      occurrenceIds: firstIds,
+    );
+    await repository.loadMoreEventSearch(
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      occurrenceIds: secondIds,
+    );
+
+    expect(backend.requests, hasLength(1));
+  });
+
   test('loadEventSearch maps events when event content is null', () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -348,6 +417,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -362,6 +432,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
         originLng: originLng,
         categories: categories,
         taxonomy: taxonomy,
+        occurrenceIds: occurrenceIds,
       ),
     );
     if (pagedResponses != null) {
@@ -387,6 +458,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -406,6 +478,7 @@ class _AgendaRequestSample {
     required this.originLng,
     required this.categories,
     required this.taxonomy,
+    required this.occurrenceIds,
   });
 
   final int page;
@@ -415,6 +488,7 @@ class _AgendaRequestSample {
   final double? originLng;
   final List<String>? categories;
   final List<Map<String, String>>? taxonomy;
+  final List<String>? occurrenceIds;
 }
 
 EventDTO _buildEventDto({

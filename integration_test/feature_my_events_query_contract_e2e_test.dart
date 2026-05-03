@@ -96,9 +96,10 @@ void main() {
     }
 
     final userEventsBackend = LaravelUserEventsBackend();
-    final confirmedPayload = await userEventsBackend.fetchConfirmedEventIds();
-    final confirmedEventIds = confirmedPayload['confirmed_event_ids'];
-    expect(confirmedEventIds, isA<List<dynamic>>());
+    final confirmedPayload =
+        await userEventsBackend.fetchConfirmedOccurrenceIds();
+    final confirmedOccurrenceIds = confirmedPayload['confirmed_occurrence_ids'];
+    expect(confirmedOccurrenceIds, isA<List<dynamic>>());
 
     final scheduleRepository = ScheduleRepository(backendContract: backend);
     final userEventsRepository = UserEventsRepository(

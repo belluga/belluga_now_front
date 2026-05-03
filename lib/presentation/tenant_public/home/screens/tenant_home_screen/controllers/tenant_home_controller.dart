@@ -45,7 +45,7 @@ class TenantHomeController implements Disposable {
 
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
       get confirmedIdsStreamValue =>
-          _userEventsRepository.confirmedEventIdsStream;
+          _userEventsRepository.confirmedOccurrenceIdsStream;
   AppData get appData => _appData;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -56,12 +56,6 @@ class TenantHomeController implements Disposable {
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-
-    try {
-      await _userEventsRepository.refreshConfirmedEventIds();
-    } catch (error) {
-      debugPrint('TenantHomeController.init confirmed ids failed: $error');
-    }
     await loadMyEvents();
     _listenLocationOrigin();
     _listenConfirmedEvents();
@@ -82,7 +76,7 @@ class TenantHomeController implements Disposable {
   void _listenConfirmedEvents() {
     _confirmedEventsSubscription?.cancel();
     _confirmedEventsSubscription =
-        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       unawaited(loadMyEvents());
     });
   }

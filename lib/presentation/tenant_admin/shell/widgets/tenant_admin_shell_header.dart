@@ -70,7 +70,7 @@ class TenantAdminShellHeader extends StatelessWidget {
               key: const ValueKey('tenant_admin_shell_header_back'),
               tooltip: 'Voltar',
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_rounded),
+              icon: const Icon(Icons.arrow_back),
             ),
             const SizedBox(width: 4),
           ],

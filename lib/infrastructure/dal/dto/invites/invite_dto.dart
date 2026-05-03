@@ -35,7 +35,7 @@ class InviteDto {
     required this.attendancePolicy,
     required this.additionalInviters,
     required this.inviterCandidates,
-    this.occurrenceId,
+    required this.occurrenceId,
     this.inviterName,
     this.inviterAvatarUrl,
     this.inviterPrincipalKind,
@@ -44,7 +44,7 @@ class InviteDto {
 
   final String id;
   final String eventId;
-  final String? occurrenceId;
+  final String occurrenceId;
   final String eventName;
   final String eventDate;
   final String eventImageUrl;
@@ -98,7 +98,9 @@ class InviteDto {
     final eventId =
         (json['event_id'] ?? targetRefMap?['event_id'] ?? '').toString();
     final occurrenceId =
-        (json['occurrence_id'] ?? targetRefMap?['occurrence_id'])?.toString();
+        (json['occurrence_id'] ?? targetRefMap?['occurrence_id'] ?? '')
+            .toString()
+            .trim();
     final id = legacyInviteId.isNotEmpty
         ? legacyInviteId
         : _groupKey(eventId, occurrenceId);
@@ -106,8 +108,7 @@ class InviteDto {
     return InviteDto(
       id: id,
       eventId: eventId,
-      occurrenceId:
-          occurrenceId?.trim().isEmpty == true ? null : occurrenceId?.trim(),
+      occurrenceId: occurrenceId,
       eventName: (json['event_name'] ?? '').toString(),
       eventDate: (json['event_date'] ?? '').toString(),
       eventImageUrl: (json['event_image_url'] ?? '').toString(),
@@ -291,8 +292,8 @@ class InviteDto {
     );
   }
 
-  static String _groupKey(String eventId, String? occurrenceId) {
-    return '$eventId::${occurrenceId ?? 'event'}';
+  static String _groupKey(String eventId, String occurrenceId) {
+    return '$eventId::$occurrenceId';
   }
 
   InviteInviterPrincipal? _parseInviterPrincipal({

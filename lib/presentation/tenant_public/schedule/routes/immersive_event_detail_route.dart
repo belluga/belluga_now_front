@@ -15,10 +15,12 @@ class ImmersiveEventDetailRoutePage
     super.key,
     @PathParam('slug') required this.eventSlug,
     @QueryParam('occurrence') this.occurrenceId,
+    @QueryParam('tab') this.tab,
   });
 
   final String eventSlug;
   final String? occurrenceId;
+  final String? tab;
 
   @override
   RouteResolverParams get resolverParams => {

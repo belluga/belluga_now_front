@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -135,7 +137,11 @@ RouteData _buildRouteData(
   required Map<String, dynamic> queryParams,
 }) {
   final match = RouteMatch(
-    config: AutoRoute(page: AuthLoginRoute.page, path: '/auth/login'),
+    config: AutoRoute(
+      page: AuthLoginRoute.page,
+      path: '/auth/login',
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.authLogin),
+    ),
     segments: const ['auth', 'login'],
     stringMatch: '/auth/login',
     key: const ValueKey('auth-login'),

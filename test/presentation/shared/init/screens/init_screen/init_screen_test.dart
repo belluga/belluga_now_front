@@ -204,7 +204,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async {
     return const <SentInviteStatus>[];

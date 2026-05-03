@@ -1,1 +1,2 @@
+#include "BellugaRelease.xcconfig"
 #include "Generated.xcconfig"

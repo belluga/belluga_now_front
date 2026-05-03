@@ -161,7 +161,7 @@ class ImmersiveHero extends StatelessWidget {
     final endDay = end.day.toString().padLeft(2, '0');
     final startTime = DateFormat.Hm('pt_BR').format(start);
     final endTime = DateFormat.Hm('pt_BR').format(end);
-    return '$startWeekday, $startDay • $startTime - $endWeekday, $endDay • $endTime';
+    return '$startWeekday, $startDay • $startTime às $endWeekday, $endDay • $endTime';
   }
 
   String? _venueLine(VenueEventResume resume) {

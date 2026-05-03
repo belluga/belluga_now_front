@@ -29,7 +29,7 @@ class TenantAdminScopedSectionAppBar extends StatelessWidget {
             key: backButtonKey,
             tooltip: 'Voltar',
             onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_rounded),
+            icon: const Icon(Icons.arrow_back),
           ),
           const SizedBox(width: 2),
           Expanded(

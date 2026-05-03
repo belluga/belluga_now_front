@@ -1,19 +1,21 @@
 import 'dart:async';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -41,9 +43,9 @@ class TenantHomeAgendaController extends Object
     UserEventsRepositoryContract? userEventsRepository,
     DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     InvitesRepositoryContract? invitesRepository,
-    UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
+    UserLocationRepositoryContract? userLocationRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     LocationOriginServiceContract? locationOriginService,
     TelemetryRepositoryContract? telemetryRepository,
@@ -61,10 +63,6 @@ class TenantHomeAgendaController extends Object
                 : null),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _authRepository = authRepository ??
@@ -90,7 +88,6 @@ class TenantHomeAgendaController extends Object
   final UserEventsRepositoryContract _userEventsRepository;
   final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final InvitesRepositoryContract _invitesRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
@@ -184,8 +181,9 @@ class TenantHomeAgendaController extends Object
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
-  StreamSubscription? _userLocationSubscription;
+  StreamSubscription<LocationOriginResolution?>? _effectiveOriginSubscription;
   StreamSubscription? _radiusSubscription;
+  StreamSubscription<ProximityPreference?>? _proximityPreferenceSubscription;
   Timer? _radiusRefreshDebounceTimer;
   bool _outerScrollCompactHint = false;
   bool _innerScrollCompactHint = false;
@@ -198,6 +196,7 @@ class TenantHomeAgendaController extends Object
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  LocationOriginSettings? _effectiveOriginSettings;
   double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
 
@@ -341,7 +340,6 @@ class TenantHomeAgendaController extends Object
     _ifAlive(
         () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()));
     _listenForStatusChanges();
-    _listenForLocationChanges();
     _listenForRadiusChanges();
     final restoredSelection =
         await loadPersistedPublicDiscoveryFilterSelection();
@@ -367,6 +365,7 @@ class TenantHomeAgendaController extends Object
 
     final restored = _restoreFromRepositoryCache();
     if (restored) {
+      _listenForCanonicalOriginChanges();
       _ifAlive(() => isInitialLoadingStreamValue.addValue(false));
       _ifAlive(() => initialLoadingLabelStreamValue.addValue(''));
       unawaited(_reconcileEffectiveOriginAfterCacheRestore());
@@ -382,13 +381,8 @@ class TenantHomeAgendaController extends Object
     } catch (error) {
       debugPrint('TenantHomeAgendaController.init invites failed: $error');
     }
-    try {
-      await _userEventsRepository.refreshConfirmedEventIds();
-    } catch (error) {
-      debugPrint(
-          'TenantHomeAgendaController.init confirmed ids failed: $error');
-    }
     await _refresh(resolveOrigin: false);
+    _listenForCanonicalOriginChanges();
   }
 
   Future<void> _refresh({
@@ -607,9 +601,6 @@ class TenantHomeAgendaController extends Object
           categories: categories,
           taxonomy: taxonomy,
         );
-        if (resolvedEvents.isEmpty) {
-          return;
-        }
       }
 
       _hasMore = !append
@@ -637,18 +628,7 @@ class TenantHomeAgendaController extends Object
 
   @override
   void cycleInviteFilter() {
-    final current = inviteFilterStreamValue.value;
-    switch (current) {
-      case InviteFilter.none:
-        setInviteFilter(InviteFilter.invitesAndConfirmed);
-        break;
-      case InviteFilter.invitesAndConfirmed:
-        setInviteFilter(InviteFilter.confirmedOnly);
-        break;
-      case InviteFilter.confirmedOnly:
-        setInviteFilter(InviteFilter.none);
-        break;
-    }
+    setInviteFilter(inviteFilterStreamValue.value.next);
   }
 
   void setSearchActive(bool active) {
@@ -731,9 +711,11 @@ class TenantHomeAgendaController extends Object
     final filter = inviteFilterStreamValue.value;
     if (filter == InviteFilter.none) return events;
 
-    final confirmedIds = _userEventsRepository.confirmedEventIdsStream.value;
+    final confirmedIds =
+        _userEventsRepository.confirmedOccurrenceIdsStream.value;
     final pendingIds = _invitesRepository.pendingInvitesStreamValue.value
-        .map((invite) => invite.eventId)
+        .map((invite) => invite.occurrenceId?.trim() ?? '')
+        .where((occurrenceId) => occurrenceId.isNotEmpty)
         .toSet();
 
     bool isConfirmed(String id) =>
@@ -741,12 +723,12 @@ class TenantHomeAgendaController extends Object
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
-      final id = event.id.value;
+      final id = _eventOccurrenceIdentity(event);
       switch (filter) {
         case InviteFilter.none:
           return true;
-        case InviteFilter.invitesAndConfirmed:
-          return isConfirmed(id) || hasPending(id);
+        case InviteFilter.pendingOnly:
+          return hasPending(id);
         case InviteFilter.confirmedOnly:
           return isConfirmed(id);
       }
@@ -799,20 +781,23 @@ class TenantHomeAgendaController extends Object
     return true;
   }
 
-  bool isEventConfirmed(String eventId) => _userEventsRepository
-      .isEventConfirmed(
+  bool isOccurrenceConfirmed(String occurrenceId) => _userEventsRepository
+      .isOccurrenceConfirmed(
         userEventsRepoString(
-          eventId,
+          occurrenceId,
           defaultValue: '',
           isRequired: true,
         ),
       )
       .value;
 
-  int pendingInviteCount(String eventId) =>
+  int pendingInviteCount(String occurrenceId) =>
       _invitesRepository.pendingInvitesStreamValue.value
-          .where((invite) => invite.eventId == eventId)
+          .where((invite) => invite.occurrenceId == occurrenceId)
           .length;
+
+  String _eventOccurrenceIdentity(EventModel event) =>
+      event.selectedOccurrenceId?.trim() ?? '';
 
   String? distanceLabelFor(VenueEventResume event) {
     final userCoordinate = _currentCacheReferenceOrigin();
@@ -885,7 +870,7 @@ class TenantHomeAgendaController extends Object
     _pendingInvitesSubscription?.cancel();
 
     _confirmedEventsSubscription =
-        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =
@@ -894,41 +879,70 @@ class TenantHomeAgendaController extends Object
     });
   }
 
-  void _listenForLocationChanges() {
-    final repo = _userLocationRepository;
-    if (repo == null) return;
-    _userLocationSubscription?.cancel();
-    _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
-      unawaited(_handleLocationUpdate());
+  void _listenForCanonicalOriginChanges() {
+    _effectiveOriginSubscription?.cancel();
+    _effectiveOriginSubscription =
+        _locationOriginService.effectiveOriginStreamValue.stream.listen((
+      resolution,
+    ) {
+      unawaited(_handleEffectiveOriginUpdate(resolution));
     });
   }
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
+    _proximityPreferenceSubscription?.cancel();
     _ifAlive(
       () => _maxRadiusMetersStreamValue.addValue(_configuredMaxRadiusMeters()),
     );
+    final proximityRepository = _proximityPreferencesRepository;
+    if (proximityRepository != null) {
+      _applyExternalRadiusPreference(
+        proximityRepository.proximityPreference?.maxDistanceMetersValue.value,
+      );
+      _proximityPreferenceSubscription = proximityRepository
+          .proximityPreferenceStreamValue.stream
+          .listen((preference) {
+        _ifAlive(
+          () => _maxRadiusMetersStreamValue.addValue(
+            _configuredMaxRadiusMeters(),
+          ),
+        );
+        _applyExternalRadiusPreference(
+          preference?.maxDistanceMetersValue.value,
+        );
+      });
+      return;
+    }
+
     _radiusSubscription =
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
       _ifAlive(
         () =>
             _maxRadiusMetersStreamValue.addValue(_configuredMaxRadiusMeters()),
       );
-      final clamped = _clampRadiusMeters(value.value);
-      final pendingEcho = _pendingPersistedRadiusEchoMeters;
-      if (pendingEcho != null) {
-        if ((pendingEcho - clamped).abs() < 0.001) {
-          _pendingPersistedRadiusEchoMeters = null;
-        }
-        return;
-      }
-      final current = radiusMetersStreamValue.value;
-      if ((current - clamped).abs() < 0.001) {
-        return;
-      }
-      _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
-      _scheduleRadiusRefresh();
+      _applyExternalRadiusPreference(value.value);
     });
+  }
+
+  void _applyExternalRadiusPreference(double? meters) {
+    if (meters == null || meters <= 0) {
+      return;
+    }
+    final clamped = _clampRadiusMeters(meters);
+    final pendingEcho = _pendingPersistedRadiusEchoMeters;
+    if (pendingEcho != null) {
+      if ((pendingEcho - clamped).abs() < 0.001) {
+        _pendingPersistedRadiusEchoMeters = null;
+      }
+      return;
+    }
+    final current = radiusMetersStreamValue.value;
+    if ((current - clamped).abs() < 0.001) {
+      return;
+    }
+    _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
+    _scheduleRadiusRefresh();
   }
 
   Future<void> _persistSelectedRadiusPreference(double meters) async {
@@ -970,14 +984,22 @@ class TenantHomeAgendaController extends Object
     _ifAlive(() => isRadiusRefreshLoadingStreamValue.addValue(false));
   }
 
-  Future<void> _handleLocationUpdate() async {
+  Future<void> _handleEffectiveOriginUpdate(
+    LocationOriginResolution? resolution,
+  ) async {
+    if (resolution == null) {
+      return;
+    }
     final previousOriginLat = _effectiveOriginLat;
     final previousOriginLng = _effectiveOriginLng;
-    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    final previousOriginSettings = _effectiveOriginSettings;
+    final changed = _applyResolvedEffectiveOrigin(resolution);
     if (!changed) {
       return;
     }
-    if (!_shouldRefreshForLocationJump(
+    if (!_shouldRefreshForOriginChange(
+      previousOriginSettings: previousOriginSettings,
+      nextOriginSettings: _effectiveOriginSettings,
       previousOriginLat: previousOriginLat,
       previousOriginLng: previousOriginLng,
       nextOriginLat: _effectiveOriginLat,
@@ -994,11 +1016,14 @@ class TenantHomeAgendaController extends Object
     }
     final previousOriginLat = _effectiveOriginLat;
     final previousOriginLng = _effectiveOriginLng;
+    final previousOriginSettings = _effectiveOriginSettings;
     final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
     if (!changed) {
       return;
     }
-    if (!_shouldRefreshForLocationJump(
+    if (!_shouldRefreshForOriginChange(
+      previousOriginSettings: previousOriginSettings,
+      nextOriginSettings: _effectiveOriginSettings,
       previousOriginLat: previousOriginLat,
       previousOriginLng: previousOriginLng,
       nextOriginLat: _effectiveOriginLat,
@@ -1009,12 +1034,19 @@ class TenantHomeAgendaController extends Object
     await _refresh(preserveCurrentResults: true);
   }
 
-  bool _shouldRefreshForLocationJump({
+  bool _shouldRefreshForOriginChange({
+    required LocationOriginSettings? previousOriginSettings,
+    required LocationOriginSettings? nextOriginSettings,
     required double? previousOriginLat,
     required double? previousOriginLng,
     required double? nextOriginLat,
     required double? nextOriginLng,
   }) {
+    if (!(previousOriginSettings?.sameAs(nextOriginSettings) ??
+        nextOriginSettings == null)) {
+      return true;
+    }
+
     if (previousOriginLat == null ||
         previousOriginLng == null ||
         nextOriginLat == null ||
@@ -1044,8 +1076,6 @@ class TenantHomeAgendaController extends Object
   Future<bool> _resolveEffectiveOrigin({
     required bool warmUpIfPossible,
   }) async {
-    final currentLat = _effectiveOriginLat;
-    final currentLng = _effectiveOriginLng;
     final shouldRequestPermission =
         warmUpIfPossible && !_locationPermissionRequested;
     if (shouldRequestPermission) {
@@ -1060,17 +1090,31 @@ class TenantHomeAgendaController extends Object
       ),
     );
     await _seedInitialRadiusPreferenceIfNeeded(resolution);
+    return _applyResolvedEffectiveOrigin(resolution);
+  }
+
+  bool _applyResolvedEffectiveOrigin(LocationOriginResolution resolution) {
+    final currentLat = _effectiveOriginLat;
+    final currentLng = _effectiveOriginLng;
+    final currentSettings = _effectiveOriginSettings;
     final effectiveOrigin = resolution.effectiveCoordinate;
+
+    _effectiveOriginSettings = resolution.settings;
     if (effectiveOrigin != null) {
       _effectiveOriginLat = effectiveOrigin.latitude;
       _effectiveOriginLng = effectiveOrigin.longitude;
       return _effectiveOriginLat != currentLat ||
-          _effectiveOriginLng != currentLng;
+          _effectiveOriginLng != currentLng ||
+          !(currentSettings?.sameAs(_effectiveOriginSettings) ??
+              _effectiveOriginSettings == null);
     }
 
     _effectiveOriginLat = null;
     _effectiveOriginLng = null;
-    return currentLat != null || currentLng != null;
+    return currentLat != null ||
+        currentLng != null ||
+        !(currentSettings?.sameAs(_effectiveOriginSettings) ??
+            _effectiveOriginSettings == null);
   }
 
   Future<void> _seedInitialRadiusPreferenceIfNeeded(
@@ -1084,7 +1128,9 @@ class TenantHomeAgendaController extends Object
     }
 
     final suggestedRadiusMeters = _clampRadiusMeters(
-      resolution.distanceFromTenantDefaultOriginMeters!,
+      resolution.distanceFromTenantDefaultOriginMeters! < 10000
+          ? 10000
+          : resolution.distanceFromTenantDefaultOriginMeters!,
     );
 
     if ((radiusMetersStreamValue.value - suggestedRadiusMeters).abs() >=
@@ -1161,8 +1207,9 @@ class TenantHomeAgendaController extends Object
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _userLocationSubscription?.cancel();
+    _effectiveOriginSubscription?.cancel();
     _radiusSubscription?.cancel();
+    _proximityPreferenceSubscription?.cancel();
     _radiusRefreshDebounceTimer?.cancel();
     displayStateStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();

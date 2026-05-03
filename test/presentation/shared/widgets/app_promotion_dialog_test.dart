@@ -55,6 +55,26 @@ void main() {
     expect(result?.queryParameters['store_channel'], 'web');
   });
 
+  test('buildTenantPromotionUri does not preserve invite entry without code',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/invite',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters.containsKey('code'), isFalse);
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
   test(
       'buildTenantPromotionUri ignores explicit share code for non-invite path',
       () {
@@ -75,6 +95,143 @@ void main() {
     expect(result?.queryParameters.containsKey('code'), isFalse);
   });
 
+  test('buildTenantPromotionUri preserves event detail continuation intent',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/agenda/evento/show-rock?occurrence=occ-1',
+      shareCode: 'CODE123',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(
+      result?.queryParameters['path'],
+      '/agenda/evento/show-rock?occurrence=occ-1',
+    );
+    expect(result?.queryParameters.containsKey('code'), isFalse);
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
+  test('buildTenantPromotionUri preserves auth-owned app continuation path',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/profile?tab=settings',
+      platformTarget: 'ios',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/profile');
+    expect(result?.queryParameters['platform_target'], 'ios');
+  });
+
+  test('buildTenantPromotionUri preserves invite sharing continuation path',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/convites/compartilhar?event=evt-1',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/convites/compartilhar');
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
+  test('buildTenantPromotionUri unwraps web auth redirect for app continuation',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/auth/login?redirect=%2Fprofile',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/profile');
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
+  test('buildTenantPromotionUri falls back for over-nested auth redirect', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: _nestedAuthRedirect(depth: 8, terminal: '/profile'),
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
+  test('buildTenantPromotionUri falls back for external redirect path', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: 'https://evil.example/agenda/evento/show-rock',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
+  test('buildTenantPromotionUri falls back for external invite redirect path',
+      () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: 'https://evil.example/invite?code=CODE123',
+      platformTarget: 'android',
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters.containsKey('code'), isFalse);
+    expect(result?.queryParameters['platform_target'], 'android');
+  });
+
   test('buildTenantPromotionUri keeps explicit platform target override', () {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(
@@ -89,9 +246,46 @@ void main() {
 
     expect(result, isNotNull);
     expect(result?.path, '/open-app');
-    expect(result?.queryParameters['path'], '/');
+    expect(result?.queryParameters['path'], '/profile');
     expect(result?.queryParameters['platform_target'], 'ios');
   });
+
+  test('buildTenantPromotionUri can request promotion fallback boundary', () {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        mainDomain: Uri.parse('https://tenant.example'),
+      ),
+    );
+
+    final result = AppPromotionDialog.buildTenantPromotionUri(
+      redirectPath: '/agenda/evento/show-rock?occurrence=occ-1',
+      platformTarget: 'android',
+      fallbackToPromotionBoundary: true,
+    );
+
+    expect(result, isNotNull);
+    expect(result?.path, '/open-app');
+    expect(
+      result?.queryParameters['path'],
+      '/agenda/evento/show-rock?occurrence=occ-1',
+    );
+    expect(result?.queryParameters['platform_target'], 'android');
+    expect(result?.queryParameters['fallback'], 'promotion');
+  });
+}
+
+String _nestedAuthRedirect({
+  required int depth,
+  required String terminal,
+}) {
+  var value = terminal;
+  for (var index = 0; index < depth; index += 1) {
+    value = Uri(
+      path: '/auth/login',
+      queryParameters: <String, String>{'redirect': value},
+    ).toString();
+  }
+  return value;
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {

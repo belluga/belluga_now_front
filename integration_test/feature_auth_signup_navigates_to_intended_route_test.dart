@@ -361,7 +361,7 @@ class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {}
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
-  final confirmedEventIdsStream =
+  final confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
@@ -373,17 +373,21 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
@@ -451,7 +455,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
@@ -461,7 +465,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
           InvitesRepositoryContractPrimString eventSlug) async =>
       const [];
 }

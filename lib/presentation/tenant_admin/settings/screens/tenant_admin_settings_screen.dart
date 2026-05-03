@@ -290,6 +290,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                     .withValues(alpha: 0.6),
               ),
               KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationOutbound,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.webhook_outlined,
+                  title: 'Webhooks de saída',
+                  subtitle: 'WhatsApp e OTP por fila',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.outbound,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
                 key: TenantAdminSettingsKeys.hubIntegrationAppLinks,
                 child: TenantAdminHubIntegrationRow(
                   icon: Icons.link_outlined,
@@ -297,6 +315,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                   subtitle: 'Android App Links + iOS Universal Links',
                   onTap: () => _openTechnicalIntegrations(
                     TenantAdminSettingsIntegrationSection.appLinks,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationPush,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Push',
+                  subtitle: 'TTL e limites de envio',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.push,
                   ),
                 ),
               ),

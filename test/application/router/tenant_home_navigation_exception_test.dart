@@ -395,6 +395,10 @@ void _registerTenantBootstrapDependencies({
   when(mockInvitesBannerController.pendingInvitesStreamValue).thenReturn(
     StreamValue<List<InviteModel>>(defaultValue: const []),
   );
+  when(mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+      .thenReturn(
+    StreamValue<bool>(defaultValue: false),
+  );
 
   when(mockController.appData).thenReturn(appData);
   when(mockController.init()).thenAnswer((_) async {});
@@ -558,7 +562,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     return buildInviteShareCodeResult(
       code: 'CODE123',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
     );
   }
 
@@ -575,7 +579,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
           InvitesRepositoryContractPrimString eventId) async =>
       const [];
 }
@@ -595,13 +599,15 @@ class _FakeFriendsRepository implements FriendsRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -610,16 +616,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {

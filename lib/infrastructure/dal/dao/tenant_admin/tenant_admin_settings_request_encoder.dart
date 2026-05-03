@@ -35,6 +35,24 @@ class TenantAdminSettingsRequestEncoder {
     });
   }
 
+  Map<String, dynamic> encodeOutboundIntegrationsSettingsPatch(
+    TenantAdminOutboundIntegrationsSettings settings,
+  ) {
+    return encodeSettingsPatchPayload({
+      'whatsapp': {
+        'webhook_url': settings.whatsappWebhookUrl,
+      },
+      'otp': {
+        'webhook_url': settings.otpWebhookUrl,
+        'use_whatsapp_webhook': settings.otpUseWhatsappWebhook,
+        'delivery_channel': settings.otpDeliveryChannel,
+        'ttl_minutes': settings.otpTtlMinutes,
+        'resend_cooldown_seconds': settings.otpResendCooldownSeconds,
+        'max_attempts': settings.otpMaxAttempts,
+      },
+    });
+  }
+
   Map<String, dynamic> encodeSettingsPatchPayload(
     Map<String, dynamic> source,
   ) {

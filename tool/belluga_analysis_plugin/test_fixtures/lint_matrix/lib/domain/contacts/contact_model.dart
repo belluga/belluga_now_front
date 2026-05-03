@@ -1,0 +1,3 @@
+class ContactModel {
+  const ContactModel();
+}

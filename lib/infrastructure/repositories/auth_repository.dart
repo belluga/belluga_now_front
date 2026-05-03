@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
+import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_challenge_id_value.dart';
+import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_delivery_channel_value.dart';
+import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
@@ -14,6 +18,7 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -124,6 +129,59 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       _user,
       _token,
       previousUserId: previousUserId,
+    );
+  }
+
+  @override
+  Future<AuthPhoneOtpChallenge> requestPhoneOtpChallenge(
+    AuthRepositoryContractTextValue phone, {
+    AuthRepositoryContractTextValue? deliveryChannel,
+  }) async {
+    final response = await backend.auth.requestPhoneOtpChallenge(
+      phone: phone.value,
+      deliveryChannel: deliveryChannel?.value,
+    );
+
+    return AuthPhoneOtpChallenge(
+      challengeIdValue: AuthPhoneOtpChallengeIdValue()
+        ..parse(response.challengeId),
+      phoneValue: AuthPhoneOtpPhoneValue()..parse(response.phone),
+      deliveryChannelValue: AuthPhoneOtpDeliveryChannelValue()
+        ..parse(response.deliveryChannel),
+      expiresAtValue: DomainOptionalDateTimeValue()
+        ..set(_parseNullableDateTime(response.expiresAt)),
+      resendAvailableAtValue: DomainOptionalDateTimeValue()
+        ..set(_parseNullableDateTime(response.resendAvailableAt)),
+    );
+  }
+
+  @override
+  Future<void> verifyPhoneOtpChallenge({
+    required AuthRepositoryContractTextValue challengeId,
+    required AuthRepositoryContractTextValue phone,
+    required AuthRepositoryContractTextValue code,
+  }) async {
+    final previousUserId = await getUserId();
+    final anonymousIds = (previousUserId != null && previousUserId.isNotEmpty)
+        ? [previousUserId]
+        : null;
+    final response = await backend.auth.verifyPhoneOtpChallenge(
+      challengeId: challengeId.value,
+      phone: phone.value,
+      code: code.value,
+      anonymousUserIds: anonymousIds,
+    );
+
+    if (response.token.isNotEmpty) {
+      await _saveUserTokenOnLocalStorage(response.token);
+      _userTokenStreamValue.addValue(response.token);
+    }
+
+    await _finalizeAuthenticatedUser(
+      response.user,
+      response.token,
+      previousUserId: previousUserId,
+      overrideUserId: response.userId,
     );
   }
 
@@ -313,6 +371,13 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     await _mergeTelemetryIdentity(previousUserId);
     await _setUserId(overrideUserId ?? user.uuidValue.value);
     await _syncProximityPreferencesIfAvailable();
+  }
+
+  DateTime? _parseNullableDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(raw);
   }
 
   Future<void> _syncProximityPreferencesIfAvailable() async {

@@ -34,6 +34,7 @@ void main() {
       response: const DeferredLinkResolutionDto(
         status: 'captured',
         code: 'ABCD1234',
+        targetPath: '/invite?code=ABCD1234',
         storeChannel: 'play',
       ),
     );
@@ -48,10 +49,43 @@ void main() {
 
     expect(result.status, DeferredLinkCaptureStatus.captured);
     expect(result.code, 'ABCD1234');
+    expect(result.targetPath, '/invite?code=ABCD1234');
     expect(result.storeChannel, 'play');
     expect(backend.lastPlatform, 'android');
     expect(backend.lastInstallReferrer, 'code=ABCD1234&store_channel=play');
     expect(backend.lastStoreChannel, 'play');
+  });
+
+  test('captures target path when backend resolver returns non-invite path',
+      () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      return <String, dynamic>{
+        'install_referrer':
+            'target_path=%2Fagenda%2Fevento%2Fforro%3Foccurrence%3Docc-1&store_channel=play',
+      };
+    });
+
+    final backend = _FakeDeferredLinkBackend(
+      response: const DeferredLinkResolutionDto(
+        status: 'captured',
+        targetPath: '/agenda/evento/forro?occurrence=occ-1',
+        storeChannel: 'play',
+      ),
+    );
+
+    final repository = DeferredLinkRepository(
+      channel: channel,
+      isAndroid: () => true,
+      backend: backend,
+    );
+
+    final result = await repository.captureFirstOpenInviteCode();
+
+    expect(result.status, DeferredLinkCaptureStatus.captured);
+    expect(result.code, isNull);
+    expect(result.targetPath, '/agenda/evento/forro?occurrence=occ-1');
+    expect(result.storeChannel, 'play');
   });
 
   test('returns notCaptured when backend resolver reports missing code',

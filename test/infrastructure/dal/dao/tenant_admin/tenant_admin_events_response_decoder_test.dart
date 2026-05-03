@@ -349,6 +349,13 @@ void main() {
                 'profile_type': 'artist',
               },
             ],
+            'own_taxonomy_terms': [
+              {
+                'type': 'sport',
+                'value': 'football',
+                'name': 'Futebol',
+              },
+            ],
             'location_override': {
               'location': {
                 'mode': 'online',
@@ -361,6 +368,7 @@ void main() {
             'programming_items': [
               {
                 'time': '17:00',
+                'end_time': '18:30',
                 'title': 'Abertura',
                 'account_profile_ids': ['artist-1'],
                 'place_ref': {
@@ -385,8 +393,12 @@ void main() {
     final occurrence = event.occurrences.first;
     expect(occurrence.relatedAccountProfileIds.first.value, 'artist-1');
     expect(occurrence.relatedAccountProfiles.first.displayName, 'Coral XYZ');
+    expect(occurrence.taxonomyTerms.single.type, 'sport');
+    expect(occurrence.taxonomyTerms.single.value, 'football');
+    expect(occurrence.taxonomyTerms.single.displayLabel, 'Futebol');
     expect(occurrence.programmingItems, hasLength(1));
     expect(occurrence.programmingItems.first.time, '17:00');
+    expect(occurrence.programmingItems.first.endTime, '18:30');
     expect(occurrence.programmingItems.first.title, 'Abertura');
     expect(
       occurrence.programmingItems.first.accountProfileIds.first.value,

@@ -339,6 +339,7 @@ class TenantAdminEventsResponseDecoder {
             .where((profile) => profile.profileType.trim() != 'venue')
             .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
             .toList(growable: false);
+    final ownTaxonomyTerms = _taxonomyTermsFromRaw(item['own_taxonomy_terms']);
 
     return TenantAdminEventOccurrence(
       occurrenceIdValue: tenantAdminOptionalText(
@@ -354,7 +355,20 @@ class TenantAdminEventsResponseDecoder {
       relatedAccountProfileIdValues: ownProfileIds,
       relatedAccountProfiles: ownProfiles,
       programmingItems: _mapProgrammingItems(item['programming_items']),
+      taxonomyTerms: ownTaxonomyTerms,
     );
+  }
+
+  TenantAdminTaxonomyTerms _taxonomyTermsFromRaw(Object? raw) {
+    final terms = TenantAdminTaxonomyTerms();
+    for (final taxonomyTerm in _asList(raw)
+        .map(_asMap)
+        .where((term) => term.isNotEmpty)
+        .map(_mapTaxonomyTerm)
+        .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)) {
+      terms.add(taxonomyTerm);
+    }
+    return terms;
   }
 
   List<TenantAdminAccountProfileIdValue> _mapPartyProfileIds(
@@ -390,6 +404,7 @@ class TenantAdminEventsResponseDecoder {
                   .toList(growable: false);
           return TenantAdminEventProgrammingItem(
             timeValue: tenantAdminRequiredText(_asString(item['time']) ?? ''),
+            endTimeValue: tenantAdminOptionalText(_asString(item['end_time'])),
             titleValue: tenantAdminOptionalText(_asString(item['title'])),
             accountProfileIdValues: profileIds,
             linkedAccountProfiles: linkedProfiles,

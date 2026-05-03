@@ -127,9 +127,13 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                               primary: true,
                               events: events,
                               isConfirmed: (event) =>
-                                  _controller.isEventConfirmed(event.id),
+                                  _controller.isOccurrenceConfirmed(
+                                event.selectedOccurrenceId ?? '',
+                              ),
                               pendingInvitesCount: (event) =>
-                                  _controller.pendingInviteCount(event.id),
+                                  _controller.pendingInviteCount(
+                                event.selectedOccurrenceId ?? '',
+                              ),
                               distanceLabel: _controller.distanceLabelFor,
                               statusIconSize: 22,
                               highlightNowEvents: true,

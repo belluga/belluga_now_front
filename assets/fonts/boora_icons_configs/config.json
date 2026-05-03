@@ -1,112 +1,253 @@
 {
-  "name": "Boora",
-  "css_prefix_text": "",
-  "css_use_suffix": false,
-  "hinting": true,
-  "units_per_em": 1000,
-  "ascent": 850,
+  "fontFamily": "BooraIcons",
+  "legacyFontFamilies": [
+    "Boora"
+  ],
+  "sourceIcomoonConfig": "assets/fonts/boora_icons_source/icomoon/boora.icomoon.json",
+  "sourceGeneratedDart": "assets/fonts/boora_icons_source/icomoon/boora_icons_icomoon.dart",
+  "sourceTtf": "assets/fonts/boora_icons_source/icomoon/BooraIcons.ttf",
+  "sourceOtf": "assets/fonts/boora_icons_source/icomoon/BooraIcons.otf",
+  "runtimeTtf": "assets/fonts/BooraIcons-8880a991.ttf",
   "glyphs": [
     {
-      "uid": "1f946f1677e2320edbdcfc40d3eef556",
-      "css": "add_a_photo",
-      "code": 59393,
-      "src": "material"
+      "name": "kiosk",
+      "codePoint": 61495
     },
     {
-      "uid": "22a893e7725504a4a3b8905fb20cac53",
-      "css": "account_circle",
-      "code": 59392,
-      "src": "material"
+      "name": "ice-cream",
+      "codePoint": 61496
     },
     {
-      "uid": "f8d2b9af4ce7fa49e51d3982a6a16012",
-      "css": "beach_access",
-      "code": 59394,
-      "src": "material"
+      "name": "coupon",
+      "codePoint": 61467
     },
     {
-      "uid": "690a846fc9d080a9f88bcc5ca04c6687",
-      "css": "audiotrack",
-      "code": 59395,
-      "src": "material"
+      "name": "promo",
+      "codePoint": 61468
     },
     {
-      "uid": "253067d29b0c98e0db8e86e009134234",
-      "css": "call_made",
-      "code": 59396,
-      "src": "material"
+      "name": "discount",
+      "codePoint": 61469
     },
     {
-      "uid": "3005963be4bb574cc7d7ed5c767ab8e1",
-      "css": "business_center",
-      "code": 59397,
-      "src": "material"
+      "name": "lunch",
+      "codePoint": 61470
     },
     {
-      "uid": "9c3e1ecf508d99da1e5b514fcc204f39",
-      "css": "store_mall_directory",
-      "code": 59398,
-      "src": "material"
+      "name": "restaurant",
+      "codePoint": 61471
     },
     {
-      "uid": "0ef9cd9bbfceb82f2fffc065f5af6643",
-      "css": "share",
-      "code": 59399,
-      "src": "material"
+      "name": "museum",
+      "codePoint": 61472
     },
     {
-      "uid": "5ffbce69b475282f9069a122eac173ed",
-      "css": "shopping_basket",
-      "code": 59400,
-      "src": "material"
+      "name": "bank",
+      "codePoint": 61473
     },
     {
-      "uid": "4c1ef492f1d2c39a2250ae457cee2a6e",
-      "css": "instagram",
-      "code": 61805,
-      "src": "fontawesome"
+      "name": "church",
+      "codePoint": 61474
     },
     {
-      "uid": "9d3e9faf68fd4e12def853f0d4e1173b",
-      "css": "whatsapp",
-      "code": 62002,
-      "src": "fontawesome"
+      "name": "musical-note",
+      "codePoint": 61475
     },
     {
-      "uid": "5171e74eb6e59fbf85cd1eda36e284ea",
-      "css": "uber",
-      "code": 62466,
-      "src": "fontawesome5"
+      "name": "vinyl",
+      "codePoint": 61476
     },
     {
-      "uid": "9ffc9bc0774f3f5108df9f86d76c6bff",
-      "css": "waze",
-      "code": 63551,
-      "src": "fontawesome5"
+      "name": "beach-umbrella",
+      "codePoint": 61477
     },
     {
-      "uid": "af155b3bbf6ecdbb4ff2b88e87d54590",
-      "css": "map_marked_alt",
-      "code": 62880,
-      "src": "fontawesome5"
+      "name": "hotel",
+      "codePoint": 61478
     },
     {
-      "uid": "9a8a788a5d1d13914493ff70282424fe",
-      "css": "horseshoe",
-      "code": 59910,
-      "src": "rpgawesome"
+      "name": "nature",
+      "codePoint": 61479
     },
     {
-      "uid": "4b2321afcbe0505a70b80abd5c25e09b",
-      "css": "invite-outlined",
-      "code": 61913,
-      "src": "fontawesome"
+      "name": "wave",
+      "codePoint": 61480
     },
     {
-      "uid": "38575a803c4da31ce20d77e1e1236bcb",
-      "css": "invite-solid",
-      "code": 61912,
-      "src": "fontawesome"
+      "name": "sunset",
+      "codePoint": 61481
+    },
+    {
+      "name": "wave1",
+      "codePoint": 61482
+    },
+    {
+      "name": "paddling",
+      "codePoint": 61483
+    },
+    {
+      "name": "swimmer",
+      "codePoint": 61484
+    },
+    {
+      "name": "drug",
+      "codePoint": 61485
+    },
+    {
+      "name": "pharmacy",
+      "codePoint": 61486
+    },
+    {
+      "name": "first-aid-kit",
+      "codePoint": 61487
+    },
+    {
+      "name": "hospital",
+      "codePoint": 61488
+    },
+    {
+      "name": "grocery-store",
+      "codePoint": 61489
+    },
+    {
+      "name": "shopping-bag",
+      "codePoint": 61490
+    },
+    {
+      "name": "event",
+      "codePoint": 61491
+    },
+    {
+      "name": "local",
+      "codePoint": 61492
+    },
+    {
+      "name": "ticket",
+      "codePoint": 61493
+    },
+    {
+      "name": "ticket1",
+      "codePoint": 61494
+    },
+    {
+      "name": "mountains",
+      "codePoint": 61457
+    },
+    {
+      "name": "destination",
+      "codePoint": 61458
+    },
+    {
+      "name": "chef",
+      "codePoint": 61459
+    },
+    {
+      "name": "chef1",
+      "codePoint": 61460
+    },
+    {
+      "name": "united",
+      "codePoint": 61461
+    },
+    {
+      "name": "theater",
+      "codePoint": 61462
+    },
+    {
+      "name": "handshake",
+      "codePoint": 61463
+    },
+    {
+      "name": "open-book",
+      "codePoint": 61464
+    },
+    {
+      "name": "luggage",
+      "codePoint": 61465
+    },
+    {
+      "name": "airplane",
+      "codePoint": 61466
+    },
+    {
+      "name": "group",
+      "codePoint": 61443
+    },
+    {
+      "name": "small-talk",
+      "codePoint": 61444
+    },
+    {
+      "name": "creative-team",
+      "codePoint": 61445
+    },
+    {
+      "name": "presentation",
+      "codePoint": 61446
+    },
+    {
+      "name": "workshop",
+      "codePoint": 61447
+    },
+    {
+      "name": "reading-book",
+      "codePoint": 61448
+    },
+    {
+      "name": "guitar-instrument",
+      "codePoint": 61449
+    },
+    {
+      "name": "live-music",
+      "codePoint": 61450
+    },
+    {
+      "name": "microphone",
+      "codePoint": 61451
+    },
+    {
+      "name": "users-linked",
+      "codePoint": 61452
+    },
+    {
+      "name": "stage",
+      "codePoint": 61453
+    },
+    {
+      "name": "bus-station",
+      "codePoint": 61454
+    },
+    {
+      "name": "market",
+      "codePoint": 61455
+    },
+    {
+      "name": "fireworks",
+      "codePoint": 61456
+    },
+    {
+      "name": "jubs",
+      "codePoint": 61442
+    },
+    {
+      "name": "clapperboard",
+      "codePoint": 61440
+    },
+    {
+      "name": "running",
+      "codePoint": 61441
+    },
+    {
+      "name": "appointment",
+      "codePoint": 61499
+    },
+    {
+      "name": "invitation",
+      "codePoint": 61498
+    },
+    {
+      "name": "invitation_outlined",
+      "codePoint": 61497
     }
   ]
 }
