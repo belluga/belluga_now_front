@@ -145,6 +145,66 @@ void main() {
   });
 
   testWidgets(
+    'event detail consumes cached confirmation state without entry refresh',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository()
+        ..confirmedIds.add('occurrence-selected');
+      final invitesRepository = _FakeInvitesRepository();
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        controller,
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  occurrences: [
+                    _buildOccurrence(
+                      id: 'occurrence-selected',
+                      start: DateTime(2026, 3, 15, 20),
+                      isSelected: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        controller.isConfirmationStateLoadingStreamValue.value,
+        isFalse,
+      );
+      expect(find.textContaining('Confirmar Presença'), findsNothing);
+      expect(find.text('BORA? Agitar a galera!'), findsOneWidget);
+      expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 0);
+    },
+  );
+
+  testWidgets(
       'event detail shows pending invite actions for selected occurrence',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -1699,16 +1759,18 @@ void main() {
     await tester.tap(firstDateCard);
     await tester.pump();
 
-    expect(
-      router.lastReplacedPath,
-      '/agenda/evento/evento-de-teste?occurrence=occ-1&tab=programming',
-    );
+    expect(router.lastReplacedPath, isNull);
+    expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
+    expect(route.rawPathParams['slug'], 'evento-de-teste');
+    expect(route.rawQueryParams['occurrence'], 'occ-1');
+    expect(route.rawQueryParams['tab'], 'programming');
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('eventDateCurrentBadge_occ-1')),
       findsNothing,
     );
-    expect(find.text('Show da data atual'), findsOneWidget);
+    expect(find.text('Show da data atual'), findsNothing);
   });
 
   testWidgets('event detail programming tab renders occurrence schedule',
@@ -3515,6 +3577,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   );
 
   int confirmCalls = 0;
+  final Set<String> confirmedIds = <String>{};
+  int refreshConfirmedOccurrenceIdsCalls = 0;
+  Set<String> refreshedConfirmedIds = <String>{};
+  Completer<void>? refreshGate;
 
   @override
   Future<void> confirmEventAttendance(
@@ -3522,6 +3588,19 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     required UserEventsRepositoryContractPrimString occurrenceId,
   }) async {
     confirmCalls += 1;
+    confirmedIds.add(occurrenceId.value);
+    refreshedConfirmedIds = Set<String>.from(confirmedIds);
+    confirmedOccurrenceIdsStream.addValue(
+      confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
   }
 
   @override
@@ -3533,10 +3612,31 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
-      userEventsRepoBool(false, defaultValue: false, isRequired: true);
+      userEventsRepoBool(
+        confirmedIds.contains(eventId.value),
+        defaultValue: false,
+        isRequired: true,
+      );
 
   @override
-  Future<void> refreshConfirmedOccurrenceIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {
+    refreshConfirmedOccurrenceIdsCalls += 1;
+    await refreshGate?.future;
+    confirmedIds
+      ..clear()
+      ..addAll(refreshedConfirmedIds);
+    confirmedOccurrenceIdsStream.addValue(
+      confirmedIds
+          .map(
+            (value) => userEventsRepoString(
+              value,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toSet(),
+    );
+  }
 
   @override
   Future<void> unconfirmEventAttendance(

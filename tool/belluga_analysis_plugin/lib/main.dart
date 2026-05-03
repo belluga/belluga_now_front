@@ -1,6 +1,7 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/controller_canonical_state_repair_after_mutation_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_controller_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_snapshot_field_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_direct_navigation_forbidden_rule.dart';
@@ -113,6 +114,9 @@ class BellugaAnalysisPlugin extends Plugin {
       ControllerBuildContextDependencyForbiddenRule(),
     );
     registry.registerWarningRule(ControllerControllerDependencyForbiddenRule());
+    registry.registerWarningRule(
+      ControllerCanonicalStateRepairAfterMutationForbiddenRule(),
+    );
     registry.registerWarningRule(
       ControllerDelegatedStreamValueSnapshotFieldForbiddenRule(),
     );

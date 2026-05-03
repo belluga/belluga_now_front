@@ -7,7 +7,7 @@
   "sourceGeneratedDart": "assets/fonts/boora_icons_source/icomoon/boora_icons_icomoon.dart",
   "sourceTtf": "assets/fonts/boora_icons_source/icomoon/BooraIcons.ttf",
   "sourceOtf": "assets/fonts/boora_icons_source/icomoon/BooraIcons.otf",
-  "runtimeTtf": "assets/fonts/BooraIcons-df601f22.ttf",
+  "runtimeTtf": "assets/fonts/BooraIcons-8880a991.ttf",
   "glyphs": [
     {
       "name": "kiosk",
@@ -243,11 +243,11 @@
     },
     {
       "name": "invitation",
-      "codePoint": 61497
+      "codePoint": 61498
     },
     {
       "name": "invitation_outlined",
-      "codePoint": 61498
+      "codePoint": 61497
     }
   ]
 }

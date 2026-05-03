@@ -186,7 +186,6 @@ class EventSearchScreenController
       _isDisposed = false;
     }
     await _invitesRepository.init();
-    await _userEventsRepository.refreshConfirmedOccurrenceIds();
     _resetInternalState();
     _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
     _ifAlive(

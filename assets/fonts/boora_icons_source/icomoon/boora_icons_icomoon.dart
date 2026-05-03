@@ -13,9 +13,9 @@ class BooraIcons {
 
   static const String _fontFamily = 'BooraIcons';
 
+  static const IconData invitationOutlined = IconData(0xf039, fontFamily: _fontFamily);
+  static const IconData invitation = IconData(0xf03a, fontFamily: _fontFamily);
   static const IconData appointment = IconData(0xf03b, fontFamily: _fontFamily);
-  static const IconData invitationOutlined = IconData(0xf03a, fontFamily: _fontFamily);
-  static const IconData invitation = IconData(0xf039, fontFamily: _fontFamily);
   static const IconData kiosk = IconData(0xf037, fontFamily: _fontFamily);
   static const IconData iceCream = IconData(0xf038, fontFamily: _fontFamily);
   static const IconData coupon = IconData(0xf01b, fontFamily: _fontFamily);

@@ -141,6 +141,19 @@ Controllers must not read `repository/service StreamValue.value` and stash that 
 3. Do not keep mutable private collection fields as mirrors of repository snapshots.
 4. If the screen needs persistent shared state, move that ownership into the repository contract/implementation.
 
+## `controller_canonical_state_repair_after_mutation_forbidden`
+
+### Rule intent
+Controllers must not compensate for repository mutation side effects by manually refreshing canonical repository caches such as confirmed-attendance or pending-invite state. If a mutation changes canonical shared state, the mutation owner must leave the affected repositories consistent before control returns to presentation.
+
+### Remediation playbook
+1. Remove controller-side repair flows such as:
+   - mutation -> `refreshConfirmedOccurrenceIds()`
+   - mutation -> `refreshPendingInvites()`
+   - mutation -> helper that performs one of those refreshes
+2. Move the consistency step into the mutation owner repository or a lower application-layer mutation coordinator beneath presentation.
+3. Keep the controller consuming repository-owned `StreamValue` updates instead of re-querying canonical state after every mutation.
+
 ## `controller_streamvalue_parameter_forbidden`
 
 ### Rule intent

@@ -101,20 +101,23 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
-            return StreamValueBuilder<Set<String>>(
-              streamValue: _controller.favoriteAccountProfileIdsStreamValue,
-              builder: (context, favoriteAccountProfileIds) {
-                final colorScheme =
-                    widget.colorScheme ?? Theme.of(context).colorScheme;
-                return StreamValueBuilder<List<InviteModel>>(
-                  streamValue: _controller.receivedInvitesStreamValue,
-                  builder: (context, receivedInvites) {
-                    return StreamValueBuilder<
-                        Map<InvitesRepositoryContractPrimString,
-                            List<SentInviteStatus>>>(
-                      streamValue:
-                          _controller.sentInvitesByOccurrenceStreamValue,
-                      builder: (context, sentInvitesByOccurrence) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.isConfirmationStateLoadingStreamValue,
+              builder: (context, isConfirmationStateLoading) {
+                return StreamValueBuilder<Set<String>>(
+                  streamValue: _controller.favoriteAccountProfileIdsStreamValue,
+                  builder: (context, favoriteAccountProfileIds) {
+                    final colorScheme =
+                        widget.colorScheme ?? Theme.of(context).colorScheme;
+                    return StreamValueBuilder<List<InviteModel>>(
+                      streamValue: _controller.receivedInvitesStreamValue,
+                      builder: (context, receivedInvites) {
+                        return StreamValueBuilder<
+                            Map<InvitesRepositoryContractPrimString,
+                                List<SentInviteStatus>>>(
+                          streamValue:
+                              _controller.sentInvitesByOccurrenceStreamValue,
+                          builder: (context, sentInvitesByOccurrence) {
                         final selectedOccurrenceId =
                             resolvedEvent.selectedOccurrenceId?.trim();
                         final sentForEvent = selectedOccurrenceId == null ||
@@ -206,65 +209,80 @@ class _ImmersiveEventDetailScreenState
                           ),
                         ];
 
-                        final footer = isConfirmed
-                            ? _buildInviteFooter(
-                                context,
-                                () => _openInviteFlow(resolvedEvent),
-                                sentForEvent,
-                              )
-                            : DynamicFooter(
-                                buttonText: 'Bóora! Confirmar Presença!',
-                                buttonIcon: Icons.celebration,
-                                buttonColor: colorScheme.primary,
-                                onActionPressed: () {
-                                  unawaited(_handleConfirmAttendance());
-                                },
-                              );
+                            final footer = isConfirmationStateLoading &&
+                                    !isConfirmed
+                                ? DynamicFooter(
+                                    buttonText: 'Verificando presença...',
+                                    buttonIcon: Icons.hourglass_top_rounded,
+                                    buttonColor:
+                                        colorScheme.surfaceContainerHigh,
+                                    onActionPressed: null,
+                                  )
+                                : isConfirmed
+                                    ? _buildInviteFooter(
+                                        context,
+                                        () => _openInviteFlow(resolvedEvent),
+                                        sentForEvent,
+                                      )
+                                    : DynamicFooter(
+                                        buttonText:
+                                            'Bóora! Confirmar Presença!',
+                                        buttonIcon: Icons.celebration,
+                                        buttonColor: colorScheme.primary,
+                                        onActionPressed: () {
+                                          unawaited(
+                                            _handleConfirmAttendance(),
+                                          );
+                                        },
+                                      );
 
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: colorScheme,
-                          ),
-                          child: StreamValueBuilder<bool>(
-                            streamValue:
-                                _controller.isShareActionLoadingStreamValue,
-                            builder: (context, isShareLoading) {
-                              return ImmersiveDetailScreen(
-                                heroContentBuilder: (context, activateTab) =>
-                                    ImmersiveHero(
-                                  event: resolvedEvent,
-                                  fallbackImageUri:
-                                      _controller.defaultEventImageUri,
-                                  onCounterpartTap: (profile) {
-                                    final targetIndex =
-                                        _linkedProfileTabIndexForHeroTap(
-                                      resolvedEvent,
-                                      profile,
-                                    );
-                                    if (targetIndex != null) {
-                                      activateTab(targetIndex);
-                                    }
-                                  },
-                                ),
-                                title: resolvedEvent.title.value,
-                                betweenHeroAndTabs: topBanner,
-                                tabs: tabs,
-                                canUseTabFooter: (_) => isConfirmed,
-                                // Don't auto-navigate, let user scroll naturally
-                                initialTabIndex:
-                                    _resolveInitialTabIndex(tabs, context),
-                                footer: footer,
-                                backPolicy:
-                                    buildCanonicalCurrentRouteBackPolicy(
-                                  context,
-                                ),
-                                onSharePressed: () => unawaited(
-                                  _shareSelectedEvent(resolvedEvent),
-                                ),
-                                isShareLoading: isShareLoading,
-                              );
-                            },
-                          ),
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: colorScheme,
+                              ),
+                              child: StreamValueBuilder<bool>(
+                                streamValue:
+                                    _controller.isShareActionLoadingStreamValue,
+                                builder: (context, isShareLoading) {
+                                  return ImmersiveDetailScreen(
+                                    heroContentBuilder:
+                                        (context, activateTab) =>
+                                            ImmersiveHero(
+                                      event: resolvedEvent,
+                                      fallbackImageUri:
+                                          _controller.defaultEventImageUri,
+                                      onCounterpartTap: (profile) {
+                                        final targetIndex =
+                                            _linkedProfileTabIndexForHeroTap(
+                                          resolvedEvent,
+                                          profile,
+                                        );
+                                        if (targetIndex != null) {
+                                          activateTab(targetIndex);
+                                        }
+                                      },
+                                    ),
+                                    title: resolvedEvent.title.value,
+                                    betweenHeroAndTabs: topBanner,
+                                    tabs: tabs,
+                                    canUseTabFooter: (_) => isConfirmed,
+                                    // Don't auto-navigate, let user scroll naturally
+                                    initialTabIndex:
+                                        _resolveInitialTabIndex(tabs, context),
+                                    footer: footer,
+                                    backPolicy:
+                                        buildCanonicalCurrentRouteBackPolicy(
+                                      context,
+                                    ),
+                                    onSharePressed: () => unawaited(
+                                      _shareSelectedEvent(resolvedEvent),
+                                    ),
+                                    isShareLoading: isShareLoading,
+                                  );
+                                },
+                              ),
+                            );
+                          },
                         );
                       },
                     );

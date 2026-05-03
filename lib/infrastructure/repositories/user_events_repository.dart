@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
@@ -19,14 +20,18 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsBackendContract? backend,
     AppDataRepositoryContract? appDataRepository,
+    InvitesRepositoryContract Function()? invitesRepositoryResolver,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _backend = backend ?? LaravelUserEventsBackend(),
-        _appDataRepository = appDataRepository;
+        _appDataRepository = appDataRepository,
+        _invitesRepositoryResolver = invitesRepositoryResolver;
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsBackendContract _backend;
   AppDataRepositoryContract? _appDataRepository;
+  final InvitesRepositoryContract Function()? _invitesRepositoryResolver;
+  InvitesRepositoryContract? _invitesRepository;
 
   AppDataRepositoryContract? get _resolvedAppDataRepository {
     if (_appDataRepository != null) {
@@ -37,6 +42,22 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     }
     _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
     return _appDataRepository;
+  }
+
+  InvitesRepositoryContract? get _resolvedInvitesRepository {
+    if (_invitesRepository != null) {
+      return _invitesRepository;
+    }
+    final resolver = _invitesRepositoryResolver;
+    if (resolver != null) {
+      _invitesRepository = resolver.call();
+      return _invitesRepository;
+    }
+    if (!GetIt.I.isRegistered<InvitesRepositoryContract>()) {
+      return null;
+    }
+    _invitesRepository = GetIt.I.get<InvitesRepositoryContract>();
+    return _invitesRepository;
   }
 
   ThumbUriValue _resolveDefaultEventImage() {
@@ -122,6 +143,17 @@ class UserEventsRepository implements UserEventsRepositoryContract {
       occurrenceId: occurrenceId.value,
     );
     await refreshConfirmedOccurrenceIds();
+    final invitesRepository = _resolvedInvitesRepository;
+    if (invitesRepository != null) {
+      invitesRepository.clearShareCodeSessionContext(
+        occurrenceId: invitesRepoString(
+          occurrenceId.value,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      await invitesRepository.refreshPendingInvites();
+    }
   }
 
   @override
@@ -134,6 +166,7 @@ class UserEventsRepository implements UserEventsRepositoryContract {
       occurrenceId: occurrenceId.value,
     );
     await refreshConfirmedOccurrenceIds();
+    await _resolvedInvitesRepository?.refreshPendingInvites();
   }
 
   @override

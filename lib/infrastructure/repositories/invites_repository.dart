@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
@@ -65,12 +66,14 @@ class InvitesRepository extends InvitesRepositoryContract
     Future<String?> Function()? currentUserIdProvider,
     Future<String?> Function()? tenantCacheScopeProvider,
     Future<String?> Function()? persistedTenantCacheScopeProvider,
+    UserEventsRepositoryContract Function()? userEventsRepositoryResolver,
   })  : _backend = backend ?? LaravelInvitesBackend(),
         _contactImportCache = contactImportCache ?? InviteContactImportCache(),
         _now = now ?? DateTime.now,
         _currentUserIdProvider = currentUserIdProvider,
         _tenantCacheScopeProvider = tenantCacheScopeProvider,
-        _persistedTenantCacheScopeProvider = persistedTenantCacheScopeProvider;
+        _persistedTenantCacheScopeProvider = persistedTenantCacheScopeProvider,
+        _userEventsRepositoryResolver = userEventsRepositoryResolver;
 
   final InvitesBackendContract _backend;
   final InviteContactImportCacheContract _contactImportCache;
@@ -78,8 +81,26 @@ class InvitesRepository extends InvitesRepositoryContract
   final Future<String?> Function()? _currentUserIdProvider;
   final Future<String?> Function()? _tenantCacheScopeProvider;
   final Future<String?> Function()? _persistedTenantCacheScopeProvider;
+  final UserEventsRepositoryContract Function()? _userEventsRepositoryResolver;
   final InvitesResponseDecoder _responseDecoder =
       const InvitesResponseDecoder();
+  UserEventsRepositoryContract? _userEventsRepository;
+
+  UserEventsRepositoryContract? get _resolvedUserEventsRepository {
+    if (_userEventsRepository != null) {
+      return _userEventsRepository;
+    }
+    final resolver = _userEventsRepositoryResolver;
+    if (resolver != null) {
+      _userEventsRepository = resolver.call();
+      return _userEventsRepository;
+    }
+    if (!GetIt.I.isRegistered<UserEventsRepositoryContract>()) {
+      return null;
+    }
+    _userEventsRepository = GetIt.I.get<UserEventsRepositoryContract>();
+    return _userEventsRepository;
+  }
 
   @override
   Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
@@ -147,7 +168,11 @@ class InvitesRepository extends InvitesRepositoryContract
       InvitesRepositoryContractPrimString inviteId) async {
     final response = await _backend.acceptInvite(inviteId.value);
     await fetchInvites();
-    return _decodeAcceptResult(response);
+    final result = _decodeAcceptResult(response);
+    if (result.isAccepted) {
+      await _resolvedUserEventsRepository?.refreshConfirmedOccurrenceIds();
+    }
+    return result;
   }
 
   @override
@@ -157,7 +182,11 @@ class InvitesRepository extends InvitesRepositoryContract
     final response = await _backend.acceptShareCode(code.value);
     clearShareCodeSessionContext(code: code);
     await fetchInvites();
-    return _decodeAcceptResult(response);
+    final result = _decodeAcceptResult(response);
+    if (result.isAccepted) {
+      await _resolvedUserEventsRepository?.refreshConfirmedOccurrenceIds();
+    }
+    return result;
   }
 
   InviteAcceptResult _decodeAcceptResult(Object? response) =>

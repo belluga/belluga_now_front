@@ -381,12 +381,6 @@ class TenantHomeAgendaController extends Object
     } catch (error) {
       debugPrint('TenantHomeAgendaController.init invites failed: $error');
     }
-    try {
-      await _userEventsRepository.refreshConfirmedOccurrenceIds();
-    } catch (error) {
-      debugPrint(
-          'TenantHomeAgendaController.init confirmed ids failed: $error');
-    }
     await _refresh(resolveOrigin: false);
     _listenForCanonicalOriginChanges();
   }

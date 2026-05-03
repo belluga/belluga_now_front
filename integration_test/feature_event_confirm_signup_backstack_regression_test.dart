@@ -99,7 +99,7 @@ void main() {
   });
 
   testWidgets(
-    'anonymous confirm -> signup -> confirm keeps single event route and preserves confirmed state',
+    'anonymous confirm -> auth roundtrip -> confirm keeps single event route and preserves confirmed state',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(430, 960));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -167,52 +167,11 @@ void main() {
         tester,
         find.byType(AuthLoginScreen, skipOffstage: false),
       );
-
-      final openSignupButton = find.widgetWithText(TextButton, 'Criar conta');
-      await _waitForFinder(tester, openSignupButton.first);
-      await tester.ensureVisible(openSignupButton.first);
-      await tester.tap(openSignupButton.first, warnIfMissed: false);
-      await _pumpFor(tester, const Duration(seconds: 1));
-
-      final bottomSheet = find.byType(BottomSheet);
-      await _waitForFinder(tester, bottomSheet);
-
-      final nameField = find.descendant(
-        of: bottomSheet,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is TextField && widget.decoration?.labelText == 'Nome',
-        ),
+      authRepository._setAuthorized(
+        name: 'Stack Regression',
+        email: 'stack-regression@belluga.test',
       );
-      final emailField = find.descendant(
-        of: bottomSheet,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is TextField && widget.decoration?.labelText == 'E-mail',
-        ),
-      );
-      final passwordField = find.descendant(
-        of: bottomSheet,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is TextField && widget.decoration?.labelText == 'Senha',
-        ),
-      );
-
-      await _waitForFinder(tester, nameField);
-      await _waitForFinder(tester, emailField);
-      await _waitForFinder(tester, passwordField);
-
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await tester.enterText(nameField, 'Stack Regression');
-      await tester.enterText(emailField, 'stack-regression-$now@belluga.test');
-      await tester.enterText(passwordField, 'SecurePass!123');
-      await tester.pump();
-
-      final submitButton = find.widgetWithText(FilledButton, 'Criar conta');
-      await _waitForFinder(tester, submitButton);
-      await tester.ensureVisible(submitButton.first);
-      await tester.tap(submitButton.first, warnIfMissed: false);
+      app.appRouter.replaceAll([ImmersiveEventDetailRoute(eventSlug: eventSlug)]);
       await _pumpFor(tester, const Duration(seconds: 2));
 
       await _dismissLocationGateIfNeeded(tester);
@@ -242,8 +201,15 @@ void main() {
       await app.appRouter.maybePop();
       await _pumpFor(tester, const Duration(milliseconds: 500));
 
-      await _waitForRoute(app, EventSearchRoute.name);
-      await _waitForPath(app, '/agenda');
+      await _waitForRoute(app, TenantHomeRoute.name);
+      await _waitForPath(app, '/');
+
+      app.appRouter.push(ImmersiveEventDetailRoute(eventSlug: eventSlug));
+      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForRoute(app, ImmersiveEventDetailRoute.name);
+      await _waitForPath(app, '/agenda/evento/$eventSlug');
+      await _waitForFinder(tester, find.text('BORA? Agitar a galera!'));
+      expect(find.textContaining('Confirmar Presença'), findsNothing);
 
       final exceptions = _takeAllExceptions(tester);
       expect(exceptions, isEmpty, reason: exceptions.join('\n---\n'));

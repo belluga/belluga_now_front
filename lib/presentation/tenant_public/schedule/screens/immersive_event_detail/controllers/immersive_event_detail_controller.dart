@@ -63,6 +63,8 @@ class ImmersiveEventDetailController implements Disposable {
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
   StreamSubscription<InviteShareSessionContext?>?
       _shareSessionContextSubscription;
+  StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
+      _confirmedOccurrenceIdsSubscription;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteProfileIdsSubscription;
   StreamValue<EventModel?> get eventStreamValue =>
@@ -75,18 +77,15 @@ class ImmersiveEventDetailController implements Disposable {
   void init(EventModel event) {
     final resolvedEvent = _alignEventToSelectedOccurrence(event);
     final currentEvent = eventStreamValue.value;
-    if (_isSameSelectedEventTarget(currentEvent, resolvedEvent)) {
-      return;
+    final hasSameSelectedTarget =
+        _isSameSelectedEventTarget(currentEvent, resolvedEvent);
+    final effectiveEvent =
+        hasSameSelectedTarget && currentEvent != null ? currentEvent : resolvedEvent;
+    if (!hasSameSelectedTarget) {
+      _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     }
-    _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
-    _hydrateState(resolvedEvent);
+    _hydrateState(effectiveEvent);
     _bindFavoriteAccountProfileState();
-    final occurrenceId = resolvedEvent.selectedOccurrenceId?.trim();
-    if (occurrenceId != null &&
-        occurrenceId.isNotEmpty &&
-        !_mustRevalidateReceivedInvitesBeforeDisplay(resolvedEvent)) {
-      unawaited(_refreshConfirmationState(occurrenceId));
-    }
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -112,6 +111,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   // Reactive state
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
+  final isConfirmationStateLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   // Delegate to repository for single source of truth
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
@@ -188,8 +189,10 @@ class ImmersiveEventDetailController implements Disposable {
   void _hydrateState(EventModel event) {
     unawaited(_pendingInvitesSubscription?.cancel());
     unawaited(_shareSessionContextSubscription?.cancel());
+    unawaited(_confirmedOccurrenceIdsSubscription?.cancel());
     _pendingInvitesSubscription = null;
     _shareSessionContextSubscription = null;
+    _confirmedOccurrenceIdsSubscription = null;
 
     final occurrenceId = event.selectedOccurrenceId?.trim();
     final isConfirmedLocally = _userEventsRepository.isOccurrenceConfirmed(
@@ -199,8 +202,9 @@ class ImmersiveEventDetailController implements Disposable {
         isRequired: true,
       ),
     );
-    isConfirmedStreamValue
-        .addValue(isConfirmedLocally.value || event.isConfirmedValue.value);
+    final eventConfirmed = event.isConfirmedValue.value;
+    isConfirmationStateLoadingStreamValue.addValue(false);
+    isConfirmedStreamValue.addValue(isConfirmedLocally.value || eventConfirmed);
 
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
@@ -208,12 +212,19 @@ class ImmersiveEventDetailController implements Disposable {
     _shareSessionContextSubscription = _invitesRepository
         .shareCodeSessionContextStreamValue.stream
         .listen((_) => _refreshReceivedInvitesFor(event));
-
-    if (_mustRevalidateReceivedInvitesBeforeDisplay(event)) {
-      _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
-      unawaited(_revalidateReceivedInviteDisplayState(event));
-      return;
-    }
+    _confirmedOccurrenceIdsSubscription = _userEventsRepository
+        .confirmedOccurrenceIdsStream.stream
+        .listen((_) {
+      final current = eventStreamValue.value;
+      final currentOccurrenceId = current?.selectedOccurrenceId?.trim();
+      if (current == null ||
+          currentOccurrenceId == null ||
+          currentOccurrenceId.isEmpty) {
+        return;
+      }
+      _applyConfirmationState(currentOccurrenceId);
+      _refreshReceivedInvitesFor(current);
+    });
 
     _refreshReceivedInvitesFor(event);
   }
@@ -295,43 +306,6 @@ class ImmersiveEventDetailController implements Disposable {
     return _eventWithSelectedOccurrence(event, occurrenceId);
   }
 
-  Future<void> _refreshConfirmationState(String occurrenceId) async {
-    await _userEventsRepository.refreshConfirmedOccurrenceIds();
-    _applyConfirmationState(occurrenceId);
-    final event = eventStreamValue.value;
-    if (event != null) {
-      _refreshReceivedInvitesFor(event);
-    }
-  }
-
-  Future<void> _revalidateReceivedInviteDisplayState(EventModel event) async {
-    final occurrenceId = event.selectedOccurrenceId?.trim();
-    if (occurrenceId == null || occurrenceId.isEmpty) {
-      _refreshReceivedInvitesFor(event);
-      return;
-    }
-
-    try {
-      await Future.wait([
-        _userEventsRepository.refreshConfirmedOccurrenceIds(),
-        _invitesRepository.refreshPendingInvites(),
-      ]);
-    } catch (_) {
-      final current = eventStreamValue.value;
-      if (current != null && _isSameInviteDisplayTarget(current, event)) {
-        _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
-      }
-      return;
-    }
-
-    final current = eventStreamValue.value;
-    if (current == null || !_isSameInviteDisplayTarget(current, event)) {
-      return;
-    }
-    _applyConfirmationState(occurrenceId);
-    _refreshReceivedInvitesFor(current);
-  }
-
   void _applyConfirmationState(String occurrenceId) {
     final isConfirmedFromBackend = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
@@ -346,14 +320,6 @@ class ImmersiveEventDetailController implements Disposable {
       isConfirmedFromBackend.value || eventConfirmed,
     );
   }
-
-  bool _mustRevalidateReceivedInvitesBeforeDisplay(EventModel event) =>
-      _isAuthorized && (event.selectedOccurrenceId?.trim().isNotEmpty ?? false);
-
-  bool _isSameInviteDisplayTarget(EventModel current, EventModel expected) =>
-      current.id.value == expected.id.value &&
-      current.selectedOccurrenceId?.trim() ==
-          expected.selectedOccurrenceId?.trim();
 
   void _refreshReceivedInvitesFor(EventModel event) {
     _updateReceivedInvites(
@@ -604,29 +570,9 @@ class ImmersiveEventDetailController implements Disposable {
           isRequired: true,
         ),
       );
-      await _refreshInviteStateAfterDirectConfirmation(event, occurrenceId);
-      await _refreshConfirmationState(occurrenceId);
       return AttendanceConfirmationResult.confirmed;
     } finally {
       isLoadingStreamValue.addValue(false);
-    }
-  }
-
-  Future<void> _refreshInviteStateAfterDirectConfirmation(
-    EventModel event,
-    String occurrenceId,
-  ) async {
-    _invitesRepository.clearShareCodeSessionContext(
-      occurrenceId: invitesRepoString(
-        occurrenceId,
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
-    try {
-      await _invitesRepository.refreshPendingInvites();
-    } catch (_) {
-      _refreshReceivedInvitesFor(event);
     }
   }
 
@@ -649,12 +595,6 @@ class ImmersiveEventDetailController implements Disposable {
                 isRequired: true,
               ),
             );
-      final occurrenceId = eventStreamValue.value?.selectedOccurrenceId?.trim();
-      if (result.status == 'accepted' &&
-          occurrenceId != null &&
-          occurrenceId.isNotEmpty) {
-        await _refreshConfirmationState(occurrenceId);
-      }
       return result;
     } finally {
       isLoadingStreamValue.addValue(false);
@@ -696,9 +636,11 @@ class ImmersiveEventDetailController implements Disposable {
   void onDispose() {
     _pendingInvitesSubscription?.cancel();
     _shareSessionContextSubscription?.cancel();
+    _confirmedOccurrenceIdsSubscription?.cancel();
     _favoriteProfileIdsSubscription?.cancel();
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
+    isConfirmationStateLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
     isShareActionLoadingStreamValue.dispose();
     favoriteAccountProfileIdsStreamValue.dispose();

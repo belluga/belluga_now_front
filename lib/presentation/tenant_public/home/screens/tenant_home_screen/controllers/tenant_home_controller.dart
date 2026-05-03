@@ -56,12 +56,6 @@ class TenantHomeController implements Disposable {
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-
-    try {
-      await _userEventsRepository.refreshConfirmedOccurrenceIds();
-    } catch (error) {
-      debugPrint('TenantHomeController.init confirmed ids failed: $error');
-    }
     await loadMyEvents();
     _listenLocationOrigin();
     _listenConfirmedEvents();

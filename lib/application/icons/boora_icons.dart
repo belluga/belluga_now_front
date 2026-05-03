@@ -297,12 +297,12 @@ class BooraIcons {
     fontPackage: _fontPackage,
   );
   static const IconData invitation = IconData(
-    0xf039,
+    0xf03a,
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
   static const IconData invitationOutlined = IconData(
-    0xf03a,
+    0xf039,
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );

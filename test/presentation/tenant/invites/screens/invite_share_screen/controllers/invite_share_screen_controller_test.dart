@@ -557,8 +557,10 @@ void main() {
           ),
         ],
       );
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[];
       final controller = InviteShareScreenController(
-        invitesRepository: _FakeInvitesRepository(),
+        invitesRepository: invitesRepository,
         contactsRepository: contactsRepository,
         appData: _buildAppData(),
       );
@@ -795,7 +797,7 @@ void main() {
       expect(controller.friendsSuggestionsStreamValue.value, isNull);
       expect(
         controller.externalContactShareTargetsStreamValue.value,
-        isNull,
+        hasLength(1),
       );
 
       refreshGate.complete();
@@ -848,7 +850,7 @@ void main() {
       expect(contactsRepository.loadCachedContactsCalls, 1);
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
-      expect(invitesRepository.importContactsCalls, 0);
+      expect(invitesRepository.importContactsCalls, 1);
       expect(
         _friendSuggestions(controller).single.friend.name,
         'Bruna',
@@ -870,8 +872,10 @@ void main() {
           ),
         ],
       );
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[];
       final controller = InviteShareScreenController(
-        invitesRepository: _FakeInvitesRepository(),
+        invitesRepository: invitesRepository,
         contactsRepository: contactsRepository,
         appData: _buildAppData(),
         isWebRuntime: false,
@@ -880,13 +884,82 @@ void main() {
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
 
-      expect(contactsRepository.refreshCachedContactsCalls, 1);
+      expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        contains('Matched Contact'),
+      expect(_externalTargets(controller), isNotEmpty);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'reopening invite share republishes Agenda targets from repository cache even when the controller kept a stale empty phone pane',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'cached-contact',
+            displayName: 'Contato Cache',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
       );
 
+      await controller.init(_buildInvite());
+      controller.externalContactShareTargetsStreamValue
+          .addValue(const <InviteExternalContactShareTarget>[]);
+
+      await controller.init(_buildInvite());
+      await controller.selectPane(InviteSharePane.phone);
+
+      expect(_externalTargets(controller), hasLength(1));
+      expect(_externalTargets(controller).single.displayName, 'Contato Cache');
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'selecting Telefone publishes cached Agenda contacts even before imported-match cache is available',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'cached-contact',
+            displayName: 'Contato Cache',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[]
+        ..fetchInviteableRecipientsGate = Completer<void>();
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+      await controller.selectPane(InviteSharePane.phone);
+
+      expect(contactsRepository.loadCachedContactsCalls, 1);
+      expect(contactsRepository.refreshCachedContactsCalls, 0);
+      expect(_externalTargets(controller), hasLength(1));
+      expect(_externalTargets(controller).single.displayName, 'Contato Cache');
+
+      invitesRepository.fetchInviteableRecipientsGate?.complete();
+      await initFuture;
       await controller.onDispose();
     },
   );
@@ -1147,7 +1220,8 @@ void main() {
         ],
       );
       final controller = InviteShareScreenController(
-        invitesRepository: _FakeInvitesRepository(),
+        invitesRepository: _FakeInvitesRepository()
+          ..importContactMatches = const <InviteContactMatch>[],
         contactsRepository: contactsRepository,
         appData: _buildAppData(),
         isWebRuntime: true,
@@ -1185,7 +1259,8 @@ void main() {
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
 
-      expect(_externalTargets(controller), isEmpty);
+      expect(_externalTargets(controller), hasLength(1));
+      expect(_externalTargets(controller).single.displayName, 'Mae');
 
       await controller.onDispose();
     },

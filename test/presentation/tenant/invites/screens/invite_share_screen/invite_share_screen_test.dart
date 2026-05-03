@@ -266,6 +266,46 @@ void main() {
   });
 
   testWidgets(
+    'agenda pane reuses cached phone contacts even when imported matches are still unresolved',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..fetchInviteableRecipientsCompleter =
+            Completer<List<InviteableRecipient>>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Agenda'));
+      await tester.pump();
+
+      expect(find.text('Mae'), findsOneWidget);
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'reopening invite share with repository cache skips loading on app and agenda panes',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -754,9 +794,8 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   final List<ContactModel> contacts;
 
   @override
-  final contactsStreamValue = StreamValue<List<ContactModel>?>(
-    defaultValue: const <ContactModel>[],
-  );
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>?>(defaultValue: null);
 
   @override
   Future<List<ContactModel>> getContacts() async => contacts;
@@ -766,7 +805,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
   @override
   Future<void> loadCachedContacts() async {
-    contactsStreamValue.addValue(contacts);
+    if (contacts.isNotEmpty) {
+      contactsStreamValue.addValue(contacts);
+    }
   }
 
   @override

@@ -30,6 +30,13 @@ void main() {
 
     expect(find.byIcon(BooraIcons.confirmedAttendance), findsOneWidget);
     expect(find.byIcon(BooraIcons.inviteOutlined), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(CircleAvatar),
+        matching: find.byType(Transform),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('pending invite status uses outlined invitation glyph', (

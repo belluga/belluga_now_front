@@ -46,13 +46,10 @@ class InviteStatusIcon extends StatelessWidget {
             child: CircleAvatar(
               backgroundColor: bgColor,
               radius: (size + 14) / 2,
-              child: Transform.translate(
-                offset: const Offset(-2.0, 0.6),
-                child: Icon(
-                  statusIcon,
-                  color: iconColor,
-                  size: size * 0.9,
-                ),
+              child: Icon(
+                statusIcon,
+                color: iconColor,
+                size: size * 0.9,
               ),
             ),
           ),
