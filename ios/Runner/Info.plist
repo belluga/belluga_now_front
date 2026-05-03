@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Flutter Laravel Backend Boilerplate</string>
+		<string>$(BELLUGA_IOS_DISPLAY_NAME)</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>belluga_now</string>
+		<string>$(BELLUGA_IOS_BUNDLE_NAME)</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -45,10 +45,44 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>comgooglemaps</string>
+			<string>baidumap</string>
+			<string>iosamap</string>
+			<string>waze</string>
+			<string>yandexmaps</string>
+			<string>yandexnavi</string>
+			<string>citymapper</string>
+			<string>mapswithme</string>
+			<string>osmandmaps</string>
+			<string>dgis</string>
+			<string>qqmap</string>
+			<string>here-location</string>
+			<string>tomtomgo</string>
+			<string>copilot</string>
+			<string>com.sygic.aura</string>
+			<string>nmap</string>
+			<string>kakaomap</string>
+			<string>tmap</string>
+			<string>szn-mapy</string>
+			<string>mappls</string>
+			<string>moovit</string>
+			<string>neshan</string>
+		</array>
+		<key>NSCameraUsageDescription</key>
+		<string>Permita usar a câmera para tirar a foto do seu perfil e enviar imagens quando necessário.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Permita que o app indique pontos de interesse próximos a você.</string>
+		<string>Permita acesso à sua localização para mostrar eventos, lugares e distâncias perto de você.</string>
 		<key>NSContactsUsageDescription</key>
-		<string>Precisamos acessar seus contatos para que você possa convidar amigos.</string>
+		<string>Permita acesso aos seus contatos para encontrar pessoas conhecidas no app e enviar convites.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Permita acessar suas fotos para escolher a imagem do perfil e enviar imagens quando necessário.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>fetch</string>
+			<string>remote-notification</string>
+		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

@@ -1,9 +1,12 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -176,6 +179,32 @@ void main() {
     expect(repository.allAccountProfilesStreamValue.value, isEmpty);
   });
 
+  test(
+      'refreshFavoriteAccountProfileIds clears stale ids when current identity has no backend favorites',
+      () async {
+    const staleFavoriteId = 'stale-profile-id';
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: const <AccountProfileModel>[],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {staleFavoriteId},
+    );
+
+    await repository.refreshFavoriteAccountProfileIds();
+
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value)
+          .toSet(),
+      isEmpty,
+    );
+  });
+
   test('toggleFavorite persists favorite and unfavorite through backend',
       () async {
     final validId = _generateMongoId();
@@ -251,6 +280,173 @@ void main() {
       validId,
     );
     expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
+  });
+
+  test(
+      'toggleFavorite refreshes canonical favorite resumes consumed by Home after mutations',
+      () async {
+    final validId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: validId,
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+      favoritePreviewsByAccountProfileId: {
+        validId: _favoritePreview(
+          id: validId,
+          title: 'Artist One',
+        ),
+      },
+    );
+    final favoriteRepository = _TrackingFavoriteRepository(
+      favoriteBackend: favoritesBackend,
+    );
+    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
+
+    expect(favoritesBackend.favoritedIds, contains(validId));
+    expect(
+      favoritesBackend.operationLog,
+      ['favorite:$validId', 'fetchFavorites'],
+    );
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
+    expect(
+      favoriteRepository.favoriteResumesStreamValue.value
+          ?.map((favorite) => favorite.title)
+          .toList(),
+      ['Artist One'],
+    );
+
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
+
+    expect(favoritesBackend.unfavoritedIds, contains(validId));
+    expect(
+      favoritesBackend.operationLog,
+      [
+        'favorite:$validId',
+        'fetchFavorites',
+        'unfavorite:$validId',
+        'fetchFavorites',
+      ],
+    );
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
+    expect(favoriteRepository.favoriteResumesStreamValue.value, isEmpty);
+  });
+
+  test(
+      'toggleFavorite does not refresh Home favorite resumes when persistence fails',
+      () async {
+    final validId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: validId,
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+      throwOnFavorite: true,
+      favoritePreviewsByAccountProfileId: {
+        validId: _favoritePreview(
+          id: validId,
+          title: 'Artist One',
+        ),
+      },
+    );
+    final favoriteRepository = _TrackingFavoriteRepository(
+      favoriteBackend: favoritesBackend,
+    );
+    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
+
+    expect(favoritesBackend.operationLog, ['favorite:$validId']);
+    expect(favoritesBackend.favoritedIds, isEmpty);
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 0);
+    expect(favoriteRepository.favoriteResumesStreamValue.value, isNull);
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value),
+      isNot(contains(validId)),
+    );
+  });
+
+  test(
+      'toggleFavorite keeps persisted state when Home favorite resume refresh fails',
+      () async {
+    final validId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: validId,
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+      favoritePreviewsByAccountProfileId: {
+        validId: _favoritePreview(
+          id: validId,
+          title: 'Artist One',
+        ),
+      },
+    );
+    final favoriteRepository = _TrackingFavoriteRepository(
+      favoriteBackend: favoritesBackend,
+      throwOnRefreshFavoriteResumes: true,
+    );
+    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.toggleFavorite(
+      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+    );
+
+    expect(favoritesBackend.favoritedIds, contains(validId));
+    expect(favoriteRepository.refreshFavoriteResumesCallCount, 1);
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value
+          .map((entry) => entry.value),
+      contains(validId),
+    );
   });
 
   test('fetchNearbyAccountProfiles keeps only favoritable registry types',
@@ -586,24 +782,104 @@ class _SpyTelemetry implements TelemetryRepositoryContract {
 class _StubFavoriteBackend extends FavoriteBackendContract {
   _StubFavoriteBackend({
     required this.favorites,
-  });
+    Map<String, FavoritePreviewDTO>? favoritePreviewsByAccountProfileId,
+    this.throwOnFavorite = false,
+  })  : _favoritesByAccountProfileId = {
+          for (final favorite in favorites)
+            (favorite.targetId ?? favorite.id): favorite,
+        },
+        _favoritePreviewsByAccountProfileId =
+            Map<String, FavoritePreviewDTO>.from(
+          favoritePreviewsByAccountProfileId ?? const {},
+        );
 
   final List<FavoritePreviewDTO> favorites;
+  final bool throwOnFavorite;
   final List<String> favoritedIds = <String>[];
   final List<String> unfavoritedIds = <String>[];
+  final List<String> operationLog = <String>[];
+  final Map<String, FavoritePreviewDTO> _favoritesByAccountProfileId;
+  final Map<String, FavoritePreviewDTO> _favoritePreviewsByAccountProfileId;
 
   @override
-  Future<List<FavoritePreviewDTO>> fetchFavorites() async => favorites;
+  Future<List<FavoritePreviewDTO>> fetchFavorites() async {
+    operationLog.add('fetchFavorites');
+    return _favoritesByAccountProfileId.values.toList(growable: false);
+  }
 
   @override
   Future<void> favoriteAccountProfile(String accountProfileId) async {
+    operationLog.add('favorite:$accountProfileId');
+    if (throwOnFavorite) {
+      throw StateError('favorite failed');
+    }
     favoritedIds.add(accountProfileId);
+    _favoritesByAccountProfileId[accountProfileId] =
+        _favoritePreviewsByAccountProfileId[accountProfileId] ??
+            _favoritePreview(
+              id: accountProfileId,
+              title: accountProfileId,
+            );
   }
 
   @override
   Future<void> unfavoriteAccountProfile(String accountProfileId) async {
+    operationLog.add('unfavorite:$accountProfileId');
     unfavoritedIds.add(accountProfileId);
+    _favoritesByAccountProfileId.remove(accountProfileId);
   }
+}
+
+class _TrackingFavoriteRepository extends FavoriteRepositoryContract {
+  _TrackingFavoriteRepository({
+    required this.favoriteBackend,
+    this.throwOnRefreshFavoriteResumes = false,
+  });
+
+  final FavoriteBackendContract favoriteBackend;
+  final bool throwOnRefreshFavoriteResumes;
+  int fetchFavoriteResumesCallCount = 0;
+  int refreshFavoriteResumesCallCount = 0;
+
+  @override
+  Future<List<Favorite>> fetchFavorites() async {
+    final favorites = await favoriteBackend.fetchFavorites();
+    return favorites.map((favorite) => favorite.toDomain()).toList(
+          growable: false,
+        );
+  }
+
+  @override
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async {
+    fetchFavoriteResumesCallCount += 1;
+    final favorites = await favoriteBackend.fetchFavorites();
+    return favorites.map((favorite) => favorite.toResume()).toList(
+          growable: false,
+        );
+  }
+
+  @override
+  Future<void> refreshFavoriteResumes() async {
+    refreshFavoriteResumesCallCount += 1;
+    if (throwOnRefreshFavoriteResumes) {
+      throw StateError('refresh failed');
+    }
+    await super.refreshFavoriteResumes();
+  }
+}
+
+FavoritePreviewDTO _favoritePreview({
+  required String id,
+  required String title,
+}) {
+  return FavoritePreviewDTO(
+    id: id,
+    title: title,
+    targetId: id,
+    registryKey: 'account_profile',
+    targetType: 'account_profile',
+    assetPath: 'assets/images/placeholder_avatar.png',
+  );
 }
 
 AppData _buildAppData() {

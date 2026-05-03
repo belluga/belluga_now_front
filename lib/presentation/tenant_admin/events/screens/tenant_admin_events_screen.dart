@@ -610,7 +610,7 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
         : TimezoneConverter.utcToLocal(occurrence.dateTimeEnd!);
     final rangeLabel = end == null
         ? startTime
-        : '$startTime - ${localizations.formatTimeOfDay(
+        : '$startTime às ${localizations.formatTimeOfDay(
             TimeOfDay.fromDateTime(end),
             alwaysUse24HourFormat: true,
           )}';

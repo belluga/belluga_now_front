@@ -138,6 +138,128 @@ void main() {
   );
 
   testWidgets(
+    'invite filter defaults compact and extends labels without extending radius',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: AgendaAppBar(controller: controller),
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-compact')),
+        findsOneWidget,
+      );
+      expect(find.text('Convites'), findsNothing);
+      expect(find.text('Confirmados'), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+        findsOneWidget,
+      );
+
+      controller.inviteFilterStreamValue.addValue(InviteFilter.pendingOnly);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-expanded')),
+        findsOneWidget,
+      );
+      expect(find.text('Convites'), findsOneWidget);
+      expect(find.text('Confirmados'), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+        findsNothing,
+      );
+
+      controller.inviteFilterStreamValue.addValue(InviteFilter.confirmedOnly);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Convites'), findsNothing);
+      expect(find.text('Confirmados'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact')),
+        findsOneWidget,
+      );
+
+      controller.inviteFilterStreamValue.addValue(InviteFilter.none);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-compact')),
+        findsOneWidget,
+      );
+      expect(find.text('Convites'), findsNothing);
+      expect(find.text('Confirmados'), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'invite filter tap cycles compact all through Convites and Confirmados',
+    (tester) async {
+      final controller = _FakeAgendaAppBarController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: AgendaAppBar(controller: controller),
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-compact')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+          controller.inviteFilterStreamValue.value, InviteFilter.pendingOnly);
+      expect(find.text('Convites'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-expanded')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        controller.inviteFilterStreamValue.value,
+        InviteFilter.confirmedOnly,
+      );
+      expect(find.text('Confirmados'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-expanded')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+      expect(
+        find.byKey(const ValueKey<String>('agenda-invite-filter-compact')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'radius slider updates local value on change and commits on change end',
     (tester) async {
       final controller = _FakeAgendaAppBarController();
@@ -355,7 +477,19 @@ class _FakeAgendaAppBarController implements AgendaAppBarController {
   }
 
   @override
-  void cycleInviteFilter() {}
+  void cycleInviteFilter() {
+    switch (inviteFilterStreamValue.value) {
+      case InviteFilter.none:
+        inviteFilterStreamValue.addValue(InviteFilter.pendingOnly);
+        break;
+      case InviteFilter.pendingOnly:
+        inviteFilterStreamValue.addValue(InviteFilter.confirmedOnly);
+        break;
+      case InviteFilter.confirmedOnly:
+        inviteFilterStreamValue.addValue(InviteFilter.none);
+        break;
+    }
+  }
 
   @override
   Future<void> searchEvents(String query) async {}

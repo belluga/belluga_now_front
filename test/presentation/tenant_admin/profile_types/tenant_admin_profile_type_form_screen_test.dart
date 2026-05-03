@@ -34,37 +34,34 @@ void main() {
     'asks destructive confirmation when disabling POI and respects cancel/confirm',
     (tester) async {
       final controller = _TestProfileTypesController(impactCount: 67);
-      GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TenantAdminProfileTypeFormScreen(
-            definition: tenantAdminProfileTypeDefinitionFromRaw(
-              type: 'venue',
-              label: 'Venue',
-              allowedTaxonomies: const [],
-              visual: TenantAdminPoiVisual.icon(
-                iconValue: TenantAdminRequiredTextValue()..parse('place'),
-                colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
-              ),
-              capabilities: TenantAdminProfileTypeCapabilities(
-                isFavoritable: TenantAdminFlagValue(true),
-                isPoiEnabled: TenantAdminFlagValue(true),
-                isReferenceLocationEnabled: TenantAdminFlagValue(true),
-                hasBio: TenantAdminFlagValue(true),
-                hasContent: TenantAdminFlagValue(true),
-                hasTaxonomies: TenantAdminFlagValue(true),
-                hasAvatar: TenantAdminFlagValue(true),
-                hasCover: TenantAdminFlagValue(true),
-                hasEvents: TenantAdminFlagValue(true),
-              ),
-            ),
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: const [],
+          visual: TenantAdminPoiVisual.icon(
+            iconValue: TenantAdminRequiredTextValue()..parse('place'),
+            colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+          ),
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(true),
+            isReferenceLocationEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
           ),
         ),
       );
-      await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'POI habilitado'));
+      final poiToggle = find.widgetWithText(SwitchListTile, 'POI habilitado');
+      await tester.ensureVisible(poiToggle);
+      await tester.tap(poiToggle);
       await tester.pumpAndSettle();
 
       final scrollable = find.byType(Scrollable).first;
@@ -107,31 +104,26 @@ void main() {
     tester,
   ) async {
     final controller = _TestProfileTypesController(impactCount: 0);
-    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminProfileTypeFormScreen(
-          definition: tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'hotel',
-            label: 'Hotel',
-            allowedTaxonomies: const [],
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(false),
-              isReferenceLocationEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(true),
-              hasContent: TenantAdminFlagValue(true),
-              hasTaxonomies: TenantAdminFlagValue(true),
-              hasAvatar: TenantAdminFlagValue(true),
-              hasCover: TenantAdminFlagValue(true),
-              hasEvents: TenantAdminFlagValue(true),
-            ),
-          ),
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'hotel',
+        label: 'Hotel',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          isReferenceLocationEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
     final referenceToggle = tester.widget<SwitchListTile>(
       find.widgetWithText(SwitchListTile, 'Referencia fixa habilitada'),
@@ -146,75 +138,92 @@ void main() {
     tester,
   ) async {
     final controller = _TestProfileTypesController(impactCount: 0);
-    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminProfileTypeFormScreen(
-          definition: tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'venue',
-            label: 'Venue',
-            allowedTaxonomies: const [],
-            visual: TenantAdminPoiVisual.icon(
-              iconValue: TenantAdminRequiredTextValue()..parse('place'),
-              colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
-            ),
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(true),
-              hasContent: TenantAdminFlagValue(true),
-              hasTaxonomies: TenantAdminFlagValue(true),
-              hasAvatar: TenantAdminFlagValue(true),
-              hasCover: TenantAdminFlagValue(true),
-              hasEvents: TenantAdminFlagValue(true),
-            ),
-          ),
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: const [],
+        visual: TenantAdminPoiVisual.icon(
+          iconValue: TenantAdminRequiredTextValue()..parse('place'),
+          colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+        ),
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('Visual do tipo'), findsOneWidget);
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
+  });
+
+  testWidgets('renders and hydrates plural label field', (tester) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        pluralLabel: 'Artists',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
+        ),
+      ),
+    );
+
+    expect(find.widgetWithText(TextFormField, 'Label plural'), findsOneWidget);
+    expect(find.text('Artists'), findsWidgets);
   });
 
   testWidgets(
     'shows canonical type image upload controls for type_asset visuals',
     (tester) async {
       final controller = _TestProfileTypesController(impactCount: 0);
-      GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TenantAdminProfileTypeFormScreen(
-            definition: tenantAdminProfileTypeDefinitionFromRaw(
-              type: 'restaurant',
-              label: 'Restaurant',
-              allowedTaxonomies: const [],
-              visual: TenantAdminPoiVisual.image(
-                imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-                colorValue: TenantAdminHexColorValue()..parse('#00897B'),
-                imageUrlValue: TenantAdminOptionalUrlValue()
-                  ..parse(
-                    'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
-                  ),
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'restaurant',
+          label: 'Restaurant',
+          allowedTaxonomies: const [],
+          visual: TenantAdminPoiVisual.image(
+            imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+            colorValue: TenantAdminHexColorValue()..parse('#00897B'),
+            imageUrlValue: TenantAdminOptionalUrlValue()
+              ..parse(
+                'https://tenant.test/api/v1/media/account-profile-types/type-1/type_asset?v=123',
               ),
-              capabilities: TenantAdminProfileTypeCapabilities(
-                isFavoritable: TenantAdminFlagValue(true),
-                isPoiEnabled: TenantAdminFlagValue(true),
-                hasBio: TenantAdminFlagValue(true),
-                hasContent: TenantAdminFlagValue(true),
-                hasTaxonomies: TenantAdminFlagValue(true),
-                hasAvatar: TenantAdminFlagValue(true),
-                hasCover: TenantAdminFlagValue(true),
-                hasEvents: TenantAdminFlagValue(true),
-              ),
-            ),
+          ),
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
           ),
         ),
       );
-      await tester.pumpAndSettle();
 
       expect(find.text('Imagem canônica do tipo'), findsOneWidget);
       expect(
@@ -230,33 +239,28 @@ void main() {
     tester,
   ) async {
     final controller = _TestProfileTypesController(impactCount: 0);
-    GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminProfileTypeFormScreen(
-          definition: tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'restaurant',
-            label: 'Restaurant',
-            allowedTaxonomies: const [],
-            visual: TenantAdminPoiVisual.image(
-              imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-            ),
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(true),
-              hasContent: TenantAdminFlagValue(true),
-              hasTaxonomies: TenantAdminFlagValue(true),
-              hasAvatar: TenantAdminFlagValue(true),
-              hasCover: TenantAdminFlagValue(true),
-              hasEvents: TenantAdminFlagValue(true),
-            ),
-          ),
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'restaurant',
+        label: 'Restaurant',
+        allowedTaxonomies: const [],
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+        ),
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('Enviar imagem canônica'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -272,6 +276,32 @@ void main() {
     expect(find.text('Do dispositivo'), findsOneWidget);
     expect(find.text('Da web'), findsOneWidget);
   });
+}
+
+Future<void> _pumpFormScreen(
+  WidgetTester tester, {
+  required TenantAdminProfileTypesController controller,
+  required TenantAdminProfileTypeDefinition definition,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1200, 2000);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
+  GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: TenantAdminProfileTypeFormScreen(definition: definition),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
@@ -297,6 +327,7 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
     required String type,
     String? newType,
     String? label,
+    String? pluralLabel,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -335,12 +366,14 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type,
       label: label,
+      pluralLabel: pluralLabel ?? label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );
@@ -373,6 +406,13 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return const <TenantAdminProfileTypeDefinition>[];
+  }
+
+  @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    throw StateError('Profile type not found: ${profileType.value}');
   }
 
   @override
@@ -424,12 +464,14 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: newType ?? type,
       label: label ?? type,
+      pluralLabel: pluralLabel ?? label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
       capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(

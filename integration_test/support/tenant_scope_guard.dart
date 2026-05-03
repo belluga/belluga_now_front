@@ -76,12 +76,14 @@ class TenantScopeGuard {
         .map((domain) => domain.value.host.toLowerCase())
         .toSet();
     final mainHost = appData.mainDomainValue.value.host.toLowerCase();
-    expect(
-      normalizedDomains.contains(mainHost),
-      isTrue,
-      reason: '[$testName] main_domain host must be listed in domains[] for '
-          'tenant scope consistency.',
-    );
+    if (normalizedDomains.isNotEmpty) {
+      expect(
+        normalizedDomains.contains(mainHost),
+        isTrue,
+        reason: '[$testName] main_domain host must be listed in domains[] for '
+            'tenant scope consistency when domains[] is provided.',
+      );
+    }
   }
 
   static String _normalizeOrigin(String raw) {

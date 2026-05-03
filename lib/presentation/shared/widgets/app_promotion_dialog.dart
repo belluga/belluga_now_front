@@ -51,11 +51,13 @@ class AppPromotionDialog extends StatelessWidget {
     String? redirectPath,
     String? shareCode,
     String? platformTarget,
+    bool fallbackToPromotionBoundary = false,
   }) =>
       buildTenantPromotionUriFromAppContext(
         redirectPath: redirectPath,
         shareCode: shareCode,
         platformTarget: platformTarget,
+        fallbackToPromotionBoundary: fallbackToPromotionBoundary,
       );
 
   @override

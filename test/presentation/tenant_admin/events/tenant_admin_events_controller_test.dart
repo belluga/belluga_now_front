@@ -533,6 +533,89 @@ void main() {
     );
   });
 
+  test('occurrence taxonomy overrides are scoped to the selected event type',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+    final showType = TenantAdminEventType.withAllowedTaxonomies(
+      nameValue: tenantAdminRequiredText('Shows'),
+      slugValue: tenantAdminRequiredText('shows'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+    );
+    final foodType = TenantAdminEventType.withAllowedTaxonomies(
+      nameValue: tenantAdminRequiredText('Food'),
+      slugValue: tenantAdminRequiredText('food'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
+    );
+    controller.eventTypeCatalogStreamValue.addValue([showType, foodType]);
+    controller.initEventForm(
+      existingEvent: TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-1'),
+        slugValue: tenantAdminRequiredText('evt-1'),
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: showType,
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 5, 20),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrenceKey = controller.primaryOccurrenceKey();
+    expect(occurrenceKey, isNotNull);
+
+    controller.toggleOccurrenceTaxonomyTerm(
+      occurrenceKey: occurrenceKey!,
+      taxonomySlug: 'genre',
+      termSlug: 'rock',
+      isSelected: true,
+    );
+    controller.toggleOccurrenceTaxonomyTerm(
+      occurrenceKey: occurrenceKey,
+      taxonomySlug: 'cuisine',
+      termSlug: 'italian',
+      isSelected: true,
+    );
+
+    expect(
+      controller
+          .occurrenceForKey(occurrenceKey)
+          ?.taxonomyTerms
+          .map((term) => '${term.type}:${term.value}')
+          .toList(growable: false),
+      ['genre:rock'],
+    );
+
+    controller.updateEventTypeSelection('food');
+
+    expect(controller.occurrenceForKey(occurrenceKey)?.taxonomyTerms, isEmpty);
+
+    controller.toggleOccurrenceTaxonomyTerm(
+      occurrenceKey: occurrenceKey,
+      taxonomySlug: 'cuisine',
+      termSlug: 'italian',
+      isSelected: true,
+    );
+
+    expect(
+      controller
+          .occurrenceForKey(occurrenceKey)
+          ?.taxonomyTerms
+          .map((term) => '${term.type}:${term.value}')
+          .toList(growable: false),
+      ['cuisine:italian'],
+    );
+  });
+
   test('account-scoped submitCreate does not refresh tenant-admin events list',
       () async {
     final eventsRepository = _AccountScopedEventsRepository();

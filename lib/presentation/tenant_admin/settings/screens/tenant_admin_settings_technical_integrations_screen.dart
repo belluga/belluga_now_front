@@ -7,6 +7,7 @@ import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_adm
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_app_links_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_firebase_section.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_outbound_integrations_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_push_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_resend_email_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
@@ -35,6 +36,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
 
   final GlobalKey _firebaseSectionKey = GlobalKey();
   final GlobalKey _resendSectionKey = GlobalKey();
+  final GlobalKey _outboundSectionKey = GlobalKey();
   final GlobalKey _appLinksSectionKey = GlobalKey();
   final GlobalKey _pushSectionKey = GlobalKey();
   final GlobalKey _telemetrySectionKey = GlobalKey();
@@ -57,6 +59,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
       TenantAdminSettingsIntegrationSection.appLinks => _appLinksSectionKey,
       TenantAdminSettingsIntegrationSection.firebase => _firebaseSectionKey,
       TenantAdminSettingsIntegrationSection.resend => _resendSectionKey,
+      TenantAdminSettingsIntegrationSection.outbound => _outboundSectionKey,
       TenantAdminSettingsIntegrationSection.push => _pushSectionKey,
       TenantAdminSettingsIntegrationSection.telemetry => _telemetrySectionKey,
     };
@@ -101,6 +104,19 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
                 'Envelope de disparo de e-mail transacional por tenant.',
             icon: Icons.mark_email_read_outlined,
             child: TenantAdminSettingsResendEmailSection(
+              controller: _controller,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        KeyedSubtree(
+          key: _outboundSectionKey,
+          child: TenantAdminSettingsSection(
+            key: TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+            title: 'Webhooks de saída',
+            description: 'URLs de envio por fila para WhatsApp e OTP.',
+            icon: Icons.webhook_outlined,
+            child: TenantAdminSettingsOutboundIntegrationsSection(
               controller: _controller,
             ),
           ),

@@ -127,6 +127,7 @@ class _TenantAdminProfileTypeFormScreenState
         type: widget.definition!.type,
         newType: _controller.typeController.text.trim(),
         label: _controller.labelController.text.trim(),
+        pluralLabel: _controller.pluralLabelController.text.trim(),
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
         visual: visual,
@@ -140,6 +141,7 @@ class _TenantAdminProfileTypeFormScreenState
     _controller.submitCreateType(
       type: _controller.typeController.text.trim(),
       label: _controller.labelController.text.trim(),
+      pluralLabel: _controller.pluralLabelController.text.trim(),
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
       visual: visual,
@@ -210,6 +212,21 @@ class _TenantAdminProfileTypeFormScreenState
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Label e obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _controller.pluralLabelController,
+                              decoration: const InputDecoration(
+                                labelText: 'Label plural',
+                              ),
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Label plural e obrigatorio.';
                                 }
                                 return null;
                               },

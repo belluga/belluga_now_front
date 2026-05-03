@@ -27,7 +27,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchConfirmedEventIds bootstraps auth token when initially missing',
+  test(
+      'fetchConfirmedOccurrenceIds bootstraps auth token when initially missing',
       () async {
     final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
         as _FakeAuthRepository;
@@ -37,16 +38,17 @@ void main() {
     final adapter = _RecordingAdapter(
       response: const {
         'data': {
-          'event_ids': [],
+          'confirmed_occurrence_ids': ['occurrence-1'],
         },
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
     final backend = LaravelUserEventsBackend(dio: dio);
 
-    await backend.fetchConfirmedEventIds();
+    final response = await backend.fetchConfirmedOccurrenceIds();
 
     expect(authRepository.initCallCount, 1);
+    expect(response['confirmed_occurrence_ids'], ['occurrence-1']);
     expect(
       adapter.lastRequest?.headers['Authorization'],
       'Bearer refreshed-token',
@@ -127,8 +129,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

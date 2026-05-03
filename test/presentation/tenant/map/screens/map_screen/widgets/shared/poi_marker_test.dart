@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.da
 import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,8 +117,8 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.restaurant), findsOneWidget);
-    expect(find.byIcon(Icons.beach_access), findsNothing);
+    expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
+    expect(find.byIcon(BooraIcons.beachUmbrella), findsNothing);
   });
 
   testWidgets('keeps selected marker icon contrast with visual color', (
@@ -148,7 +149,8 @@ void main() {
       ),
     );
 
-    final iconWidget = tester.widget<Icon>(find.byIcon(Icons.restaurant));
+    final iconWidget =
+        tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
     expect(iconWidget.color, Colors.white);
 
     final markerContainer =
@@ -184,8 +186,8 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.place), findsOneWidget);
-    expect(find.byIcon(Icons.restaurant), findsNothing);
+    expect(find.byIcon(BooraIcons.local), findsOneWidget);
+    expect(find.byIcon(BooraIcons.restaurant), findsNothing);
   });
 
   testWidgets('renders marker image when poi visual mode is image', (
@@ -275,6 +277,39 @@ void main() {
     expect(find.text('18:00'), findsOneWidget);
   });
 
+  testWidgets('keeps event time badge on one line when marker is narrow',
+      (tester) async {
+    final poi = _buildPoi(
+      category: CityPoiCategory.culture,
+      refType: 'event',
+      timeStart: DateTime(2026, 4, 7, 19, 30),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 24,
+              height: 56,
+              child: PoiMarker(
+                poi: poi,
+                isSelected: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final timeText = find.text('19:30');
+    expect(timeText, findsOneWidget);
+
+    final timeTextSize = tester.getSize(timeText);
+    expect(timeTextSize.height, lessThan(18));
+    expect(timeTextSize.width, greaterThan(24));
+  });
+
   testWidgets(
     'prefers valid override visual over poi visual',
     (tester) async {
@@ -307,8 +342,8 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.restaurant), findsOneWidget);
-      expect(find.byIcon(Icons.museum), findsNothing);
+      expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
+      expect(find.byIcon(BooraIcons.museum), findsNothing);
     },
   );
 
@@ -344,8 +379,8 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.museum), findsOneWidget);
-      expect(find.byIcon(Icons.restaurant), findsNothing);
+      expect(find.byIcon(BooraIcons.museum), findsOneWidget);
+      expect(find.byIcon(BooraIcons.restaurant), findsNothing);
     },
   );
 
@@ -387,8 +422,55 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.restaurant), findsOneWidget);
-      expect(find.byIcon(Icons.place), findsNothing);
+      expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
+      expect(find.byIcon(BooraIcons.local), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'renders AGORA badge from transport happening-now payload',
+    (tester) async {
+      final poi = _buildPoiFromTransportPayload({
+        'id': 'poi-transport-now',
+        'name': 'Event Now',
+        'description': 'Descricao',
+        'address': 'Endereco',
+        'category': 'event',
+        'ref_type': 'event',
+        'ref_id': 'event-now',
+        'is_happening_now': true,
+        'time_start': '2026-04-07T18:00:00.000000Z',
+        'location': {
+          'lat': -20.0,
+          'lng': -40.0,
+        },
+        'visual': {
+          'mode': {'value': 'icon'},
+          'icon': {'value': 'music'},
+          'color': {'value': '#EB2528'},
+          'source': {'value': 'type_definition'},
+        },
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: PoiMarker(
+                  poi: poi,
+                  isSelected: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('AGORA'), findsOneWidget);
+      expect(find.text('18:00'), findsNothing);
     },
   );
 
@@ -431,7 +513,8 @@ void main() {
         ),
       );
 
-      final iconWidget = tester.widget<Icon>(find.byIcon(Icons.restaurant));
+      final iconWidget =
+          tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
       expect(iconWidget.color, const Color(0xFFEB2528));
     },
   );
@@ -474,8 +557,8 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.restaurant), findsOneWidget);
-      expect(find.byIcon(Icons.place), findsNothing);
+      expect(find.byIcon(BooraIcons.restaurant), findsOneWidget);
+      expect(find.byIcon(BooraIcons.local), findsNothing);
 
       final markerContainer =
           tester.widget<DecoratedBox>(find.byType(DecoratedBox).first);

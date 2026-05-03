@@ -49,6 +49,8 @@ void main() {
     );
     await userEventsRepository.confirmEventAttendance(
       userEventsRepoString(_CapturingScheduleBackend.eventId),
+      occurrenceId:
+          userEventsRepoString(_CapturingScheduleBackend.occurrenceId),
     );
 
     final controller = _buildTenantHomeController(
@@ -88,6 +90,8 @@ void main() {
     );
     await userEventsRepository.confirmEventAttendance(
       userEventsRepoString(_CapturingScheduleBackend.eventId),
+      occurrenceId:
+          userEventsRepoString(_CapturingScheduleBackend.occurrenceId),
     );
 
     final controller = _buildTenantHomeController(
@@ -156,6 +160,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   });
 
   static const String eventId = '507f1f77bcf86cd799439011';
+  static const String occurrenceId = '507f1f77bcf86cd799439012';
   final bool hasMoreFirstPage;
 
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
@@ -178,6 +183,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -211,6 +217,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -224,16 +231,16 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
   final Set<String> _confirmed = <String>{};
 
   @override
-  Future<Map<String, dynamic>> fetchConfirmedEventIds() async {
-    return {'confirmed_event_ids': _confirmed.toList(growable: false)};
+  Future<Map<String, dynamic>> fetchConfirmedOccurrenceIds() async {
+    return {'confirmed_occurrence_ids': _confirmed.toList(growable: false)};
   }
 
   @override
   Future<Map<String, dynamic>> confirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   }) async {
-    _confirmed.add(eventId);
+    _confirmed.add(occurrenceId);
     return {
       'event_id': eventId,
       'occurrence_id': occurrenceId,
@@ -245,9 +252,9 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
   @override
   Future<Map<String, dynamic>> unconfirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   }) async {
-    _confirmed.remove(eventId);
+    _confirmed.remove(occurrenceId);
     return {
       'event_id': eventId,
       'occurrence_id': occurrenceId,
@@ -462,7 +469,7 @@ EventDTO _buildEventDto({
 }) {
   return EventDTO.fromJson({
     'event_id': eventId,
-    'occurrence_id': '507f1f77bcf86cd799439012',
+    'occurrence_id': _CapturingScheduleBackend.occurrenceId,
     'slug': 'evento-teste',
     'title': 'Evento Teste',
     'content': 'Conteudo do evento completo',

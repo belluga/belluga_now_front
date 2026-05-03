@@ -18,12 +18,20 @@ void main() {
     expect(result, '/invite?code=ABCD1234');
   });
 
-  test('resolveWebPromotionPath ignores code outside invite context', () {
+  test('resolveWebPromotionPath preserves event detail occurrence intent', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: '/agenda/evento/evento-de-teste?occurrence=occ-1',
+    );
+
+    expect(result, '/agenda/evento/evento-de-teste?occurrence=occ-1');
+  });
+
+  test('resolveWebPromotionPath strips non-route query from event detail', () {
     final result = resolveWebPromotionPath(
       redirectPath: '/agenda/evento/evento-de-teste?code=ABCD1234',
     );
 
-    expect(result, '/');
+    expect(result, '/agenda/evento/evento-de-teste');
   });
 
   test('resolveWebPromotionPath falls back to home when code is missing', () {
@@ -36,6 +44,45 @@ void main() {
 
   test('resolveWebPromotionPath falls back to home when path is empty', () {
     final result = resolveWebPromotionPath(redirectPath: '   ');
+
+    expect(result, '/');
+  });
+
+  test('resolveWebPromotionPath falls back for blocked non-detail agenda path',
+      () {
+    final result = resolveWebPromotionPath(redirectPath: '/agenda');
+
+    expect(result, '/');
+  });
+
+  test('resolveWebPromotionPath falls back for external absolute URL', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: 'https://evil.example/agenda/evento/show-1',
+    );
+
+    expect(result, '/');
+  });
+
+  test('resolveWebPromotionPath falls back for external invite URL', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: 'https://evil.example/invite?code=ABCD1234',
+    );
+
+    expect(result, '/');
+  });
+
+  test('resolveWebPromotionPath falls back for scheme-relative URL', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: '//evil.example/agenda/evento/show-1',
+    );
+
+    expect(result, '/');
+  });
+
+  test('resolveWebPromotionPath falls back for scheme-relative invite URL', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: '//evil.example/invite?code=ABCD1234',
+    );
 
     expect(result, '/');
   });
@@ -59,12 +106,36 @@ void main() {
     expect(result, '/invite?code=ABCD1234');
   });
 
+  test('resolveWebPromotionDismissPath preserves public detail redirect', () {
+    final result = resolveWebPromotionDismissPath(
+      redirectPath: '/parceiro/casa-marracini',
+    );
+
+    expect(result, '/parceiro/casa-marracini');
+  });
+
+  test('resolveWebPromotionPath preserves map poi query intent', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: '/mapa/poi?poi=event:evt-1&stack=stack-1&extra=ignored',
+    );
+
+    expect(result, '/mapa/poi?poi=event%3Aevt-1&stack=stack-1');
+  });
+
   test('resolveWebPromotionShareCode returns code for invite context', () {
     final result = resolveWebPromotionShareCode(
       redirectPath: '/invite?code=ABCD1234',
     );
 
     expect(result, 'ABCD1234');
+  });
+
+  test('resolveWebPromotionShareCode rejects external invite context', () {
+    final result = resolveWebPromotionShareCode(
+      redirectPath: 'https://evil.example/invite?code=ABCD1234',
+    );
+
+    expect(result, isNull);
   });
 
   test('resolveWebPromotionShareCode returns null outside invite context', () {
@@ -86,6 +157,14 @@ void main() {
     );
   });
 
+  test('resolveWebPromotionPath falls back for over-nested auth redirect', () {
+    final result = resolveWebPromotionPath(
+      redirectPath: _nestedAuthRedirect(depth: 8, terminal: '/descobrir'),
+    );
+
+    expect(result, '/');
+  });
+
   test('isAuthOwnedPromotionRedirectPath matches auth-owned redirect family',
       () {
     expect(isAuthOwnedPromotionRedirectPath('/profile'), isTrue);
@@ -94,4 +173,18 @@ void main() {
     expect(isAuthOwnedPromotionRedirectPath('/convites/compartilhar'), isTrue);
     expect(isAuthOwnedPromotionRedirectPath('/agenda/evento/show-1'), isFalse);
   });
+}
+
+String _nestedAuthRedirect({
+  required int depth,
+  required String terminal,
+}) {
+  var value = terminal;
+  for (var index = 0; index < depth; index += 1) {
+    value = Uri(
+      path: '/auth/login',
+      queryParameters: <String, String>{'redirect': value},
+    ).toString();
+  }
+  return value;
 }

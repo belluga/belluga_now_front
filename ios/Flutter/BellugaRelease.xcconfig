@@ -1,0 +1,6 @@
+// Versioned iOS release-owned identity surface.
+// Keep these values aligned with the canonical tenant app-domain records.
+
+BELLUGA_IOS_DISPLAY_NAME=Guarappari
+BELLUGA_IOS_BUNDLE_NAME=Guarappari
+BELLUGA_IOS_BUNDLE_IDENTIFIER=com.guarappari.app

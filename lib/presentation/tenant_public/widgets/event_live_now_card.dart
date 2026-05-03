@@ -31,8 +31,8 @@ class EventLiveNowCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final brightness = Theme.of(context).brightness;
     final start = event.startDateTime;
-    final end = start.add(assumedDuration);
-    final timeRange = '${start.timeLabel} - ${end.timeLabel}';
+    final end = event.endDateTime ?? start.add(assumedDuration);
+    final timeRange = '${start.timeLabel} às ${end.timeLabel}';
     final onOverlay = Colors.white;
 
     return LayoutBuilder(
@@ -49,38 +49,38 @@ class EventLiveNowCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                  ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: BellugaNetworkImage(
-                      event.imageUri.toString(),
-                      fit: BoxFit.cover,
-                      errorWidget: Container(
-                        color: colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.broken_image,
-                          size: 40,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: BellugaNetworkImage(
+                    event.imageUri.toString(),
+                    fit: BoxFit.cover,
+                    errorWidget: Container(
+                      color: colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 40,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: brightness == Brightness.dark
-                            ? [
-                                Colors.black.withValues(alpha: 0.78),
-                                Colors.black.withValues(alpha: 0.35),
-                              ]
-                            : [
-                                Colors.black.withValues(alpha: 0.65),
-                                Colors.black.withValues(alpha: 0.3),
-                              ],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: brightness == Brightness.dark
+                          ? [
+                              Colors.black.withValues(alpha: 0.78),
+                              Colors.black.withValues(alpha: 0.35),
+                            ]
+                          : [
+                              Colors.black.withValues(alpha: 0.65),
+                              Colors.black.withValues(alpha: 0.3),
+                            ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
                     ),
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: AnimatedSwitcher(

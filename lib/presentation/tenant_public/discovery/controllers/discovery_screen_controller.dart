@@ -2,15 +2,14 @@ import 'dart:async';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -32,17 +31,12 @@ class DiscoveryScreenController extends Object
     implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
-    AuthRepositoryContract? authRepository,
     DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
         _discoveryFiltersRepository = discoveryFiltersRepository ??
             (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
                 ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
@@ -56,7 +50,6 @@ class DiscoveryScreenController extends Object
             GetIt.I.get<LocationOriginServiceContract>();
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
-  final AuthRepositoryContract? _authRepository;
   final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
@@ -76,8 +69,7 @@ class DiscoveryScreenController extends Object
 
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteIdsSubscription;
-  StreamSubscription<Object?>? _userLocationSubscription;
-  StreamSubscription<Object?>? _lastKnownLocationSubscription;
+  StreamSubscription<LocationOriginResolution?>? _effectiveOriginSubscription;
   Timer? _searchDebounce;
   bool _initialized = false;
   bool _isDisposed = false;
@@ -167,7 +159,7 @@ class DiscoveryScreenController extends Object
 
     searchController.addListener(_handleSearchControllerChanged);
     _attachScrollListener();
-    _attachLocationListeners();
+    _attachCanonicalOriginListeners();
 
     try {
       await _accountProfilesRepository.init();
@@ -241,25 +233,20 @@ class DiscoveryScreenController extends Object
     });
   }
 
-  void _attachLocationListeners() {
-    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      return;
-    }
-    final repository = GetIt.I.get<UserLocationRepositoryContract>();
-    _lastOriginSignature = _originSignature();
-
-    _userLocationSubscription ??=
-        repository.userLocationStreamValue.stream.listen((_) {
-      _onLocationUpdated();
-    });
-    _lastKnownLocationSubscription ??=
-        repository.lastKnownLocationStreamValue.stream.listen((_) {
-      _onLocationUpdated();
+  void _attachCanonicalOriginListeners() {
+    _lastOriginSignature = _originSignature(
+      _locationOriginService.effectiveOriginStreamValue.value,
+    );
+    _effectiveOriginSubscription ??=
+        _locationOriginService.effectiveOriginStreamValue.stream.listen((
+      resolution,
+    ) {
+      _onCanonicalOriginUpdated(resolution);
     });
   }
 
-  void _onLocationUpdated() {
-    final signature = _originSignature();
+  void _onCanonicalOriginUpdated(LocationOriginResolution? resolution) {
+    final signature = _originSignature(resolution);
     if (signature == null || signature == _lastOriginSignature) {
       return;
     }
@@ -523,9 +510,6 @@ class DiscoveryScreenController extends Object
   }
 
   FavoriteToggleOutcome toggleFavorite(String accountProfileId) {
-    if (!_isAuthorized) {
-      return FavoriteToggleOutcome.requiresAuthentication;
-    }
     final current = Set<String>.from(favoriteIdsStreamValue.value);
     if (current.contains(accountProfileId)) {
       current.remove(accountProfileId);
@@ -556,8 +540,9 @@ class DiscoveryScreenController extends Object
     favoriteIdsStreamValue.addValue(ids);
   }
 
-  String? _originSignature() {
+  String? _originSignature(LocationOriginResolution? resolution) {
     final coordinate =
+        resolution?.effectiveCoordinate ??
         _locationOriginService.resolveCached().effectiveCoordinate;
     if (coordinate == null) {
       return null;
@@ -782,8 +767,6 @@ class DiscoveryScreenController extends Object
     return type;
   }
 
-  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
-
   bool _isLifecycleTokenActive(int lifecycleToken) {
     return !_isDisposed && lifecycleToken == _lifecycleToken;
   }
@@ -794,8 +777,7 @@ class DiscoveryScreenController extends Object
     _lifecycleToken++;
     _searchDebounce?.cancel();
     searchController.removeListener(_handleSearchControllerChanged);
-    _userLocationSubscription?.cancel();
-    _lastKnownLocationSubscription?.cancel();
+    _effectiveOriginSubscription?.cancel();
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
     discoveryFilterCatalogStreamValue.dispose();

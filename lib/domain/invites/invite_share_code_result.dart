@@ -6,14 +6,14 @@ class InviteShareCodeResult {
   const InviteShareCodeResult({
     required this.codeValue,
     required this.eventIdValue,
-    this.occurrenceIdValue,
+    required this.occurrenceIdValue,
   });
 
   final InviteShareCodeValue codeValue;
   final InviteEventIdValue eventIdValue;
-  final InviteOccurrenceIdValue? occurrenceIdValue;
+  final InviteOccurrenceIdValue occurrenceIdValue;
 
   String get code => codeValue.value;
   String get eventId => eventIdValue.value;
-  String? get occurrenceId => occurrenceIdValue?.value;
+  String get occurrenceId => occurrenceIdValue.value ?? '';
 }

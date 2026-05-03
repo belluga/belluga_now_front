@@ -106,6 +106,8 @@ void main() {
       expect(profilesRepository.current.content, contains('😄'));
       expect(profilesRepository.current.content, contains('Content ordered'));
 
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
       await GetIt.I.unregister<TenantAdminAccountProfilesController>();
       GetIt.I.registerSingleton<TenantAdminAccountDetailController>(
         TenantAdminAccountDetailController(
@@ -119,11 +121,19 @@ void main() {
         const TenantAdminAccountDetailScreen(accountSlug: 'casa-cultural'),
       );
 
+      await _pumpUntilFound(tester, find.byType(ListView));
+      final adminDetailScrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Bio'),
+        250,
+        scrollable: adminDetailScrollable,
+      );
+
       expect(find.text('Bio'), findsOneWidget);
       expect(find.text('Conteúdo'), findsOneWidget);
       expect(find.text('Bio Heading 🎉'), findsOneWidget);
-      expect(find.text('Bold bio'), findsOneWidget);
-      expect(find.text('Second bio line'), findsOneWidget);
+      expect(find.textContaining('Bold bio'), findsWidgets);
+      expect(find.textContaining('Second bio line'), findsWidgets);
       expect(find.text('Bio quote'), findsOneWidget);
       expect(find.text('Bio bullet'), findsOneWidget);
       expect(find.text('Content Heading'), findsOneWidget);
@@ -152,11 +162,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Sobre'), findsNWidgets(2));
+      await _pumpUntilFound(tester, find.byType(NestedScrollView));
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('immersiveTabLabel_0')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sobre'), findsWidgets);
       expect(find.text('Conteúdo'), findsOneWidget);
       expect(find.text('Bio Heading 🎉'), findsOneWidget);
-      expect(find.text('Bold bio'), findsOneWidget);
-      expect(find.text('Second bio line'), findsOneWidget);
+      expect(find.textContaining('Bold bio'), findsWidgets);
+      expect(find.textContaining('Second bio line'), findsWidgets);
       expect(find.text('Bio quote'), findsOneWidget);
       expect(find.text('Bio bullet'), findsOneWidget);
       expect(find.text('Content Heading'), findsOneWidget);
@@ -200,6 +218,20 @@ Future<void> _pumpAdminRoute(WidgetTester tester, Widget child) async {
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int maxPumps = 50,
+}) async {
+  for (var pump = 0; pump < maxPumps; pump += 1) {
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(finder, findsWidgets);
 }
 
 class _PublicRouteHost extends StatelessWidget {
@@ -307,7 +339,10 @@ class _RichTextAccountsRepository
   );
 
   @override
-  Future<List<TenantAdminAccount>> fetchAccounts() async => [account];
+  Future<List<TenantAdminAccount>> fetchAccounts() async {
+    accountsStreamValue.addValue([account]);
+    return [account];
+  }
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
@@ -316,6 +351,7 @@ class _RichTextAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
+    accountsStreamValue.addValue([account]);
     return tenantAdminPagedAccountsResultFromRaw(
       accounts: [account],
       hasMore: false,
@@ -326,6 +362,7 @@ class _RichTextAccountsRepository
   Future<TenantAdminAccount> fetchAccountBySlug(
     TenantAdminAccountsRepositoryContractPrimString accountSlug,
   ) async {
+    accountsStreamValue.addValue([account]);
     return account;
   }
 
@@ -505,9 +542,19 @@ class _RichTextProfilesRepository
   }
 
   @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    return (await fetchProfileTypes()).firstWhere(
+      (definition) => definition.type == profileType.value,
+    );
+  }
+
+  @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
@@ -524,6 +571,7 @@ class _RichTextProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {

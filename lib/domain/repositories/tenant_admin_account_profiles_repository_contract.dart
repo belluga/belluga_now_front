@@ -151,6 +151,9 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes();
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  );
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
@@ -180,12 +183,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
   });
   Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
@@ -194,6 +199,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     return createProfileType(
       type: type,
       label: label,
+      pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );
@@ -203,6 +209,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   });
@@ -210,6 +217,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -220,6 +228,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
       type: type,
       newType: newType,
       label: label,
+      pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );
@@ -347,31 +356,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 }
 
-extension TenantAdminAccountProfilesRepositoryLookup
-    on TenantAdminAccountProfilesRepositoryContract {
-  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
-    TenantAdminAccountProfilesRepoString profileType,
-  ) async {
-    final normalizedType = profileType.value.trim();
-    if (normalizedType.isEmpty) {
-      throw ArgumentError.value(
-        profileType,
-        'profileType',
-        'Profile type must not be empty',
-      );
-    }
-
-    final profileTypes = await fetchProfileTypes();
-    for (final definition in profileTypes) {
-      if (definition.type == normalizedType) {
-        return definition;
-      }
-    }
-
-    throw StateError('Profile type not found for type: $normalizedType');
-  }
-}
-
 mixin TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>
@@ -470,6 +454,7 @@ mixin TenantAdminProfileTypesPaginationMixin
   Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
@@ -478,6 +463,7 @@ mixin TenantAdminProfileTypesPaginationMixin
     return createProfileType(
       type: type,
       label: label,
+      pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );
@@ -488,6 +474,7 @@ mixin TenantAdminProfileTypesPaginationMixin
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -498,6 +485,7 @@ mixin TenantAdminProfileTypesPaginationMixin
       type: type,
       newType: newType,
       label: label,
+      pluralLabel: pluralLabel,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );

@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
+import 'package:phone_form_field/phone_form_field.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -124,6 +125,7 @@ class _StartupBootstrapErrorAppState extends State<_StartupBootstrapErrorApp> {
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
+        ...PhoneFieldLocalization.delegates,
       ],
       home: Scaffold(
         body: Center(

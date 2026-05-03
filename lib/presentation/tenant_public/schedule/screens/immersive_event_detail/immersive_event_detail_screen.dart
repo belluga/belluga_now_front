@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
@@ -29,12 +30,12 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/linked_profile_category_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
-import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 /// Event-specific immersive detail screen.
@@ -47,12 +48,14 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
     required this.event,
     this.colorScheme,
     this.directionsAppChooser,
+    this.shareLauncher,
     super.key,
   });
 
   final EventModel event;
   final ColorScheme? colorScheme;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final Future<void> Function(ShareParams params)? shareLauncher;
 
   @override
   State<ImmersiveEventDetailScreen> createState() =>
@@ -63,6 +66,7 @@ class _ImmersiveEventDetailScreenState
     extends State<ImmersiveEventDetailScreen> {
   final ImmersiveEventDetailController _controller =
       GetIt.I.get<ImmersiveEventDetailController>();
+  final GlobalKey _programmingSectionAnchorKey = GlobalKey();
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
 
@@ -97,26 +101,34 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
-            return StreamValueBuilder<Set<String>>(
-              streamValue: _controller.favoriteAccountProfileIdsStreamValue,
-              builder: (context, favoriteAccountProfileIds) {
-                final colorScheme =
-                    widget.colorScheme ?? Theme.of(context).colorScheme;
-                return StreamValueBuilder<List<InviteModel>>(
-                  streamValue: _controller.receivedInvitesStreamValue,
-                  builder: (context, receivedInvites) {
-                    return StreamValueBuilder<
-                        Map<InvitesRepositoryContractPrimString,
-                            List<SentInviteStatus>>>(
-                      streamValue: _controller.sentInvitesByEventStreamValue,
-                      builder: (context, sentInvitesByEvent) {
-                        final sentForEvent =
-                            sentInvitesByEvent[invitesRepoString(
-                                  resolvedEvent.id.value,
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.isConfirmationStateLoadingStreamValue,
+              builder: (context, isConfirmationStateLoading) {
+                return StreamValueBuilder<Set<String>>(
+                  streamValue: _controller.favoriteAccountProfileIdsStreamValue,
+                  builder: (context, favoriteAccountProfileIds) {
+                    final colorScheme =
+                        widget.colorScheme ?? Theme.of(context).colorScheme;
+                    return StreamValueBuilder<List<InviteModel>>(
+                      streamValue: _controller.receivedInvitesStreamValue,
+                      builder: (context, receivedInvites) {
+                        return StreamValueBuilder<
+                            Map<InvitesRepositoryContractPrimString,
+                                List<SentInviteStatus>>>(
+                          streamValue:
+                              _controller.sentInvitesByOccurrenceStreamValue,
+                          builder: (context, sentInvitesByOccurrence) {
+                        final selectedOccurrenceId =
+                            resolvedEvent.selectedOccurrenceId?.trim();
+                        final sentForEvent = selectedOccurrenceId == null ||
+                                selectedOccurrenceId.isEmpty
+                            ? const <SentInviteStatus>[]
+                            : sentInvitesByOccurrence[invitesRepoString(
+                                  selectedOccurrenceId,
                                   defaultValue: '',
                                   isRequired: true,
                                 )] ??
-                                const [];
+                                const <SentInviteStatus>[];
 
                         final Widget? topBanner = receivedInvites.isNotEmpty
                             ? Padding(
@@ -140,18 +152,32 @@ class _ImmersiveEventDetailScreenState
                           if (resolvedEvent.hasAnyProgrammingItems)
                             ImmersiveTabItem(
                               title: 'Programação',
-                              content: EventProgrammingSection(
-                                items: resolvedEvent.programmingItems,
-                                occurrences: resolvedEvent.occurrences,
-                                profileTypeRegistry:
-                                    _controller.profileTypeRegistry,
-                                onOccurrenceTap: (occurrence) =>
-                                    _openOccurrence(
-                                  resolvedEvent,
-                                  occurrence,
-                                  tab: 'programming',
+                              content: KeyedSubtree(
+                                key: _programmingSectionAnchorKey,
+                                child: EventProgrammingSection(
+                                  items: resolvedEvent.programmingItems,
+                                  occurrences: resolvedEvent.occurrences,
+                                  profileTypeRegistry:
+                                      _controller.profileTypeRegistry,
+                                  onOccurrenceTap: (occurrence) =>
+                                      _openOccurrence(
+                                    resolvedEvent,
+                                    occurrence,
+                                    tab: 'programming',
+                                  ),
+                                  onLocationTap: _openProgrammingLocationMap,
                                 ),
-                                onLocationTap: _openProgrammingLocationMap,
+                              ),
+                              onHorizontalSwipeEnd: ({
+                                required direction,
+                                required activateTab,
+                                required currentTabIndex,
+                              }) =>
+                                  _handleProgrammingSwipe(
+                                event: resolvedEvent,
+                                direction: direction,
+                                activateTab: activateTab,
+                                currentTabIndex: currentTabIndex,
                               ),
                               footer: null,
                             ),
@@ -181,74 +207,82 @@ class _ImmersiveEventDetailScreenState
                                   )
                                 : null,
                           ),
-                          if (isConfirmed)
-                            ImmersiveTabItem(
-                              title: 'Ganhe Brindes',
-                              content: Align(
-                                alignment: Alignment.topCenter,
-                                child: UnconstrainedBox(
-                                  alignment: Alignment.topCenter,
-                                  constrainedAxis: Axis.horizontal,
-                                  child: StreamValueBuilder(
-                                    streamValue: _controller.missionStreamValue,
-                                    onNullWidget: const SizedBox.shrink(),
-                                    builder: (context, mission) {
-                                      return MissionWidget(mission: mission);
-                                    },
-                                  ),
-                                ),
-                              ),
-                              footer: null,
-                            ),
                         ];
 
-                        final footer = isConfirmed
-                            ? _buildInviteFooter(
-                                context,
-                                () => _openInviteFlow(resolvedEvent),
-                                sentForEvent,
-                              )
-                            : DynamicFooter(
-                                buttonText: 'Bóora! Confirmar Presença!',
-                                buttonIcon: Icons.celebration,
-                                buttonColor: colorScheme.primary,
-                                onActionPressed: () {
-                                  unawaited(_handleConfirmAttendance());
-                                },
-                              );
+                            final footer = isConfirmationStateLoading &&
+                                    !isConfirmed
+                                ? DynamicFooter(
+                                    buttonText: 'Verificando presença...',
+                                    buttonIcon: Icons.hourglass_top_rounded,
+                                    buttonColor:
+                                        colorScheme.surfaceContainerHigh,
+                                    onActionPressed: null,
+                                  )
+                                : isConfirmed
+                                    ? _buildInviteFooter(
+                                        context,
+                                        () => _openInviteFlow(resolvedEvent),
+                                        sentForEvent,
+                                      )
+                                    : DynamicFooter(
+                                        buttonText:
+                                            'Bóora! Confirmar Presença!',
+                                        buttonIcon: Icons.celebration,
+                                        buttonColor: colorScheme.primary,
+                                        onActionPressed: () {
+                                          unawaited(
+                                            _handleConfirmAttendance(),
+                                          );
+                                        },
+                                      );
 
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: colorScheme,
-                          ),
-                          child: ImmersiveDetailScreen(
-                            heroContentBuilder: (context, activateTab) =>
-                                ImmersiveHero(
-                              event: resolvedEvent,
-                              fallbackImageUri:
-                                  _controller.defaultEventImageUri,
-                              onCounterpartTap: (profile) {
-                                final targetIndex =
-                                    _linkedProfileTabIndexForHeroTap(
-                                  resolvedEvent,
-                                  profile,
-                                );
-                                if (targetIndex != null) {
-                                  activateTab(targetIndex);
-                                }
-                              },
-                            ),
-                            title: resolvedEvent.title.value,
-                            betweenHeroAndTabs: topBanner,
-                            tabs: tabs,
-                            canUseTabFooter: (_) => isConfirmed,
-                            // Don't auto-navigate, let user scroll naturally
-                            initialTabIndex:
-                                _resolveInitialTabIndex(tabs, context),
-                            footer: footer,
-                            backPolicy:
-                                buildCanonicalCurrentRouteBackPolicy(context),
-                          ),
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: colorScheme,
+                              ),
+                              child: StreamValueBuilder<bool>(
+                                streamValue:
+                                    _controller.isShareActionLoadingStreamValue,
+                                builder: (context, isShareLoading) {
+                                  return ImmersiveDetailScreen(
+                                    heroContentBuilder:
+                                        (context, activateTab) =>
+                                            ImmersiveHero(
+                                      event: resolvedEvent,
+                                      fallbackImageUri:
+                                          _controller.defaultEventImageUri,
+                                      onCounterpartTap: (profile) {
+                                        final targetIndex =
+                                            _linkedProfileTabIndexForHeroTap(
+                                          resolvedEvent,
+                                          profile,
+                                        );
+                                        if (targetIndex != null) {
+                                          activateTab(targetIndex);
+                                        }
+                                      },
+                                    ),
+                                    title: resolvedEvent.title.value,
+                                    betweenHeroAndTabs: topBanner,
+                                    tabs: tabs,
+                                    canUseTabFooter: (_) => isConfirmed,
+                                    // Don't auto-navigate, let user scroll naturally
+                                    initialTabIndex:
+                                        _resolveInitialTabIndex(tabs, context),
+                                    footer: footer,
+                                    backPolicy:
+                                        buildCanonicalCurrentRouteBackPolicy(
+                                      context,
+                                    ),
+                                    onSharePressed: () => unawaited(
+                                      _shareSelectedEvent(resolvedEvent),
+                                    ),
+                                    isShareLoading: isShareLoading,
+                                  );
+                                },
+                              ),
+                            );
+                          },
                         );
                       },
                     );
@@ -268,13 +302,13 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleConfirmAttendance() async {
-    final redirectPath =
+    final routeRedirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
+        redirectPath: routeRedirectPath,
+        actionType: AuthWallActionType.confirmAttendance,
       );
       return;
     }
@@ -284,8 +318,86 @@ class _ImmersiveEventDetailScreenState
         result != AttendanceConfirmationResult.requiresAuthentication) {
       return;
     }
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+    final encodedRedirect = Uri.encodeQueryComponent(routeRedirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  Future<void> _shareSelectedEvent(EventModel event) async {
+    final eventPath = _eventRedirectPath(event);
+    if (eventPath == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+      return;
+    }
+
+    if (kIsWeb) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
+        redirectPath: eventPath,
+        actionType: AuthWallActionType.sendInvite,
+      );
+      return;
+    }
+
+    final shareUri = await _controller.createShareUriForSelectedEvent();
+    if (!mounted) {
+      return;
+    }
+    if (shareUri == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+      return;
+    }
+
+    final invite = InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
+    );
+    final shareText =
+        'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime}.'
+        '\nDetalhes: $shareUri';
+
+    try {
+      final launcher = widget.shareLauncher;
+      if (launcher != null) {
+        await launcher(
+          ShareParams(
+            text: shareText,
+            subject: 'Convite Belluga Now',
+          ),
+        );
+      } else {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: shareText,
+            subject: 'Convite Belluga Now',
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+    }
+  }
+
+  String? _eventRedirectPath(EventModel event) {
+    final slug = event.slug.trim();
+    if (slug.isEmpty) {
+      return null;
+    }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    return Uri(
+      path: '/agenda/evento/$slug',
+      queryParameters: occurrenceId == null || occurrenceId.isEmpty
+          ? null
+          : <String, String>{'occurrence': occurrenceId},
+    ).toString();
   }
 
   List<ImmersiveTabItem> _buildDynamicProfileTabs({
@@ -317,7 +429,7 @@ class _ImmersiveEventDetailScreenState
               isFavoritable: (profile) =>
                   _controller.isLinkedProfileFavoritable(profile.profileType),
               onFavoriteTap: (profile) =>
-                  _handleLinkedProfileFavoriteTap(profile.id),
+                  _handleLinkedProfileFavoriteTap(profile),
             ),
             footer: null,
           );
@@ -413,15 +525,11 @@ class _ImmersiveEventDetailScreenState
   void _openInviteFlow(EventModel event) {
     final redirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.sendInvite,
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
+        actionType: AuthWallActionType.sendInvite,
       );
       return;
     }
@@ -431,6 +539,21 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _handleAcceptInvite(InviteModel invite) {
+    if (!_controller.isAuthorized) {
+      final redirectPath = _inviteOccurrenceRedirectPath(invite);
+      if (kIsWeb) {
+        launchWebInstalledAppHandoffOrPromotion(
+          context: context,
+          redirectPath: redirectPath,
+          actionType: AuthWallActionType.acceptInvite,
+        );
+      } else {
+        final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+        context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+      }
+      return Future<void>.value();
+    }
+
     final router = context.router;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -490,6 +613,34 @@ class _ImmersiveEventDetailScreenState
     );
   }
 
+  String _inviteAwarePromotionRedirectPath({InviteModel? invite}) {
+    final shareCode = (invite == null
+            ? _controller.shareCodeForSelectedEvent()
+            : _controller.shareCodeForInvite(invite))
+        ?.trim();
+    if (shareCode != null && shareCode.isNotEmpty) {
+      return Uri(
+        path: '/invite',
+        queryParameters: <String, String>{'code': shareCode},
+      ).toString();
+    }
+    return buildRedirectPathFromRouteMatch(context.routeData.route);
+  }
+
+  String _inviteOccurrenceRedirectPath(InviteModel invite) {
+    final eventSlug = invite.eventId.trim();
+    if (eventSlug.isEmpty) {
+      return _inviteAwarePromotionRedirectPath(invite: invite);
+    }
+    final occurrenceId = invite.occurrenceId?.trim() ?? '';
+    return Uri(
+      path: '/agenda/evento/$eventSlug',
+      queryParameters: occurrenceId.isEmpty
+          ? null
+          : <String, String>{'occurrence': occurrenceId},
+    ).toString();
+  }
+
   void _openEventMap(EventModel event) {
     final venueId = event.venue?.id.trim();
     if (venueId == null || venueId.isEmpty) {
@@ -525,14 +676,81 @@ class _ImmersiveEventDetailScreenState
       return;
     }
     _controller.selectOccurrence(event, occurrence);
-    final path = Uri(
-      path: '/agenda/evento/${event.slug}',
-      queryParameters: {
-        'occurrence': occurrenceId,
-        if (tab != null && tab.trim().isNotEmpty) 'tab': tab,
-      },
-    ).toString();
-    unawaited(context.router.replacePath(path));
+    unawaited(
+      context.router.navigate(
+        ImmersiveEventDetailRoute(
+          eventSlug: event.slug,
+          occurrenceId: occurrenceId,
+          tab: tab?.trim().isNotEmpty == true ? tab!.trim() : null,
+        ),
+      ),
+    );
+  }
+
+  bool _handleProgrammingSwipe({
+    required EventModel event,
+    required ImmersiveHorizontalSwipeDirection direction,
+    required ValueChanged<int> activateTab,
+    required int currentTabIndex,
+  }) {
+    final occurrences = event.occurrences;
+    if (occurrences.isEmpty) {
+      _activateAdjacentTabForProgrammingBoundary(
+        direction: direction,
+        activateTab: activateTab,
+        currentTabIndex: currentTabIndex,
+      );
+      return true;
+    }
+
+    final selectedIndex = _selectedOccurrenceIndex(event);
+    final step = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final targetIndex = selectedIndex + step;
+    if (targetIndex >= 0 && targetIndex < occurrences.length) {
+      unawaited(_scrollProgrammingSectionToTop());
+      _openOccurrence(
+        event,
+        occurrences[targetIndex],
+        tab: 'programming',
+      );
+      return true;
+    }
+
+    _activateAdjacentTabForProgrammingBoundary(
+      direction: direction,
+      activateTab: activateTab,
+      currentTabIndex: currentTabIndex,
+    );
+    return true;
+  }
+
+  int _selectedOccurrenceIndex(EventModel event) {
+    final selectedIndex = event.occurrences.indexWhere(
+      (occurrence) => occurrence.isSelected,
+    );
+    return selectedIndex < 0 ? 0 : selectedIndex;
+  }
+
+  void _activateAdjacentTabForProgrammingBoundary({
+    required ImmersiveHorizontalSwipeDirection direction,
+    required ValueChanged<int> activateTab,
+    required int currentTabIndex,
+  }) {
+    final delta = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    activateTab(currentTabIndex + delta);
+  }
+
+  Future<void> _scrollProgrammingSectionToTop() async {
+    final targetContext = _programmingSectionAnchorKey.currentContext;
+    if (targetContext == null) {
+      return;
+    }
+    await Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: 0,
+    );
   }
 
   int _resolveInitialTabIndex(
@@ -614,19 +832,15 @@ class _ImmersiveEventDetailScreenState
     );
   }
 
-  void _handleLinkedProfileFavoriteTap(String accountProfileId) {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb) {
-      AuthWallTelemetry.trackTriggered(
-        actionType: AuthWallActionType.favorite,
+  void _handleLinkedProfileFavoriteTap(EventLinkedAccountProfile profile) {
+    final accountProfileId = profile.id;
+    final redirectPath = _linkedProfileRedirectPath(profile);
+    if (kIsWeb && !_controller.isAuthorized) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
         redirectPath: redirectPath,
+        actionType: AuthWallActionType.favorite,
         payload: {'partnerId': accountProfileId},
-      );
-      context.router.pushPath(
-        buildWebPromotionBoundaryPath(
-          redirectPath: redirectPath,
-        ),
       );
       return;
     }
@@ -642,6 +856,14 @@ class _ImmersiveEventDetailScreenState
     );
     final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  String _linkedProfileRedirectPath(EventLinkedAccountProfile profile) {
+    final slug = profile.slug.trim();
+    if (slug.isEmpty) {
+      return buildRedirectPathFromRouteMatch(context.routeData.route);
+    }
+    return '/parceiro/$slug';
   }
 }
 
@@ -708,7 +930,7 @@ Widget _buildInviteFooter(
             ],
           ),
     buttonText: 'BORA? Agitar a galera!',
-    buttonIcon: BooraIcons.invite_solid,
+    buttonIcon: BooraIcons.inviteSolid,
     buttonColor: primary,
     onActionPressed: onInviteFriends,
   );

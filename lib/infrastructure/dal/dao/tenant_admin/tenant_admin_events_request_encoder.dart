@@ -133,6 +133,10 @@ class TenantAdminEventsRequestEncoder {
     TenantAdminEventOccurrence occurrence,
   ) {
     final payload = <String, dynamic>{
+      if (occurrence.occurrenceId != null)
+        'occurrence_id': occurrence.occurrenceId,
+      if (occurrence.occurrenceSlug != null)
+        'occurrence_slug': occurrence.occurrenceSlug,
       'date_time_start': TimezoneConverter.localToUtc(
         occurrence.dateTimeStart,
       ).toIso8601String(),
@@ -142,37 +146,41 @@ class TenantAdminEventsRequestEncoder {
         ).toIso8601String(),
     };
 
-    if (occurrence.relatedAccountProfileIds.isNotEmpty) {
-      payload['event_parties'] =
-          occurrence.relatedAccountProfileIds.map((profileId) {
-        return <String, dynamic>{
-          'party_ref_id': profileId.value,
-          'permissions': <String, dynamic>{
-            'can_edit': true,
-          },
-        };
-      }).toList(growable: false);
-    }
+    payload['event_parties'] =
+        occurrence.relatedAccountProfileIds.map((profileId) {
+      return <String, dynamic>{
+        'party_ref_id': profileId.value,
+        'permissions': <String, dynamic>{
+          'can_edit': true,
+        },
+      };
+    }).toList(growable: false);
 
-    if (occurrence.programmingItems.isNotEmpty) {
-      payload['programming_items'] = occurrence.programmingItems
-          .map(
-            (item) => <String, dynamic>{
-              'time': item.time,
-              if (item.title != null) 'title': item.title,
-              if (item.accountProfileIds.isNotEmpty)
-                'account_profile_ids': item.accountProfileIds
-                    .map((profileId) => profileId.value)
-                    .toList(growable: false),
-              if (item.placeRef != null)
-                'place_ref': <String, dynamic>{
-                  'type': item.placeRef!.type,
-                  'id': item.placeRef!.id,
-                },
-            },
-          )
-          .toList(growable: false);
-    }
+    payload['taxonomy_terms'] = occurrence.taxonomyTerms
+        .map((term) => <String, dynamic>{
+              'type': term.type,
+              'value': term.value,
+            })
+        .toList(growable: false);
+
+    payload['programming_items'] = occurrence.programmingItems
+        .map(
+          (item) => <String, dynamic>{
+            'time': item.time,
+            if (item.endTime != null) 'end_time': item.endTime,
+            if (item.title != null) 'title': item.title,
+            if (item.accountProfileIds.isNotEmpty)
+              'account_profile_ids': item.accountProfileIds
+                  .map((profileId) => profileId.value)
+                  .toList(growable: false),
+            if (item.placeRef != null)
+              'place_ref': <String, dynamic>{
+                'type': item.placeRef!.type,
+                'id': item.placeRef!.id,
+              },
+          },
+        )
+        .toList(growable: false);
 
     return payload;
   }

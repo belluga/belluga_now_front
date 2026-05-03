@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -30,8 +31,11 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -40,6 +44,7 @@ import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
@@ -49,6 +54,7 @@ import 'package:belluga_now/infrastructure/services/location_origin_service.dart
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -403,6 +409,238 @@ void main() {
       expect(controller.isRadiusActionCompactStreamValue.value, isTrue);
     },
   );
+
+  testWidgets(
+    'invite filter cycles pending received invites separately from confirmed occurrences',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = [
+          [
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439041',
+              title: 'Convite pendente',
+              slug: 'convite-pendente',
+              startAt: DateTime.utc(2026, 4, 15, 18),
+              occurrenceId: 'occ-pending',
+            ),
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439042',
+              title: 'Confirmado direto',
+              slug: 'confirmado-direto',
+              startAt: DateTime.utc(2026, 4, 16, 18),
+              occurrenceId: 'occ-confirmed',
+            ),
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439043',
+              title: 'Sem status',
+              slug: 'sem-status',
+              startAt: DateTime.utc(2026, 4, 17, 18),
+              occurrenceId: 'occ-neutral',
+            ),
+          ],
+        ];
+      final invitesRepository = _FakeInvitesRepository()
+        ..fetchedInvites = [
+          buildInviteModelFromPrimitives(
+            id: 'invite-pending',
+            eventId: '507f1f77bcf86cd799439041',
+            eventName: 'Convite pendente',
+            eventDateTime: DateTime.utc(2026, 4, 15, 18),
+            eventImageUrl: 'https://cdn.test/pending.jpg',
+            location: 'Praia',
+            hostName: 'Host',
+            message: 'Vem',
+            tags: const [],
+            occurrenceId: 'occ-pending',
+          ),
+        ];
+      final userEventsRepository = _FakeUserEventsRepository()
+        ..confirmedOccurrenceIdsStream.addValue({
+          userEventsRepoString(
+            'occ-confirmed',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        });
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      await controller.init();
+
+      expect(
+        controller.displayedEventsStreamValue.value.map((event) => event.title),
+        ['Convite pendente', 'Confirmado direto', 'Sem status'],
+      );
+
+      controller.cycleInviteFilter();
+      await tester.pump();
+
+      expect(
+          controller.inviteFilterStreamValue.value, InviteFilter.pendingOnly);
+      expect(scheduleRepository.lastOccurrenceIds, ['occ-pending']);
+      expect(
+        controller.displayedEventsStreamValue.value.map((event) => event.title),
+        ['Convite pendente'],
+      );
+
+      controller.cycleInviteFilter();
+      await tester.pump();
+
+      expect(
+        controller.inviteFilterStreamValue.value,
+        InviteFilter.confirmedOnly,
+      );
+      expect(
+        controller.displayedEventsStreamValue.value.map((event) => event.title),
+        ['Confirmado direto'],
+      );
+
+      controller.cycleInviteFilter();
+      await tester.pump();
+
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+      expect(
+        controller.displayedEventsStreamValue.value.map((event) => event.title),
+        ['Convite pendente', 'Confirmado direto', 'Sem status'],
+      );
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'pending invite filter uses occurrence ids and does not auto-page unrelated agenda batches',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = [
+          [
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439051',
+              title: 'Sem convite na primeira pagina',
+              slug: 'sem-convite-primeira-pagina',
+              startAt: DateTime.utc(2026, 4, 15, 18),
+              occurrenceId: 'occ-neutral',
+            ),
+          ],
+          [
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439052',
+              title: 'Convite pendente pagina dois',
+              slug: 'convite-pendente-pagina-dois',
+              startAt: DateTime.utc(2026, 4, 16, 18),
+              occurrenceId: 'occ-pending',
+            ),
+          ],
+        ];
+      final invitesRepository = _FakeInvitesRepository()
+        ..fetchedInvites = [
+          buildInviteModelFromPrimitives(
+            id: 'invite-pending',
+            eventId: '507f1f77bcf86cd799439052',
+            eventName: 'Convite pendente pagina dois',
+            eventDateTime: DateTime.utc(2026, 4, 16, 18),
+            eventImageUrl: 'https://cdn.test/pending-page-two.jpg',
+            location: 'Praia',
+            hostName: 'Host',
+            message: 'Vem',
+            tags: const [],
+            occurrenceId: 'occ-pending',
+          ),
+        ];
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: invitesRepository,
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      await controller.init();
+      final baselineLoadMoreCalls =
+          scheduleRepository.loadMoreEventSearchCallCount;
+
+      controller.setInviteFilter(InviteFilter.pendingOnly);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(scheduleRepository.lastOccurrenceIds, ['occ-pending']);
+      expect(
+        scheduleRepository.loadMoreEventSearchCallCount,
+        baselineLoadMoreCalls,
+      );
+      expect(controller.displayedEventsStreamValue.value, isEmpty);
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'pending invite filter with no pending occurrences does not query agenda',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = [
+          [
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439061',
+              title: 'Evento aberto',
+              slug: 'evento-aberto',
+              startAt: DateTime.utc(2026, 4, 15, 18),
+              occurrenceId: 'occ-open',
+            ),
+          ],
+        ];
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      await controller.init();
+      final baselinePageCalls = scheduleRepository.getEventsPageCallCount;
+
+      controller.setInviteFilter(InviteFilter.pendingOnly);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(scheduleRepository.getEventsPageCallCount, baselinePageCalls);
+      expect(scheduleRepository.watchEventsStreamCallCount, 1);
+      expect(controller.displayedEventsStreamValue.value, isEmpty);
+      expect(controller.hasMoreStreamValue.value, isFalse);
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'confirmed invite filter initializes repository query as confirmed-only',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = const [[]];
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      controller.setInviteFilter(InviteFilter.confirmedOnly);
+      await controller.init();
+
+      expect(scheduleRepository.lastConfirmedOnly, isTrue);
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
 }
 
 Future<void> _pumpEventSearchScreen(
@@ -717,10 +955,13 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       StreamValue<List<EventModel>?>(defaultValue: null);
 
   int getEventsPageCallCount = 0;
+  int loadMoreEventSearchCallCount = 0;
   int watchEventsStreamCallCount = 0;
   int? lastRequestedPage;
   double? lastOriginLat;
   double? lastOriginLng;
+  bool? lastConfirmedOnly;
+  List<String>? lastOccurrenceIds;
   bool failOnPageFetch = false;
   List<List<EventModel>> eventSearchPages = const <List<EventModel>>[];
 
@@ -801,6 +1042,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
     ScheduleRepoBool? liveNowOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -809,6 +1051,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     lastRequestedPage = page;
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
+    lastConfirmedOnly = confirmedOnly?.value;
+    lastOccurrenceIds = _occurrenceIdLabels(occurrenceIds);
     if (failOnPageFetch) {
       throw Exception('forced first-page failure');
     }
@@ -816,7 +1060,27 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     if (pageIndex < 0 || pageIndex >= eventSearchPages.length) {
       return const <EventModel>[];
     }
-    return eventSearchPages[pageIndex];
+    final events = eventSearchPages[pageIndex];
+    final requestedOccurrenceIds = lastOccurrenceIds;
+    if (requestedOccurrenceIds == null || requestedOccurrenceIds.isEmpty) {
+      return events;
+    }
+
+    return events
+        .where(
+          (event) => requestedOccurrenceIds.contains(
+            event.selectedOccurrenceId?.trim() ?? '',
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  List<String>? _occurrenceIdLabels(List<ScheduleRepoString>? occurrenceIds) {
+    final labels = (occurrenceIds ?? const <ScheduleRepoString>[])
+        .map((occurrenceId) => occurrenceId.value.trim())
+        .where((occurrenceId) => occurrenceId.isNotEmpty)
+        .toList(growable: false);
+    return labels.isEmpty ? null : labels;
   }
 
   @override
@@ -824,6 +1088,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -833,6 +1098,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
         showPastOnly: showPastOnly,
         searchQuery: searchQuery,
         confirmedOnly: confirmedOnly,
+        occurrenceIds: occurrenceIds,
         originLat: originLat,
         originLng: originLng,
         maxDistanceMeters: maxDistanceMeters,
@@ -843,19 +1109,23 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      _fetchPage(
-        page: (lastRequestedPage ?? 0) + 1,
-        showPastOnly: showPastOnly,
-        searchQuery: searchQuery,
-        confirmedOnly: confirmedOnly,
-        originLat: originLat,
-        originLng: originLng,
-        maxDistanceMeters: maxDistanceMeters,
-      );
+  }) async {
+    loadMoreEventSearchCallCount += 1;
+    return _fetchPage(
+      page: (lastRequestedPage ?? 0) + 1,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+  }
 
   @override
   Future<List<EventModel>> loadConfirmedEvents({
@@ -887,6 +1157,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -896,6 +1167,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     watchEventsStreamCallCount += 1;
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
+    lastConfirmedOnly = confirmedOnly?.value;
+    lastOccurrenceIds = _occurrenceIdLabels(occurrenceIds);
     final controller = StreamController<EventDeltaModel>.broadcast();
     _streamControllers.add(controller);
     return controller.stream;
@@ -909,6 +1182,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -921,6 +1195,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
+      occurrenceIds: occurrenceIds,
       originLat: originLat,
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
@@ -937,6 +1212,7 @@ EventModel _buildScheduleEvent({
   required String title,
   required String slug,
   required DateTime startAt,
+  String? occurrenceId,
 }) {
   return eventModelFromRaw(
     id: MongoIDValue()..parse(id),
@@ -964,6 +1240,15 @@ EventModel _buildScheduleEvent({
     dateTimeStart: DateTimeValue()..parse(startAt.toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    occurrences: occurrenceId == null
+        ? const <EventOccurrenceOption>[]
+        : [
+            _buildOccurrenceOption(
+              id: occurrenceId,
+              startAt: startAt,
+              isSelected: true,
+            ),
+          ],
     coordinate: null,
     tags: const <String>[],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
@@ -971,12 +1256,31 @@ EventModel _buildScheduleEvent({
   );
 }
 
+EventOccurrenceOption _buildOccurrenceOption({
+  required String id,
+  required DateTime startAt,
+  bool isSelected = false,
+}) {
+  return EventOccurrenceOption(
+    occurrenceIdValue: EventLinkedAccountProfileTextValue(id),
+    occurrenceSlugValue: EventLinkedAccountProfileTextValue('$id-slug'),
+    dateTimeStartValue: DateTimeValue(isRequired: true)
+      ..parse(startAt.toIso8601String()),
+    dateTimeEndValue: DomainOptionalDateTimeValue(),
+    isSelectedValue: EventOccurrenceFlagValue()..parse(isSelected.toString()),
+    hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
+    programmingCountValue: EventProgrammingCountValue()..parse('0'),
+  );
+}
+
 class _FakeInvitesRepository extends InvitesRepositoryContract {
+  List<InviteModel> fetchedInvites = const <InviteModel>[];
+
   @override
   Future<List<InviteModel>> fetchInvites(
           {InvitesRepositoryContractPrimInt? page,
           InvitesRepositoryContractPrimInt? pageSize}) async =>
-      const [];
+      fetchedInvites;
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -1033,11 +1337,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return const [];
   }
@@ -1052,13 +1356,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -1067,16 +1373,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {

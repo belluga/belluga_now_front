@@ -81,33 +81,25 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTitleField')),
         'Apresentacao especial',
       );
-      await tester.tap(
-        find.byKey(const Key('tenantAdminProgrammingAddProfileButton')),
+      await _dismissKeyboard(tester);
+      await _tapVisibleByKey(
+        tester,
+        const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Artist A').last);
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      await _tapVisibleByKey(
+        tester,
+        const Key('tenantAdminProgrammingLocationProfileDropdown'),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Venue A').last);
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('tenantAdminProgrammingSaveButton')),
-      );
-      await tester.pumpAndSettle();
+      await _tapProgrammingSaveButton(tester);
       expect(find.text('Local: Venue A'), findsOneWidget);
 
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-        250,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-      await tester
-          .tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-      await tester.pumpAndSettle();
+      await _closeOccurrenceSheet(tester);
 
       expect(find.text('Datas'), findsOneWidget);
       expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
@@ -115,14 +107,7 @@ void main() {
       expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
           findsOneWidget);
 
-      await tester.scrollUntilVisible(
-        find.widgetWithText(FilledButton, 'Criar evento'),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
-      await tester.pumpAndSettle();
+      await _tapFormSubmitButton(tester, 'Criar evento');
 
       expect(eventsRepository.createEventCalls, 1);
       final submittedOccurrence =
@@ -175,31 +160,101 @@ void main() {
       );
 
       await _tapAddOccurrenceFab(tester);
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminOccurrenceSaveButton')),
-        250,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-      await tester
-          .tap(find.byKey(const Key('tenantAdminOccurrenceSaveButton')));
-      await tester.pumpAndSettle();
+      await _closeOccurrenceSheet(tester);
 
       expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
           findsOneWidget);
 
-      await tester.scrollUntilVisible(
-        find.widgetWithText(FilledButton, 'Salvar alterações'),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
-      await tester.pumpAndSettle();
+      await _tapFormSubmitButton(tester, 'Salvar alterações');
 
       expect(eventsRepository.updateEventCalls, 1);
       expect(eventsRepository.lastUpdateEventId, 'evt-existing-1');
       expect(eventsRepository.lastUpdateDraft?.occurrences, hasLength(2));
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  testWidgets(
+    'tenant admin occurrence editor saves taxonomy override and programming end time',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType.withAllowedTaxonomies(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+            const ['music_genre'],
+          ),
+        ),
+      ];
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+      await _fillRequiredFields(tester, controller: controller);
+
+      await _tapAddOccurrenceFab(tester);
+
+      const rockKey = Key('tenantAdminOccurrenceTaxonomy_music_genre_rock');
+      await tester.scrollUntilVisible(
+        find.byKey(rockKey),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(rockKey));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        '17:00',
+      );
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
+        '18:30',
+      );
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingTitleField')),
+        'Show com encerramento',
+      );
+      await _dismissKeyboard(tester);
+      await _tapProgrammingSaveButton(tester);
+      await _closeOccurrenceSheet(tester);
+
+      await _tapFormSubmitButton(tester, 'Criar evento');
+
+      final submittedOccurrence =
+          eventsRepository.lastCreateDraft?.occurrences[1];
+      expect(submittedOccurrence, isNotNull);
+      expect(
+        submittedOccurrence!.taxonomyTerms
+            .map((term) => '${term.type}:${term.value}')
+            .toList(growable: false),
+        ['music_genre:rock'],
+      );
+      final programmingItem = submittedOccurrence.programmingItems.single;
+      expect(programmingItem.time, '17:00');
+      expect(programmingItem.endTime, '18:30');
+      expect(programmingItem.title, 'Show com encerramento');
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -270,6 +325,62 @@ Future<void> _tapAddOccurrenceFab(WidgetTester tester) async {
   expect(tester.getTopLeft(fab).dy, greaterThanOrEqualTo(0));
   await tester.tap(fab);
   await tester.pumpAndSettle();
+}
+
+Future<void> _dismissKeyboard(WidgetTester tester) async {
+  await tester.testTextInput.receiveAction(TextInputAction.done);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapVisibleByKey(
+  WidgetTester tester,
+  Key key, {
+  Finder? scrollable,
+}) async {
+  final target = find.byKey(key);
+  if (scrollable == null) {
+    await tester.ensureVisible(target);
+  } else {
+    await tester.scrollUntilVisible(
+      target,
+      250,
+      scrollable: scrollable,
+    );
+  }
+  await tester.pumpAndSettle();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _closeOccurrenceSheet(WidgetTester tester) async {
+  await _dismissKeyboard(tester);
+  await _tapVisibleByKey(
+    tester,
+    const Key('tenantAdminOccurrenceCloseButton'),
+  );
+}
+
+Future<void> _tapFormSubmitButton(
+  WidgetTester tester,
+  String label,
+) async {
+  final button = find.widgetWithText(FilledButton, label);
+  await tester.scrollUntilVisible(
+    button,
+    250,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
+  await _dismissKeyboard(tester);
+  await _tapVisibleByKey(
+    tester,
+    const Key('tenantAdminProgrammingSaveButton'),
+  );
 }
 
 TenantAdminEventType _eventType() {

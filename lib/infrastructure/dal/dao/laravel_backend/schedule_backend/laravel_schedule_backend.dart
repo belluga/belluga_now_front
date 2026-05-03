@@ -86,6 +86,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -126,6 +127,10 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
         params['taxonomy[$index][type]'] = type;
         params['taxonomy[$index][value]'] = value;
       }
+    }
+    final normalizedOccurrenceIds = _normalizeStringList(occurrenceIds);
+    if (normalizedOccurrenceIds.isNotEmpty) {
+      params['occurrence_ids'] = normalizedOccurrenceIds;
     }
     if (!hasSearchQuery && originLat != null && originLng != null) {
       params['origin_lat'] = originLat;
@@ -173,6 +178,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -217,6 +223,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
         addParam('taxonomy[$index][value]', value);
       }
     }
+    for (final occurrenceId in _normalizeStringList(occurrenceIds)) {
+      addParam('occurrence_ids[]', occurrenceId);
+    }
     if (!hasSearchQuery && originLat != null && originLng != null) {
       addParam('origin_lat', originLat.toString());
       addParam('origin_lng', originLng.toString());
@@ -237,6 +246,17 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
           headers: _buildStreamHeaders(),
         )
         .map((message) => _parseDelta(message.data, message.id));
+  }
+
+  List<String> _normalizeStringList(List<String>? values) {
+    final normalized = (values ?? const <String>[])
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    normalized.sort();
+
+    return normalized;
   }
 
   EventDeltaDTO _parseDelta(String raw, String? lastEventId) {

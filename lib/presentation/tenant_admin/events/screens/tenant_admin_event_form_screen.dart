@@ -1187,6 +1187,7 @@ class _TenantAdminEventFormScreenState
             relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
             relatedAccountProfiles: occurrence.relatedAccountProfiles,
             programmingItems: occurrence.programmingItems,
+            taxonomyTerms: occurrence.taxonomyTerms,
           ),
         )
         .toList(growable: false);

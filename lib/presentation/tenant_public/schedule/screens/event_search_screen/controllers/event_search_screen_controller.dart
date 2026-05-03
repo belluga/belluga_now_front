@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -41,10 +43,6 @@ class EventSearchScreenController
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _telemetryRepository = telemetryRepository ??
@@ -59,7 +57,6 @@ class EventSearchScreenController
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
   final TelemetryRepositoryContract? _telemetryRepository;
   final LocationOriginServiceContract _locationOriginService;
@@ -98,7 +95,7 @@ class EventSearchScreenController
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
-  StreamSubscription? _userLocationSubscription;
+  StreamSubscription<LocationOriginResolution?>? _effectiveOriginSubscription;
   StreamSubscription? _radiusSubscription;
   StreamSubscription? _eventsStreamSubscription;
   bool _isStreamRefreshing = false;
@@ -108,9 +105,11 @@ class EventSearchScreenController
   bool _hasMore = true;
   bool _isScrollListenerAttached = false;
   bool _isDisposed = false;
+  bool _isInitialized = false;
   bool _isAutoPaging = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  LocationOriginSettings? _effectiveOriginSettings;
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
@@ -187,18 +186,19 @@ class EventSearchScreenController
       _initializeStateHolders();
       _isDisposed = false;
     }
+    _isInitialized = false;
     await _invitesRepository.init();
-    await _userEventsRepository.refreshConfirmedEventIds();
     _resetInternalState();
     _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
     _ifAlive(
         () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()));
     _attachScrollListener();
     _listenForStatusChanges();
-    _listenForLocationChanges();
     _listenForRadiusChanges();
     await _resolveEffectiveOrigin(warmUpIfPossible: true);
-    await _refresh();
+    _listenForCanonicalOriginChanges();
+    await _refresh(warmUpIfPossible: false);
+    _isInitialized = true;
     _restartEventStream();
   }
 
@@ -275,6 +275,15 @@ class EventSearchScreenController
         return;
       }
 
+      if (_shouldShortCircuitPendingOnlyQuery) {
+        _hasMore = false;
+        _ifAlive(() => hasMoreStreamValue.addValue(false));
+        _ifAlive(
+          () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+        );
+        return;
+      }
+
       _hasMore = true;
       _ifAlive(() => hasMoreStreamValue.addValue(true));
       await _fetchFirstPage();
@@ -306,6 +315,7 @@ class EventSearchScreenController
       final queryConfirmedOnly = _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       );
+      final queryOccurrenceIds = _activeOccurrenceIdsFilter();
       final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
       final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
       final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
@@ -313,6 +323,7 @@ class EventSearchScreenController
         showPastOnly: queryShowPastOnly,
         searchQuery: querySearch,
         confirmedOnly: queryConfirmedOnly,
+        occurrenceIds: queryOccurrenceIds,
         originLat: queryOriginLat,
         originLng: queryOriginLng,
         maxDistanceMeters: queryMaxDistance,
@@ -347,6 +358,7 @@ class EventSearchScreenController
       final queryConfirmedOnly = _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       );
+      final queryOccurrenceIds = _activeOccurrenceIdsFilter();
       final queryOriginLat = _toNullableScheduleDouble(_effectiveOriginLat);
       final queryOriginLng = _toNullableScheduleDouble(_effectiveOriginLng);
       final queryMaxDistance = _toScheduleDouble(radiusMetersStreamValue.value);
@@ -354,6 +366,7 @@ class EventSearchScreenController
         showPastOnly: queryShowPastOnly,
         searchQuery: querySearch,
         confirmedOnly: queryConfirmedOnly,
+        occurrenceIds: queryOccurrenceIds,
         originLat: queryOriginLat,
         originLng: queryOriginLng,
         maxDistanceMeters: queryMaxDistance,
@@ -385,23 +398,16 @@ class EventSearchScreenController
   void setInviteFilter(InviteFilter filter) {
     _ifAlive(() => inviteFilterStreamValue.addValue(filter));
     _applyFiltersAndPublish();
+    if (!_isInitialized) {
+      return;
+    }
+    unawaited(_refresh(warmUpIfPossible: false));
     _restartEventStream();
   }
 
   @override
   void cycleInviteFilter() {
-    final current = inviteFilterStreamValue.value;
-    switch (current) {
-      case InviteFilter.none:
-        setInviteFilter(InviteFilter.invitesAndConfirmed);
-        break;
-      case InviteFilter.invitesAndConfirmed:
-        setInviteFilter(InviteFilter.confirmedOnly);
-        break;
-      case InviteFilter.confirmedOnly:
-        setInviteFilter(InviteFilter.none);
-        break;
-    }
+    setInviteFilter(inviteFilterStreamValue.value.next);
   }
 
   void setSearchActive(bool active) {
@@ -485,9 +491,11 @@ class EventSearchScreenController
     final filter = inviteFilterStreamValue.value;
     if (filter == InviteFilter.none) return events;
 
-    final confirmedIds = _userEventsRepository.confirmedEventIdsStream.value;
+    final confirmedIds =
+        _userEventsRepository.confirmedOccurrenceIdsStream.value;
     final pendingIds = _invitesRepository.pendingInvitesStreamValue.value
-        .map((invite) => invite.eventId)
+        .map((invite) => invite.occurrenceId?.trim() ?? '')
+        .where((occurrenceId) => occurrenceId.isNotEmpty)
         .toSet();
 
     bool isConfirmed(String id) =>
@@ -495,12 +503,12 @@ class EventSearchScreenController
     bool hasPending(String id) => pendingIds.contains(id);
 
     return events.where((event) {
-      final id = event.id.value;
+      final id = _eventOccurrenceIdentity(event);
       switch (filter) {
         case InviteFilter.none:
           return true;
-        case InviteFilter.invitesAndConfirmed:
-          return isConfirmed(id) || hasPending(id);
+        case InviteFilter.pendingOnly:
+          return hasPending(id);
         case InviteFilter.confirmedOnly:
           return isConfirmed(id);
       }
@@ -517,7 +525,11 @@ class EventSearchScreenController
   }
 
   void _maybeAutoPage(List<EventModel> filtered) {
-    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
+    if (filtered.isNotEmpty ||
+        !_hasEffectiveOrigin ||
+        !_hasMore ||
+        _isAutoPaging ||
+        inviteFilterStreamValue.value == InviteFilter.pendingOnly) {
       return;
     }
     unawaited(_autoPageToFirstMatch());
@@ -541,22 +553,59 @@ class EventSearchScreenController
     }
   }
 
-  bool isEventConfirmed(String eventId) => _userEventsRepository
-      .isEventConfirmed(
+  bool isOccurrenceConfirmed(String occurrenceId) => _userEventsRepository
+      .isOccurrenceConfirmed(
         userEventsRepoString(
-          eventId,
+          occurrenceId,
           defaultValue: '',
           isRequired: true,
         ),
       )
       .value;
 
-  int pendingInviteCount(String eventId) =>
+  int pendingInviteCount(String occurrenceId) =>
       _invitesRepository.pendingInvitesStreamValue.value
-          .where((invite) => invite.eventId == eventId)
+          .where((invite) => invite.occurrenceId == occurrenceId)
           .length;
 
-  bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
+  bool hasPendingInvite(String occurrenceId) =>
+      pendingInviteCount(occurrenceId) > 0;
+
+  String _eventOccurrenceIdentity(EventModel event) =>
+      event.selectedOccurrenceId?.trim() ?? '';
+
+  bool get _shouldShortCircuitPendingOnlyQuery =>
+      inviteFilterStreamValue.value == InviteFilter.pendingOnly &&
+      _pendingInviteOccurrenceIds().isEmpty;
+
+  List<ScheduleRepoString>? _activeOccurrenceIdsFilter() {
+    if (inviteFilterStreamValue.value != InviteFilter.pendingOnly) {
+      return null;
+    }
+
+    final pendingIds = _pendingInviteOccurrenceIds();
+    if (pendingIds.isEmpty) {
+      return null;
+    }
+
+    return pendingIds
+        .map(
+          (occurrenceId) => _toScheduleText(occurrenceId),
+        )
+        .toList(growable: false);
+  }
+
+  List<String> _pendingInviteOccurrenceIds() {
+    final ids = <String>{};
+    for (final invite in _invitesRepository.pendingInvitesStreamValue.value) {
+      final occurrenceId = invite.occurrenceId?.trim() ?? '';
+      if (occurrenceId.isNotEmpty) {
+        ids.add(occurrenceId);
+      }
+    }
+
+    return ids.toList(growable: false)..sort();
+  }
 
   VenueEventResume _toVenueEventResume(EventModel event) {
     return VenueEventResume.fromScheduleEvent(
@@ -593,21 +642,32 @@ class EventSearchScreenController
     _pendingInvitesSubscription?.cancel();
 
     _confirmedEventsSubscription =
-        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
+      if (inviteFilterStreamValue.value == InviteFilter.confirmedOnly) {
+        unawaited(_refresh(warmUpIfPossible: false));
+        _restartEventStream();
+        return;
+      }
       _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =
         _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
+      if (inviteFilterStreamValue.value == InviteFilter.pendingOnly) {
+        unawaited(_refresh(warmUpIfPossible: false));
+        _restartEventStream();
+        return;
+      }
       _applyFiltersAndPublish();
     });
   }
 
-  void _listenForLocationChanges() {
-    final repo = _userLocationRepository;
-    if (repo == null) return;
-    _userLocationSubscription?.cancel();
-    _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
-      unawaited(_handleLocationUpdate());
+  void _listenForCanonicalOriginChanges() {
+    _effectiveOriginSubscription?.cancel();
+    _effectiveOriginSubscription =
+        _locationOriginService.effectiveOriginStreamValue.stream.listen((
+      resolution,
+    ) {
+      unawaited(_handleEffectiveOriginUpdate(resolution));
     });
   }
 
@@ -630,13 +690,33 @@ class EventSearchScreenController
   bool get _hasEffectiveOrigin =>
       _effectiveOriginLat != null && _effectiveOriginLng != null;
 
-  Future<void> _handleLocationUpdate() async {
-    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+  Future<void> _handleEffectiveOriginUpdate(
+    LocationOriginResolution? resolution,
+  ) async {
+    if (resolution == null) {
+      return;
+    }
+
+    final previousOriginLat = _effectiveOriginLat;
+    final previousOriginLng = _effectiveOriginLng;
+    final previousOriginSettings = _effectiveOriginSettings;
+    final changed = _applyResolvedEffectiveOrigin(resolution);
     if (!changed) {
       return;
     }
 
-    await _refresh();
+    if (!_didCanonicalOriginChangeMeaningfully(
+      previousOriginSettings: previousOriginSettings,
+      nextOriginSettings: _effectiveOriginSettings,
+      previousOriginLat: previousOriginLat,
+      previousOriginLng: previousOriginLng,
+      nextOriginLat: _effectiveOriginLat,
+      nextOriginLng: _effectiveOriginLng,
+    )) {
+      return;
+    }
+
+    await _refresh(warmUpIfPossible: false);
     _restartEventStream();
   }
 
@@ -652,16 +732,49 @@ class EventSearchScreenController
       ),
     );
     final effectiveOrigin = resolution.effectiveCoordinate;
-    if (effectiveOrigin != null) {
-      _effectiveOriginLat = effectiveOrigin.latitude;
-      _effectiveOriginLng = effectiveOrigin.longitude;
-      return _effectiveOriginLat != currentLat ||
-          _effectiveOriginLng != currentLng;
+    final changed = _applyResolvedEffectiveOrigin(resolution);
+    if (!changed) {
+      return false;
     }
+    return _didCanonicalOriginChangeMeaningfully(
+      previousOriginSettings: null,
+      nextOriginSettings: _effectiveOriginSettings,
+      previousOriginLat: currentLat,
+      previousOriginLng: currentLng,
+      nextOriginLat: effectiveOrigin?.latitude,
+      nextOriginLng: effectiveOrigin?.longitude,
+    );
+  }
 
-    _effectiveOriginLat = null;
-    _effectiveOriginLng = null;
-    return currentLat != null || currentLng != null;
+  bool _applyResolvedEffectiveOrigin(LocationOriginResolution resolution) {
+    final nextCoordinate = resolution.effectiveCoordinate;
+    final nextLat = nextCoordinate?.latitude;
+    final nextLng = nextCoordinate?.longitude;
+    final nextSettings = resolution.settings;
+    final changed =
+        _effectiveOriginLat != nextLat ||
+        _effectiveOriginLng != nextLng ||
+        !(_effectiveOriginSettings?.sameAs(nextSettings) ?? nextSettings == null);
+    _effectiveOriginLat = nextLat;
+    _effectiveOriginLng = nextLng;
+    _effectiveOriginSettings = nextSettings;
+    return changed;
+  }
+
+  bool _didCanonicalOriginChangeMeaningfully({
+    required LocationOriginSettings? previousOriginSettings,
+    required LocationOriginSettings? nextOriginSettings,
+    required double? previousOriginLat,
+    required double? previousOriginLng,
+    required double? nextOriginLat,
+    required double? nextOriginLng,
+  }) {
+    if (!(previousOriginSettings?.sameAs(nextOriginSettings) ??
+        nextOriginSettings == null)) {
+      return true;
+    }
+    return previousOriginLat != nextOriginLat ||
+        previousOriginLng != nextOriginLng;
   }
 
   @override
@@ -734,6 +847,11 @@ class EventSearchScreenController
       _lastEventStreamId = null;
       return;
     }
+    if (_shouldShortCircuitPendingOnlyQuery) {
+      _lastEventStreamId = null;
+      return;
+    }
+    final queryOccurrenceIds = _activeOccurrenceIdsFilter();
     _eventsStreamSubscription = _scheduleRepository
         .watchEventsSignal(
       onDelta: ScheduleRepositoryContractDeltaHandler((delta) {
@@ -745,6 +863,7 @@ class EventSearchScreenController
       confirmedOnly: _toScheduleBool(
         inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
       ),
+      occurrenceIds: queryOccurrenceIds,
       originLat: _toNullableScheduleDouble(_effectiveOriginLat),
       originLng: _toNullableScheduleDouble(_effectiveOriginLng),
       maxDistanceMeters: _toScheduleDouble(radiusMetersStreamValue.value),
@@ -795,9 +914,10 @@ class EventSearchScreenController
   @override
   void onDispose() {
     _isDisposed = true;
+    _isInitialized = false;
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _userLocationSubscription?.cancel();
+    _effectiveOriginSubscription?.cancel();
     _radiusSubscription?.cancel();
     _eventsStreamSubscription?.cancel();
     displayedEventsStreamValue.dispose();

@@ -21,14 +21,27 @@ class _FakeAccountProfilesRepository
   int deleteCalls = 0;
   int projectionImpactCount = 0;
   String? lastProjectionImpactType;
+  String? lastCreatedPluralLabel;
+  String? lastUpdatedPluralLabel;
+  int fetchProfileTypeCalls = 0;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
       _types;
 
   @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    fetchProfileTypeCalls += 1;
+    return (await fetchProfileTypes()).firstWhere(
+      (definition) => definition.type == profileType.value,
+    );
+  }
+
+  @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-  fetchProfileTypesPage({
+      fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -53,15 +66,17 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
+    lastCreatedPluralLabel = pluralLabel?.value;
     final created = tenantAdminProfileTypeDefinitionFromRaw(
       type: type.value,
       label: label.value,
-      allowedTaxonomies: allowedTaxonomies
-          .map((entry) => entry.value)
-          .toList(growable: false),
+      pluralLabel: pluralLabel?.value ?? label.value,
+      allowedTaxonomies:
+          allowedTaxonomies.map((entry) => entry.value).toList(growable: false),
       capabilities: capabilities,
     );
     _types = [..._types, created];
@@ -73,19 +88,20 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
+    lastUpdatedPluralLabel = pluralLabel?.value;
     final updated = tenantAdminProfileTypeDefinitionFromRaw(
       type: newType?.value ?? type.value,
       label: label?.value ?? 'Updated',
-      allowedTaxonomies:
-          allowedTaxonomies
+      pluralLabel: pluralLabel?.value ?? label?.value ?? 'Updated',
+      allowedTaxonomies: allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           <String>[],
-      capabilities:
-          capabilities ??
+      capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -97,14 +113,12 @@ class _FakeAccountProfilesRepository
             hasEvents: TenantAdminFlagValue(false),
           ),
     );
-    _types = _types
-        .map((entry) {
-          if (entry.type == type.value) {
-            return updated;
-          }
-          return entry;
-        })
-        .toList(growable: false);
+    _types = _types.map((entry) {
+      if (entry.type == type.value) {
+        return updated;
+      }
+      return entry;
+    }).toList(growable: false);
     return updated;
   }
 
@@ -119,7 +133,8 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-  }) async => [];
+  }) async =>
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -205,7 +220,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfilesRepoInt>
-  fetchProfileTypeMapPoiProjectionImpact({
+      fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
   }) async {
     lastProjectionImpactType = type.value;
@@ -245,7 +260,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-  fetchTaxonomiesPage({
+      fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -274,7 +289,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-  fetchTermsPage({
+      fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -505,7 +520,7 @@ void main() {
   );
 
   test(
-    'hydrateFormDefinition loads off-page profile type definitions with persisted allowed taxonomies',
+    'hydrateFormDefinition fetches the requested profile type directly and reapplies persisted allowed taxonomies',
     () async {
       final repository = _FakeAccountProfilesRepository(
         List<TenantAdminProfileTypeDefinition>.generate(
@@ -541,12 +556,10 @@ void main() {
         ]),
       );
 
-      await controller.loadTypes();
-      expect(controller.typesStreamValue.value?.length, 20);
-
       await controller.hydrateFormDefinition('type-23');
       await controller.loadAvailableTaxonomies();
 
+      expect(repository.fetchProfileTypeCalls, 1);
       expect(controller.typeController.text, 'type-23');
       expect(
         controller.selectedAllowedTaxonomiesStreamValue.value,
@@ -696,14 +709,46 @@ void main() {
         type: 'artist',
         newType: 'artist-pro',
         label: 'Artist Pro',
+        pluralLabel: 'Artists Pro',
       );
 
       final detail = controller.detailTypeStreamValue.value;
       expect(detail, isNotNull);
       expect(detail!.type, 'artist-pro');
       expect(detail.label, 'Artist Pro');
+      expect(detail.pluralLabel, 'Artists Pro');
+      expect(repository.lastUpdatedPluralLabel, 'Artists Pro');
     },
   );
+
+  test('createType forwards explicit plural label to repository', () async {
+    final repository = _FakeAccountProfilesRepository([]);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+    );
+
+    await controller.createType(
+      type: 'venue',
+      label: 'Venue',
+      pluralLabel: 'Venues',
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasEvents: TenantAdminFlagValue(false),
+      ),
+    );
+
+    expect(repository.lastCreatedPluralLabel, 'Venues');
+    expect(
+      repository.profileTypesStreamValue.value?.single.pluralLabel,
+      'Venues',
+    );
+  });
 
   test('previewDisableProjectionCount delegates to repository', () async {
     final repository = _FakeAccountProfilesRepository([]);
@@ -721,9 +766,9 @@ void main() {
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
   _FakeTenantScope(String initialDomain)
-    : _selectedTenantDomainStreamValue = StreamValue<String?>(
-        defaultValue: initialDomain,
-      );
+      : _selectedTenantDomainStreamValue = StreamValue<String?>(
+          defaultValue: initialDomain,
+        );
 
   final StreamValue<String?> _selectedTenantDomainStreamValue;
 

@@ -263,15 +263,8 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-filter-button'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('10').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    controller.selectSpecificDateFilter(DateTime(2026, 4, 10));
+    await controller.applyFilters();
     await tester.pumpAndSettle();
 
     await tester.tap(

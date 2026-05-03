@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_filter_category_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,7 +38,10 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.music_note), findsOneWidget);
+      expect(
+        find.byIcon(MapMarkerVisualResolver.resolveIcon('music_note')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey<String>(imageUri)), findsNothing);
     },
   );

@@ -311,6 +311,10 @@ void main() {
     mockito
         .when(mockInvitesBannerController.pendingInvitesStreamValue)
         .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
+    mockito
+        .when(
+            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+        .thenReturn(StreamValue<bool>(defaultValue: false));
 
     // Stub Home Controller
     mockito.when(mockController.homeLocationStatusStreamValue).thenReturn(
@@ -382,7 +386,7 @@ void main() {
         .when(mockAgendaController.setSearchActive(mockito.any))
         .thenReturn(null);
     mockito
-        .when(mockAgendaController.isEventConfirmed(mockito.any))
+        .when(mockAgendaController.isOccurrenceConfirmed(mockito.any))
         .thenReturn(false);
     mockito
         .when(mockAgendaController.pendingInviteCount(mockito.any))
@@ -522,7 +526,8 @@ void main() {
         .single as ImmersiveEventDetailRoute;
     expect(pushedRoute.args?.eventSlug, 'event-1');
     expect(pushedRoute.args?.occurrenceId, 'occ-home-2');
-    expect(pushedRoute.rawQueryParams, {'occurrence': 'occ-home-2'});
+    expect(pushedRoute.rawQueryParams['occurrence'], 'occ-home-2');
+    expect(pushedRoute.rawQueryParams['tab'], isNull);
   });
 
   testWidgets('renders pending invites banner when pending invites exist',
@@ -546,6 +551,10 @@ void main() {
     mockito
         .when(mockInvitesBannerController.pendingInvitesStreamValue)
         .thenReturn(pendingInviteStream);
+    mockito
+        .when(
+            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+        .thenReturn(StreamValue<bool>(defaultValue: true));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);

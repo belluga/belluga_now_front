@@ -79,6 +79,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/co
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -554,6 +555,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -566,6 +568,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -594,6 +597,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -611,6 +615,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -4371,7 +4376,9 @@ void main() {
       final selectedIcon = tester.widget<Icon>(
         find.descendant(
           of: find.byKey(const ValueKey<String>('map-selected-filter-chip')),
-          matching: find.byIcon(Icons.music_note),
+          matching: find.byIcon(
+            MapMarkerVisualResolver.resolveIcon('music_note'),
+          ),
         ),
       );
       expect(selectedIcon.color, const Color(0xFFF3F7FF));
@@ -4416,7 +4423,9 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey<String>('map-selected-filter-chip')),
-          matching: find.byIcon(Icons.music_note),
+          matching: find.byIcon(
+            MapMarkerVisualResolver.resolveIcon('music_note'),
+          ),
         ),
         findsOneWidget,
       );
@@ -4789,7 +4798,7 @@ void main() {
       );
 
       expect(find.byTooltip('Convidar'), findsOneWidget);
-      expect(find.byIcon(BooraIcons.invite_solid), findsOneWidget);
+      expect(find.byIcon(BooraIcons.inviteSolid), findsOneWidget);
     });
 
     testWidgets('close button aligns with the top of the selected card',

@@ -214,6 +214,13 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
     required TenantAdminAccountProfilesRepoString profileType,
@@ -274,6 +281,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) {
@@ -285,6 +293,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) {

@@ -49,7 +49,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 - 10:00'), findsOneWidget);
+    expect(find.textContaining('07:00 às 10:00'), findsOneWidget);
+    expect(find.textContaining('07:00 -'), findsNothing);
   });
 
   testWidgets('home event card does not show inferred end time',
@@ -82,7 +83,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 - 10:00'), findsNothing);
+    expect(find.textContaining('07:00 às 10:00'), findsNothing);
+    expect(find.textContaining('07:00 -'), findsNothing);
     expect(find.textContaining('07:00'), findsOneWidget);
   });
 }

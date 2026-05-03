@@ -22,6 +22,18 @@ class _InvitesBannerBuilderState extends State<InvitesBannerBuilder> {
       GetIt.I.get<InvitesBannerBuilderController>();
 
   @override
+  void initState() {
+    super.initState();
+    _controller.init();
+  }
+
+  @override
+  void dispose() {
+    _controller.onDispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return InvitesBannerView(
       controller: _controller,

@@ -24,7 +24,7 @@ class UiNavigatorUsageForbiddenRule extends DartLintRule {
     CustomLintContext context,
   ) {
     final path = normalizePath(resolver.source.fullName);
-    if (!isUiPresentationFilePath(path)) {
+    if (!isNavigatorPolicyFilePath(path)) {
       return;
     }
 
