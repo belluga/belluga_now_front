@@ -14,17 +14,33 @@ class LandlordKnownPublicInstancesRepository
     AppDataRepositoryContract? appDataRepository,
   })  : _backend = backend ?? LandlordKnownPublicInstancesBackend(),
         _localInfoSource = localInfoSource ?? AppDataLocalInfoSource(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
+        _appDataRepository = appDataRepository;
 
   final LandlordPublicInstancesBackendContract _backend;
   final AppDataLocalInfoSource _localInfoSource;
-  final AppDataRepositoryContract _appDataRepository;
+  AppDataRepositoryContract? _appDataRepository;
+
+  AppDataRepositoryContract? get _resolvedAppDataRepository {
+    if (_appDataRepository != null) {
+      return _appDataRepository;
+    }
+    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      return null;
+    }
+    _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
+    return _appDataRepository;
+  }
 
   @override
   Future<List<AppData>> fetchFeaturedInstances() async {
     final localInfo = await _localInfoSource.getInfo();
-    final landlordOrigin = _appDataRepository.appData.mainDomainValue.value.origin;
+    final landlordOrigin =
+        _resolvedAppDataRepository?.appData.mainDomainValue.value.origin;
+    if (landlordOrigin == null || landlordOrigin.trim().isEmpty) {
+      throw StateError(
+        'AppDataRepositoryContract must be registered before fetching landlord public instances.',
+      );
+    }
     final environments = await _backend.fetchFeaturedInstanceEnvironments(
       landlordOrigin: landlordOrigin,
     );

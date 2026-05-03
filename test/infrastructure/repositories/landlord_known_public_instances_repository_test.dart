@@ -9,9 +9,18 @@ import 'package:belluga_now/infrastructure/repositories/landlord_known_public_in
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  setUp(() async {
+    await GetIt.I.reset();
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
   test('passes canonical landlord origin from appData to backend', () async {
     final backend = _FakeLandlordPublicInstancesBackend();
     final repository = LandlordKnownPublicInstancesRepository(
@@ -20,6 +29,25 @@ void main() {
         _buildAppData(mainDomain: 'https://belluga.app'),
       ),
       localInfoSource: _FakeAppDataLocalInfoSource(),
+    );
+
+    final results = await repository.fetchFeaturedInstances();
+
+    expect(backend.capturedLandlordOrigin, 'https://belluga.app');
+    expect(results.single.mainDomainValue.value.origin, 'https://guarappari.belluga.app');
+  });
+
+  test('resolves AppDataRepository lazily from GetIt at fetch time', () async {
+    final backend = _FakeLandlordPublicInstancesBackend();
+    final repository = LandlordKnownPublicInstancesRepository(
+      backend: backend,
+      localInfoSource: _FakeAppDataLocalInfoSource(),
+    );
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(
+        _buildAppData(mainDomain: 'https://belluga.app'),
+      ),
     );
 
     final results = await repository.fetchFeaturedInstances();
