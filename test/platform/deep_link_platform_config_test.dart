@@ -82,12 +82,15 @@ void main() {
     expect(activity, contains('setIntent(intent)'));
   });
 
-  test('iOS entitlements declare guarappari universal link domain', () {
+  test('iOS entitlements declare guarappari production universal link domains', () {
     final entitlements =
         File('ios/Runner/Runner.entitlements').readAsStringSync();
 
     expect(entitlements, contains('com.apple.developer.associated-domains'));
-    expect(entitlements, contains('applinks:guarappari.belluga.space'));
+    expect(entitlements, contains('applinks:guarappari.com.br'));
+    expect(entitlements, contains('applinks:guarappari.booraagora.com.br'));
+    expect(entitlements, isNot(contains('applinks:guarappari.belluga.space')));
+    expect(entitlements, isNot(contains('applinks:guarappari.belluga.app')));
   });
 
   test('flutter .well-known files are absent (endpoint is canonical)', () {
