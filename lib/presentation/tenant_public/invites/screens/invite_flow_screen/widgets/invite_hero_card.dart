@@ -6,10 +6,11 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/swipeable_card/swipeable_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_content_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_decision_footer.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Fullscreen invite hero with swipe affordance and CTA buttons.
+/// Fullscreen invite hero with a swipeable card and page-bottom decision footer.
 class InviteHeroCard extends StatelessWidget {
   const InviteHeroCard({
     super.key,
@@ -93,21 +94,21 @@ class InviteHeroCard extends StatelessWidget {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
+                      final isCompact = constraints.maxHeight < 520 ||
+                          constraints.maxWidth < 360;
                       final horizontalInset =
                           constraints.maxWidth < 360 ? 8.0 : 16.0;
-                      final verticalInset =
-                          constraints.maxHeight < 480 ? 8.0 : 16.0;
-                      final cardWidth = math.max(
+                      final verticalInset = isCompact ? 8.0 : 16.0;
+                      final footerGap = isCompact ? 10.0 : 14.0;
+                      final contentWidth = math.max(
                         0.0,
                         math.min(
                           420.0,
                           constraints.maxWidth - horizontalInset * 2,
                         ),
                       );
-                      final cardHeight = math.max(
-                        0.0,
-                        constraints.maxHeight - verticalInset * 2,
-                      );
+                      final contentHeight = math.max(
+                          0.0, constraints.maxHeight - verticalInset * 2);
 
                       return Center(
                         child: Padding(
@@ -116,28 +117,53 @@ class InviteHeroCard extends StatelessWidget {
                             vertical: verticalInset,
                           ),
                           child: SizedBox(
-                            width: cardWidth,
-                            height: cardHeight,
-                            child: SwipeableCard(
-                              onSwipeRight:
-                                  requiresAuthentication ? null : onAccept,
-                              onSwipeLeft:
-                                  requiresAuthentication ? null : onDecline,
-                              child: InviteContentCard(
-                                heroImage: heroImage,
-                                title: invite.eventName,
-                                dateLabel: dateLabel,
-                                location: location,
-                                host: host,
-                                inviter: inviter,
-                                extraInviters: extraInviters,
-                                onAccept: onAccept,
-                                onDecline: onDecline,
-                                onRequestAuthentication:
-                                    onRequestAuthentication,
-                                onViewDetails: onViewDetails,
-                                requiresAuthentication: requiresAuthentication,
-                              ),
+                            width: contentWidth,
+                            height: contentHeight,
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: SwipeableCard(
+                                    onSwipeRight: requiresAuthentication
+                                        ? null
+                                        : onAccept,
+                                    onSwipeLeft: requiresAuthentication
+                                        ? null
+                                        : onDecline,
+                                    child: InviteContentCard(
+                                      heroImage: heroImage,
+                                      title: invite.eventName,
+                                      dateLabel: dateLabel,
+                                      location: location,
+                                      host: host,
+                                      inviter: inviter,
+                                      extraInviters: extraInviters,
+                                      onViewDetails: onViewDetails,
+                                    ),
+                                  ),
+                                ),
+                                if (remainingCount > 0) ...[
+                                  SizedBox(height: footerGap),
+                                  Text(
+                                    'Você tem mais $remainingCount convites',
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        theme.textTheme.labelMedium?.copyWith(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.85),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                                SizedBox(height: footerGap),
+                                InviteDecisionFooter(
+                                  onAccept: onAccept,
+                                  onDecline: onDecline,
+                                  onRequestAuthentication:
+                                      onRequestAuthentication,
+                                  requiresAuthentication:
+                                      requiresAuthentication,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -145,17 +171,6 @@ class InviteHeroCard extends StatelessWidget {
                     },
                   ),
                 ),
-                if (remainingCount > 0) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Você tem mais $remainingCount convites',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

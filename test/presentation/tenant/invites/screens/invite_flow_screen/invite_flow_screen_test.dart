@@ -412,6 +412,7 @@ void main() {
 
     expect(find.text('Recusar'), findsOneWidget);
     expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.text('Ver detalhes'), findsOneWidget);
     expect(find.byIcon(Icons.swipe), findsOneWidget);
     expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
   });
@@ -480,7 +481,8 @@ void main() {
     expect(find.text('Bóra pro App!'), findsNothing);
   });
 
-  testWidgets('Unauthenticated app invite asks for authentication before accept',
+  testWidgets(
+      'Unauthenticated app invite asks for authentication before accept',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('1');
     final repository = _FakeInvitesRepository(initialInvites: [invite]);
@@ -524,6 +526,7 @@ void main() {
 
     expect(find.text('Aceitar'), findsNothing);
     expect(find.text('Recusar'), findsNothing);
+    expect(find.text('Ver detalhes'), findsOneWidget);
     expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
 
     await tester.tap(find.text('Entre para Aceitar ou Recusar'));
@@ -535,7 +538,8 @@ void main() {
       }
     }
 
-    expect(router.lastPushedPath, '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9');
+    expect(router.lastPushedPath,
+        '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9');
     expect(router.lastPushed, isNull);
     expect(repository.acceptedShareCodes, isEmpty);
     expect(repository.acceptedInviteIds, isEmpty);

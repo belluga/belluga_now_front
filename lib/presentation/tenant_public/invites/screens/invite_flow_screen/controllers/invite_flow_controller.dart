@@ -87,6 +87,9 @@ class InviteFlowScreenController with Disposable {
   }) async {
     initializedStreamValue.addValue(false);
     _repository.clearInviteFlowState();
+    if ((shareCode?.trim() ?? '').isEmpty) {
+      _repository.clearShareCodeSessionContext();
+    }
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
@@ -126,7 +129,18 @@ class InviteFlowScreenController with Disposable {
           _activeMaterializedInviteId = materializedInviteId;
           await fetchPendingInvites();
           _prioritizeInvite(materializedInviteId);
+          _seedShareCodeSessionContext(
+            normalizedShareCode,
+            inviteId: materializedInviteId,
+          );
         } else {
+          _repository.clearShareCodeSessionContext(
+            code: invitesRepoString(
+              normalizedShareCode,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          );
           _repository.clearInviteFlowState();
           _ensureTopIndexBounds(0);
         }
@@ -301,6 +315,9 @@ class InviteFlowScreenController with Disposable {
   }
 
   Future<void> requestDecision(InviteDecision decision) async {
+    if (decision == InviteDecision.accepted) {
+      await _trackInviteAcceptanceRequested();
+    }
     final result = await applyDecision(decision);
     decisionResultStreamValue.addValue(result);
   }
@@ -309,6 +326,9 @@ class InviteFlowScreenController with Disposable {
     InviteDecision decision,
     String inviteId,
   ) async {
+    if (decision == InviteDecision.accepted) {
+      await _trackInviteAcceptanceRequested();
+    }
     final result = await applyDecisionForInvite(decision, inviteId);
     decisionResultStreamValue.addValue(result);
   }
@@ -351,13 +371,22 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      final result = await _repository.acceptInvite(
-        invitesRepoString(
-          resolvedInviteId,
-          defaultValue: '',
-          isRequired: true,
-        ),
-      );
+      final matchingShareCode = _resolveShareCodeForInvite(current);
+      final result = matchingShareCode == null
+          ? await _repository.acceptInvite(
+              invitesRepoString(
+                resolvedInviteId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+          : await _repository.acceptInviteByCode(
+              invitesRepoString(
+                matchingShareCode,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            );
       final updatedInvites =
           List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
       _setPendingInvites(updatedInvites);
@@ -537,6 +566,38 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  Future<void> _trackInviteAcceptanceRequested() async {
+    final current = currentInvite;
+    if (current == null) {
+      return;
+    }
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.buttonClick,
+      eventName: telemetryRepoString('app_invite_acceptance_requested'),
+      properties: telemetryRepoMap(
+        _buildInviteAcceptanceRequestedProperties(current),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _buildInviteAcceptanceRequestedProperties(
+    InviteModel invite,
+  ) {
+    final properties = <String, dynamic>{
+      'occurrence_id': invite.occurrenceId,
+      'source': 'invite_flow',
+      'auth_state': _isAuthorized ? 'authenticated' : 'auth_required',
+    };
+    if (invite.eventId.trim().isNotEmpty) {
+      properties['event_id'] = invite.eventId;
+    }
+    final shareCode = _resolveShareCodeForInvite(invite);
+    if (shareCode != null) {
+      properties['code'] = shareCode;
+    }
+    return properties;
+  }
+
   Map<String, dynamic> _buildInviteTelemetryProperties(InviteModel invite) {
     final properties = <String, dynamic>{
       'event_id': invite.eventId,
@@ -553,6 +614,63 @@ class InviteFlowScreenController with Disposable {
     }
 
     return properties;
+  }
+
+  void _seedShareCodeSessionContext(
+    String shareCode, {
+    String? inviteId,
+  }) {
+    final normalizedCode = shareCode.trim();
+    if (normalizedCode.isEmpty) {
+      _repository.clearShareCodeSessionContext();
+      return;
+    }
+    final pendingInvites = pendingInvitesStreamValue.value;
+    InviteModel? matchedInvite;
+    if (inviteId != null && inviteId.isNotEmpty) {
+      final inviteIdValue = _inviteIdValue(inviteId);
+      for (final invite in pendingInvites) {
+        if (invite.id == inviteId || invite.containsInviteId(inviteIdValue)) {
+          matchedInvite = invite;
+          break;
+        }
+      }
+    }
+    matchedInvite ??= pendingInvites.isEmpty ? null : pendingInvites.first;
+    if (matchedInvite == null) {
+      _repository.clearShareCodeSessionContext(
+        code: invitesRepoString(
+          normalizedCode,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      return;
+    }
+    _repository.setShareCodeSessionContext(
+      code: invitesRepoString(
+        normalizedCode,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      invite: matchedInvite,
+    );
+  }
+
+  String? _resolveShareCodeForInvite(InviteModel invite) {
+    final context = _repository.shareCodeSessionContextStreamValue.value;
+    if (context == null) {
+      return null;
+    }
+    final inviteOccurrenceId = invite.occurrenceId?.trim() ?? '';
+    final contextOccurrenceId = context.occurrenceId?.trim() ?? '';
+    if (inviteOccurrenceId.isEmpty ||
+        contextOccurrenceId.isEmpty ||
+        inviteOccurrenceId != contextOccurrenceId) {
+      return null;
+    }
+    final shareCode = context.shareCode.trim();
+    return shareCode.isEmpty ? null : shareCode;
   }
 
   InviteIdValue _inviteIdValue(String raw) {
