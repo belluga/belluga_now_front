@@ -186,24 +186,40 @@ Arquivos versionados:
 
 Override local (não versionado):
 - `config/defines/local.override.json` (baseado em `config/defines/local.override.example.json`)
+- O override local só deve ser aplicado na lane `dev`. Ele não deve contaminar builds `stage`/`main`.
 
 Regras importantes:
 - `LANDLORD_DOMAIN` deve ser uma origem completa (`http://` ou `https://`), sem path/query.
 - Em ambiente local com tenant por subdomínio, não use host IP puro (`http://192.168.x.x:8081`), pois subdomínios não resolvem. Use um host wildcard DNS, por exemplo `http://192.168.0.10.nip.io:8081`.
 - Em fluxo web/browser, `LANDLORD_DOMAIN` deve refletir a origem que o navegador realmente abre. Se o acesso local estiver passando por `belluga.space` / `guarappari.belluga.space`, use essas URLs sem vazar portas internas do ingress. Só use `:8081`/outra porta quando essa for a origem efetivamente aberta no navegador.
 
-Execução local recomendada (override local):
+Execução local recomendada (override local, desenvolvimento):
 
 ```bash
 fvm flutter run --flavor <novo_tenant> \
   --dart-define-from-file=config/defines/local.override.json
 ```
 
-Com helper script (quando precisar de lane específica):
+Build local com helper Delphi:
 
 ```bash
-./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
+./script/build_lane.sh dev apk --debug --flavor <novo_tenant>
 ```
+
+Build local com lane derivada da branch atual:
+
+```bash
+./script/build_lane.sh apk --debug --flavor <novo_tenant>
+./script/build_lane.sh appbundle --release --flavor <novo_tenant>
+```
+
+Regra do helper:
+- branch `main` -> `config/defines/main.json`
+- branch `stage` -> `config/defines/stage.json`
+- qualquer outra branch (`dev`, feature, orchestration, etc.) -> `config/defines/dev.json`
+- `config/defines/local.override.json` só é aplicado quando a lane resolvida é `dev`
+- o helper valida a origem efetiva (`BOOTSTRAP_BASE_URL` ou `LANDLORD_DOMAIN`) antes do build
+- o helper valida a existência do artifact gerado ao final do build (`apk`, `appbundle`, `web`)
 
 Execução de integração (WSL + device), com define tenant por padrão:
 
