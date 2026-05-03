@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_card.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
@@ -169,7 +170,10 @@ void main() {
     );
 
     expect(find.byIcon(Icons.storefront), findsNothing);
-    expect(find.byIcon(Icons.music_note), findsWidgets);
+    expect(
+      find.byIcon(MapMarkerVisualResolver.resolveIcon('music_note')),
+      findsWidgets,
+    );
   });
 
   testWidgets('DiscoveryNearbyRow exposes named semantic navigation buttons',
@@ -263,7 +267,10 @@ void main() {
       isTrue,
     );
     expect(find.byIcon(Icons.storefront), findsNothing);
-    expect(find.byIcon(Icons.music_note), findsWidgets);
+    expect(
+      find.byIcon(MapMarkerVisualResolver.resolveIcon('music_note')),
+      findsWidgets,
+    );
   });
 }
 

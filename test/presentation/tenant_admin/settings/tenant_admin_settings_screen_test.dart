@@ -68,6 +68,7 @@ import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_sett
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_rule_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_map_filter_visual_sheet.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_icon_catalog.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
@@ -1003,7 +1004,7 @@ void main() {
 
       final iconFinder = find.descendant(
         of: rowFinder,
-        matching: find.byIcon(Icons.music_note),
+        matching: find.byIcon(MapMarkerVisualResolver.resolveIcon('music')),
       );
       expect(iconFinder, findsOneWidget);
       final iconWidget = tester.widget<Icon>(iconFinder.first);
@@ -1347,6 +1348,12 @@ void main() {
     expect(find.text('Selecionar ícone'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Selecionar ícone'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Museu').first,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Museu').first);
     await tester.pumpAndSettle();
@@ -2032,9 +2039,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Selecionar iOS paths'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(CheckboxListTile, '/home'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(CheckboxListTile, '/home'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Aplicar'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(

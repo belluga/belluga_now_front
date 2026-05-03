@@ -105,6 +105,7 @@ class EventSearchScreenController
   bool _hasMore = true;
   bool _isScrollListenerAttached = false;
   bool _isDisposed = false;
+  bool _isInitialized = false;
   bool _isAutoPaging = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
@@ -185,6 +186,7 @@ class EventSearchScreenController
       _initializeStateHolders();
       _isDisposed = false;
     }
+    _isInitialized = false;
     await _invitesRepository.init();
     _resetInternalState();
     _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
@@ -196,6 +198,7 @@ class EventSearchScreenController
     await _resolveEffectiveOrigin(warmUpIfPossible: true);
     _listenForCanonicalOriginChanges();
     await _refresh(warmUpIfPossible: false);
+    _isInitialized = true;
     _restartEventStream();
   }
 
@@ -395,6 +398,9 @@ class EventSearchScreenController
   void setInviteFilter(InviteFilter filter) {
     _ifAlive(() => inviteFilterStreamValue.addValue(filter));
     _applyFiltersAndPublish();
+    if (!_isInitialized) {
+      return;
+    }
     unawaited(_refresh(warmUpIfPossible: false));
     _restartEventStream();
   }
@@ -520,6 +526,7 @@ class EventSearchScreenController
 
   void _maybeAutoPage(List<EventModel> filtered) {
     if (filtered.isNotEmpty ||
+        !_hasEffectiveOrigin ||
         !_hasMore ||
         _isAutoPaging ||
         inviteFilterStreamValue.value == InviteFilter.pendingOnly) {
@@ -907,6 +914,7 @@ class EventSearchScreenController
   @override
   void onDispose() {
     _isDisposed = true;
+    _isInitialized = false;
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
     _effectiveOriginSubscription?.cancel();

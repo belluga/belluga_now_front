@@ -395,6 +395,10 @@ void _registerTenantBootstrapDependencies({
   when(mockInvitesBannerController.pendingInvitesStreamValue).thenReturn(
     StreamValue<List<InviteModel>>(defaultValue: const []),
   );
+  when(mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+      .thenReturn(
+    StreamValue<bool>(defaultValue: false),
+  );
 
   when(mockController.appData).thenReturn(appData);
   when(mockController.init()).thenAnswer((_) async {});

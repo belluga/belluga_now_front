@@ -118,7 +118,8 @@ void main() {
       final asset = StaticAssetDetailRoute(assetRef: 'praia-das-virtudes');
 
       expect(immersive.rawPathParams, {'slug': 'show-immersive'});
-      expect(immersive.rawQueryParams, {'occurrence': 'occ-2'});
+      expect(immersive.rawQueryParams['occurrence'], 'occ-2');
+      expect(immersive.rawQueryParams['tab'], isNull);
       expect(partner.rawPathParams, {'slug': 'yuri-dias'});
       expect(asset.rawPathParams, {'assetRef': 'praia-das-virtudes'});
       _expectResolvedRawParams(immersive.rawPathParams);
