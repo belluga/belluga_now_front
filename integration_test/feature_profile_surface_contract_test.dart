@@ -92,9 +92,9 @@ void main() {
 
       expect(find.text('50 km'), findsOneWidget);
       expect(find.text('100 km'), findsNothing);
-      Navigator.of(
+      await AutoRouter.of(
         tester.element(find.text('Salvar').last),
-      ).pop();
+      ).maybePop();
       await tester.pumpAndSettle();
 
       final originTile = find.byKey(const Key('profileOriginPreferenceTile'));
@@ -108,9 +108,9 @@ void main() {
       expect(find.text('Selecionar no mapa'), findsOneWidget);
       expect(find.byKey(const Key('profileSaveOriginPreferenceButton')),
           findsOneWidget);
-      Navigator.of(
+      await AutoRouter.of(
         tester.element(find.text('Salvar origem')),
-      ).pop();
+      ).maybePop();
       await tester.pumpAndSettle();
 
       firstController.nameController.text = 'Alice Persistida';
