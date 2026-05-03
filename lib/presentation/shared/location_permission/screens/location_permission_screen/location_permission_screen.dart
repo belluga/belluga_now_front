@@ -11,6 +11,35 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
 
+ButtonStyle _buildPermissionPrimaryActionStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final isDark = theme.brightness == Brightness.dark;
+
+  return ElevatedButton.styleFrom(
+    minimumSize: const Size.fromHeight(56),
+    backgroundColor: colorScheme.primary,
+    foregroundColor: colorScheme.onPrimary,
+    disabledBackgroundColor: colorScheme.surfaceContainerHighest,
+    disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
+    shadowColor: colorScheme.shadow.withValues(alpha: isDark ? 0.20 : 0.14),
+    elevation: isDark ? 1.5 : 2.5,
+    shape: const StadiumBorder(),
+  );
+}
+
+ButtonStyle _buildPermissionSecondaryActionStyle(BuildContext context) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  return OutlinedButton.styleFrom(
+    minimumSize: const Size.fromHeight(52),
+    backgroundColor: colorScheme.surfaceContainerLow,
+    foregroundColor: colorScheme.onSurface,
+    side: BorderSide(color: colorScheme.outlineVariant),
+    shape: const StadiumBorder(),
+  );
+}
+
 class LocationPermissionScreen extends StatefulWidget {
   const LocationPermissionScreen({
     super.key,
@@ -202,18 +231,19 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
                                       onPressed: () => _onPrimaryPressed(
                                         resolvedInitialState,
                                       ),
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(56),
-                                        backgroundColor: colorScheme.primary,
-                                        foregroundColor: colorScheme.onPrimary,
-                                        shape: const StadiumBorder(),
-                                        elevation: 0,
+                                      style:
+                                          _buildPermissionPrimaryActionStyle(
+                                        context,
                                       ),
                                     );
                                   },
                                 ),
                                 const SizedBox(height: 12),
-                                TextButton(
+                                OutlinedButton(
+                                  style:
+                                      _buildPermissionSecondaryActionStyle(
+                                    context,
+                                  ),
                                   onPressed: _onSecondaryPressed,
                                   child: Text(
                                     widget.allowContinueWithoutLocation

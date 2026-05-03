@@ -162,6 +162,42 @@ void main() {
     );
 
     test(
+      'seeds initial radius with a 10 km floor when user is inside tenant default radius',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 50,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.673800'),
+              longitudeValue: LongitudeValue()..parse('-40.497700'),
+            ),
+          );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(controller.radiusMetersStreamValue.value, 10000);
+        expect(appDataRepository.maxRadiusMeters.value, 10000);
+        expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'seeds initial radius to tenant max when user is farther than tenant max and no preference exists',
       () async {
         final appData = _buildAppData(

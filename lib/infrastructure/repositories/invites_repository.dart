@@ -44,6 +44,8 @@ import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
@@ -52,6 +54,8 @@ class InvitesRepository extends InvitesRepositoryContract
     implements PushInvitePayloadAware {
   static const int _maxContactImportItemsPerRequest = 500;
   static const Duration _contactImportCacheTtl = Duration(hours: 12);
+  static const String _tenantIdStorageKey = 'tenant_id';
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   InvitesRepository({
     InvitesBackendContract? backend,
@@ -60,17 +64,20 @@ class InvitesRepository extends InvitesRepositoryContract
     DateTime Function()? now,
     Future<String?> Function()? currentUserIdProvider,
     Future<String?> Function()? tenantCacheScopeProvider,
+    Future<String?> Function()? persistedTenantCacheScopeProvider,
   })  : _backend = backend ?? LaravelInvitesBackend(),
         _contactImportCache = contactImportCache ?? InviteContactImportCache(),
         _now = now ?? DateTime.now,
         _currentUserIdProvider = currentUserIdProvider,
-        _tenantCacheScopeProvider = tenantCacheScopeProvider;
+        _tenantCacheScopeProvider = tenantCacheScopeProvider,
+        _persistedTenantCacheScopeProvider = persistedTenantCacheScopeProvider;
 
   final InvitesBackendContract _backend;
   final InviteContactImportCacheContract _contactImportCache;
   final DateTime Function() _now;
   final Future<String?> Function()? _currentUserIdProvider;
   final Future<String?> Function()? _tenantCacheScopeProvider;
+  final Future<String?> Function()? _persistedTenantCacheScopeProvider;
   final InvitesResponseDecoder _responseDecoder =
       const InvitesResponseDecoder();
 
@@ -526,14 +533,35 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<String?> _tenantCacheScope() async {
     final provider = _tenantCacheScopeProvider;
     if (provider != null) {
-      return _normalizeNullable(await provider());
+      final scoped = _normalizeNullable(await provider());
+      if (scoped != null) {
+        return scoped;
+      }
     }
 
-    if (!GetIt.I.isRegistered<AppData>()) {
-      return null;
+    if (GetIt.I.isRegistered<AppData>()) {
+      final liveTenantId =
+          _normalizeNullable(GetIt.I.get<AppData>().tenantIdValue.value);
+      if (liveTenantId != null) {
+        return liveTenantId;
+      }
     }
 
-    return _normalizeNullable(GetIt.I.get<AppData>().tenantIdValue.value);
+    final persistedProvider = _persistedTenantCacheScopeProvider;
+    if (persistedProvider != null) {
+      return _normalizeNullable(await persistedProvider());
+    }
+
+    String? persistedTenantId;
+    try {
+      persistedTenantId = await _storage.read(key: _tenantIdStorageKey);
+    } on MissingPluginException {
+      persistedTenantId = null;
+    } on PlatformException {
+      persistedTenantId = null;
+    }
+
+    return _normalizeNullable(persistedTenantId);
   }
 
   Future<String?> _currentUserId() async {

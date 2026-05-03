@@ -626,6 +626,78 @@ void main() {
   );
 
   testWidgets(
+    'otp experience uses emphasized CTA colors in light and dark themes',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+      const lightPrimary = Color(0xFF0057D8);
+      const darkPrimary = Color(0xFF8AB4FF);
+
+      ThemeData buildTheme(Brightness brightness, Color primary) {
+        return ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: primary,
+            brightness: brightness,
+          ),
+        );
+      }
+
+      Future<void> pumpForTheme(ThemeMode mode) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const <Locale>[Locale('pt', 'BR')],
+            localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+              ...PhoneFieldLocalization.delegates,
+            ],
+            theme: buildTheme(Brightness.light, lightPrimary),
+            darkTheme: buildTheme(Brightness.dark, darkPrimary),
+            themeMode: mode,
+            home: AuthPhoneOtpExperience(
+              controller: controller,
+              onBack: () {},
+            ),
+          ),
+        );
+      }
+
+      await pumpForTheme(ThemeMode.light);
+      await tester.pump();
+      final lightTheme =
+          Theme.of(tester.element(find.byType(AuthPhoneOtpExperience)));
+      final lightButton =
+          tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      expect(
+        lightButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+        lightTheme.colorScheme.primary,
+      );
+      expect(
+        lightButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+        lightTheme.colorScheme.onPrimary,
+      );
+
+      await pumpForTheme(ThemeMode.dark);
+      await tester.pump();
+      final darkTheme =
+          Theme.of(tester.element(find.byType(AuthPhoneOtpExperience)));
+      final darkButton =
+          tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      expect(
+        darkButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+        darkTheme.colorScheme.primary,
+      );
+      expect(
+        darkButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+        darkTheme.colorScheme.onPrimary,
+      );
+    },
+  );
+
+  testWidgets(
     'otp experience updates SMS fallback from the challenge stream',
     (tester) async {
       await GetIt.I.reset();

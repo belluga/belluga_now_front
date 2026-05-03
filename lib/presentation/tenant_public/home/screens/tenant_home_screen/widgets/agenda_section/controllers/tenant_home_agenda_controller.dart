@@ -1134,7 +1134,9 @@ class TenantHomeAgendaController extends Object
     }
 
     final suggestedRadiusMeters = _clampRadiusMeters(
-      resolution.distanceFromTenantDefaultOriginMeters!,
+      resolution.distanceFromTenantDefaultOriginMeters! < 10000
+          ? 10000
+          : resolution.distanceFromTenantDefaultOriginMeters!,
     );
 
     if ((radiusMetersStreamValue.value - suggestedRadiusMeters).abs() >=

@@ -149,7 +149,7 @@ void main() {
         contactImportCache: InviteContactImportCache(),
         now: () => now.add(const Duration(minutes: 5)),
         currentUserIdProvider: () async => viewerId,
-        tenantCacheScopeProvider: () async => tenantScope,
+        persistedTenantCacheScopeProvider: () async => tenantScope,
       );
       final cachedMatches = await coldCacheProbeRepository
           .hydrateImportedContactMatchesFromCache(primingInviteContacts);
@@ -188,7 +188,7 @@ void main() {
         contactImportCache: InviteContactImportCache(),
         now: () => now.add(const Duration(minutes: 5)),
         currentUserIdProvider: () async => viewerId,
-        tenantCacheScopeProvider: () async => tenantScope,
+        persistedTenantCacheScopeProvider: () async => tenantScope,
       );
       final controller = InviteShareScreenController(
         invitesRepository: coldInvitesRepository,

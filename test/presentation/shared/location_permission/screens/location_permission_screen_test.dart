@@ -244,6 +244,80 @@ void main() {
     expect(router.replaceAllCalls, 0);
   });
 
+  testWidgets('uses emphasized button colors in light and dark themes',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+    const lightPrimary = Color(0xFF0057D8);
+    const darkPrimary = Color(0xFF8AB4FF);
+
+    ThemeData buildTheme(Brightness brightness, Color primary) {
+      return ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: brightness,
+        ),
+      );
+    }
+
+    Future<void> pumpForTheme(ThemeMode mode) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(Brightness.light, lightPrimary),
+          darkTheme: buildTheme(Brightness.dark, darkPrimary),
+          themeMode: mode,
+          home: const LocationPermissionScreen(
+            initialState: LocationPermissionState.denied,
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await pumpForTheme(ThemeMode.light);
+    final lightTheme = Theme.of(
+      tester.element(find.byType(LocationPermissionScreen)),
+    );
+    final lightPrimaryButton =
+        tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+    final lightSecondaryButton =
+        tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+    expect(
+      lightPrimaryButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      lightTheme.colorScheme.primary,
+    );
+    expect(
+      lightPrimaryButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      lightTheme.colorScheme.onPrimary,
+    );
+    expect(
+      lightSecondaryButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      lightTheme.colorScheme.surfaceContainerLow,
+    );
+
+    await pumpForTheme(ThemeMode.dark);
+    final darkTheme = Theme.of(
+      tester.element(find.byType(LocationPermissionScreen)),
+    );
+    final darkPrimaryButton =
+        tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+    final darkSecondaryButton =
+        tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+    expect(
+      darkPrimaryButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      darkTheme.colorScheme.primary,
+    );
+    expect(
+      darkPrimaryButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      darkTheme.colorScheme.onPrimary,
+    );
+    expect(
+      darkSecondaryButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      darkTheme.colorScheme.surfaceContainerLow,
+    );
+  });
+
   testWidgets(
       'back button returns cancelled result without closing when callback owns navigation',
       (tester) async {

@@ -10,6 +10,41 @@ import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/au
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
+ButtonStyle _buildAuthPrimaryActionStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final isDark = theme.brightness == Brightness.dark;
+
+  return ElevatedButton.styleFrom(
+    minimumSize: const Size.fromHeight(56),
+    backgroundColor: colorScheme.primary,
+    foregroundColor: colorScheme.onPrimary,
+    disabledBackgroundColor: colorScheme.surfaceContainerHighest,
+    disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
+    shadowColor: colorScheme.shadow.withValues(alpha: isDark ? 0.20 : 0.14),
+    elevation: isDark ? 1.5 : 2.5,
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+  );
+}
+
+ButtonStyle _buildAuthSecondaryActionStyle(BuildContext context) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  return OutlinedButton.styleFrom(
+    minimumSize: const Size(0, 44),
+    backgroundColor: colorScheme.surfaceContainerHigh,
+    foregroundColor: colorScheme.primary,
+    side: BorderSide(color: colorScheme.outlineVariant),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+    ),
+  );
+}
+
 class AuthPhoneOtpExperience extends StatelessWidget {
   const AuthPhoneOtpExperience({
     super.key,
@@ -351,12 +386,7 @@ class _AuthOtpPanel extends StatelessWidget {
                 onPressed: enabled ? _submitCurrentStep : null,
                 isLoading: isLoading,
                 label: _primaryButtonLabel(),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                style: _buildAuthPrimaryActionStyle(context),
               ),
             ),
             if (step == AuthPhoneOtpStep.otpVerification) ...[
@@ -456,19 +486,22 @@ class _OtpSecondaryActions extends StatelessWidget {
           spacing: 8,
           runSpacing: 4,
           children: [
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: enabled ? controller.editPhoneNumber : null,
+              style: _buildAuthSecondaryActionStyle(context),
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Editar telefone'),
             ),
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: enabled ? _requestNewCode : null,
+              style: _buildAuthSecondaryActionStyle(context),
               icon: const Icon(Icons.refresh_outlined),
               label: const Text('Reenviar código'),
             ),
             if (showSmsFallback)
-              TextButton.icon(
+              OutlinedButton.icon(
                 onPressed: enabled ? _requestSmsCode : null,
+                style: _buildAuthSecondaryActionStyle(context),
                 icon: const Icon(Icons.sms_outlined),
                 label: const Text('Receber por SMS'),
               ),
