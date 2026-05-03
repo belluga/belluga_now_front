@@ -5,7 +5,7 @@ PACKAGE_NAME="${ANDROID_PACKAGE_NAME:-com.guarappari.app}"
 ACTIVITY_NAME="${ANDROID_ACTIVITY_NAME:-com.belluga_now.MainActivity}"
 MERGED_MANIFEST="${ANDROID_MERGED_MANIFEST:-build/app/intermediates/merged_manifests/guarappariDebug/processGuarappariDebugManifest/AndroidManifest.xml}"
 NEGATIVE_HOST="${ANDROID_APP_LINK_NEGATIVE_HOST:-tenant.example.com}"
-PATHS_RAW="${ANDROID_APP_LINK_PATHS:-/invite,/convites,/agenda,/agenda/evento,/mapa,/parceiro,/profile,/home,/}"
+PATHS_RAW="${ANDROID_APP_LINK_PATHS:-/invite,/convites,/agenda,/agenda/evento,/descobrir,/mapa,/location/permission,/parceiro,/privacy-policy,/profile,/home,/static/praia-das-virtudes,/}"
 OPEN_APP_BASE_URL="${ANDROID_OPEN_APP_BASE_URL:-}"
 
 if ! command -v adb >/dev/null 2>&1; then
@@ -234,7 +234,11 @@ validate_open_app_redirects() {
   done <<'CASES'
 invite accept|/invite|PWINTENT123|/invite?code=PWINTENT123
 attendance confirmation|/agenda/evento/show-rock?occurrence=occ-1||/agenda/evento/show-rock?occurrence=occ-1
+discovery catalog|/descobrir||/descobrir
+privacy policy|/privacy-policy||/privacy-policy
+location permission|/location/permission||/location/permission
 account profile favorite|/parceiro/profile-slug||/parceiro/profile-slug
+static asset detail|/static/praia-das-virtudes||/static/praia-das-virtudes
 invite sharing|/convites/compartilhar||/convites/compartilhar
 CASES
 }

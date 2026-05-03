@@ -17,10 +17,14 @@ private val appLinkRoutePathPrefixes = listOf(
     "/convites",
     "/agenda",
     "/agenda/evento",
+    "/descobrir",
     "/mapa",
+    "/location/permission",
     "/parceiro",
+    "/privacy-policy",
     "/profile",
     "/home",
+    "/static",
 )
 
 private val appLinkRouteExactPaths = listOf("/")
