@@ -1078,6 +1078,8 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
     await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('Sem local específico'), findsWidgets);
+    expect(find.bySemanticsLabel('Venue A'), findsWidgets);
     await tester.tap(find.text('Venue A').last);
     await tester.pumpAndSettle();
     await _tapProgrammingSaveButton(tester);

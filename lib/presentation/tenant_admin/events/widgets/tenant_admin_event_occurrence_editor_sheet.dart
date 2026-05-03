@@ -133,6 +133,24 @@ class _MissingOccurrenceEditorSheet extends StatelessWidget {
   }
 }
 
+class _DropdownSemanticLabel extends StatelessWidget {
+  const _DropdownSemanticLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: Text(label),
+      ),
+    );
+  }
+}
+
 class _TenantAdminEventOccurrenceEditorSheet extends StatefulWidget {
   const _TenantAdminEventOccurrenceEditorSheet({
     required this.title,
@@ -782,12 +800,12 @@ class _TenantAdminEventProgrammingItemEditorSheetState
               items: [
                 const DropdownMenuItem<String>(
                   value: '',
-                  child: Text('Sem local específico'),
+                  child: _DropdownSemanticLabel('Sem local específico'),
                 ),
                 ...widget.venues.map(
                   (venue) => DropdownMenuItem<String>(
                     value: venue.id,
-                    child: Text(venue.displayName),
+                    child: _DropdownSemanticLabel(venue.displayName),
                   ),
                 ),
               ],
