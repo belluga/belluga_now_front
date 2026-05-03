@@ -48,6 +48,10 @@ abstract class InvitesRepositoryContract {
 
   final settingsStreamValue =
       StreamValue<InviteRuntimeSettings?>(defaultValue: null);
+  final inviteableRecipientsStreamValue =
+      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
+  final importedContactMatchesStreamValue =
+      StreamValue<List<InviteContactMatch>?>(defaultValue: null);
 
   InvitesRepositoryContractPrimBool get hasPendingInvites => invitesRepoBool(
         pendingInvitesStreamValue.value.isNotEmpty,
@@ -202,8 +206,23 @@ abstract class InvitesRepositoryContract {
     InviteContacts contacts,
   );
 
+  Future<void> refreshImportedContactMatches(InviteContacts contacts) async {
+    final matches = await importContacts(contacts);
+    importedContactMatchesStreamValue.addValue(matches);
+  }
+
+  Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
+    InviteContacts contacts,
+  ) async =>
+      null;
+
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
       const <InviteableRecipient>[];
+
+  Future<void> refreshInviteableRecipients() async {
+    final recipients = await fetchInviteableRecipients();
+    inviteableRecipientsStreamValue.addValue(recipients);
+  }
 
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];

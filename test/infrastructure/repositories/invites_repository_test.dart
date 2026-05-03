@@ -256,6 +256,10 @@ void main() {
     expect(recipients.single.contactHash, 'hash-1');
     expect(recipients.single.contactType, 'phone');
     expect(recipients.single.isFriend, isTrue);
+    expect(
+      repository.inviteableRecipientsStreamValue.value?.single.userId,
+      'user-1',
+    );
   });
 
   test('importContacts sends region-aware OTP-compatible phone hash variants',
@@ -319,6 +323,125 @@ void main() {
 
     expect(backend.importContactPayloads, hasLength(1));
     expect(cache.writeCount, 1);
+  });
+
+  test(
+      'importContacts reuses repository-cached matches while signature cache is fresh',
+      () async {
+    final importedAt = DateTime.utc(2026, 5);
+    var now = importedAt;
+    final backend = _FakeInvitesBackend(
+      importContactsResponse: {
+        'matches': [
+          {
+            'contact_hash': 'hash-1',
+            'type': 'phone',
+            'user_id': 'user-1',
+            'receiver_account_profile_id': 'profile-1',
+            'display_name': 'Matched Contact',
+            'avatar_url': null,
+            'profile_exposure_level': 'capped_profile',
+            'inviteable_reasons': ['contact_match'],
+            'is_inviteable': true,
+          },
+        ],
+      },
+    );
+    final cache = _FakeInviteContactImportCache();
+    final repository = InvitesRepository(
+      backend: backend,
+      contactImportCache: cache,
+      now: () => now,
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => 'tenant-1',
+    );
+
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    final firstMatches = await repository.importContacts(contacts);
+    now = importedAt.add(const Duration(minutes: 10));
+    final secondMatches = await repository.importContacts(contacts);
+
+    expect(backend.importContactPayloads, hasLength(1));
+    expect(firstMatches.single.receiverAccountProfileId, 'profile-1');
+    expect(secondMatches.single.receiverAccountProfileId, 'profile-1');
+    expect(
+      repository.importedContactMatchesStreamValue.value?.single.displayName,
+      'Matched Contact',
+    );
+  });
+
+  test(
+      'hydrateImportedContactMatchesFromCache restores persisted matches into a fresh repository instance',
+      () async {
+    final importedAt = DateTime.utc(2026, 5);
+    final cache = _FakeInviteContactImportCache();
+    final primingBackend = _FakeInvitesBackend(
+      importContactsResponse: {
+        'matches': [
+          {
+            'contact_hash': 'hash-1',
+            'type': 'phone',
+            'user_id': 'user-1',
+            'receiver_account_profile_id': 'profile-1',
+            'display_name': 'Matched Contact',
+            'avatar_url': null,
+            'profile_exposure_level': 'capped_profile',
+            'inviteable_reasons': ['contact_match'],
+            'is_inviteable': true,
+          },
+        ],
+      },
+    );
+    final primingRepository = InvitesRepository(
+      backend: primingBackend,
+      contactImportCache: cache,
+      now: () => importedAt,
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => 'tenant-1',
+    );
+
+    final contacts = InviteContacts(regionCodeValue: _regionCodeValue('BR'))
+      ..add(
+        buildContactModel(
+          id: 'contact-1',
+          displayName: 'Contato Cache',
+          phones: <String>['+55 27 99999-9999'],
+        ),
+      );
+
+    await primingRepository.importContacts(contacts);
+    expect(primingBackend.importContactPayloads, hasLength(1));
+
+    final coldBackend = _FakeInvitesBackend(
+      importContactsResponse: const {'matches': []},
+    );
+    final coldRepository = InvitesRepository(
+      backend: coldBackend,
+      contactImportCache: cache,
+      now: () => importedAt.add(const Duration(minutes: 10)),
+      currentUserIdProvider: () async => 'viewer-1',
+      tenantCacheScopeProvider: () async => 'tenant-1',
+    );
+
+    final hydrated =
+        await coldRepository.hydrateImportedContactMatchesFromCache(contacts);
+
+    expect(coldBackend.importContactPayloads, isEmpty);
+    expect(hydrated, isNotNull);
+    expect(hydrated!.single.receiverAccountProfileId, 'profile-1');
+    expect(
+      coldRepository
+          .importedContactMatchesStreamValue.value?.single.displayName,
+      'Matched Contact',
+    );
   });
 
   test('importContacts scopes fresh import cache by tenant', () async {

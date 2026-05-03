@@ -109,6 +109,7 @@ class TenantAdminProfileTypesController implements Disposable {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController typeController = TextEditingController();
   final TextEditingController labelController = TextEditingController();
+  final TextEditingController pluralLabelController = TextEditingController();
   final TextEditingController taxonomiesController = TextEditingController();
   final TextEditingController poiVisualIconController = TextEditingController();
   final TextEditingController poiVisualColorController =
@@ -221,6 +222,8 @@ class TenantAdminProfileTypesController implements Disposable {
     );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
+    pluralLabelController.text =
+        definition?.pluralLabel ?? definition?.label ?? '';
     setAllowedTaxonomies(definition?.allowedTaxonomies ?? const []);
     typeAssetFileStreamValue.addValue(null);
     typeAssetUrlStreamValue.addValue(existingTypeAssetUrl ?? '');
@@ -249,6 +252,7 @@ class TenantAdminProfileTypesController implements Disposable {
     capabilitiesStreamValue.addValue(_emptyCapabilities);
     typeController.clear();
     labelController.clear();
+    pluralLabelController.clear();
     taxonomiesController.clear();
     selectedAllowedTaxonomiesStreamValue.addValue(const []);
     _initialAllowedTaxonomies = const <String>[];
@@ -501,22 +505,17 @@ class TenantAdminProfileTypesController implements Disposable {
       return;
     }
     try {
-      await _repository.loadAllProfileTypes();
+      final match = await _repository.fetchProfileType(
+        tenantAdminAccountProfilesRepoString(
+          normalizedType,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
       if (_isDisposed) {
         return;
       }
-      final types =
-          typesStreamValue.value ?? const <TenantAdminProfileTypeDefinition>[];
-      TenantAdminProfileTypeDefinition? match;
-      for (final entry in types) {
-        if (entry.type == normalizedType) {
-          match = entry;
-          break;
-        }
-      }
-      if (match != null) {
-        initForm(match);
-      }
+      initForm(match);
     } catch (_) {
       // Keep the route payload as fallback when hydration cannot complete.
     }
@@ -559,6 +558,7 @@ class TenantAdminProfileTypesController implements Disposable {
   Future<TenantAdminProfileTypeDefinition> createType({
     required String type,
     required String label,
+    String? pluralLabel,
     List<String> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
@@ -575,6 +575,13 @@ class TenantAdminProfileTypesController implements Disposable {
       defaultValue: '',
       isRequired: true,
     );
+    final pluralLabelValue = pluralLabel == null
+        ? null
+        : tenantAdminAccountProfilesRepoString(
+            pluralLabel,
+            defaultValue: '',
+            isRequired: false,
+          );
     final allowedTaxonomyValues = allowedTaxonomies
         .map(
           (entry) => tenantAdminAccountProfilesRepoString(
@@ -589,6 +596,7 @@ class TenantAdminProfileTypesController implements Disposable {
         ? await _repository.createProfileTypeWithVisual(
             type: typeValue,
             label: labelValue,
+            pluralLabel: pluralLabelValue,
             allowedTaxonomies: allowedTaxonomyValues,
             capabilities: capabilities,
             visual: visual,
@@ -597,6 +605,7 @@ class TenantAdminProfileTypesController implements Disposable {
         : await _repository.createProfileType(
             type: typeValue,
             label: labelValue,
+            pluralLabel: pluralLabelValue,
             allowedTaxonomies: allowedTaxonomyValues,
             capabilities: capabilities,
           );
@@ -608,6 +617,7 @@ class TenantAdminProfileTypesController implements Disposable {
     required String type,
     String? newType,
     String? label,
+    String? pluralLabel,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -634,6 +644,13 @@ class TenantAdminProfileTypesController implements Disposable {
             defaultValue: '',
             isRequired: false,
           );
+    final pluralLabelValue = pluralLabel == null
+        ? null
+        : tenantAdminAccountProfilesRepoString(
+            pluralLabel,
+            defaultValue: '',
+            isRequired: false,
+          );
     final allowedTaxonomyValues = allowedTaxonomies
         ?.map(
           (entry) => tenantAdminAccountProfilesRepoString(
@@ -649,6 +666,7 @@ class TenantAdminProfileTypesController implements Disposable {
             type: typeValue,
             newType: newTypeValue,
             label: labelValue,
+            pluralLabel: pluralLabelValue,
             allowedTaxonomies: allowedTaxonomyValues,
             capabilities: capabilities,
             visual: visual,
@@ -664,6 +682,7 @@ class TenantAdminProfileTypesController implements Disposable {
             type: typeValue,
             newType: newTypeValue,
             label: labelValue,
+            pluralLabel: pluralLabelValue,
             allowedTaxonomies: allowedTaxonomyValues,
             capabilities: capabilities,
           );
@@ -696,6 +715,7 @@ class TenantAdminProfileTypesController implements Disposable {
   Future<void> submitCreateType({
     required String type,
     required String label,
+    String? pluralLabel,
     List<String> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
@@ -706,6 +726,7 @@ class TenantAdminProfileTypesController implements Disposable {
       await createType(
         type: type,
         label: label,
+        pluralLabel: pluralLabel,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
         visual: visual,
@@ -725,6 +746,7 @@ class TenantAdminProfileTypesController implements Disposable {
     required String type,
     String? newType,
     String? label,
+    String? pluralLabel,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -737,6 +759,7 @@ class TenantAdminProfileTypesController implements Disposable {
         type: type,
         newType: newType,
         label: label,
+        pluralLabel: pluralLabel,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
         visual: visual,
@@ -795,6 +818,7 @@ class TenantAdminProfileTypesController implements Disposable {
     required String type,
     String? newType,
     String? label,
+    String? pluralLabel,
   }) async {
     if (detailSavingStreamValue.value) {
       return null;
@@ -805,6 +829,7 @@ class TenantAdminProfileTypesController implements Disposable {
         type: type,
         newType: newType,
         label: label,
+        pluralLabel: pluralLabel,
       );
       if (_isDisposed) return null;
       detailTypeStreamValue.addValue(updated);
@@ -909,6 +934,7 @@ class TenantAdminProfileTypesController implements Disposable {
     _typesErrorSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
+    pluralLabelController.dispose();
     taxonomiesController.dispose();
     poiVisualIconController.dispose();
     poiVisualColorController.dispose();

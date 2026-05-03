@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_cache_dto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class InviteContactImportCache implements InviteContactImportCacheContract {
@@ -35,6 +36,18 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
       return InviteContactImportCacheEntry(
         signature: signature,
         importedAt: importedAt,
+        matches: (() {
+          final rawMatches = decoded['matches'];
+          if (rawMatches is! List) {
+            return const <InviteContactMatchCacheDto>[];
+          }
+          return rawMatches
+              .whereType<Map>()
+              .map((entry) => InviteContactMatchCacheDto.fromJsonMap(
+                    Map<String, dynamic>.from(entry),
+                  ))
+              .toList(growable: false);
+        })(),
       );
     } catch (_) {
       return null;
@@ -52,6 +65,7 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
         value: jsonEncode({
           'signature': entry.signature,
           'imported_at': entry.importedAt.toIso8601String(),
+          'matches': entry.matches.map((match) => match.toJsonMap()).toList(),
         }),
       );
     } catch (_) {

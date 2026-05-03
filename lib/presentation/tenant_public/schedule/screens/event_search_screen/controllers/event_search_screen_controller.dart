@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -41,10 +43,6 @@ class EventSearchScreenController
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _telemetryRepository = telemetryRepository ??
@@ -59,7 +57,6 @@ class EventSearchScreenController
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
   final TelemetryRepositoryContract? _telemetryRepository;
   final LocationOriginServiceContract _locationOriginService;
@@ -98,7 +95,7 @@ class EventSearchScreenController
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
-  StreamSubscription? _userLocationSubscription;
+  StreamSubscription<LocationOriginResolution?>? _effectiveOriginSubscription;
   StreamSubscription? _radiusSubscription;
   StreamSubscription? _eventsStreamSubscription;
   bool _isStreamRefreshing = false;
@@ -111,6 +108,7 @@ class EventSearchScreenController
   bool _isAutoPaging = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  LocationOriginSettings? _effectiveOriginSettings;
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
@@ -195,10 +193,10 @@ class EventSearchScreenController
         () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()));
     _attachScrollListener();
     _listenForStatusChanges();
-    _listenForLocationChanges();
     _listenForRadiusChanges();
     await _resolveEffectiveOrigin(warmUpIfPossible: true);
-    await _refresh();
+    _listenForCanonicalOriginChanges();
+    await _refresh(warmUpIfPossible: false);
     _restartEventStream();
   }
 
@@ -657,12 +655,13 @@ class EventSearchScreenController
     });
   }
 
-  void _listenForLocationChanges() {
-    final repo = _userLocationRepository;
-    if (repo == null) return;
-    _userLocationSubscription?.cancel();
-    _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
-      unawaited(_handleLocationUpdate());
+  void _listenForCanonicalOriginChanges() {
+    _effectiveOriginSubscription?.cancel();
+    _effectiveOriginSubscription =
+        _locationOriginService.effectiveOriginStreamValue.stream.listen((
+      resolution,
+    ) {
+      unawaited(_handleEffectiveOriginUpdate(resolution));
     });
   }
 
@@ -685,13 +684,33 @@ class EventSearchScreenController
   bool get _hasEffectiveOrigin =>
       _effectiveOriginLat != null && _effectiveOriginLng != null;
 
-  Future<void> _handleLocationUpdate() async {
-    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+  Future<void> _handleEffectiveOriginUpdate(
+    LocationOriginResolution? resolution,
+  ) async {
+    if (resolution == null) {
+      return;
+    }
+
+    final previousOriginLat = _effectiveOriginLat;
+    final previousOriginLng = _effectiveOriginLng;
+    final previousOriginSettings = _effectiveOriginSettings;
+    final changed = _applyResolvedEffectiveOrigin(resolution);
     if (!changed) {
       return;
     }
 
-    await _refresh();
+    if (!_didCanonicalOriginChangeMeaningfully(
+      previousOriginSettings: previousOriginSettings,
+      nextOriginSettings: _effectiveOriginSettings,
+      previousOriginLat: previousOriginLat,
+      previousOriginLng: previousOriginLng,
+      nextOriginLat: _effectiveOriginLat,
+      nextOriginLng: _effectiveOriginLng,
+    )) {
+      return;
+    }
+
+    await _refresh(warmUpIfPossible: false);
     _restartEventStream();
   }
 
@@ -707,16 +726,49 @@ class EventSearchScreenController
       ),
     );
     final effectiveOrigin = resolution.effectiveCoordinate;
-    if (effectiveOrigin != null) {
-      _effectiveOriginLat = effectiveOrigin.latitude;
-      _effectiveOriginLng = effectiveOrigin.longitude;
-      return _effectiveOriginLat != currentLat ||
-          _effectiveOriginLng != currentLng;
+    final changed = _applyResolvedEffectiveOrigin(resolution);
+    if (!changed) {
+      return false;
     }
+    return _didCanonicalOriginChangeMeaningfully(
+      previousOriginSettings: null,
+      nextOriginSettings: _effectiveOriginSettings,
+      previousOriginLat: currentLat,
+      previousOriginLng: currentLng,
+      nextOriginLat: effectiveOrigin?.latitude,
+      nextOriginLng: effectiveOrigin?.longitude,
+    );
+  }
 
-    _effectiveOriginLat = null;
-    _effectiveOriginLng = null;
-    return currentLat != null || currentLng != null;
+  bool _applyResolvedEffectiveOrigin(LocationOriginResolution resolution) {
+    final nextCoordinate = resolution.effectiveCoordinate;
+    final nextLat = nextCoordinate?.latitude;
+    final nextLng = nextCoordinate?.longitude;
+    final nextSettings = resolution.settings;
+    final changed =
+        _effectiveOriginLat != nextLat ||
+        _effectiveOriginLng != nextLng ||
+        !(_effectiveOriginSettings?.sameAs(nextSettings) ?? nextSettings == null);
+    _effectiveOriginLat = nextLat;
+    _effectiveOriginLng = nextLng;
+    _effectiveOriginSettings = nextSettings;
+    return changed;
+  }
+
+  bool _didCanonicalOriginChangeMeaningfully({
+    required LocationOriginSettings? previousOriginSettings,
+    required LocationOriginSettings? nextOriginSettings,
+    required double? previousOriginLat,
+    required double? previousOriginLng,
+    required double? nextOriginLat,
+    required double? nextOriginLng,
+  }) {
+    if (!(previousOriginSettings?.sameAs(nextOriginSettings) ??
+        nextOriginSettings == null)) {
+      return true;
+    }
+    return previousOriginLat != nextOriginLat ||
+        previousOriginLng != nextOriginLng;
   }
 
   @override
@@ -858,7 +910,7 @@ class EventSearchScreenController
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _userLocationSubscription?.cancel();
+    _effectiveOriginSubscription?.cancel();
     _radiusSubscription?.cancel();
     _eventsStreamSubscription?.cancel();
     displayedEventsStreamValue.dispose();

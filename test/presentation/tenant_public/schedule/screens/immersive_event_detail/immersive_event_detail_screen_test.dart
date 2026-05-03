@@ -54,6 +54,7 @@ import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -256,6 +257,154 @@ void main() {
 
     expect(find.textContaining('20:00 às'), findsOneWidget);
     expect(find.textContaining('20:00 -'), findsNothing);
+  });
+
+  testWidgets(
+      'event detail share action generates invite code for the selected occurrence',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final sharedTexts = <String?>[];
+    final sharedSubjects = <String?>[];
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+              shareLauncher: (params) async {
+                sharedTexts.add(params.text);
+                sharedSubjects.add(params.subject);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveShareAction')));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(
+      invitesRepository.lastCreateShareEventId,
+      '507f1f77bcf86cd799439011',
+    );
+    expect(
+      invitesRepository.lastCreateShareOccurrenceId,
+      'occurrence-selected',
+    );
+    expect(sharedSubjects, ['Convite Belluga Now']);
+    expect(sharedTexts.single, contains('https://tenant.test/invite?code=CODE123'));
+  });
+
+  testWidgets(
+      'event detail share action stays bounded while share code generation is in flight',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository()
+      ..createShareCodeCompleter = Completer<InviteShareCodeResult>();
+    var shareLauncherCalls = 0;
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+              shareLauncher: (_) async {
+                shareLauncherCalls += 1;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveShareAction')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('immersiveShareAction')));
+    await tester.pump();
+
+    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(find.byKey(const Key('immersiveShareActionLoading')), findsOneWidget);
+    expect(shareLauncherCalls, 0);
+
+    invitesRepository.createShareCodeCompleter!.complete(
+      buildInviteShareCodeResult(
+        code: 'CODE123',
+        eventId: '507f1f77bcf86cd799439011',
+        occurrenceId: 'occurrence-selected',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(shareLauncherCalls, 1);
+    expect(find.byKey(const Key('immersiveShareActionLoading')), findsNothing);
   });
 
   testWidgets(
@@ -1171,11 +1320,7 @@ void main() {
       find.byKey(const Key('eventDateCurrentBadge_occ-1')),
       findsNothing,
     );
-    expect(
-      find.text('Esta data ainda não tem programação cadastrada.'),
-      findsOneWidget,
-    );
-    expect(find.text('Show da data atual'), findsNothing);
+    expect(find.text('Show da data atual'), findsOneWidget);
   });
 
   testWidgets('event detail programming tab renders occurrence schedule',
@@ -1253,6 +1398,283 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+      'event detail programming centers the selected occurrence when there is room',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 1600);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    final occurrences = List<EventOccurrenceOption>.generate(
+      10,
+      (index) => _buildOccurrence(
+        id: 'occ-$index',
+        start: DateTime(2026, 3, 15 + index, 18),
+        end: DateTime(2026, 3, 15 + index, 22),
+        isSelected: index == 5,
+        programmingCount: 1,
+      ),
+      growable: false,
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: occurrences,
+                programmingItems: [
+                  _buildProgrammingItem(
+                    time: '18:00',
+                    title: 'Faixa ativa',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
+    await tester.pumpAndSettle();
+
+    final selectedCard = find.byKey(const Key('eventDateCard_occ-5'));
+    expect(selectedCard, findsOneWidget);
+
+    final selectedCenter = tester.getCenter(selectedCard);
+    expect(selectedCenter.dx, greaterThan(320));
+    expect(selectedCenter.dx, lessThan(580));
+  });
+
+  testWidgets(
+    'event detail programming recenters the newly selected occurrence after tap',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(900, 1000);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      var selectedOccurrenceId = 'occ-1';
+      List<EventOccurrenceOption> buildOccurrences() {
+        return List<EventOccurrenceOption>.generate(
+          10,
+          (index) => _buildOccurrence(
+            id: 'occ-$index',
+            start: DateTime(2026, 3, 15 + index, 18),
+            end: DateTime(2026, 3, 15 + index, 22),
+            isSelected: selectedOccurrenceId == 'occ-$index',
+            programmingCount: 0,
+          ),
+          growable: false,
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              return Scaffold(
+                body: EventProgrammingSection(
+                  items: const <EventProgrammingItem>[],
+                  occurrences: buildOccurrences(),
+                  onOccurrenceTap: (occurrence) {
+                    setState(() {
+                      selectedOccurrenceId = occurrence.occurrenceId;
+                    });
+                  },
+                  onLocationTap: (_) {},
+                  profileTypeRegistry: null,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.pumpAndSettle();
+
+      final selectedCard = find.byKey(const Key('eventDateCard_occ-5'));
+      expect(selectedCard, findsOneWidget);
+
+      final selectedCenter = tester.getCenter(selectedCard);
+      expect(selectedCenter.dx, greaterThan(320));
+      expect(selectedCenter.dx, lessThan(580));
+    },
+  );
+
+  testWidgets(
+    'event detail programming centers a selected occurrence only once when the same target rebuilds twice',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(900, 1000);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      var selectedOccurrenceId = 'occ-1';
+      var centerAnimationStarts = 0;
+
+      List<EventOccurrenceOption> buildOccurrences() {
+        return List<EventOccurrenceOption>.generate(
+          10,
+          (index) => _buildOccurrence(
+            id: 'occ-$index',
+            start: DateTime(2026, 3, 15 + index, 18),
+            end: DateTime(2026, 3, 15 + index, 22),
+            isSelected: selectedOccurrenceId == 'occ-$index',
+            programmingCount: 0,
+          ),
+          growable: false,
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              return Scaffold(
+                body: EventProgrammingSection(
+                  items: const <EventProgrammingItem>[],
+                  occurrences: buildOccurrences(),
+                  onOccurrenceTap: (occurrence) {
+                    setState(() {
+                      selectedOccurrenceId = occurrence.occurrenceId;
+                    });
+                    Future<void>.microtask(() {
+                      setState(() {
+                        selectedOccurrenceId = occurrence.occurrenceId;
+                      });
+                    });
+                  },
+                  onLocationTap: (_) {},
+                  profileTypeRegistry: null,
+                  debugOnOccurrenceCenterAnimationStart: () {
+                    centerAnimationStarts += 1;
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      centerAnimationStarts = 0;
+
+      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(centerAnimationStarts, 1);
+    },
+  );
+
+  testWidgets(
+    'event detail programming does not replay a second centering animation when the selector state is recreated after tap',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(900, 1000);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      var selectedOccurrenceId = 'occ-1';
+      var selectorEpoch = 0;
+      var centerAnimationStarts = 0;
+
+      List<EventOccurrenceOption> buildOccurrences() {
+        return List<EventOccurrenceOption>.generate(
+          10,
+          (index) => _buildOccurrence(
+            id: 'occ-$index',
+            start: DateTime(2026, 3, 15 + index, 18),
+            end: DateTime(2026, 3, 15 + index, 22),
+            isSelected: selectedOccurrenceId == 'occ-$index',
+            programmingCount: 0,
+          ),
+          growable: false,
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              return Scaffold(
+                body: KeyedSubtree(
+                  key: ValueKey('selector-$selectorEpoch'),
+                  child: EventProgrammingSection(
+                    items: const <EventProgrammingItem>[],
+                    occurrences: buildOccurrences(),
+                    onOccurrenceTap: (occurrence) {
+                      setState(() {
+                        selectedOccurrenceId = occurrence.occurrenceId;
+                      });
+                      Future<void>.microtask(() {
+                        setState(() {
+                          selectorEpoch += 1;
+                        });
+                      });
+                    },
+                    onLocationTap: (_) {},
+                    profileTypeRegistry: null,
+                    debugOnOccurrenceCenterAnimationStart: () {
+                      centerAnimationStarts += 1;
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      centerAnimationStarts = 0;
+
+      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(centerAnimationStarts, 1);
+    },
+  );
 
   testWidgets('event detail programming renders large schedules progressively',
       (tester) async {
@@ -1830,11 +2252,258 @@ void main() {
     await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
     await tester.pump();
 
-    expect(
-      router.lastReplacedPath,
-      '/agenda/evento/evento-de-teste?occurrence=occ-1&tab=programming',
-    );
+    expect(router.lastReplacedPath, isNull);
+    expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
+    expect(route.rawPathParams['slug'], 'evento-de-teste');
+    expect(route.rawQueryParams['occurrence'], 'occ-1');
+    expect(route.rawQueryParams['tab'], 'programming');
   });
+
+  testWidgets(
+    'event detail programming occurrence tap emits one selected-occurrence update even when route state rebuilds',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(900, 1000);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
+
+      final emittedOccurrenceIds = <String?>[];
+      final subscription = invitesRepository.immersiveSelectedEventStreamValue
+          .stream
+          .listen((event) {
+        emittedOccurrenceIds.add(event?.selectedOccurrenceId?.trim());
+      });
+      addTearDown(subscription.cancel);
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/evento-de-teste',
+          queryParams: const {'tab': 'programming'},
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      var selectedOccurrenceId = 'occ-1';
+
+      EventModel buildEvent() {
+        return _buildEvent(
+          occurrences: List<EventOccurrenceOption>.generate(
+            9,
+            (index) => _buildOccurrence(
+              id: 'occ-$index',
+              start: DateTime(2026, 3, 15 + index, 18),
+              end: DateTime(2026, 3, 15 + index, 22),
+              isSelected: selectedOccurrenceId == 'occ-$index',
+              programmingCount: 1,
+            ),
+            growable: false,
+          ),
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '18:00',
+              title: 'Faixa ativa',
+            ),
+          ],
+        );
+      }
+
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            router.onNavigateRoute = (route) {
+              final occurrenceId = route.queryParams.optString('occurrence');
+              if (occurrenceId == null || occurrenceId.isEmpty) {
+                return;
+              }
+              setState(() {
+                selectedOccurrenceId = occurrenceId;
+              });
+            };
+
+            return StackRouterScope(
+              controller: router,
+              stateHash: 0,
+              child: MaterialApp(
+                home: RouteDataScope(
+                  routeData: routeData,
+                  child: ImmersiveEventDetailScreen(
+                    event: buildEvent(),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+      await tester.pumpAndSettle();
+
+      emittedOccurrenceIds.clear();
+
+      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        emittedOccurrenceIds.where((occurrenceId) => occurrenceId == 'occ-5'),
+        hasLength(1),
+      );
+    },
+  );
+
+  testWidgets(
+    'event detail programming keeps later occurrences visible after route rebuilds on a phone-width rail',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(411, 1200);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/evento-de-teste',
+          queryParams: const {'tab': 'programming'},
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      var selectedOccurrenceId = 'occ-0';
+
+      EventModel buildEvent() {
+        return _buildEvent(
+          occurrences: List<EventOccurrenceOption>.generate(
+            9,
+            (index) => _buildOccurrence(
+              id: 'occ-$index',
+              start: DateTime(2026, 3, 15 + index, 18),
+              end: DateTime(2026, 3, 15 + index, 22),
+              isSelected: selectedOccurrenceId == 'occ-$index',
+              programmingCount: 1,
+            ),
+            growable: false,
+          ),
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '18:00',
+              title: 'Faixa ativa',
+            ),
+          ],
+        );
+      }
+
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            router.onNavigateRoute = (route) {
+              final occurrenceId = route.queryParams.optString('occurrence');
+              if (occurrenceId == null || occurrenceId.isEmpty) {
+                return;
+              }
+              setState(() {
+                selectedOccurrenceId = occurrenceId;
+              });
+            };
+
+            return StackRouterScope(
+              controller: router,
+              stateHash: 0,
+              child: MaterialApp(
+                home: RouteDataScope(
+                  routeData: routeData,
+                  child: ImmersiveEventDetailScreen(
+                    event: buildEvent(),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+      await tester.pumpAndSettle();
+
+      final viewportFinder =
+          find.byKey(const Key('eventProgrammingDateSelectorViewport'));
+      final selectorListFinder =
+          find.byKey(const Key('eventProgrammingDateSelectorList'));
+      final verticalScrollable = find.byType(SingleChildScrollView).first;
+
+      Future<void> tapAndValidate(int index) async {
+        final occurrenceId = 'occ-$index';
+        final cardFinder = find.byKey(Key('eventDateCard_$occurrenceId'));
+        await tester.dragUntilVisible(
+          viewportFinder,
+          verticalScrollable,
+          const Offset(0, -220),
+          maxIteration: 10,
+          continuous: true,
+        );
+        await tester.pumpAndSettle();
+        await tester.dragUntilVisible(
+          cardFinder,
+          selectorListFinder,
+          const Offset(-180, 0),
+          maxIteration: 20,
+          continuous: true,
+        );
+        final card = tester.widget<InkWell>(cardFinder);
+        expect(card.onTap, isNotNull);
+        card.onTap!.call();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+
+        expect(selectedOccurrenceId, occurrenceId);
+
+        final viewportRect = tester.getRect(viewportFinder);
+        final selectedRect = tester.getRect(cardFinder);
+
+        expect(selectedRect.left, greaterThanOrEqualTo(viewportRect.left - 1));
+        expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 1));
+      }
+
+      for (var index = 1; index <= 8; index += 1) {
+        await tapAndValidate(index);
+      }
+    },
+  );
 
   testWidgets(
       'event detail programming tab shows empty state when selected date has no items',
@@ -2328,6 +2997,8 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastPushedPath;
   String? lastReplacedPath;
   PageRouteInfo? lastPushedRoute;
+  PageRouteInfo? lastNavigatedRoute;
+  void Function(PageRouteInfo route)? onNavigateRoute;
   bool canPopResult = true;
   int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
@@ -2353,6 +3024,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastReplacedPath = path;
+    return null;
+  }
+
+  @override
+  Future<dynamic> navigate(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastNavigatedRoute = route;
+    onNavigateRoute?.call(route);
     return null;
   }
 
@@ -2478,7 +3159,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
+  int createShareCodeCalls = 0;
   final List<String> acceptedShareCodes = <String>[];
+  String? lastCreateShareEventId;
+  String? lastCreateShareOccurrenceId;
+  String? lastCreateShareAccountProfileId;
+  Completer<InviteShareCodeResult>? createShareCodeCompleter;
 
   @override
   Future<InviteAcceptResult> acceptInvite(
@@ -2515,6 +3201,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
   }) async {
+    createShareCodeCalls += 1;
+    lastCreateShareEventId = eventId.value;
+    lastCreateShareOccurrenceId = occurrenceId?.value;
+    lastCreateShareAccountProfileId = accountProfileId?.value;
+    final completer = createShareCodeCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
     return buildInviteShareCodeResult(
       code: 'CODE123',
       eventId: eventId.value,

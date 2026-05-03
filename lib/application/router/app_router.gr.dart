@@ -595,6 +595,7 @@ class ImmersiveEventDetailRoute
     _i70.Key? key,
     required String eventSlug,
     String? occurrenceId,
+    String? tab,
     List<_i69.PageRouteInfo>? children,
   }) : super(
           ImmersiveEventDetailRoute.name,
@@ -602,9 +603,10 @@ class ImmersiveEventDetailRoute
             key: key,
             eventSlug: eventSlug,
             occurrenceId: occurrenceId,
+            tab: tab,
           ),
           rawPathParams: {'slug': eventSlug},
-          rawQueryParams: {'occurrence': occurrenceId},
+          rawQueryParams: {'occurrence': occurrenceId, 'tab': tab},
           initialChildren: children,
         );
 
@@ -619,12 +621,14 @@ class ImmersiveEventDetailRoute
         orElse: () => ImmersiveEventDetailRouteArgs(
           eventSlug: pathParams.getString('slug'),
           occurrenceId: queryParams.optString('occurrence'),
+          tab: queryParams.optString('tab'),
         ),
       );
       return _i11.ImmersiveEventDetailRoutePage(
         key: args.key,
         eventSlug: args.eventSlug,
         occurrenceId: args.occurrenceId,
+        tab: args.tab,
       );
     },
   );
@@ -635,6 +639,7 @@ class ImmersiveEventDetailRouteArgs {
     this.key,
     required this.eventSlug,
     this.occurrenceId,
+    this.tab,
   });
 
   final _i70.Key? key;
@@ -643,9 +648,11 @@ class ImmersiveEventDetailRouteArgs {
 
   final String? occurrenceId;
 
+  final String? tab;
+
   @override
   String toString() {
-    return 'ImmersiveEventDetailRouteArgs{key: $key, eventSlug: $eventSlug, occurrenceId: $occurrenceId}';
+    return 'ImmersiveEventDetailRouteArgs{key: $key, eventSlug: $eventSlug, occurrenceId: $occurrenceId, tab: $tab}';
   }
 
   @override
@@ -654,11 +661,13 @@ class ImmersiveEventDetailRouteArgs {
     if (other is! ImmersiveEventDetailRouteArgs) return false;
     return key == other.key &&
         eventSlug == other.eventSlug &&
-        occurrenceId == other.occurrenceId;
+        occurrenceId == other.occurrenceId &&
+        tab == other.tab;
   }
 
   @override
-  int get hashCode => key.hashCode ^ eventSlug.hashCode ^ occurrenceId.hashCode;
+  int get hashCode =>
+      key.hashCode ^ eventSlug.hashCode ^ occurrenceId.hashCode ^ tab.hashCode;
 }
 
 /// generated route for

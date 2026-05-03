@@ -130,6 +130,17 @@ Controllers must not mutate delegated `StreamValue` sources owned by repositorie
 2. If the controller needs to mutate canonical shared state, add/use an explicit repository getter/setter or repository mutation API and perform the stream write inside the repository.
 3. If the controller needs only local screen-stage state, introduce a controller-owned `StreamValue`.
 
+## `controller_delegated_streamvalue_snapshot_field_forbidden`
+
+### Rule intent
+Controllers must not read `repository/service StreamValue.value` and stash that snapshot into mutable private collection fields. That creates a second cache owner in presentation, breaks repository canonical ownership, and causes reopen/staleness bugs when the controller lifecycle differs from the repository lifecycle.
+
+### Remediation playbook
+1. Treat delegated repository/service `StreamValue` as the canonical cache.
+2. Derive UI state directly from repository-owned streams or rebuild controller-owned `StreamValue` view state from the repository cache.
+3. Do not keep mutable private collection fields as mirrors of repository snapshots.
+4. If the screen needs persistent shared state, move that ownership into the repository contract/implementation.
+
 ## `controller_streamvalue_parameter_forbidden`
 
 ### Rule intent
@@ -164,6 +175,16 @@ Controllers must not pass raw pagination control arguments (`page`, `pageSize`, 
    - `loadHomeAgenda()`
    - `loadMoreHomeAgenda()`
 3. Keep page bookkeeping, cursors, and backend pagination semantics private inside repository implementations.
+
+## `location_origin_canonical_stream_subscription_required`
+
+### Rule intent
+Geo refresh workflows must not subscribe directly to raw `userLocation` / `lastKnownLocation` streams in presentation controllers or repository/DAO surfaces. Those listeners bypass canonical origin policy and create stale-radius/stale-origin regressions when fixed origin, tenant fallback, or persisted origin mode should drive refresh.
+
+### Remediation playbook
+1. Subscribe to `LocationOriginService.effectiveOriginStreamValue` for refresh triggers.
+2. Treat raw user-location streams as inputs owned by the canonical location-origin service.
+3. Only the canonical service may translate raw location updates into app-facing origin state.
 
 ## `repository_contract_pagination_controls_forbidden`
 

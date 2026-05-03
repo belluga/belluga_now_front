@@ -35,6 +35,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 /// Event-specific immersive detail screen.
@@ -47,12 +48,14 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
     required this.event,
     this.colorScheme,
     this.directionsAppChooser,
+    this.shareLauncher,
     super.key,
   });
 
   final EventModel event;
   final ColorScheme? colorScheme;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final Future<void> Function(ShareParams params)? shareLauncher;
 
   @override
   State<ImmersiveEventDetailScreen> createState() =>
@@ -207,33 +210,45 @@ class _ImmersiveEventDetailScreenState
                           data: Theme.of(context).copyWith(
                             colorScheme: colorScheme,
                           ),
-                          child: ImmersiveDetailScreen(
-                            heroContentBuilder: (context, activateTab) =>
-                                ImmersiveHero(
-                              event: resolvedEvent,
-                              fallbackImageUri:
-                                  _controller.defaultEventImageUri,
-                              onCounterpartTap: (profile) {
-                                final targetIndex =
-                                    _linkedProfileTabIndexForHeroTap(
-                                  resolvedEvent,
-                                  profile,
-                                );
-                                if (targetIndex != null) {
-                                  activateTab(targetIndex);
-                                }
-                              },
-                            ),
-                            title: resolvedEvent.title.value,
-                            betweenHeroAndTabs: topBanner,
-                            tabs: tabs,
-                            canUseTabFooter: (_) => isConfirmed,
-                            // Don't auto-navigate, let user scroll naturally
-                            initialTabIndex:
-                                _resolveInitialTabIndex(tabs, context),
-                            footer: footer,
-                            backPolicy:
-                                buildCanonicalCurrentRouteBackPolicy(context),
+                          child: StreamValueBuilder<bool>(
+                            streamValue:
+                                _controller.isShareActionLoadingStreamValue,
+                            builder: (context, isShareLoading) {
+                              return ImmersiveDetailScreen(
+                                heroContentBuilder: (context, activateTab) =>
+                                    ImmersiveHero(
+                                  event: resolvedEvent,
+                                  fallbackImageUri:
+                                      _controller.defaultEventImageUri,
+                                  onCounterpartTap: (profile) {
+                                    final targetIndex =
+                                        _linkedProfileTabIndexForHeroTap(
+                                      resolvedEvent,
+                                      profile,
+                                    );
+                                    if (targetIndex != null) {
+                                      activateTab(targetIndex);
+                                    }
+                                  },
+                                ),
+                                title: resolvedEvent.title.value,
+                                betweenHeroAndTabs: topBanner,
+                                tabs: tabs,
+                                canUseTabFooter: (_) => isConfirmed,
+                                // Don't auto-navigate, let user scroll naturally
+                                initialTabIndex:
+                                    _resolveInitialTabIndex(tabs, context),
+                                footer: footer,
+                                backPolicy:
+                                    buildCanonicalCurrentRouteBackPolicy(
+                                  context,
+                                ),
+                                onSharePressed: () => unawaited(
+                                  _shareSelectedEvent(resolvedEvent),
+                                ),
+                                isShareLoading: isShareLoading,
+                              );
+                            },
                           ),
                         );
                       },
@@ -272,6 +287,84 @@ class _ImmersiveEventDetailScreenState
     }
     final encodedRedirect = Uri.encodeQueryComponent(routeRedirectPath);
     context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  Future<void> _shareSelectedEvent(EventModel event) async {
+    final eventPath = _eventRedirectPath(event);
+    if (eventPath == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+      return;
+    }
+
+    if (kIsWeb) {
+      launchWebInstalledAppHandoffOrPromotion(
+        context: context,
+        redirectPath: eventPath,
+        actionType: AuthWallActionType.sendInvite,
+      );
+      return;
+    }
+
+    final shareUri = await _controller.createShareUriForSelectedEvent();
+    if (!mounted) {
+      return;
+    }
+    if (shareUri == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+      return;
+    }
+
+    final invite = InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
+    );
+    final shareText =
+        'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime}.'
+        '\nDetalhes: $shareUri';
+
+    try {
+      final launcher = widget.shareLauncher;
+      if (launcher != null) {
+        await launcher(
+          ShareParams(
+            text: shareText,
+            subject: 'Convite Belluga Now',
+          ),
+        );
+      } else {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: shareText,
+            subject: 'Convite Belluga Now',
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+    }
+  }
+
+  String? _eventRedirectPath(EventModel event) {
+    final slug = event.slug.trim();
+    if (slug.isEmpty) {
+      return null;
+    }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    return Uri(
+      path: '/agenda/evento/$slug',
+      queryParameters: occurrenceId == null || occurrenceId.isEmpty
+          ? null
+          : <String, String>{'occurrence': occurrenceId},
+    ).toString();
   }
 
   List<ImmersiveTabItem> _buildDynamicProfileTabs({
@@ -550,14 +643,15 @@ class _ImmersiveEventDetailScreenState
       return;
     }
     _controller.selectOccurrence(event, occurrence);
-    final path = Uri(
-      path: '/agenda/evento/${event.slug}',
-      queryParameters: {
-        'occurrence': occurrenceId,
-        if (tab != null && tab.trim().isNotEmpty) 'tab': tab,
-      },
-    ).toString();
-    unawaited(context.router.replacePath(path));
+    unawaited(
+      context.router.navigate(
+        ImmersiveEventDetailRoute(
+          eventSlug: event.slug,
+          occurrenceId: occurrenceId,
+          tab: tab?.trim().isNotEmpty == true ? tab!.trim() : null,
+        ),
+      ),
+    );
   }
 
   int _resolveInitialTabIndex(

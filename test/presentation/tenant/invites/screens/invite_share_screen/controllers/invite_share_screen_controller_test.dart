@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -26,6 +27,7 @@ import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -97,8 +99,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   List<InviteableRecipient> inviteableRecipients =
       const <InviteableRecipient>[];
   List<InviteContactMatch>? importContactMatches;
+  List<InviteContactMatch>? cachedImportContactMatches;
   final sentRecipientAccountProfileIds = <String>[];
   int importContactsCalls = 0;
+  int hydrateImportedContactMatchesFromCacheCalls = 0;
   int fetchInviteableRecipientsCalls = 0;
   int createShareCodeCalls = 0;
   Completer<void>? fetchInviteableRecipientsGate;
@@ -187,6 +191,19 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         isInviteableValue: DomainBooleanValue()..parse('true'),
       ),
     ];
+  }
+
+  @override
+  Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
+    InviteContacts contacts,
+  ) async {
+    hydrateImportedContactMatchesFromCacheCalls += 1;
+    final cachedMatches = cachedImportContactMatches;
+    if (cachedMatches == null) {
+      return null;
+    }
+    importedContactMatchesStreamValue.addValue(cachedMatches);
+    return cachedMatches;
   }
 
   @override
@@ -307,7 +324,7 @@ void main() {
       await controller.init(_buildInvite());
 
       expect(controller.contactsPermissionGranted.value, isFalse);
-      expect(controller.friendsSuggestionsStreamValue.value, isEmpty);
+      expect(_friendSuggestions(controller), isEmpty);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
       expect(controller.shareCodeStreamValue.value?.code, 'SHARE-CODE');
 
@@ -337,7 +354,7 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      expect(controller.friendsSuggestionsStreamValue.value, isEmpty);
+      expect(_friendSuggestions(controller), isEmpty);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
       expect(controller.shareCodeStreamValue.value?.code, 'SHARE-CODE');
 
@@ -376,9 +393,9 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      expect(controller.friendsSuggestionsStreamValue.value, hasLength(1));
+      expect(_friendSuggestions(controller), hasLength(1));
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         'Favorite Contact',
       );
 
@@ -421,8 +438,7 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      final suggestion =
-          controller.friendsSuggestionsStreamValue.value.single.friend;
+      final suggestion = _friendSuggestions(controller).single.friend;
       expect(suggestion.accountProfileId, 'profile-1');
       expect(suggestion.matchLabel, 'Amigo no Belluga');
 
@@ -475,7 +491,7 @@ void main() {
       expect(controller.isPhoneContactsRefreshingStreamValue.value, isFalse);
       expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         'Bia Favorita',
       );
 
@@ -506,8 +522,7 @@ void main() {
       await controller.init(_buildInvite());
 
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name),
+        _friendSuggestions(controller).map((item) => item.friend.name),
         ['Bia Favorita'],
       );
 
@@ -522,9 +537,7 @@ void main() {
       await controller.refreshPhoneContacts();
 
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name)
-            .toList(),
+        _friendSuggestions(controller).map((item) => item.friend.name).toList(),
         ['Bia Favorita', 'Matched Contact'],
       );
 
@@ -555,10 +568,242 @@ void main() {
       expect(contactsRepository.loadCachedContactsCalls, 1);
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
+      expect(_friendSuggestions(controller).map((item) => item.friend.name),
+          isEmpty);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'reopening invite share keeps current app pane data visible while silent refresh resolves',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name),
-        isEmpty,
+        controller.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
+      );
+
+      final refreshGate = Completer<void>();
+      invitesRepository.fetchInviteableRecipientsGate = refreshGate;
+      invitesRepository.inviteableRecipients = <InviteableRecipient>[
+        buildInviteableRecipient(
+          userId: 'user-2',
+          accountProfileId: 'profile-2',
+          displayName: 'Bia Favorita',
+          profileExposureLevel: 'full_profile',
+          inviteableReasons: const <String>['favorite_by_you'],
+        ),
+      ];
+
+      final refreshFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
+      );
+
+      refreshGate.complete();
+      await refreshFuture;
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Bia Favorita',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'reopening invite share with a new controller hydrates cached app pane before silent refresh resolves',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final contactsRepository = _FakeContactsRepository();
+      final firstController = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await firstController.init(_buildInvite());
+      expect(
+        firstController.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
+      );
+
+      final refreshGate = Completer<void>();
+      invitesRepository.fetchInviteableRecipientsGate = refreshGate;
+      invitesRepository.inviteableRecipients = <InviteableRecipient>[
+        buildInviteableRecipient(
+          userId: 'user-2',
+          accountProfileId: 'profile-2',
+          displayName: 'Bia Favorita',
+          profileExposureLevel: 'full_profile',
+          inviteableReasons: const <String>['favorite_by_you'],
+        ),
+      ];
+
+      final reopenedController = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      final refreshFuture = reopenedController.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        reopenedController
+            .friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
+      );
+
+      refreshGate.complete();
+      await refreshFuture;
+
+      expect(
+        reopenedController
+            .friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Bia Favorita',
+      );
+
+      await firstController.onDispose();
+      await reopenedController.onDispose();
+    },
+  );
+
+  test(
+    'cold controller init hydrates persisted contact matches before inviteables refresh resolves',
+    () async {
+      final matchedContact = buildContactModel(
+        id: 'matched-contact',
+        displayName: 'Bruna',
+        phones: <String>['+55 27 99886-9802'],
+      );
+      final matchedHash = InviteContactImportHashes.contactHashes(
+        matchedContact,
+        regionCode: 'BR',
+      ).first;
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[matchedContact],
+      );
+      final refreshGate = Completer<void>();
+      final invitesRepository = _FakeInvitesRepository()
+        ..cachedImportContactMatches = <InviteContactMatch>[
+          InviteContactMatch(
+            contactHashValue: InviteContactHashValue()..parse(matchedHash),
+            typeValue: InviteContactTypeValue()..parse('phone'),
+            userIdValue: UserIdValue()..parse('user-1'),
+            receiverAccountProfileIdValue: InviteAccountProfileIdValue()
+              ..parse('profile-1'),
+            displayNameValue: InviteInviterNameValue()..parse('Bruna'),
+            profileExposureLevelValue: InviteProfileExposureLevelValue()
+              ..parse('capped_profile'),
+            inviteableReasons: InviteableReasons([
+              InviteableReasonValue()..parse('contact_match'),
+            ]),
+            isInviteableValue: DomainBooleanValue()..parse('true'),
+          ),
+        ]
+        ..fetchInviteableRecipientsGate = refreshGate;
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+        contactRegionCode: 'BR',
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        invitesRepository.hydrateImportedContactMatchesFromCacheCalls,
+        1,
+      );
+      expect(
+        _friendSuggestions(controller).single.friend.name,
+        'Bruna',
+      );
+
+      refreshGate.complete();
+      await initFuture;
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'empty cached imported matches do not resolve the app pane before inviteables refresh returns',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final refreshGate = Completer<void>();
+      final invitesRepository = _FakeInvitesRepository()
+        ..cachedImportContactMatches = const <InviteContactMatch>[]
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ]
+        ..fetchInviteableRecipientsGate = refreshGate;
+
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.friendsSuggestionsStreamValue.value, isNull);
+      expect(
+        controller.externalContactShareTargetsStreamValue.value,
+        isNotNull,
+      );
+
+      refreshGate.complete();
+      await initFuture;
+
+      expect(
+        controller.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
       );
 
       await controller.onDispose();
@@ -605,7 +850,7 @@ void main() {
       expect(contactsRepository.refreshContactsCalls, 0);
       expect(invitesRepository.importContactsCalls, 0);
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         'Bruna',
       );
 
@@ -638,8 +883,7 @@ void main() {
       expect(contactsRepository.refreshCachedContactsCalls, 1);
       expect(contactsRepository.refreshContactsCalls, 0);
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name),
+        _friendSuggestions(controller).map((item) => item.friend.name),
         contains('Matched Contact'),
       );
 
@@ -675,17 +919,12 @@ void main() {
       await controller.selectPane(InviteSharePane.phone);
 
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name),
+        _friendSuggestions(controller).map((item) => item.friend.name),
         contains('Matched Contact'),
       );
+      expect(_externalTargets(controller), hasLength(1));
       expect(
-        controller.externalContactShareTargetsStreamValue.value,
-        hasLength(1),
-      );
-      expect(
-        controller
-            .externalContactShareTargetsStreamValue.value.single.displayName,
+        _externalTargets(controller).single.displayName,
         'Mae',
       );
 
@@ -746,12 +985,11 @@ void main() {
       await controller.selectPane(InviteSharePane.phone);
 
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name),
+        _friendSuggestions(controller).map((item) => item.friend.name),
         contains('Matched Backend'),
       );
       expect(
-        controller.externalContactShareTargetsStreamValue.value
+        _externalTargets(controller)
             .map((target) => target.displayName)
             .toList(),
         ['Mae'],
@@ -798,7 +1036,7 @@ void main() {
       await controller.selectPane(InviteSharePane.phone);
 
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         'Bruna',
       );
 
@@ -843,7 +1081,7 @@ void main() {
       await controller.selectPane(InviteSharePane.phone);
 
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         'Nome da Account',
       );
 
@@ -888,7 +1126,7 @@ void main() {
       await controller.selectPane(InviteSharePane.phone);
 
       expect(
-        controller.friendsSuggestionsStreamValue.value.single.friend.name,
+        _friendSuggestions(controller).single.friend.name,
         '+55 27 99886-9802',
       );
 
@@ -918,7 +1156,7 @@ void main() {
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
 
-      expect(controller.externalContactShareTargetsStreamValue.value, isEmpty);
+      expect(_externalTargets(controller), isEmpty);
 
       await controller.onDispose();
     },
@@ -947,7 +1185,7 @@ void main() {
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
 
-      expect(controller.externalContactShareTargetsStreamValue.value, isEmpty);
+      expect(_externalTargets(controller), isEmpty);
 
       await controller.onDispose();
     },
@@ -975,9 +1213,7 @@ void main() {
 
       await controller.init(_buildInvite());
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name)
-            .toList(),
+        _friendSuggestions(controller).map((item) => item.friend.name).toList(),
         ['Bia Favorita'],
       );
 
@@ -995,9 +1231,7 @@ void main() {
       expect(controller.isPhoneContactsRefreshingStreamValue.value, isFalse);
       expect(controller.phoneContactsRefreshFailedStreamValue.value, isTrue);
       expect(
-        controller.friendsSuggestionsStreamValue.value
-            .map((item) => item.friend.name)
-            .toList(),
+        _friendSuggestions(controller).map((item) => item.friend.name).toList(),
         ['Bia Favorita'],
       );
 
@@ -1074,6 +1308,18 @@ void main() {
     },
   );
 }
+
+List<InviteFriendResumeWithStatus> _friendSuggestions(
+  InviteShareScreenController controller,
+) =>
+    controller.friendsSuggestionsStreamValue.value ??
+    const <InviteFriendResumeWithStatus>[];
+
+List<InviteExternalContactShareTarget> _externalTargets(
+  InviteShareScreenController controller,
+) =>
+    controller.externalContactShareTargetsStreamValue.value ??
+    const <InviteExternalContactShareTarget>[];
 
 InviteableRecipient _buildContactMatchedInviteableRecipient({
   required String userId,

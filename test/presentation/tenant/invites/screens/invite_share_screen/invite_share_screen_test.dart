@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
@@ -55,13 +57,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Ana Contato'), findsOneWidget);
     expect(find.text('Bia Favorita'), findsOneWidget);
 
     await tester.tap(find.text('Favoritos'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Ana Contato'), findsNothing);
     expect(find.text('Bia Favorita'), findsOneWidget);
@@ -91,9 +93,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Ana Contato'), findsOneWidget);
+    expect(find.text('Tenant Test'), findsOneWidget);
+    expect(find.text('Agenda'), findsOneWidget);
     expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
     expect(find.text('Atualizar agenda'), findsNothing);
     expect(find.text('Gerenciar grupos'), findsNothing);
@@ -109,7 +113,7 @@ void main() {
       ),
     ];
 
-    await tester.tap(find.text('Telefone'));
+    await tester.tap(find.text('Agenda'));
     await tester.pumpAndSettle();
 
     expect(find.text('Atualizar agenda'), findsOneWidget);
@@ -120,12 +124,267 @@ void main() {
 
     expect(invitesRepository.fetchInviteableRecipientsCalls, 3);
 
-    await tester.tap(find.text('Pessoas'));
+    await tester.tap(find.text('Tenant Test'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ana Contato'), findsNothing);
     expect(find.text('Caio Amigo'), findsOneWidget);
   });
+
+  testWidgets('app pane shows loading before empty state resolves', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository()
+      ..inviteableRecipients = const <InviteableRecipient>[]
+      ..fetchInviteableRecipientsCompleter =
+          Completer<List<InviteableRecipient>>();
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+    );
+    await tester.pump();
+
+    expect(
+        find.text('Nenhum contato convidável para este filtro.'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+    invitesRepository.fetchInviteableRecipientsCompleter!.complete(
+      const <InviteableRecipient>[],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum contato convidável para este filtro.'),
+        findsOneWidget);
+  });
+
+  testWidgets(
+    'app pane keeps loading when cache only knows empty imported matches and inviteables are still refreshing',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..cachedImportContactMatches = const <InviteContactMatch>[]
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ]
+        ..fetchInviteableRecipientsCompleter =
+            Completer<List<InviteableRecipient>>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+      expect(find.text('Ana Contato'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+      invitesRepository.fetchInviteableRecipientsCompleter!.complete(
+        invitesRepository.inviteableRecipients,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ana Contato'), findsOneWidget);
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('agenda pane shows loading before empty state resolves', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository()
+      ..inviteableRecipients = const <InviteableRecipient>[];
+    final contactsRepository = _FakeContactsRepository();
+    final gate = Completer<List<InviteableRecipient>>();
+    invitesRepository.fetchInviteableRecipientsCompleter = gate;
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: contactsRepository,
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Agenda'));
+    await tester.pump();
+
+    expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+    gate.complete(const <InviteableRecipient>[]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum contato do telefone disponível.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'reopening invite share with repository cache skips loading on app and agenda panes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+
+      invitesRepository.inviteableRecipientsStreamValue.addValue(
+        invitesRepository.inviteableRecipients,
+      );
+      invitesRepository.importedContactMatchesStreamValue.addValue(
+        const <InviteContactMatch>[],
+      );
+      contactsRepository.contactsStreamValue
+          .addValue(contactsRepository.contacts);
+      invitesRepository.fetchInviteableRecipientsCompleter =
+          Completer<List<InviteableRecipient>>();
+
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Ana Contato'), findsOneWidget);
+
+      await tester.tap(find.text('Agenda'));
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Contato Cache'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'reopening invite share reuses cached app targets from the first live load',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ana Contato'), findsOneWidget);
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      await tester.pumpAndSettle();
+
+      invitesRepository.fetchInviteableRecipientsCompleter =
+          Completer<List<InviteableRecipient>>();
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      expect(find.text('Ana Contato'), findsOneWidget);
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('inviteable list builds visible cards lazily', (tester) async {
     await tester.binding.setSurfaceSize(const Size(480, 640));
@@ -230,10 +489,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Telefone'), findsOneWidget);
+    expect(find.text('Agenda'), findsOneWidget);
     expect(find.text('Mae'), findsNothing);
 
-    await tester.tap(find.text('Telefone'));
+    await tester.tap(find.text('Agenda'));
     await tester.pumpAndSettle();
 
     expect(find.text('1 contato'), findsOneWidget);
@@ -288,7 +547,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Telefone'));
+      await tester.tap(find.text('Agenda'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('WhatsApp'));
       await tester.pumpAndSettle();
@@ -349,7 +608,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Telefone'));
+    await tester.tap(find.text('Agenda'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('WhatsApp'));
     await tester.pumpAndSettle();
@@ -407,7 +666,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Telefone'));
+      await tester.tap(find.text('Agenda'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('WhatsApp'));
       await tester.pumpAndSettle();
@@ -487,10 +746,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   int createShareCodeCalls = 0;
   String? lastShareCodeOccurrenceId;
   List<InviteableRecipient> inviteableRecipients;
+  List<InviteContactMatch>? cachedImportContactMatches;
+  Completer<List<InviteableRecipient>>? fetchInviteableRecipientsCompleter;
 
   @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     fetchInviteableRecipientsCalls += 1;
+    if (fetchInviteableRecipientsCompleter != null) {
+      return fetchInviteableRecipientsCompleter!.future;
+    }
     return inviteableRecipients;
   }
 
@@ -499,6 +763,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InviteContacts contacts,
   ) async =>
       const <InviteContactMatch>[];
+
+  @override
+  Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
+    InviteContacts contacts,
+  ) async {
+    final cachedMatches = cachedImportContactMatches;
+    if (cachedMatches == null) {
+      return null;
+    }
+    importedContactMatchesStreamValue.addValue(cachedMatches);
+    return cachedMatches;
+  }
 
   @override
   Future<InviteShareCodeResult> createShareCode({

@@ -32,14 +32,13 @@ class ContactGroupManagementController with Disposable {
   }
 
   Future<void> refresh() async {
-    final results = await Future.wait([
-      _invitesRepository.fetchInviteableRecipients(),
-      _invitesRepository.fetchContactGroups(),
-    ]);
+    await _invitesRepository.refreshInviteableRecipients();
+    final groups = await _invitesRepository.fetchContactGroups();
     if (_isDisposed) return;
-    inviteableRecipientsStreamValue
-        .addValue(results[0] as List<InviteableRecipient>);
-    groupsStreamValue.addValue(results[1] as List<InviteContactGroup>);
+    inviteableRecipientsStreamValue.addValue(
+        _invitesRepository.inviteableRecipientsStreamValue.value ??
+            const <InviteableRecipient>[]);
+    groupsStreamValue.addValue(groups);
   }
 
   Future<void> createGroup({

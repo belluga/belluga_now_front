@@ -36,6 +36,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_cache_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
@@ -72,6 +73,19 @@ class InvitesRepository extends InvitesRepositoryContract
   final Future<String?> Function()? _tenantCacheScopeProvider;
   final InvitesResponseDecoder _responseDecoder =
       const InvitesResponseDecoder();
+
+  @override
+  Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
+    InviteContacts contacts,
+  ) async {
+    final snapshot = await _resolveFreshImportedContactMatchSnapshot(contacts);
+    final matches = snapshot?.matches;
+    if (matches == null) {
+      return null;
+    }
+    importedContactMatchesStreamValue.addValue(matches);
+    return matches;
+  }
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -194,28 +208,18 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
   ) async {
-    final importItems = _buildContactImportItems(
-      contacts.items,
-      regionCode: contacts.regionCode,
-    );
-    if (importItems.isEmpty) {
+    final snapshot = await _resolveFreshImportedContactMatchSnapshot(contacts);
+    if (snapshot == null) {
       return const <InviteContactMatch>[];
     }
 
-    final cacheKey = await _contactImportCacheKey(
-      regionCode: contacts.regionCode,
-    );
-    final importSignature = _contactImportSignature(importItems);
-    final cachedImport = await _contactImportCache.read(cacheKey);
-    if (!contacts.forceImport &&
-        cachedImport != null &&
-        cachedImport.signature == importSignature &&
-        cachedImport.isFresh(_now(), _contactImportCacheTtl)) {
-      return const <InviteContactMatch>[];
+    if (!contacts.forceImport && snapshot.isFresh) {
+      importedContactMatchesStreamValue.addValue(snapshot.matches);
+      return snapshot.matches;
     }
 
     final matchesByProfileId = <String, InviteContactMatch>{};
-    for (final chunk in _chunkContactImportItems(importItems)) {
+    for (final chunk in _chunkContactImportItems(snapshot.importItems)) {
       final response = await _backend.importContacts(
         InviteContactImportRequest(contacts: chunk),
       );
@@ -230,20 +234,28 @@ class InvitesRepository extends InvitesRepositoryContract
     }
 
     await _contactImportCache.write(
-      cacheKey,
+      snapshot.cacheKey,
       InviteContactImportCacheEntry(
-        signature: importSignature,
+        signature: snapshot.signature,
         importedAt: _now(),
+        matches: matchesByProfileId.values
+            .map(InviteContactMatchCacheDto.fromDomain)
+            .toList(growable: false),
       ),
     );
 
-    return matchesByProfileId.values.toList(growable: false);
+    final matches = matchesByProfileId.values.toList(growable: false);
+    importedContactMatchesStreamValue.addValue(matches);
+    return matches;
   }
 
   @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     final response = await _backend.fetchInviteableContacts();
-    return _responseDecoder.decodeInviteableRecipients(response['items']);
+    final recipients =
+        _responseDecoder.decodeInviteableRecipients(response['items']);
+    inviteableRecipientsStreamValue.addValue(recipients);
+    return recipients;
   }
 
   @override
@@ -645,4 +657,73 @@ class InvitesRepository extends InvitesRepositoryContract
     final occurrenceIdValue = InviteOccurrenceIdValue()..parse(value);
     return occurrenceIdValue;
   }
+
+  Future<_ImportedContactMatchCacheSnapshot?>
+      _resolveFreshImportedContactMatchSnapshot(
+    InviteContacts contacts,
+  ) async {
+    final importItems = _buildContactImportItems(
+      contacts.items,
+      regionCode: contacts.regionCode,
+    );
+    if (importItems.isEmpty) {
+      return null;
+    }
+
+    final cacheKey = await _contactImportCacheKey(
+      regionCode: contacts.regionCode,
+    );
+    final signature = _contactImportSignature(importItems);
+    final cachedImport = await _contactImportCache.read(cacheKey);
+    final isFresh = !contacts.forceImport &&
+        cachedImport != null &&
+        cachedImport.signature == signature &&
+        cachedImport.isFresh(_now(), _contactImportCacheTtl);
+
+    return _ImportedContactMatchCacheSnapshot(
+      cacheKey: cacheKey,
+      signature: signature,
+      importItems: importItems,
+      isFresh: isFresh,
+      matches: isFresh
+          ? _cachedImportedMatches(cachedImport)
+          : const <InviteContactMatch>[],
+    );
+  }
+
+  List<InviteContactMatch> _cachedImportedMatches(
+    InviteContactImportCacheEntry? cachedImport,
+  ) {
+    if (cachedImport != null && cachedImport.matches.isNotEmpty) {
+      return cachedImport.matches.map((match) => match.toDomain()).toList(
+            growable: false,
+          );
+    }
+
+    final inMemory = importedContactMatchesStreamValue.value;
+    if (inMemory != null) {
+      return inMemory;
+    }
+
+    if (cachedImport == null) {
+      return const <InviteContactMatch>[];
+    }
+    return const <InviteContactMatch>[];
+  }
+}
+
+class _ImportedContactMatchCacheSnapshot {
+  const _ImportedContactMatchCacheSnapshot({
+    required this.cacheKey,
+    required this.signature,
+    required this.importItems,
+    required this.isFresh,
+    required this.matches,
+  });
+
+  final String cacheKey;
+  final String signature;
+  final List<InviteContactImportItemRequest> importItems;
+  final bool isFresh;
+  final List<InviteContactMatch> matches;
 }

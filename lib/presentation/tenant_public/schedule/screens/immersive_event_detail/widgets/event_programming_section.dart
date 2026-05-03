@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
@@ -5,7 +7,6 @@ import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
-import 'package:belluga_now/presentation/shared/widgets/auto_reveal_horizontal_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +22,7 @@ class EventProgrammingSection extends StatefulWidget {
     required this.onOccurrenceTap,
     required this.onLocationTap,
     required this.profileTypeRegistry,
+    this.debugOnOccurrenceCenterAnimationStart,
     super.key,
   });
 
@@ -29,6 +31,8 @@ class EventProgrammingSection extends StatefulWidget {
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
   final ValueChanged<EventLinkedAccountProfile> onLocationTap;
   final ProfileTypeRegistry? profileTypeRegistry;
+  @visibleForTesting
+  final VoidCallback? debugOnOccurrenceCenterAnimationStart;
 
   @override
   State<EventProgrammingSection> createState() =>
@@ -76,6 +80,8 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
             _ProgrammingDateSelector(
               occurrences: widget.occurrences,
               onOccurrenceTap: widget.onOccurrenceTap,
+              debugOnOccurrenceCenterAnimationStart:
+                  widget.debugOnOccurrenceCenterAnimationStart,
             ),
           ],
           const SizedBox(height: 18),
@@ -109,33 +115,219 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
   }
 }
 
-class _ProgrammingDateSelector extends StatelessWidget {
+class _ProgrammingDateSelector extends StatefulWidget {
   const _ProgrammingDateSelector({
     required this.occurrences,
     required this.onOccurrenceTap,
+    this.debugOnOccurrenceCenterAnimationStart,
   });
 
   final List<EventOccurrenceOption> occurrences;
   final ValueChanged<EventOccurrenceOption> onOccurrenceTap;
+  final VoidCallback? debugOnOccurrenceCenterAnimationStart;
+
+  @override
+  State<_ProgrammingDateSelector> createState() =>
+      _ProgrammingDateSelectorState();
+}
+
+class _ProgrammingDateSelectorState extends State<_ProgrammingDateSelector> {
+  static final Map<String, double> _scrollOffsetCache = <String, double>{};
+  final Map<String, GlobalKey> _chipKeys = <String, GlobalKey>{};
+  late final ScrollController _scrollController;
+  String? _lastCenteredOccurrenceId;
+  String? _pendingCenterOccurrenceId;
+  static const int _maxCenterRetryCount = 4;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: _initialCachedScrollOffset(),
+    );
+    _scrollController.addListener(_cacheScrollOffset);
+    _scheduleCenterSelectedOccurrenceAfterFrame();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProgrammingDateSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleCenterSelectedOccurrence();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_cacheScrollOffset);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  String get _scrollOffsetCacheKey => widget.occurrences
+      .map((occurrence) =>
+          '${occurrence.occurrenceId}:${occurrence.dateTimeStart?.toIso8601String() ?? ''}')
+      .join('|');
+
+  void _cacheScrollOffset() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    _scrollOffsetCache[_scrollOffsetCacheKey] = _scrollController.offset;
+  }
+
+  double _initialCachedScrollOffset() {
+    final cachedOffset = _scrollOffsetCache[_scrollOffsetCacheKey];
+    if (cachedOffset == null || !cachedOffset.isFinite || cachedOffset < 0) {
+      return 0;
+    }
+    return cachedOffset;
+  }
+
+  void _scheduleCenterSelectedOccurrenceAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _scheduleCenterSelectedOccurrence();
+    });
+  }
+
+  void _scheduleCenterSelectedOccurrence() {
+    final selectedOccurrenceId = _selectedOccurrenceId();
+    if (selectedOccurrenceId == null ||
+        selectedOccurrenceId == _lastCenteredOccurrenceId ||
+        selectedOccurrenceId == _pendingCenterOccurrenceId) {
+      return;
+    }
+    _pendingCenterOccurrenceId = selectedOccurrenceId;
+    _scheduleCenterSelectedOccurrenceAttempt(
+      selectedOccurrenceId,
+      attempt: 0,
+    );
+  }
+
+  void _scheduleCenterSelectedOccurrenceAttempt(
+    String selectedOccurrenceId, {
+    required int attempt,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_selectedOccurrenceId() != selectedOccurrenceId) {
+        if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+          _pendingCenterOccurrenceId = null;
+        }
+        return;
+      }
+      if (!_scrollController.hasClients) {
+        if (attempt < _maxCenterRetryCount) {
+          _scheduleCenterSelectedOccurrenceAttempt(
+            selectedOccurrenceId,
+            attempt: attempt + 1,
+          );
+        } else if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+          _pendingCenterOccurrenceId = null;
+        }
+        return;
+      }
+      final selectedContext = _chipKeys[selectedOccurrenceId]?.currentContext;
+      if (selectedContext == null) {
+        if (attempt < _maxCenterRetryCount) {
+          _scheduleCenterSelectedOccurrenceAttempt(
+            selectedOccurrenceId,
+            attempt: attempt + 1,
+          );
+        } else if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+          _pendingCenterOccurrenceId = null;
+        }
+        return;
+      }
+      final selectedRenderObject = selectedContext.findRenderObject();
+      final selectorRenderObject = context.findRenderObject();
+      if (selectedRenderObject is! RenderBox ||
+          selectorRenderObject is! RenderBox) {
+        if (attempt < _maxCenterRetryCount) {
+          _scheduleCenterSelectedOccurrenceAttempt(
+            selectedOccurrenceId,
+            attempt: attempt + 1,
+          );
+        } else if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+          _pendingCenterOccurrenceId = null;
+        }
+        return;
+      }
+      final selectedOffset =
+          selectedRenderObject.localToGlobal(Offset.zero, ancestor: selectorRenderObject);
+      final selectedCenterDx =
+          selectedOffset.dx + (selectedRenderObject.size.width / 2);
+      final targetOffset = (_scrollController.offset +
+              selectedCenterDx -
+              (selectorRenderObject.size.width / 2))
+          .clamp(
+            0.0,
+            _scrollController.position.maxScrollExtent,
+          );
+      if ((targetOffset - _scrollController.offset).abs() <= 1) {
+        _scrollOffsetCache[_scrollOffsetCacheKey] = _scrollController.offset;
+        _lastCenteredOccurrenceId = selectedOccurrenceId;
+        if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+          _pendingCenterOccurrenceId = null;
+        }
+        return;
+      }
+      _scrollOffsetCache[_scrollOffsetCacheKey] = targetOffset;
+      _lastCenteredOccurrenceId = selectedOccurrenceId;
+      if (_pendingCenterOccurrenceId == selectedOccurrenceId) {
+        _pendingCenterOccurrenceId = null;
+      }
+      widget.debugOnOccurrenceCenterAnimationStart?.call();
+      unawaited(
+        _scrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
+  }
+
+  String? _selectedOccurrenceId() {
+    for (final occurrence in widget.occurrences) {
+      if (occurrence.isSelected) {
+        return occurrence.occurrenceId;
+      }
+    }
+
+    return null;
+  }
+
+  GlobalKey _chipKeyFor(String occurrenceId) {
+    return _chipKeys.putIfAbsent(occurrenceId, GlobalKey.new);
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
+      key: const Key('eventProgrammingDateSelectorViewport'),
       height: 66,
-      child: ListView.separated(
+      child: SingleChildScrollView(
+        key: const Key('eventProgrammingDateSelectorList'),
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        itemCount: occurrences.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final occurrence = occurrences[index];
-          return AutoRevealHorizontalItem(
-            selected: occurrence.isSelected,
-            child: _ProgrammingDateChip(
-              occurrence: occurrence,
-              onTap: () => onOccurrenceTap(occurrence),
-            ),
-          );
-        },
+        child: Row(
+          children: [
+            for (final entry in widget.occurrences.asMap().entries) ...[
+              if (entry.key > 0) const SizedBox(width: 10),
+              KeyedSubtree(
+                key: _chipKeyFor(entry.value.occurrenceId),
+                child: _ProgrammingDateChip(
+                  occurrence: entry.value,
+                  onTap: () => widget.onOccurrenceTap(entry.value),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
@@ -73,6 +74,10 @@ class ImmersiveEventDetailController implements Disposable {
 
   void init(EventModel event) {
     final resolvedEvent = _alignEventToSelectedOccurrence(event);
+    final currentEvent = eventStreamValue.value;
+    if (_isSameSelectedEventTarget(currentEvent, resolvedEvent)) {
+      return;
+    }
     _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     _hydrateState(resolvedEvent);
     _bindFavoriteAccountProfileState();
@@ -94,6 +99,17 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(selectedEvent);
   }
 
+  bool _isSameSelectedEventTarget(
+    EventModel? current,
+    EventModel candidate,
+  ) {
+    if (current == null) {
+      return false;
+    }
+    return current.id.value == candidate.id.value &&
+        current.selectedOccurrenceId == candidate.selectedOccurrenceId;
+  }
+
   // Reactive state
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
 
@@ -103,6 +119,8 @@ class ImmersiveEventDetailController implements Disposable {
           _invitesRepository.sentInvitesByOccurrenceStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  final isShareActionLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository?.appData.mainLogoDarkUrl.value;
@@ -485,6 +503,54 @@ class ImmersiveEventDetailController implements Disposable {
     return shareCode == null || shareCode.isEmpty ? null : shareCode;
   }
 
+  Future<Uri?> createShareUriForSelectedEvent() async {
+    if (isShareActionLoadingStreamValue.value) {
+      return null;
+    }
+
+    final event = eventStreamValue.value;
+    final eventId = event?.id.value.trim() ?? '';
+    final occurrenceId = event?.selectedOccurrenceId?.trim() ?? '';
+    if (event == null || eventId.isEmpty || occurrenceId.isEmpty) {
+      return null;
+    }
+
+    isShareActionLoadingStreamValue.addValue(true);
+    try {
+      final result = await _invitesRepository.createShareCode(
+        eventId: invitesRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        occurrenceId: invitesRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      return buildShareUri(result);
+    } finally {
+      isShareActionLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Uri? buildShareUri(InviteShareCodeResult? shareCode) {
+    if (shareCode == null || shareCode.code.trim().isEmpty) {
+      return null;
+    }
+
+    final origin = _appDataRepository?.appData.mainDomainValue.value.origin;
+    if (origin == null) {
+      return null;
+    }
+
+    final base = origin.toString().replaceFirst(RegExp(r'/$'), '');
+    return Uri.parse(
+      '$base/invite?code=${Uri.encodeQueryComponent(shareCode.code)}',
+    );
+  }
+
   void _bindFavoriteAccountProfileState() {
     final repository = _accountProfilesRepository;
     if (repository == null) {
@@ -634,6 +700,7 @@ class ImmersiveEventDetailController implements Disposable {
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();
+    isShareActionLoadingStreamValue.dispose();
     favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }

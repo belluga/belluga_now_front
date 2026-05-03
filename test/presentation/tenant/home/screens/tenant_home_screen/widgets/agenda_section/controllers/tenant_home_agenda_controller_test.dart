@@ -25,6 +25,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -34,6 +35,7 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -411,6 +413,43 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'refreshes home agenda when canonical proximity preference changes externally',
+      () async {
+        final appData = _buildAppData(
+          minKm: 2,
+          defaultKm: 7,
+          maxKm: 15,
+        );
+        final scheduleRepository = _FakeScheduleRepository();
+        final proximityRepository = _FakeProximityPreferencesRepository(
+          preference: _proximityPreference(7000),
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(appData),
+          proximityPreferencesRepository: proximityRepository,
+          radiusRefreshDebounce: const Duration(milliseconds: 20),
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(controller.radiusMetersStreamValue.value, 7000);
+
+        proximityRepository.setCurrentPreference(_proximityPreference(4000));
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+
+        expect(controller.radiusMetersStreamValue.value, 4000);
+        expect(scheduleRepository.getEventsPageCallCount, 2);
+        expect(scheduleRepository.lastMaxDistanceMeters, 4000);
+
+        controller.onDispose();
+      },
+    );
 
     test('normalizes invalid tenant radius settings when parsing app data', () {
       final appData = _buildAppData(
@@ -1645,6 +1684,108 @@ void main() {
     });
 
     test(
+      'auto refreshes agenda when canonical origin mode changes even for sub-1km coordinate deltas',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+
+        await appDataRepository.setLocationOriginSettings(
+          LocationOriginSettings.userFixedLocation(
+            fixedLocationReference: CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.668900'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        expect(scheduleRepository.getEventsPageCallCount, 2);
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.668900, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'radius narrowing clears stale preserved agenda results when the tighter query returns empty',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository()
+          ..writeHomeAgendaCache(
+            events: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '507f1f77bcf86cd799439012',
+                title: 'Evento Cacheado',
+                slug: 'evento-cacheado',
+              ),
+            ],
+            hasMore: false,
+            originLat: -20.671339,
+            originLng: -40.495395,
+            maxDistanceMeters: 5000,
+          );
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = false;
+
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(milliseconds: 20),
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 0);
+        expect(
+          _displayedEvents(controller)?.single.title.value,
+          'Evento Cacheado',
+        );
+
+        controller.setRadiusMeters(1000);
+        await Future<void>.delayed(const Duration(milliseconds: 420));
+
+        expect(
+            scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(scheduleRepository.getEventsPageCallCount, lessThanOrEqualTo(3));
+        expect(_displayedEvents(controller), isEmpty);
+        expect(controller.hasMoreStreamValue.value, isFalse);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'auto refresh does not publish transient empty agenda before recovered first page',
       () async {
         final appData = _buildAppData(
@@ -2670,6 +2811,7 @@ TenantHomeAgendaController _buildAgendaController({
   DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
+  ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   AuthRepositoryContract? authRepository,
   TelemetryRepositoryContract? telemetryRepository,
   bool? isWebRuntime,
@@ -2682,9 +2824,9 @@ TenantHomeAgendaController _buildAgendaController({
     userEventsRepository: userEventsRepository,
     discoveryFiltersRepository: discoveryFiltersRepository,
     invitesRepository: invitesRepository,
-    userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
     authRepository: authRepository,
+    proximityPreferencesRepository: proximityPreferencesRepository,
     telemetryRepository: telemetryRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
@@ -2977,6 +3119,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+  double? lastMaxDistanceMeters;
   List<String>? lastCategories;
   List<String>? lastTaxonomy;
   Completer<void>? nextFetchGate;
@@ -3163,6 +3306,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     getEventsPageCallCount += 1;
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
+    lastMaxDistanceMeters = maxDistanceMeters?.value;
     final fetchGate = nextFetchGate;
     if (fetchGate != null) {
       nextFetchGate = null;
@@ -3296,6 +3440,39 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       onDelta(delta);
     });
   }
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({
+    ProximityPreference? preference,
+  }) {
+    setCurrentPreference(preference);
+  }
+
+  int updateMaxDistanceMetersCalls = 0;
+
+  @override
+  Future<void> updateMaxDistanceMeters(
+    DistanceInMetersValue meters,
+  ) async {
+    updateMaxDistanceMetersCalls += 1;
+    setCurrentPreference(
+      ProximityPreference(
+        maxDistanceMetersValue: meters,
+        locationPreference: proximityPreference?.locationPreference ??
+            const ProximityLocationPreference.liveDeviceLocation(),
+      ),
+    );
+  }
+}
+
+ProximityPreference _proximityPreference(double meters) {
+  return ProximityPreference(
+    maxDistanceMetersValue: DistanceInMetersValue(defaultValue: meters)
+      ..parse(meters.toString()),
+    locationPreference: const ProximityLocationPreference.liveDeviceLocation(),
+  );
 }
 
 class _FakeHomeAgendaState {
