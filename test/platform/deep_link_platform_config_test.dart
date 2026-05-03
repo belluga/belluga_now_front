@@ -39,10 +39,14 @@ void main() {
       '/convites',
       '/agenda',
       '/agenda/evento',
+      '/descobrir',
       '/mapa',
+      '/location/permission',
       '/parceiro',
+      '/privacy-policy',
       '/profile',
       '/home',
+      '/static',
     ]) {
       expect(gradle, contains('"$pathPrefix"'));
     }
@@ -65,8 +69,12 @@ void main() {
     expect(script, contains('android.intent.category.BROWSABLE'));
     expect(script, contains('/open-app'));
     expect(script, contains('intent://'));
+    expect(script, contains('/descobrir'));
+    expect(script, contains('/privacy-policy'));
+    expect(script, contains('/location/permission'));
     expect(script, contains('/parceiro'));
     expect(script, contains('/parceiro/profile-slug'));
+    expect(script, contains('/static/praia-das-virtudes'));
     expect(script, contains('/agenda/evento/show-rock?occurrence=occ-1'));
     expect(script, contains('tenant.example.com'));
     expect(script, contains('android:host="\\*"'));
