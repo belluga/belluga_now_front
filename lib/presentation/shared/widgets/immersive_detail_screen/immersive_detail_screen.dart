@@ -190,7 +190,14 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
               key: const Key('immersiveSwipeSurface'),
               behavior: HitTestBehavior.translucent,
               onHorizontalDragEnd: (details) {
-                _controller.onHorizontalSwipeEnd(details.primaryVelocity);
+                final primaryVelocity = details.primaryVelocity;
+                if (primaryVelocity == null) {
+                  return;
+                }
+                if (_handleActiveTabHorizontalSwipe(primaryVelocity)) {
+                  return;
+                }
+                _controller.onHorizontalSwipeEnd(primaryVelocity);
               },
               child: NestedScrollView(
                 key: _controller.nestedScrollViewKey,
@@ -411,5 +418,27 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   Color _contentColorForBackground(Color backgroundColor) {
     final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
     return brightness == Brightness.dark ? Colors.white : Colors.black87;
+  }
+
+  bool _handleActiveTabHorizontalSwipe(double primaryVelocity) {
+    if (widget.tabs.isEmpty) {
+      return false;
+    }
+    final safeIndex = _controller.currentTabIndexStreamValue.value.clamp(
+      0,
+      widget.tabs.length - 1,
+    );
+    final handler = widget.tabs[safeIndex].onHorizontalSwipeEnd;
+    if (handler == null) {
+      return false;
+    }
+
+    return handler(
+      direction: primaryVelocity < 0
+          ? ImmersiveHorizontalSwipeDirection.forward
+          : ImmersiveHorizontalSwipeDirection.backward,
+      activateTab: _activateTab,
+      currentTabIndex: safeIndex,
+    );
   }
 }

@@ -32,6 +32,10 @@ void main() {
       MapMarkerIconToken.kiosk,
     );
     expect(
+      MapMarkerIconToken.fromStorage('invitation_outline'),
+      MapMarkerIconToken.invitationOutlined,
+    );
+    expect(
       MapMarkerIconToken.fromStorage('unknown-token'),
       isNull,
     );

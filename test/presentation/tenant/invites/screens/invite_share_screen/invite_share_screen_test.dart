@@ -679,6 +679,65 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'screen does not overwrite an explicit contact region with locale fallback',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final launchedUris = <Uri>[];
+      final sharedParams = <ShareParams>[];
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: _FakeContactsRepository(
+          contacts: <ContactModel>[
+            buildContactModel(
+              id: 'phone-contact',
+              displayName: 'Mae',
+              phones: <String>['(27) 98888-7777'],
+            ),
+          ],
+        ),
+        appData: _buildAppData(),
+        isWebRuntime: false,
+        contactRegionCode: 'BR',
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en', 'US'),
+          supportedLocales: _testSupportedLocales,
+          localizationsDelegates: _testLocalizationDelegates,
+          home: InviteShareScreen(
+            invite: _buildInvite(),
+            externalUrlLauncher: (uri, {required mode}) async {
+              launchedUris.add(uri);
+              return true;
+            },
+            systemShareLauncher: (params) async {
+              sharedParams.add(params);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.debugContactRegionCodeValue, 'BR');
+
+      await tester.tap(find.text('Agenda'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('WhatsApp'));
+      await tester.pumpAndSettle();
+
+      expect(launchedUris, hasLength(1));
+      expect(launchedUris.single.host, 'wa.me');
+      expect(launchedUris.single.path, '/5527988887777');
+      expect(sharedParams, isEmpty);
+    },
+  );
 }
 
 const _testSupportedLocales = <Locale>[Locale('pt', 'BR'), Locale('en', 'US')];

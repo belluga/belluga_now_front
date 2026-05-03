@@ -33,7 +33,16 @@ void main() {
     final runtimeHash =
         sha256.convert(File(config.runtimeTtf).readAsBytesSync()).toString();
     expect(config.runtimeTtf, contains(runtimeHash.substring(0, 8)));
-    expect(config.names, containsAll(<String>{'kiosk', 'ice-cream'}));
+    expect(
+      config.names,
+      containsAll(<String>{
+        'kiosk',
+        'ice-cream',
+        'appointment',
+        'invitation',
+        'invitation_outlined',
+      }),
+    );
     expect(config.names.length, BooraIcons.fontIconCount);
     expect(icomoon.fontFamily, config.fontFamily);
     expect(icomoon.codePointByName, config.codePointByName);

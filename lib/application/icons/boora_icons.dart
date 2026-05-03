@@ -291,8 +291,23 @@ class BooraIcons {
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
+  static const IconData appointment = IconData(
+    0xf03b,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData invitation = IconData(
+    0xf039,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData invitationOutlined = IconData(
+    0xf03a,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
 
-  static const int fontIconCount = 57;
+  static const int fontIconCount = 60;
 
   static const List<IconData> fontIcons = <IconData>[
     clapperboard,
@@ -352,10 +367,15 @@ class BooraIcons {
     ticket1,
     kiosk,
     iceCream,
+    appointment,
+    invitation,
+    invitationOutlined,
   ];
 
-  static const IconData inviteSolid = ticket;
-  static const IconData inviteOutlined = ticket1;
+  static const IconData inviteSolid = invitation;
+  static const IconData inviteOutlined = invitationOutlined;
+  static const IconData invitationOutline = invitationOutlined;
+  static const IconData confirmedAttendance = appointment;
   static const IconData storeMallDirectory = market;
   static const IconData shoppingBasket = shoppingBag;
   static const IconData beachAccess = beachUmbrella;

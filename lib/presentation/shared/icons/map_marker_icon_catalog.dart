@@ -359,6 +359,24 @@ enum MapMarkerIconToken {
     label: 'Ingresso alternativo',
     iconData: BooraIcons.ticket1,
     group: MapMarkerIconGroup.generic,
+  ),
+  invitation(
+    storageKey: 'invitation',
+    label: 'Convite',
+    iconData: BooraIcons.invitation,
+    group: MapMarkerIconGroup.generic,
+  ),
+  invitationOutlined(
+    storageKey: 'invitation_outlined',
+    label: 'Convite alternativo',
+    iconData: BooraIcons.invitationOutlined,
+    group: MapMarkerIconGroup.generic,
+  ),
+  appointment(
+    storageKey: 'appointment',
+    label: 'Confirmado',
+    iconData: BooraIcons.appointment,
+    group: MapMarkerIconGroup.generic,
   );
 
   const MapMarkerIconToken({
@@ -399,6 +417,7 @@ enum MapMarkerIconToken {
     'mappin': MapMarkerIconToken.local,
     'pin': MapMarkerIconToken.local,
     'default': MapMarkerIconToken.local,
+    'invitationoutline': MapMarkerIconToken.invitationOutlined,
     'activity': MapMarkerIconToken.event,
     'food': MapMarkerIconToken.restaurant,
     'beach': MapMarkerIconToken.beachUmbrella,

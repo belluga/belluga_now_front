@@ -115,7 +115,7 @@ class ProfileHeader extends StatelessWidget {
                     ),
                     ProfileMetricPill(
                       value: confirmedEventsCount,
-                      icon: BooraIcons.inviteSolid,
+                      icon: BooraIcons.confirmedAttendance,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),

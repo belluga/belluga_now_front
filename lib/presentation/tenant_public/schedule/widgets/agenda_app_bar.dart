@@ -291,7 +291,7 @@ class AgendaAppBar extends StatelessWidget {
         );
       case InviteFilter.confirmedOnly:
         return Icon(
-          BooraIcons.inviteSolid,
+          BooraIcons.confirmedAttendance,
           color: theme.colorScheme.primary,
           size: 20,
         );

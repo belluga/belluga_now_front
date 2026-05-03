@@ -88,7 +88,16 @@ class InviteShareScreenController with Disposable {
     return normalized.isEmpty ? 'APP' : normalized;
   }
 
+  String? get debugContactRegionCodeValue => _contactRegionCodeValue?.value;
+
   void setContactRegionCode(String? regionCode) {
+    _contactRegionCodeValue = _buildRegionCodeValue(regionCode);
+  }
+
+  void setContactRegionCodeIfAbsent(String? regionCode) {
+    if (_contactRegionCodeValue != null) {
+      return;
+    }
     _contactRegionCodeValue = _buildRegionCodeValue(regionCode);
   }
 
@@ -165,6 +174,11 @@ class InviteShareScreenController with Disposable {
 
   Future<void> selectPane(InviteSharePane pane) async {
     selectedPaneStreamValue.addValue(pane);
+    if (pane == InviteSharePane.phone &&
+        _hasLoadedPhoneContacts &&
+        externalContactShareTargetsStreamValue.value == null) {
+      _publishPhonePaneFromRepositoryCacheIfAvailable();
+    }
     if (pane == InviteSharePane.phone && !_hasLoadedPhoneContacts) {
       await _loadInviteTargetsWithStatusSafe(loadPhoneContacts: true);
     }
@@ -532,7 +546,23 @@ class InviteShareScreenController with Disposable {
         inviteableRecipients: inviteableRecipients,
         importedMatches: importedMatches,
       ),
-      publishPhonePane: _hasLoadedPhoneContacts,
+      publishPhonePane:
+          selectedPaneStreamValue.value == InviteSharePane.phone &&
+              _hasLoadedPhoneContacts,
+    );
+  }
+
+  void _publishPhonePaneFromRepositoryCacheIfAvailable() {
+    if (!_hasLoadedPhoneContacts) {
+      return;
+    }
+
+    _applyInviteTargetsFromRepositories(
+      sentInvites: sentInvitesStreamValue.value,
+      allowExternalTargets:
+          _invitesRepository.importedContactMatchesStreamValue.value != null,
+      publishAppPane: false,
+      publishPhonePane: true,
     );
   }
 
@@ -587,9 +617,11 @@ class InviteShareScreenController with Disposable {
       return;
     }
 
-    final localContactDisplaysByHash = _localContactDisplaysByHash(
-      availableContacts,
-    );
+    final localContactDisplaysByHash = backendRecipients.isEmpty
+        ? const <String, _LocalContactDisplay>{}
+        : _localContactDisplaysByHash(
+            availableContacts,
+          );
     final recipients = _mergeInviteableRecipients(
       backendRecipients: backendRecipients
           .map(

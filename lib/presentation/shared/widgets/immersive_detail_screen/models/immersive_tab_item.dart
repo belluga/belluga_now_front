@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+enum ImmersiveHorizontalSwipeDirection { backward, forward }
+
+typedef ImmersiveTabHorizontalSwipeHandler = bool Function({
+  required ImmersiveHorizontalSwipeDirection direction,
+  required ValueChanged<int> activateTab,
+  required int currentTabIndex,
+});
+
 /// Configuration for a tab in an immersive detail screen.
 ///
 /// Each tab consists of a title, content widget, and optional footer.
@@ -9,6 +17,7 @@ class ImmersiveTabItem {
     required this.title,
     required this.content,
     this.footer,
+    this.onHorizontalSwipeEnd,
   });
 
   /// The title displayed in the tab bar
@@ -20,6 +29,10 @@ class ImmersiveTabItem {
   /// Optional footer widget specific to this tab
   /// If null, the screen's default footer will be used
   final Widget? footer;
+
+  /// Optional swipe handler for the active tab. When it returns true, the
+  /// screen-level default tab swipe behavior is skipped.
+  final ImmersiveTabHorizontalSwipeHandler? onHorizontalSwipeEnd;
 
   final key = GlobalKey();
 }

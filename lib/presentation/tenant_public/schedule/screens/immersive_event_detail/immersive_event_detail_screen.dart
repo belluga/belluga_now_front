@@ -66,6 +66,7 @@ class _ImmersiveEventDetailScreenState
     extends State<ImmersiveEventDetailScreen> {
   final ImmersiveEventDetailController _controller =
       GetIt.I.get<ImmersiveEventDetailController>();
+  final GlobalKey _programmingSectionAnchorKey = GlobalKey();
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
 
@@ -148,18 +149,32 @@ class _ImmersiveEventDetailScreenState
                           if (resolvedEvent.hasAnyProgrammingItems)
                             ImmersiveTabItem(
                               title: 'Programação',
-                              content: EventProgrammingSection(
-                                items: resolvedEvent.programmingItems,
-                                occurrences: resolvedEvent.occurrences,
-                                profileTypeRegistry:
-                                    _controller.profileTypeRegistry,
-                                onOccurrenceTap: (occurrence) =>
-                                    _openOccurrence(
-                                  resolvedEvent,
-                                  occurrence,
-                                  tab: 'programming',
+                              content: KeyedSubtree(
+                                key: _programmingSectionAnchorKey,
+                                child: EventProgrammingSection(
+                                  items: resolvedEvent.programmingItems,
+                                  occurrences: resolvedEvent.occurrences,
+                                  profileTypeRegistry:
+                                      _controller.profileTypeRegistry,
+                                  onOccurrenceTap: (occurrence) =>
+                                      _openOccurrence(
+                                    resolvedEvent,
+                                    occurrence,
+                                    tab: 'programming',
+                                  ),
+                                  onLocationTap: _openProgrammingLocationMap,
                                 ),
-                                onLocationTap: _openProgrammingLocationMap,
+                              ),
+                              onHorizontalSwipeEnd: ({
+                                required direction,
+                                required activateTab,
+                                required currentTabIndex,
+                              }) =>
+                                  _handleProgrammingSwipe(
+                                event: resolvedEvent,
+                                direction: direction,
+                                activateTab: activateTab,
+                                currentTabIndex: currentTabIndex,
                               ),
                               footer: null,
                             ),
@@ -651,6 +666,72 @@ class _ImmersiveEventDetailScreenState
           tab: tab?.trim().isNotEmpty == true ? tab!.trim() : null,
         ),
       ),
+    );
+  }
+
+  bool _handleProgrammingSwipe({
+    required EventModel event,
+    required ImmersiveHorizontalSwipeDirection direction,
+    required ValueChanged<int> activateTab,
+    required int currentTabIndex,
+  }) {
+    final occurrences = event.occurrences;
+    if (occurrences.isEmpty) {
+      _activateAdjacentTabForProgrammingBoundary(
+        direction: direction,
+        activateTab: activateTab,
+        currentTabIndex: currentTabIndex,
+      );
+      return true;
+    }
+
+    final selectedIndex = _selectedOccurrenceIndex(event);
+    final step = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final targetIndex = selectedIndex + step;
+    if (targetIndex >= 0 && targetIndex < occurrences.length) {
+      unawaited(_scrollProgrammingSectionToTop());
+      _openOccurrence(
+        event,
+        occurrences[targetIndex],
+        tab: 'programming',
+      );
+      return true;
+    }
+
+    _activateAdjacentTabForProgrammingBoundary(
+      direction: direction,
+      activateTab: activateTab,
+      currentTabIndex: currentTabIndex,
+    );
+    return true;
+  }
+
+  int _selectedOccurrenceIndex(EventModel event) {
+    final selectedIndex = event.occurrences.indexWhere(
+      (occurrence) => occurrence.isSelected,
+    );
+    return selectedIndex < 0 ? 0 : selectedIndex;
+  }
+
+  void _activateAdjacentTabForProgrammingBoundary({
+    required ImmersiveHorizontalSwipeDirection direction,
+    required ValueChanged<int> activateTab,
+    required int currentTabIndex,
+  }) {
+    final delta = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    activateTab(currentTabIndex + delta);
+  }
+
+  Future<void> _scrollProgrammingSectionToTop() async {
+    final targetContext = _programmingSectionAnchorKey.currentContext;
+    if (targetContext == null) {
+      return;
+    }
+    await Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: 0,
     );
   }
 

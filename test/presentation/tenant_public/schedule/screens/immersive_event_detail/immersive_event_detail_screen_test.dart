@@ -723,6 +723,394 @@ void main() {
   });
 
   testWidgets(
+      'horizontal swipe inside Programação advances to the next occurrence before changing tabs',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        fullPath: '/agenda/evento/evento-de-teste',
+        queryParams: const {'tab': 'programming'},
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    var selectedOccurrenceId = 'occ-1';
+
+    EventModel buildEvent() {
+      return _buildEvent(
+        contentHtml: '<p>Detalhes</p>',
+        occurrences: [
+          _buildOccurrence(
+            id: 'occ-1',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: selectedOccurrenceId == 'occ-1',
+            programmingCount: 1,
+          ),
+          _buildOccurrence(
+            id: 'occ-2',
+            start: DateTime(2026, 3, 16, 20),
+            isSelected: selectedOccurrenceId == 'occ-2',
+            programmingCount: 1,
+          ),
+          _buildOccurrence(
+            id: 'occ-3',
+            start: DateTime(2026, 3, 17, 20),
+            isSelected: selectedOccurrenceId == 'occ-3',
+            programmingCount: 1,
+          ),
+        ],
+        programmingItems: [
+          _buildProgrammingItem(
+            time: '17:00',
+            title: 'Show da data atual',
+          ),
+        ],
+      );
+    }
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          router.onNavigateRoute = (route) {
+            final occurrenceId = route.queryParams.optString('occurrence');
+            if (occurrenceId == null || occurrenceId.isEmpty) {
+              return;
+            }
+            setState(() {
+              selectedOccurrenceId = occurrenceId;
+            });
+          };
+          return StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: RouteDataScope(
+                routeData: routeData,
+                child: ImmersiveEventDetailScreen(event: buildEvent()),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+
+    final swipeSurface = tester.widget<GestureDetector>(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    swipeSurface.onHorizontalDragEnd?.call(
+      DragEndDetails(
+        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
+        primaryVelocity: -1000,
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(selectedOccurrenceId, 'occ-2');
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+  });
+
+  testWidgets(
+      'horizontal swipe backward on the first Programação occurrence moves to the previous tab',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        fullPath: '/agenda/evento/evento-de-teste',
+        queryParams: const {'tab': 'programming'},
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                contentHtml: '<p>Detalhes</p>',
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occ-1',
+                    start: DateTime(2026, 3, 15, 20),
+                    isSelected: true,
+                    programmingCount: 1,
+                  ),
+                  _buildOccurrence(
+                    id: 'occ-2',
+                    start: DateTime(2026, 3, 16, 20),
+                    programmingCount: 1,
+                  ),
+                ],
+                programmingItems: [
+                  _buildProgrammingItem(
+                    time: '17:00',
+                    title: 'Show da data atual',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+
+    final swipeSurface = tester.widget<GestureDetector>(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    swipeSurface.onHorizontalDragEnd?.call(
+      DragEndDetails(
+        velocity: const Velocity(pixelsPerSecond: Offset(1000, 0)),
+        primaryVelocity: 1000,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_0')), findsOneWidget);
+  });
+
+  testWidgets(
+      'horizontal swipe forward on the last Programação occurrence moves to the next tab',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        fullPath: '/agenda/evento/evento-de-teste',
+        queryParams: const {'tab': 'programming'},
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                contentHtml: '<p>Detalhes</p>',
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occ-1',
+                    start: DateTime(2026, 3, 15, 20),
+                    programmingCount: 1,
+                  ),
+                  _buildOccurrence(
+                    id: 'occ-2',
+                    start: DateTime(2026, 3, 16, 20),
+                    isSelected: true,
+                    programmingCount: 1,
+                  ),
+                ],
+                programmingItems: [
+                  _buildProgrammingItem(
+                    time: '17:00',
+                    title: 'Show da data atual',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+
+    final swipeSurface = tester.widget<GestureDetector>(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    swipeSurface.onHorizontalDragEnd?.call(
+      DragEndDetails(
+        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
+        primaryVelocity: -1000,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabSelected_2')), findsOneWidget);
+  });
+
+  testWidgets(
+      'horizontal swipe inside Programação returns the section body to the top before opening the next occurrence',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        fullPath: '/agenda/evento/evento-de-teste',
+        queryParams: const {'tab': 'programming'},
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    var selectedOccurrenceId = 'occ-1';
+
+    EventModel buildEvent() {
+      return _buildEvent(
+        contentHtml: '<p>Detalhes</p>',
+        occurrences: [
+          _buildOccurrence(
+            id: 'occ-1',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: selectedOccurrenceId == 'occ-1',
+            programmingCount: 12,
+          ),
+          _buildOccurrence(
+            id: 'occ-2',
+            start: DateTime(2026, 3, 16, 20),
+            isSelected: selectedOccurrenceId == 'occ-2',
+            programmingCount: 12,
+          ),
+        ],
+        programmingItems: List.generate(
+          12,
+          (index) => _buildProgrammingItem(
+            time: '${(8 + index).toString().padLeft(2, '0')}:00',
+            title: 'Bloco ${index + 1}',
+          ),
+          growable: false,
+        ),
+      );
+    }
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          router.onNavigateRoute = (route) {
+            final occurrenceId = route.queryParams.optString('occurrence');
+            if (occurrenceId == null || occurrenceId.isEmpty) {
+              return;
+            }
+            setState(() {
+              selectedOccurrenceId = occurrenceId;
+            });
+          };
+          return StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: RouteDataScope(
+                routeData: routeData,
+                child: ImmersiveEventDetailScreen(event: buildEvent()),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    final selectorViewport =
+        find.byKey(const Key('eventProgrammingDateSelectorViewport'));
+    expect(selectorViewport, findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const Key('immersiveSwipeSurface')),
+      const Offset(0, -520),
+    );
+    await tester.pumpAndSettle();
+
+    final beforeSwipeDy = tester.getTopLeft(selectorViewport).dy;
+    expect(beforeSwipeDy, lessThan(0));
+
+    final swipeSurface = tester.widget<GestureDetector>(
+      find.byKey(const Key('immersiveSwipeSurface')),
+    );
+    swipeSurface.onHorizontalDragEnd?.call(
+      DragEndDetails(
+        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
+        primaryVelocity: -1000,
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final afterSwipeDy = tester.getTopLeft(selectorViewport).dy;
+    expect(selectedOccurrenceId, 'occ-2');
+    expect(afterSwipeDy, greaterThan(beforeSwipeDy));
+    expect(afterSwipeDy, greaterThanOrEqualTo(0));
+  });
+
+  testWidgets(
       'event detail replaces Line-up with dynamic profile category tabs and cards',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();

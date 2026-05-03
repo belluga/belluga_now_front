@@ -18,9 +18,9 @@ void main() {
       BooraIcons.clapperboard.codePoint,
       BooraIcons.local.codePoint,
       BooraIcons.musicalNote.codePoint,
-      BooraIcons.ticket.codePoint,
-      BooraIcons.kiosk.codePoint,
-      BooraIcons.iceCream.codePoint,
+      BooraIcons.invitation.codePoint,
+      BooraIcons.invitationOutlined.codePoint,
+      BooraIcons.appointment.codePoint,
     ];
 
     await tester.pumpWidget(

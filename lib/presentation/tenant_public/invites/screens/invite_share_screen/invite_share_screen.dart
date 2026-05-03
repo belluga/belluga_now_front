@@ -51,16 +51,13 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.setContactRegionCode(
-      WidgetsBinding.instance.platformDispatcher.locale.countryCode,
-    );
-    unawaited(_controller.init(widget.invite));
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _controller.setContactRegionCode(_currentCountryCode());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _controller.setContactRegionCodeIfAbsent(_currentCountryCode());
+      unawaited(_controller.init(widget.invite));
+    });
   }
 
   @override
@@ -673,7 +670,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ? null
         : InviteContactPhoneNormalization.preferredWhatsAppTarget(
             target.primaryPhone!,
-            regionCode: _currentCountryCode(),
+            regionCode:
+                _controller.debugContactRegionCodeValue ?? _currentCountryCode(),
           );
     if (phone == null || phone.isEmpty) {
       return null;

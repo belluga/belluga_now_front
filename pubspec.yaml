@@ -95,7 +95,7 @@ flutter:
   fonts:
     - family: BooraIcons
       fonts:
-        - asset: assets/fonts/BooraIcons-133da979.ttf
+        - asset: assets/fonts/BooraIcons-df601f22.ttf
     - family: Boora
       fonts:
-        - asset: assets/fonts/BooraIcons-133da979.ttf
+        - asset: assets/fonts/BooraIcons-df601f22.ttf

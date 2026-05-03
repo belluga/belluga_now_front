@@ -795,7 +795,7 @@ void main() {
       expect(controller.friendsSuggestionsStreamValue.value, isNull);
       expect(
         controller.externalContactShareTargetsStreamValue.value,
-        isNotNull,
+        isNull,
       );
 
       refreshGate.complete();

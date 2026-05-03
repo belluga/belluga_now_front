@@ -31,6 +31,9 @@ void main() {
     expect(find.text('Sorvete'), findsOneWidget);
     expect(find.text('Primeiros socorros'), findsOneWidget);
     expect(find.text('Ingresso alternativo'), findsOneWidget);
+    expect(find.text('Convite'), findsOneWidget);
+    expect(find.text('Convite alternativo'), findsOneWidget);
+    expect(find.text('Confirmado'), findsOneWidget);
 
     for (final token in MapMarkerIconToken.values) {
       final chip = tester.widget<FilterChip>(

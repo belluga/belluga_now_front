@@ -26,6 +26,9 @@ class InviteStatusIcon extends StatelessWidget {
     final iconColor =
         isConfirmed ? colorScheme.onPrimary : colorScheme.secondary;
     final badgeTextColor = colorScheme.onPrimary;
+    final statusIcon = isConfirmed
+        ? BooraIcons.confirmedAttendance
+        : BooraIcons.inviteOutlined;
 
     final iconSize = size;
     final badgeSize = iconSize * 0.9;
@@ -46,7 +49,7 @@ class InviteStatusIcon extends StatelessWidget {
               child: Transform.translate(
                 offset: const Offset(-2.0, 0.6),
                 child: Icon(
-                  BooraIcons.inviteSolid,
+                  statusIcon,
                   color: iconColor,
                   size: size * 0.9,
                 ),
