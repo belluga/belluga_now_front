@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/repositories/deferred_link_repository_contrac
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:flutter/material.dart';
@@ -110,6 +111,7 @@ void main() {
 
   test('captured deferred share code overrides first route path to invite',
       () async {
+    final telemetry = _FakeTelemetryRepository();
     final controller = InitScreenController(
       invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
       appDataRepository: _FakeAppDataRepository(
@@ -119,18 +121,134 @@ void main() {
         DeferredLinkCaptureResult(
           status: DeferredLinkCaptureStatus.captured,
           codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
+          targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/invite?code=ABCD1234'),
           storeChannelValue:
               DeferredLinkStoreChannelValue(defaultValue: 'play'),
         ),
       ),
-      telemetryRepository: _FakeTelemetryRepository(),
+      telemetryRepository: telemetry,
     );
 
     await controller.initialize();
 
     expect(controller.initialRoutePath, '/invite?code=ABCD1234');
     expect(controller.startupNavigationPlan.hasOverride, isTrue);
+    expect(telemetry.loggedEvents, hasLength(1));
+    expect(
+      telemetry.loggedEvents.single.eventName,
+      'app_deferred_deep_link_captured',
+    );
+    expect(telemetry.loggedEvents.single.properties?['store_channel'], 'play');
+    expect(
+      telemetry.loggedEvents.single.properties?['target_path'],
+      '/invite?code=ABCD1234',
+    );
   });
+
+  test('captured deferred target path overrides first route path', () async {
+    final telemetry = _FakeTelemetryRepository();
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          targetPathValue: DeferredLinkTargetPathValue(
+            defaultValue: '/agenda/evento/forro?occurrence=occ-1',
+          ),
+          storeChannelValue:
+              DeferredLinkStoreChannelValue(defaultValue: 'play'),
+        ),
+      ),
+      telemetryRepository: telemetry,
+    );
+
+    await controller.initialize();
+
+    expect(
+      controller.initialRoutePath,
+      '/agenda/evento/forro?occurrence=occ-1',
+    );
+    expect(controller.startupNavigationPlan.hasOverride, isTrue);
+    expect(
+      telemetry.loggedEvents.single.properties?['target_path'],
+      '/agenda/evento/forro?occurrence=occ-1',
+    );
+    expect(
+        telemetry.loggedEvents.single.properties?.containsKey('code'), isFalse);
+  });
+
+  test('deferred capture telemetry includes fallback store_channel', () async {
+    final telemetry = _FakeTelemetryRepository();
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
+          targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/invite?code=ABCD1234'),
+        ),
+      ),
+      telemetryRepository: telemetry,
+    );
+
+    await controller.initialize();
+
+    expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+    expect(
+      telemetry.loggedEvents.single.eventName,
+      'app_deferred_deep_link_captured',
+    );
+    expect(
+        telemetry.loggedEvents.single.properties?['store_channel'], 'unknown');
+  });
+
+  test('deferred failure telemetry includes fallback store_channel', () async {
+    final telemetry = _FakeTelemetryRepository();
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.notCaptured,
+          failureReasonValue: DeferredLinkFailureReasonValue(
+              defaultValue: 'resolver_not_captured'),
+        ),
+      ),
+      telemetryRepository: telemetry,
+    );
+
+    await controller.initialize();
+
+    expect(controller.initialRoutePath, isNull);
+    expect(
+      telemetry.loggedEvents.single.eventName,
+      'app_deferred_deep_link_capture_failed',
+    );
+    expect(
+        telemetry.loggedEvents.single.properties?['store_channel'], 'unknown');
+  });
+}
+
+class _LoggedTelemetryEvent {
+  const _LoggedTelemetryEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -220,12 +338,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     return buildInviteShareCodeResult(
       code: 'CODE123',
       eventId: eventId.value,
-      occurrenceId: occurrenceId?.value,
+      occurrenceId: occurrenceId?.value ?? 'occurrence-1',
     );
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async {
     return const [];
@@ -327,6 +445,8 @@ class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  final List<_LoggedTelemetryEvent> loggedEvents = <_LoggedTelemetryEvent>[];
+
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
     EventTrackerTimedEventHandle handle,
@@ -345,8 +465,18 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async {
+    loggedEvents.add(
+      _LoggedTelemetryEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
+    return telemetryRepoBool(true);
+  }
 
   @override
   Future<TelemetryRepositoryContractPrimBool> mergeIdentity({

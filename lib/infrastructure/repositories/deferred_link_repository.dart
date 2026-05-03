@@ -75,11 +75,20 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
 
     final status = _normalizeText(resolverData.status);
     final code = _normalizeText(resolverData.code);
+    final targetPath = _normalizeTargetPath(
+          resolverData.targetPath,
+        ) ??
+        (code == null
+            ? null
+            : Uri(
+                path: '/invite',
+                queryParameters: <String, String>{'code': code},
+              ).toString());
     final storeChannel =
         _normalizeText(resolverData.storeChannel) ?? fallbackStoreChannel;
     final failureReason = _normalizeText(resolverData.failureReason);
 
-    if (status == 'captured' && code != null) {
+    if (status == 'captured' && targetPath != null) {
       if (installReferrer != null) {
         final hash = sha256.convert(utf8.encode(installReferrer)).toString();
         final consumedHash = await _storage.read(key: _consumedReferrerHashKey);
@@ -99,7 +108,8 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
 
       return DeferredLinkCaptureResult(
         status: DeferredLinkCaptureStatus.captured,
-        codeValue: deferredLinkCode(code),
+        codeValue: code == null ? null : deferredLinkCode(code),
+        targetPathValue: deferredLinkTargetPath(targetPath),
         storeChannelValue: storeChannel == null
             ? null
             : deferredLinkStoreChannel(storeChannel),
@@ -143,5 +153,17 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       return null;
     }
     return text;
+  }
+
+  String? _normalizeTargetPath(Object? value) {
+    final text = _normalizeText(value);
+    if (text == null || text.startsWith('//') || !text.startsWith('/')) {
+      return null;
+    }
+    final uri = Uri.tryParse(text);
+    if (uri == null || uri.hasScheme || uri.hasAuthority) {
+      return null;
+    }
+    return uri.toString();
   }
 }

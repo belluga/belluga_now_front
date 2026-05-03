@@ -75,15 +75,21 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodeCreateProfileType({
     required String type,
     required String label,
+    String? pluralLabel,
     required List<String> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
     bool includeVisual = false,
     bool? removeTypeAsset,
   }) {
+    final normalizedPlural = (pluralLabel ?? label).trim();
     return {
       'type': type,
       'label': label,
+      'labels': {
+        'singular': label,
+        'plural': normalizedPlural.isEmpty ? label : normalizedPlural,
+      },
       'allowed_taxonomies': allowedTaxonomies,
       if (includeVisual) 'visual': visual?.toJson(),
       if (includeVisual) 'poi_visual': visual?.toJson(),
@@ -95,6 +101,7 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodeUpdateProfileType({
     String? newType,
     String? label,
+    String? pluralLabel,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -107,6 +114,16 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (label != null) {
       payload['label'] = label;
+      final normalizedPlural = (pluralLabel ?? label).trim();
+      payload['labels'] = {
+        'singular': label,
+        'plural': normalizedPlural.isEmpty ? label : normalizedPlural,
+      };
+    } else if (pluralLabel != null) {
+      final normalizedPlural = pluralLabel.trim();
+      payload['labels'] = {
+        'plural': normalizedPlural,
+      };
     }
     if (allowedTaxonomies != null) {
       payload['allowed_taxonomies'] = allowedTaxonomies;

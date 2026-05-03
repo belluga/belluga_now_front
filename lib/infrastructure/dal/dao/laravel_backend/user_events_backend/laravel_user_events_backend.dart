@@ -20,39 +20,37 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchConfirmedEventIds() {
+  Future<Map<String, dynamic>> fetchConfirmedOccurrenceIds() {
     return _get('$_apiBaseUrl/v1/events/attendance/confirmed');
   }
 
   @override
   Future<Map<String, dynamic>> confirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   }) {
-    final payload = <String, dynamic>{};
-    if (occurrenceId != null && occurrenceId.trim().isNotEmpty) {
-      payload['occurrence_id'] = occurrenceId.trim();
-    }
+    final payload = <String, dynamic>{
+      'occurrence_id': occurrenceId.trim(),
+    };
 
     return _post(
       '$_apiBaseUrl/v1/events/$eventId/attendance/confirm',
-      data: payload.isEmpty ? null : payload,
+      data: payload,
     );
   }
 
   @override
   Future<Map<String, dynamic>> unconfirmAttendance({
     required String eventId,
-    String? occurrenceId,
+    required String occurrenceId,
   }) {
-    final payload = <String, dynamic>{};
-    if (occurrenceId != null && occurrenceId.trim().isNotEmpty) {
-      payload['occurrence_id'] = occurrenceId.trim();
-    }
+    final payload = <String, dynamic>{
+      'occurrence_id': occurrenceId.trim(),
+    };
 
     return _post(
       '$_apiBaseUrl/v1/events/$eventId/attendance/unconfirm',
-      data: payload.isEmpty ? null : payload,
+      data: payload,
     );
   }
 

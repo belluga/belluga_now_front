@@ -87,9 +87,17 @@ class InviteDeckCard extends StatelessWidget {
                               ),
                             ),
                           Text(
-                            'Bora nessa?',
+                            _occurrenceDateLabel(invite.eventDateTime),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Bora nessa?',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.72),
                             ),
                           ),
                         ],
@@ -118,7 +126,7 @@ class InviteDeckCard extends StatelessWidget {
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
                         ),
-                        icon: const Icon(BooraIcons.invite_solid, size: 18),
+                        icon: const Icon(BooraIcons.inviteSolid, size: 18),
                         label: const Text('Bóora!'),
                       ),
                     ),
@@ -131,4 +139,14 @@ class InviteDeckCard extends StatelessWidget {
       ),
     );
   }
+
+  String _occurrenceDateLabel(DateTime dateTime) {
+    final day = _twoDigits(dateTime.day);
+    final month = _twoDigits(dateTime.month);
+    final hour = _twoDigits(dateTime.hour);
+    final minute = _twoDigits(dateTime.minute);
+    return '$day/$month às $hour:$minute';
+  }
+
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
 }

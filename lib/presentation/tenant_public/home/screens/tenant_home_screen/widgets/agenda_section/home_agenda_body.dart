@@ -141,9 +141,13 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                         primary: true,
                         events: resumes,
                         isConfirmed: (event) =>
-                            controller.isEventConfirmed(event.id),
+                            controller.isOccurrenceConfirmed(
+                          event.selectedOccurrenceId ?? '',
+                        ),
                         pendingInvitesCount: (event) =>
-                            controller.pendingInviteCount(event.id),
+                            controller.pendingInviteCount(
+                          event.selectedOccurrenceId ?? '',
+                        ),
                         distanceLabel: controller.distanceLabelFor,
                         statusIconSize: 22,
                         highlightNowEvents: true,

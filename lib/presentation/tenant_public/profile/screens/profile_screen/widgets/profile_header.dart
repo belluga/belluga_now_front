@@ -8,16 +8,16 @@ class ProfileHeader extends StatelessWidget {
     this.avatarImage,
     required this.displayName,
     required this.onChangeAvatar,
-    required this.invitesSent,
-    required this.invitesAccepted,
+    required this.pendingInvitesCount,
+    required this.confirmedEventsCount,
     required this.hasPendingChanges,
   });
 
   final ImageProvider? avatarImage;
   final String displayName;
   final VoidCallback onChangeAvatar;
-  final int invitesSent;
-  final int invitesAccepted;
+  final int pendingInvitesCount;
+  final int confirmedEventsCount;
   final bool hasPendingChanges;
 
   @override
@@ -92,24 +92,6 @@ class ProfileHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (hasPendingChanges)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Alterado',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -125,15 +107,15 @@ class ProfileHeader extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     ProfileMetricPill(
-                      value: invitesSent,
-                      icon: BooraIcons.invite_outlined,
+                      value: pendingInvitesCount,
+                      icon: BooraIcons.inviteOutlined,
                       iconColor: colorScheme.secondary,
                       backgroundColor:
                           colorScheme.secondary.withValues(alpha: 0.14),
                     ),
                     ProfileMetricPill(
-                      value: invitesAccepted,
-                      icon: BooraIcons.invite_solid,
+                      value: confirmedEventsCount,
+                      icon: BooraIcons.confirmedAttendance,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),

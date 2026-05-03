@@ -382,7 +382,7 @@ void main() {
         .when(mockAgendaController.setSearchActive(mockito.any))
         .thenReturn(null);
     mockito
-        .when(mockAgendaController.isEventConfirmed(mockito.any))
+        .when(mockAgendaController.isOccurrenceConfirmed(mockito.any))
         .thenReturn(false);
     mockito
         .when(mockAgendaController.pendingInviteCount(mockito.any))
@@ -546,6 +546,10 @@ void main() {
     mockito
         .when(mockInvitesBannerController.pendingInvitesStreamValue)
         .thenReturn(pendingInviteStream);
+    mockito
+        .when(
+            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+        .thenReturn(StreamValue<bool>(defaultValue: true));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);

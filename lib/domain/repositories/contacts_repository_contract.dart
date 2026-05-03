@@ -8,7 +8,13 @@ abstract class ContactsRepositoryContract {
   Future<bool> requestPermission();
   Future<List<ContactModel>> getContacts();
 
+  Future<void> loadCachedContacts() async {}
+
   Future<void> initializeContacts() async {
+    await refreshContacts();
+  }
+
+  Future<void> refreshCachedContacts() async {
     await refreshContacts();
   }
 

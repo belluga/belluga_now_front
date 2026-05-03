@@ -176,10 +176,14 @@ class EventDTO {
           )
         : null;
     final venueDomain = venue != null ? _mapPartnerResume(venue!) : null;
+    final selectedOccurrenceId = _selectedOccurrenceIdForInvites();
 
     final receivedInvitesDomain = receivedInvites?.map((entry) {
       final inviteMap = Map<String, dynamic>.from(entry);
       inviteMap.putIfAbsent('event_id', () => id);
+      if (selectedOccurrenceId != null && selectedOccurrenceId.isNotEmpty) {
+        inviteMap.putIfAbsent('occurrence_id', () => selectedOccurrenceId);
+      }
       return InviteDto.fromJson(inviteMap).toDomain();
     }).toList(growable: false);
 
@@ -220,6 +224,22 @@ class EventDTO {
       sentInvites: sentInvitesDomain,
       friendsGoing: friendsGoingDomain,
     );
+  }
+
+  String? _selectedOccurrenceIdForInvites() {
+    for (final occurrence in occurrences) {
+      final occurrenceId = occurrence.occurrenceId.trim();
+      if (occurrence.isSelected && occurrenceId.isNotEmpty) {
+        return occurrenceId;
+      }
+    }
+
+    if (occurrences.isEmpty) {
+      return null;
+    }
+
+    final firstOccurrenceId = occurrences.first.occurrenceId.trim();
+    return firstOccurrenceId.isEmpty ? null : firstOccurrenceId;
   }
 
   static HTMLContentValue _htmlContentValue(String rawContent) {
@@ -491,6 +511,7 @@ class EventDTO {
       }
 
       final title = _asNullableString(item['title'])?.trim() ?? '';
+      final endTime = _asNullableString(item['end_time'])?.trim() ?? '';
       final locationProfile = _toLinkedAccountProfile(
         _asMap(
           item['location_profile'] ??
@@ -501,6 +522,8 @@ class EventDTO {
       resolved.add(
         EventProgrammingItem(
           timeValue: EventProgrammingTimeValue(time),
+          endTimeValue:
+              endTime.isEmpty ? null : EventProgrammingTimeValue(endTime),
           titleValue:
               title.isEmpty ? null : EventLinkedAccountProfileTextValue(title),
           linkedAccountProfiles: _resolveLinkedAccountProfiles(

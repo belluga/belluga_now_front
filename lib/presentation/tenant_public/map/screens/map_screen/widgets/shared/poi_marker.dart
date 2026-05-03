@@ -111,16 +111,9 @@ class PoiMarker extends StatelessWidget {
                   ),
                 ),
               if (eventTimingBadgeLabel != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: -8,
-                  child: Center(
-                    child: _buildEventTimingBadge(
-                      context,
-                      label: eventTimingBadgeLabel,
-                    ),
-                  ),
+                _buildEventTimingBadgeOverlay(
+                  context,
+                  label: eventTimingBadgeLabel,
                 ),
               if (isLoading)
                 Positioned(
@@ -238,16 +231,9 @@ class PoiMarker extends StatelessWidget {
                           : const SizedBox.shrink(),
                 ),
                 if (eventTimingBadgeLabel != null)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: -8,
-                    child: Center(
-                      child: _buildEventTimingBadge(
-                        context,
-                        label: eventTimingBadgeLabel,
-                      ),
-                    ),
+                  _buildEventTimingBadgeOverlay(
+                    context,
+                    label: eventTimingBadgeLabel,
                   ),
                 if (hasStack)
                   Positioned(
@@ -312,6 +298,9 @@ class PoiMarker extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Text(
           label.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.visible,
+          softWrap: false,
           style: TextStyle(
             color:
                 isLiveNow ? scheme.onErrorContainer : scheme.onPrimaryContainer,
@@ -319,6 +308,29 @@ class PoiMarker extends StatelessWidget {
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventTimingBadgeOverlay(
+    BuildContext context, {
+    required String label,
+  }) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: -8,
+      height: 24,
+      child: OverflowBox(
+        alignment: Alignment.center,
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: 0,
+        maxHeight: 24,
+        child: _buildEventTimingBadge(
+          context,
+          label: label,
         ),
       ),
     );

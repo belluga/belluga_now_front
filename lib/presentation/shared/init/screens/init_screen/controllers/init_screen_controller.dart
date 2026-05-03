@@ -135,19 +135,16 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
     final result = await deferred.captureFirstOpenInviteCode();
     if (result.isCaptured) {
-      _initialRoutePath = Uri(
-        path: '/invite',
-        queryParameters: <String, String>{
-          'code': result.code!,
-        },
-      ).toString();
+      final storeChannel = result.storeChannel ?? 'unknown';
+      _initialRoutePath = result.targetPath;
       await _telemetryRepository?.logEvent(
         EventTrackerEvents.buttonClick,
         eventName: telemetryRepoString('app_deferred_deep_link_captured'),
         properties: telemetryRepoMap(<String, dynamic>{
-          'code': result.code,
+          if (result.code != null) 'code': result.code,
+          'target_path': result.targetPath,
           'platform': 'android',
-          if (result.storeChannel != null) 'store_channel': result.storeChannel,
+          'store_channel': storeChannel,
         }),
       );
       return;
@@ -157,13 +154,14 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       return;
     }
 
+    final storeChannel = result.storeChannel ?? 'unknown';
     await _telemetryRepository?.logEvent(
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
         'platform': 'android',
         'failure_reason': result.failureReason,
-        if (result.storeChannel != null) 'store_channel': result.storeChannel,
+        'store_channel': storeChannel,
       }),
     );
   }

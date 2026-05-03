@@ -13,7 +13,34 @@ TenantAdminAppLinksSettings buildTenantAdminAppLinksSettings({
   required String? iosTeamId,
   required String? iosBundleId,
   required List<String> iosPaths,
+  bool? androidPublicationEnabled,
+  String? androidStoreUrl,
+  bool? iosPublicationEnabled,
+  String? iosStoreUrl,
 }) {
+  final normalizedRaw = Map<String, dynamic>.from(rawAppLinks);
+  final androidRaw = normalizedRaw['android'] is Map
+      ? Map<String, dynamic>.from(normalizedRaw['android'] as Map)
+      : <String, dynamic>{};
+  if (androidPublicationEnabled != null) {
+    androidRaw['enabled'] = androidPublicationEnabled;
+  }
+  if (androidStoreUrl != null) {
+    androidRaw['store_url'] = androidStoreUrl.trim();
+  }
+  normalizedRaw['android'] = androidRaw;
+
+  final iosRaw = normalizedRaw['ios'] is Map
+      ? Map<String, dynamic>.from(normalizedRaw['ios'] as Map)
+      : <String, dynamic>{};
+  if (iosPublicationEnabled != null) {
+    iosRaw['enabled'] = iosPublicationEnabled;
+  }
+  if (iosStoreUrl != null) {
+    iosRaw['store_url'] = iosStoreUrl.trim();
+  }
+  normalizedRaw['ios'] = iosRaw;
+
   TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
   final normalizedAndroid = androidAppIdentifier?.trim();
   if (normalizedAndroid != null && normalizedAndroid.isNotEmpty) {
@@ -35,7 +62,7 @@ TenantAdminAppLinksSettings buildTenantAdminAppLinksSettings({
   }
 
   return TenantAdminAppLinksSettings(
-    rawAppLinksValue: TenantAdminDynamicMapValue(rawAppLinks),
+    rawAppLinksValue: TenantAdminDynamicMapValue(normalizedRaw),
     androidAppIdentifierValue: androidAppIdentifierValue,
     androidSha256CertFingerprintValues: androidSha256CertFingerprints
         .map(

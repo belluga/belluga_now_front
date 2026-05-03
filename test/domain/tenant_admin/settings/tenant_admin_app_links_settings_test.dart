@@ -30,6 +30,10 @@ void main() {
       iosTeamId: 'abcde12345',
       iosBundleId: 'com.guarappari.app',
       iosPaths: const ['/convites*', '/invite*'],
+      androidPublicationEnabled: true,
+      androidStoreUrl:
+          'https://play.google.com/store/apps/details?id=com.guarappari.app',
+      iosPublicationEnabled: false,
     );
 
     expect(settings.androidAppIdentifier, 'com.guarappari.app');
@@ -44,6 +48,12 @@ void main() {
     expect(settings.iosTeamId, 'ABCDE12345');
     expect(settings.iosBundleId, 'com.guarappari.app');
     expect(settings.iosPaths, equals(const ['/invite*', '/convites*']));
+    expect(settings.androidPublicationEnabled, isTrue);
+    expect(
+      settings.androidStoreUrl,
+      'https://play.google.com/store/apps/details?id=com.guarappari.app',
+    );
+    expect(settings.iosPublicationEnabled, isFalse);
   });
 
   test('rejects invalid android app identifier', () {
@@ -59,6 +69,13 @@ void main() {
         iosPaths: TenantAdminAppLinksSettings.canonicalIosPaths,
       ),
       throwsA(isA<InvalidValueException>()),
+    );
+  });
+
+  test('canonical iOS paths include public partner profile routes', () {
+    expect(
+      TenantAdminAppLinksSettings.canonicalIosPaths,
+      contains('/parceiro/*'),
     );
   });
 

@@ -432,6 +432,7 @@ void main() {
       'programming_items': [
         {
           'time': '17:00',
+          'end_time': '18:30',
           'title': null,
           'linked_account_profiles': [
             {
@@ -454,6 +455,7 @@ void main() {
     expect(domain.selectedOccurrence!.programmingCount, 1);
     expect(domain.programmingItems, hasLength(1));
     expect(domain.programmingItems.first.time, '17:00');
+    expect(domain.programmingItems.first.endTime, '18:30');
     expect(domain.programmingItems.first.displayTitle, isEmpty);
     expect(domain.programmingItems.first.linkedAccountProfiles, hasLength(1));
   });

@@ -13,7 +13,7 @@ class BackButtonBelluga extends StatelessWidget {
     return IconButton(
       onPressed: onBack,
       icon: const Icon(
-        Icons.arrow_back_ios,
+        Icons.arrow_back,
         // color: Color(0xff212435),
         size: 24,
       ),

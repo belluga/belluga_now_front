@@ -14,7 +14,11 @@ class TenantPrivacyPolicyScreen extends StatelessWidget {
       backPolicy: backPolicy,
       child: Scaffold(
         appBar: AppBar(
-          leading: BackButton(onPressed: backPolicy.handleBack),
+          leading: IconButton(
+            tooltip: 'Voltar',
+            onPressed: backPolicy.handleBack,
+            icon: const Icon(Icons.arrow_back),
+          ),
           title: const Text('Política de privacidade'),
         ),
         body: SafeArea(

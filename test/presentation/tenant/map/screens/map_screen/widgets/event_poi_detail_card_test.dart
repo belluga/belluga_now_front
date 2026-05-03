@@ -39,7 +39,8 @@ void main() {
       ),
     );
 
-    expect(find.text('07/04 • 18:30 - 20:00'), findsOneWidget);
+    expect(find.text('07/04 • 18:30 às 20:00'), findsOneWidget);
+    expect(find.textContaining('18:30 -'), findsNothing);
   });
 
   testWidgets('event detail card shows linked profiles before description',
@@ -65,6 +66,28 @@ void main() {
 
     expect(chipTop, lessThan(descriptionTop));
     expect(find.textContaining('Atualizado em'), findsNothing);
+  });
+
+  testWidgets('event detail card compresses linked profiles as e mais X',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EventPoiDetailCard(
+            poi: _buildEventPoi(linkedProfileCount: 3),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Ananda Torres'), findsOneWidget);
+    expect(find.text('e mais 2'), findsOneWidget);
+    expect(find.text('DJ Lua'), findsNothing);
+    expect(find.text('Coletivo Sol'), findsNothing);
   });
 
   testWidgets(
@@ -96,7 +119,24 @@ void main() {
   });
 }
 
-CityPoiModel _buildEventPoi() {
+CityPoiModel _buildEventPoi({int linkedProfileCount = 1}) {
+  final linkedProfiles = [
+    CityPoiLinkedProfile(
+      idValue: PoiReferenceIdValue()..parse('artist-1'),
+      displayNameValue: CityPoiNameValue()..parse('Ananda Torres'),
+      avatarImageUriValue: PoiFilterImageUriValue()
+        ..parse('https://tenant.test/media/ananda-avatar.png'),
+    ),
+    CityPoiLinkedProfile(
+      idValue: PoiReferenceIdValue()..parse('artist-2'),
+      displayNameValue: CityPoiNameValue()..parse('DJ Lua'),
+    ),
+    CityPoiLinkedProfile(
+      idValue: PoiReferenceIdValue()..parse('artist-3'),
+      displayNameValue: CityPoiNameValue()..parse('Coletivo Sol'),
+    ),
+  ].take(linkedProfileCount).toList(growable: false);
+
   return CityPoiModel(
     idValue: CityPoiIdValue()..parse('event-poi-1'),
     nameValue: CityPoiNameValue()..parse('Estreia'),
@@ -115,14 +155,7 @@ CityPoiModel _buildEventPoi() {
     stackItems: CityPoiStackItems(),
     coverImageUriValue: (PoiFilterImageUriValue()
       ..parse('https://tenant.test/media/event-cover.png')),
-    linkedProfiles: [
-      CityPoiLinkedProfile(
-        idValue: PoiReferenceIdValue()..parse('artist-1'),
-        displayNameValue: CityPoiNameValue()..parse('Ananda Torres'),
-        avatarImageUriValue: PoiFilterImageUriValue()
-          ..parse('https://tenant.test/media/ananda-avatar.png'),
-      ),
-    ],
+    linkedProfiles: linkedProfiles,
     isHappeningNowValue: PoiBooleanValue()..parse('false'),
     timeStartValue: (PoiTimeStartValue()
       ..parse(DateTime(2026, 4, 7, 18, 30).toIso8601String())),

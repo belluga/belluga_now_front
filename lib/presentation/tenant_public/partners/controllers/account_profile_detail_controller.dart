@@ -66,7 +66,7 @@ class AccountProfileDetailController implements Disposable {
           .toSet(),
     );
     _confirmedEventIdsSubscription =
-        _userEventsRepository?.confirmedEventIdsStream.stream.listen((_) {
+        _userEventsRepository?.confirmedOccurrenceIdsStream.stream.listen((_) {
       _bumpAgendaStatusRevision();
     });
     _pendingInvitesSubscription =
@@ -150,9 +150,6 @@ class AccountProfileDetailController implements Disposable {
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {
-    if (!_isAuthorized) {
-      return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
-    }
     _accountProfilesRepository.toggleFavorite(
       AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
     );
@@ -193,8 +190,6 @@ class AccountProfileDetailController implements Disposable {
     return GetIt.I.get<AppData>().profileTypeRegistry;
   }
 
-  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
-
   String? get authenticatedUserDisplayName {
     final raw =
         _authRepository?.userStreamValue.value?.profile.nameValue?.value.trim();
@@ -221,15 +216,15 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  bool isEventConfirmed(String eventId) {
+  bool isOccurrenceConfirmed(String occurrenceId) {
     final repository = _userEventsRepository;
     if (repository == null) {
       return false;
     }
     return repository
-        .isEventConfirmed(
+        .isOccurrenceConfirmed(
           userEventsRepoString(
-            eventId,
+            occurrenceId,
             defaultValue: '',
             isRequired: true,
           ),
@@ -237,13 +232,13 @@ class AccountProfileDetailController implements Disposable {
         .value;
   }
 
-  int pendingInviteCount(String eventId) {
+  int pendingInviteCount(String occurrenceId) {
     final repository = _invitesRepository;
     if (repository == null) {
       return 0;
     }
     return repository.pendingInvitesStreamValue.value
-        .where((invite) => invite.eventId == eventId)
+        .where((invite) => invite.occurrenceId == occurrenceId)
         .length;
   }
 

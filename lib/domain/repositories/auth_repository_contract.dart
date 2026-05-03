@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_custom_data.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
@@ -40,6 +41,21 @@ abstract class AuthRepositoryContract<T extends UserContract> {
     AuthRepositoryContractParamString email,
     AuthRepositoryContractParamString password,
   );
+
+  Future<AuthPhoneOtpChallenge> requestPhoneOtpChallenge(
+    AuthRepositoryContractParamString phone, {
+    AuthRepositoryContractParamString? deliveryChannel,
+  }) {
+    throw UnimplementedError();
+  }
+
+  Future<void> verifyPhoneOtpChallenge({
+    required AuthRepositoryContractParamString challengeId,
+    required AuthRepositoryContractParamString phone,
+    required AuthRepositoryContractParamString code,
+  }) {
+    throw UnimplementedError();
+  }
 
   Future<void> signUpWithEmailPassword(
     AuthRepositoryContractParamString name,

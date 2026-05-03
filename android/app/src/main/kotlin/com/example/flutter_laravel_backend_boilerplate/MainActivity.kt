@@ -1,5 +1,6 @@
 package com.belluga_now
 
+import android.content.Intent
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
 import io.flutter.embedding.engine.FlutterEngine
@@ -21,6 +22,11 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     private fun fetchInstallReferrer(result: MethodChannel.Result) {

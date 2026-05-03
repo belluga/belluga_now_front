@@ -21,7 +21,7 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
         leading: IconButton(
           tooltip: 'Voltar',
           onPressed: backPolicy.handleBack,
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back),
         ),
         title: Text(asset.displayName),
         actions: [

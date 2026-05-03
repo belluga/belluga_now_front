@@ -358,6 +358,16 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 
   @override
+  Future<void> loadCachedContacts() async {
+    contactsStreamValue.addValue(await getContacts());
+  }
+
+  @override
+  Future<void> refreshCachedContacts() async {
+    contactsStreamValue.addValue(await getContacts());
+  }
+
+  @override
   Future<void> refreshContacts() async {
     contactsStreamValue.addValue(await getContacts());
   }
@@ -628,6 +638,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -641,6 +652,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,

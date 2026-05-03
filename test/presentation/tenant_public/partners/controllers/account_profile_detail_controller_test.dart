@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_config.d
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
@@ -14,6 +15,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
@@ -106,7 +108,7 @@ void main() {
       () async {
     final accountProfileRepository = _FakeAccountProfilesRepository();
     final userEventsRepository = _FakeUserEventsRepository(
-      confirmedIds: const {'507f1f77bcf86cd799439031'},
+      confirmedIds: const {'507f1f77bcf86cd799439131'},
     );
     final invitesRepository = _FakeInvitesRepository(
       invites: [
@@ -119,6 +121,7 @@ void main() {
           location: 'Casa Marracini',
           hostName: 'Casa Marracini',
           message: 'Convite pendente',
+          occurrenceId: '507f1f77bcf86cd799439131',
           tags: const [],
           inviterName: 'Tester',
         ),
@@ -146,9 +149,25 @@ void main() {
       venueTitle: 'Casa Marracini',
     );
 
-    expect(controller.isEventConfirmed(event.eventId), isTrue);
-    expect(controller.pendingInviteCount(event.eventId), 1);
+    expect(controller.isOccurrenceConfirmed(event.occurrenceId), isTrue);
+    expect(controller.pendingInviteCount(event.occurrenceId), 1);
     expect(controller.distanceLabelFor(profile, event), '752 m');
+  });
+
+  test('toggleFavorite is allowed for anonymous users', () {
+    final accountProfileRepository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: accountProfileRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    final result = controller.toggleFavorite('507f1f77bcf86cd799439011');
+
+    expect(result, AccountProfileFavoriteToggleOutcome.toggled);
+    expect(
+      accountProfileRepository.toggleFavoriteCalls,
+      ['507f1f77bcf86cd799439011'],
+    );
   });
 }
 
@@ -158,6 +177,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   final List<AccountProfileModel> _profiles = <AccountProfileModel>[];
+  final List<String> toggleFavoriteCalls = <String>[];
 
   @override
   Future<void> init() async {}
@@ -200,7 +220,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<void> toggleFavorite(
     AccountProfilesRepositoryContractPrimString accountProfileId,
-  ) async {}
+  ) async {
+    toggleFavoriteCalls.add(accountProfileId.value);
+  }
 
   @override
   AccountProfilesRepositoryContractPrimBool isFavorite(
@@ -216,10 +238,20 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
 }
 
+class _FakeAuthRepository extends Fake
+    implements AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  bool get isAuthorized => authorized;
+}
+
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   _FakeUserEventsRepository({Set<String> confirmedIds = const {}})
       : _confirmedIds = Set<String>.from(confirmedIds) {
-    confirmedEventIdsStream.addValue(
+    confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
             (value) => userEventsRepoString(
@@ -235,15 +267,16 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   final Set<String> _confirmedIds;
 
   @override
-  final confirmedEventIdsStream =
+  final confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
     defaultValue: const <UserEventsRepositoryContractPrimString>{},
   );
 
   @override
   Future<void> confirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -252,7 +285,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
   ) =>
       userEventsRepoBool(
@@ -262,12 +295,13 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       );
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-    UserEventsRepositoryContractPrimString eventId,
-  ) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -318,7 +352,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventId,
   ) async =>
       const <SentInviteStatus>[];

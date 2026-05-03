@@ -257,6 +257,32 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    final normalizedType = profileType.value.trim();
+    if (normalizedType.isEmpty) {
+      throw ArgumentError.value(
+        profileType,
+        'profileType',
+        'Profile type must not be empty',
+      );
+    }
+
+    try {
+      final encodedType = Uri.encodeComponent(normalizedType);
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType',
+        options: Options(headers: _buildHeaders()),
+      );
+      final dto = _responseDecoder.decodeProfileTypeItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load profile type');
+    }
+  }
+
+  @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
@@ -288,6 +314,7 @@ class TenantAdminAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
@@ -297,6 +324,7 @@ class TenantAdminAccountProfilesRepository
         data: _requestEncoder.encodeCreateProfileType(
           type: type.value,
           label: label.value,
+          pluralLabel: pluralLabel?.value,
           allowedTaxonomies: allowedTaxonomies
               .map((entry) => entry.value)
               .toList(growable: false),
@@ -315,6 +343,7 @@ class TenantAdminAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileTypeWithVisual({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
     TenantAdminPoiVisual? visual,
@@ -324,6 +353,7 @@ class TenantAdminAccountProfilesRepository
       final payload = _requestEncoder.encodeCreateProfileType(
         type: type.value,
         label: label.value,
+        pluralLabel: pluralLabel?.value,
         allowedTaxonomies: allowedTaxonomies
             .map((entry) => entry.value)
             .toList(growable: false),
@@ -357,6 +387,7 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
@@ -365,6 +396,7 @@ class TenantAdminAccountProfilesRepository
       final payload = _requestEncoder.encodeUpdateProfileType(
         newType: newType?.value,
         label: label?.value,
+        pluralLabel: pluralLabel?.value,
         allowedTaxonomies: allowedTaxonomies
             ?.map((entry) => entry.value)
             .toList(growable: false),
@@ -387,6 +419,7 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
     TenantAdminPoiVisual? visual,
@@ -398,6 +431,7 @@ class TenantAdminAccountProfilesRepository
       final payload = _requestEncoder.encodeUpdateProfileType(
         newType: newType?.value,
         label: label?.value,
+        pluralLabel: pluralLabel?.value,
         allowedTaxonomies: allowedTaxonomies
             ?.map((entry) => entry.value)
             .toList(growable: false),

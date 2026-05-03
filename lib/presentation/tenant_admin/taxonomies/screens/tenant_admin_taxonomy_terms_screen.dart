@@ -148,7 +148,7 @@ class _TenantAdminTaxonomyTermsScreenState
         leading: IconButton(
           tooltip: 'Voltar',
           onPressed: backPolicy.handleBack,
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back),
         ),
         title: Text('Termos: ${widget.taxonomy.name}'),
       ),

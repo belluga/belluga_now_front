@@ -2,9 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>aps-environment</key>
+	<string>$(BELLUGA_IOS_APS_ENVIRONMENT)</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:guarappari.belluga.space</string>
+		<string>applinks:guarappari.com.br</string>
+		<string>applinks:guarappari.booraagora.com.br</string>
 	</array>
 </dict>
 </plist>

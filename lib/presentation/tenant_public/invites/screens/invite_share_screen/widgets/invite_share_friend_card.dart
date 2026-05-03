@@ -24,8 +24,14 @@ class InviteShareFriendCard extends StatelessWidget {
         : 'Convide para viver o rolê juntos';
     final avatarUrl = friend.avatarValue.value?.toString();
 
-    final (label, color, enabled) = _cta(status);
+    final (label, enabled) = _cta(status);
     final disabled = !enabled || isPlaceholder;
+    final backgroundColor = disabled
+        ? theme.colorScheme.surfaceContainerHighest
+        : theme.colorScheme.primary;
+    final foregroundColor = disabled
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.onPrimary;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -70,11 +76,11 @@ class InviteShareFriendCard extends StatelessWidget {
             ElevatedButton(
               onPressed: disabled ? null : onInvite,
               style: ElevatedButton.styleFrom(
-                backgroundColor: disabled
-                    ? theme.colorScheme.surfaceContainerHighest
-                    : color,
-                foregroundColor:
-                    disabled ? theme.colorScheme.onSurface : Colors.white,
+                backgroundColor: backgroundColor,
+                foregroundColor: foregroundColor,
+                disabledBackgroundColor:
+                    theme.colorScheme.surfaceContainerHighest,
+                disabledForegroundColor: theme.colorScheme.onSurfaceVariant,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(
@@ -92,15 +98,15 @@ class InviteShareFriendCard extends StatelessWidget {
     );
   }
 
-  (String, Color, bool) _cta(InviteStatus? status) {
+  (String, bool) _cta(InviteStatus? status) {
     switch (status) {
       case InviteStatus.accepted:
-        return ('Convite Aceito!', Colors.green, false);
+        return ('Convite Aceito!', false);
       case InviteStatus.pending:
       case InviteStatus.viewed:
-        return ('Convidado', Colors.orange, false);
+        return ('Convidado', false);
       default:
-        return ('Convidar', Colors.blue, true);
+        return ('Convidar', true);
     }
   }
 }

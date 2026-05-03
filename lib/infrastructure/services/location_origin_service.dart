@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
@@ -9,16 +11,30 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class LocationOriginService implements LocationOriginServiceContract {
   LocationOriginService({
     required AppDataRepositoryContract appDataRepository,
     UserLocationRepositoryContract? userLocationRepository,
   })  : _appDataRepository = appDataRepository,
-        _userLocationRepository = userLocationRepository;
+        _userLocationRepository = userLocationRepository {
+    _effectiveOriginStreamValue.addValue(resolveCached());
+    _bindCanonicalOriginSources();
+  }
 
   final AppDataRepositoryContract _appDataRepository;
   UserLocationRepositoryContract? _userLocationRepository;
+  final StreamValue<LocationOriginResolution?> _effectiveOriginStreamValue =
+      StreamValue<LocationOriginResolution?>(defaultValue: null);
+  StreamSubscription<LocationOriginSettings?>? _locationOriginSettingsSubscription;
+  StreamSubscription<CityCoordinate?>? _userLocationSubscription;
+  StreamSubscription<CityCoordinate?>? _lastKnownLocationSubscription;
+  StreamSubscription<DateTime?>? _lastKnownCapturedAtSubscription;
+
+  @override
+  StreamValue<LocationOriginResolution?> get effectiveOriginStreamValue =>
+      _effectiveOriginStreamValue;
 
   UserLocationRepositoryContract? get _resolvedUserLocationRepository {
     if (_userLocationRepository != null) {
@@ -28,7 +44,73 @@ class LocationOriginService implements LocationOriginServiceContract {
       return null;
     }
     _userLocationRepository = GetIt.I.get<UserLocationRepositoryContract>();
+    _bindUserLocationSources(_userLocationRepository!);
     return _userLocationRepository;
+  }
+
+  void _bindCanonicalOriginSources() {
+    _locationOriginSettingsSubscription ??=
+        _appDataRepository.locationOriginSettingsStreamValue.stream.listen((_) {
+      _publishCachedResolution();
+    });
+
+    final repository = _userLocationRepository;
+    if (repository != null) {
+      _bindUserLocationSources(repository);
+    }
+  }
+
+  void _bindUserLocationSources(UserLocationRepositoryContract repository) {
+    _userLocationSubscription ??=
+        repository.userLocationStreamValue.stream.listen((_) {
+      _publishCachedResolution();
+    });
+    _lastKnownLocationSubscription ??=
+        repository.lastKnownLocationStreamValue.stream.listen((_) {
+      _publishCachedResolution();
+    });
+    _lastKnownCapturedAtSubscription ??=
+        repository.lastKnownCapturedAtStreamValue.stream.listen((_) {
+      _publishCachedResolution();
+    });
+  }
+
+  void _publishCachedResolution() {
+    final next = resolveCached();
+    final current = _effectiveOriginStreamValue.value;
+    if (_sameResolution(current, next)) {
+      return;
+    }
+    _effectiveOriginStreamValue.addValue(next);
+  }
+
+  bool _sameResolution(
+    LocationOriginResolution? left,
+    LocationOriginResolution right,
+  ) {
+    if (left == null) {
+      return false;
+    }
+
+    final leftSettings = left.settings;
+    final rightSettings = right.settings;
+    if (!(leftSettings?.sameAs(rightSettings) ?? rightSettings == null)) {
+      return false;
+    }
+
+    return _sameCoordinate(left.effectiveCoordinate, right.effectiveCoordinate) &&
+        _sameCoordinate(left.liveUserCoordinate, right.liveUserCoordinate) &&
+        _sameCoordinate(left.tenantDefaultCoordinate, right.tenantDefaultCoordinate) &&
+        _sameCoordinate(left.userFixedCoordinate, right.userFixedCoordinate) &&
+        left.distanceFromTenantDefaultOriginMeters ==
+            right.distanceFromTenantDefaultOriginMeters;
+  }
+
+  bool _sameCoordinate(CityCoordinate? left, CityCoordinate? right) {
+    if (left == null || right == null) {
+      return left == right;
+    }
+    return left.latitude == right.latitude && left.longitude == right.longitude;
   }
 
   @override
@@ -66,6 +148,7 @@ class LocationOriginService implements LocationOriginServiceContract {
     if (settings != null && !(currentSettings?.sameAs(settings) ?? false)) {
       await _appDataRepository.setLocationOriginSettings(settings);
     }
+    _effectiveOriginStreamValue.addValue(resolution);
     return resolution;
   }
 
