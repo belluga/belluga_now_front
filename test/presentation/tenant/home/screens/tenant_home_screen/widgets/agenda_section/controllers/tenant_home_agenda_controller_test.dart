@@ -4,6 +4,8 @@ import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
@@ -39,6 +41,7 @@ import 'package:belluga_now/domain/proximity_preferences/proximity_preference.da
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -1233,6 +1236,62 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'preserved refresh waits for canonical origin resolution before issuing the first agenda request',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationOriginService = _DelayedTenantDefaultLocationOriginService(
+          appData.tenantDefaultOrigin!,
+        );
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          appDataRepository: appDataRepository,
+          proximityPreferencesRepository: _FakeProximityPreferencesRepository(
+            preference: _proximityPreference(9000),
+          ),
+          locationOriginService: locationOriginService,
+          radiusRefreshDebounce: Duration.zero,
+        );
+
+        final initFuture = controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        expect(
+          scheduleRepository.getEventsPageCallCount,
+          0,
+          reason:
+              'No agenda request should be sent before canonical origin resolution completes.',
+        );
+
+        locationOriginService.releaseFirstResolve();
+        await initFuture;
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        expect(scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(
+          scheduleRepository.requestOriginHistory,
+          isNotEmpty,
+        );
+        expect(
+          scheduleRepository.requestOriginHistory
+              .every((sample) => sample.lat != null && sample.lng != null),
+          isTrue,
+          reason:
+              'Every first-page agenda request must carry canonical origin coordinates once refresh resumes.',
+        );
+
+        controller.onDispose();
+      },
+    );
 
     test(
       'uses live user location and persists live mode when within tenant max radius of tenant origin',
@@ -3106,6 +3165,66 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
 }
 
+class _DelayedTenantDefaultLocationOriginService
+    implements LocationOriginServiceContract {
+  _DelayedTenantDefaultLocationOriginService(this._tenantDefaultCoordinate);
+
+  final CityCoordinate _tenantDefaultCoordinate;
+  final Completer<void> _firstResolveGate = Completer<void>();
+
+  void releaseFirstResolve() {
+    if (_firstResolveGate.isCompleted) {
+      return;
+    }
+    _firstResolveGate.complete();
+  }
+
+  @override
+  final StreamValue<LocationOriginResolution?> effectiveOriginStreamValue =
+      StreamValue<LocationOriginResolution?>(defaultValue: null);
+
+  @override
+  Future<LocationOriginResolution> resolve(
+    LocationOriginResolutionRequest request,
+  ) async {
+    if (!_firstResolveGate.isCompleted) {
+      await _firstResolveGate.future;
+    }
+    final resolution = LocationOriginResolution(
+      settings: LocationOriginSettings.tenantDefaultLocation(
+        fixedLocationReference: _tenantDefaultCoordinate,
+        reason: LocationOriginReason.unavailable,
+      ),
+      effectiveCoordinate: _tenantDefaultCoordinate,
+      liveUserCoordinate: null,
+      tenantDefaultCoordinate: _tenantDefaultCoordinate,
+      userFixedCoordinate: null,
+      distanceFromTenantDefaultOriginValue: null,
+    );
+    effectiveOriginStreamValue.addValue(resolution);
+    return resolution;
+  }
+
+  @override
+  Future<LocationOriginResolution> resolveAndPersist(
+    LocationOriginResolutionRequest request,
+  ) {
+    return resolve(request);
+  }
+
+  @override
+  LocationOriginResolution resolveCached() {
+    return const LocationOriginResolution(
+      settings: null,
+      effectiveCoordinate: null,
+      liveUserCoordinate: null,
+      tenantDefaultCoordinate: null,
+      userFixedCoordinate: null,
+      distanceFromTenantDefaultOriginValue: null,
+    );
+  }
+}
+
 AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
   DiscoveryFilterSelection selection,
 ) {
@@ -3156,6 +3275,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   double? lastOriginLat;
   double? lastOriginLng;
   double? lastMaxDistanceMeters;
+  final List<({double? lat, double? lng})> requestOriginHistory =
+      <({double? lat, double? lng})>[];
   List<String>? lastCategories;
   List<String>? lastTaxonomy;
   Completer<void>? nextFetchGate;
@@ -3343,6 +3464,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
     lastMaxDistanceMeters = maxDistanceMeters?.value;
+    requestOriginHistory.add((lat: lastOriginLat, lng: lastOriginLng));
     final fetchGate = nextFetchGate;
     if (fetchGate != null) {
       nextFetchGate = null;
