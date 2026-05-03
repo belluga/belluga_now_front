@@ -9,16 +9,19 @@ class LandlordKnownPublicInstancesBackend
     implements LandlordPublicInstancesBackendContract {
   LandlordKnownPublicInstancesBackend({Dio? dio}) : _dio = dio ?? Dio();
 
-  static const List<String> _knownTenantOrigins = [
-    'https://guarappari.com.br',
-  ];
+  static const List<String> _knownTenantSubdomains = ['guarappari'];
+  static const Map<String, String> _productionCustomDomains = {
+    'guarappari': 'guarappari.com.br',
+  };
 
   final Dio _dio;
 
   @override
-  Future<List<AppDataDTO>> fetchFeaturedInstanceEnvironments() async {
+  Future<List<AppDataDTO>> fetchFeaturedInstanceEnvironments({
+    required String landlordOrigin,
+  }) async {
     final instances = <AppDataDTO>[];
-    for (final origin in _knownTenantOrigins) {
+    for (final origin in _resolveKnownTenantOrigins(landlordOrigin)) {
       instances.add(await _fetchEnvironment(origin));
     }
     return instances;
@@ -69,5 +72,35 @@ class LandlordKnownPublicInstancesBackend
     );
     final value = origin.toString();
     return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
+  }
+
+  List<String> _resolveKnownTenantOrigins(String landlordOrigin) {
+    final normalizedLandlordOrigin = _normalizeOrigin(landlordOrigin);
+    final landlordUri = Uri.parse(normalizedLandlordOrigin);
+    final scheme = landlordUri.scheme.isEmpty ? 'https' : landlordUri.scheme;
+    final landlordHost = landlordUri.host.trim().toLowerCase();
+
+    return _knownTenantSubdomains
+        .map((slug) => _resolveTenantOriginForHost(
+              slug: slug,
+              landlordHost: landlordHost,
+              scheme: scheme,
+            ))
+        .toList(growable: false);
+  }
+
+  String _resolveTenantOriginForHost({
+    required String slug,
+    required String landlordHost,
+    required String scheme,
+  }) {
+    if (landlordHost == 'booraagora.com.br') {
+      final customDomain = _productionCustomDomains[slug];
+      if (customDomain != null && customDomain.trim().isNotEmpty) {
+        return '$scheme://${customDomain.trim()}';
+      }
+    }
+
+    return '$scheme://$slug.$landlordHost';
   }
 }
