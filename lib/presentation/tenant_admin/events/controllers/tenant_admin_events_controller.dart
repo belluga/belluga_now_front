@@ -155,6 +155,8 @@ class TenantAdminEventsController implements Disposable {
   String? _loadedTaxonomyTermsKey;
   String? _loadingTaxonomyTermsKey;
   int _taxonomyTermsLoadSerial = 0;
+  String? _eventTypeTaxonomyFallbackSlug;
+  Set<String> _eventTypeTaxonomyFallbackAllowedSlugs = const <String>{};
 
   final StreamValue<List<TenantAdminAccountProfile>>
       venueCandidatesStreamValue =
@@ -499,6 +501,19 @@ class TenantAdminEventsController implements Disposable {
           selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
     }
+    final initialEventTypeSlug = existingEvent?.type.slug.trim();
+    final fallbackAllowedSlugs = <String>{
+      ...?existingEvent?.type.allowedTaxonomies.value
+          .map((slug) => slug.trim())
+          .where((slug) => slug.isNotEmpty),
+    };
+    _eventTypeTaxonomyFallbackSlug =
+        initialEventTypeSlug == null || initialEventTypeSlug.isEmpty
+            ? null
+            : initialEventTypeSlug;
+    _eventTypeTaxonomyFallbackAllowedSlugs = Set<String>.unmodifiable(
+      fallbackAllowedSlugs,
+    );
     final localOccurrences = existingEvent?.occurrences
             .map(_toLocalOccurrence)
             .toList(growable: false) ??
@@ -750,6 +765,13 @@ class TenantAdminEventsController implements Disposable {
         .where((taxonomy) => allowedTaxonomies.contains(taxonomy.slug.trim()))
         .toList(growable: false);
   }
+
+  Set<String> get allowedTaxonomySlugsForSelectedEventType =>
+      Set<String>.unmodifiable(
+        _allowedTaxonomiesForEventType(
+          eventFormStateStreamValue.value.selectedTypeSlug,
+        ),
+      );
 
   void toggleOccurrenceTaxonomyTerm({
     required String occurrenceKey,
@@ -1337,10 +1359,18 @@ class TenantAdminEventsController implements Disposable {
       if (type.slug.trim() != normalizedTypeSlug) {
         continue;
       }
-      return type.allowedTaxonomies.value
+      final allowed = type.allowedTaxonomies.value
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
           .toSet();
+      if (allowed.isNotEmpty) {
+        return allowed;
+      }
+      break;
+    }
+    if (_eventTypeTaxonomyFallbackSlug == normalizedTypeSlug &&
+        _eventTypeTaxonomyFallbackAllowedSlugs.isNotEmpty) {
+      return _eventTypeTaxonomyFallbackAllowedSlugs;
     }
     return const <String>{};
   }
@@ -2292,6 +2322,8 @@ class TenantAdminEventsController implements Disposable {
     _loadedTaxonomyTermsKey = null;
     _loadingTaxonomyTermsKey = null;
     _taxonomyTermsLoadSerial += 1;
+    _eventTypeTaxonomyFallbackSlug = null;
+    _eventTypeTaxonomyFallbackAllowedSlugs = const <String>{};
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
     eventTypeAllowedTaxonomiesStreamValue.addValue(const []);

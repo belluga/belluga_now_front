@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -21,11 +22,6 @@ typedef TenantAdminEventRelatedProfilePicker
     = Future<TenantAdminAccountProfile?> Function({
   required Set<String> excludedProfileIds,
 });
-
-typedef TenantAdminEventModalCloser = Future<bool> Function<T>(
-  BuildContext context, [
-  T? result,
-]);
 
 Future<void> showTenantAdminEventOccurrenceEditorSheet({
   required BuildContext context,
@@ -654,67 +650,14 @@ class _TenantAdminEventProgrammingItemEditorSheetState
   }
 
   Future<void> _pickProgrammingLocation() async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showTenantAdminAccountProfileLocationPickerSheet(
       context: context,
-      useSafeArea: true,
-      builder: (context) {
-        final options = [
-          const (value: '', label: 'Sem local específico'),
-          ...widget.venues.map(
-            (venue) => (value: venue.id, label: venue.displayName),
-          ),
-        ];
-
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const ListTile(
-                title: Text('Local da programação'),
-                subtitle: Text(
-                  'Selecione um local específico para este item de programação.',
-                ),
-              ),
-              for (final option in options)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Semantics(
-                    button: true,
-                    label: option.label,
-                    child: ExcludeSemantics(
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: TextButton.icon(
-                          key: Key(
-                            'tenantAdminProgrammingLocationOption_${option.value.isEmpty ? 'none' : option.value}',
-                          ),
-                          style: TextButton.styleFrom(
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                          onPressed: () => unawaited(
-                            widget.closeModalSheet(context, option.value),
-                          ),
-                          icon: _draft.selectedLocationProfileId ==
-                                      option.value ||
-                                  (_draft.selectedLocationProfileId == null &&
-                                      option.value.isEmpty)
-                              ? const Icon(Icons.check, size: 18)
-                              : const SizedBox(width: 18),
-                          label: Text(option.label),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+      venues: widget.venues,
+      selectedLocationProfileId: _draft.selectedLocationProfileId,
+      title: 'Local da programação',
+      subtitle: 'Selecione um local específico para este item de programação.',
+      keyPrefix: 'tenantAdminProgrammingLocation',
+      closeModalSheet: widget.closeModalSheet,
     );
 
     if (selected == null || !mounted) {
