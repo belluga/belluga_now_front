@@ -133,24 +133,6 @@ class _MissingOccurrenceEditorSheet extends StatelessWidget {
   }
 }
 
-class _DropdownSemanticLabel extends StatelessWidget {
-  const _DropdownSemanticLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      button: true,
-      label: label,
-      child: ExcludeSemantics(
-        child: Text(label),
-      ),
-    );
-  }
-}
-
 class _TenantAdminEventOccurrenceEditorSheet extends StatefulWidget {
   const _TenantAdminEventOccurrenceEditorSheet({
     required this.title,
@@ -569,6 +551,19 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
   String? _errorMessage;
 
+  String get _selectedLocationLabel {
+    final selectedId = _draft.selectedLocationProfileId;
+    if (selectedId == null || selectedId.isEmpty) {
+      return 'Sem local específico';
+    }
+    for (final venue in widget.venues) {
+      if (venue.id == selectedId) {
+        return venue.displayName;
+      }
+    }
+    return 'Sem local específico';
+  }
+
   Future<void> _linkOccurrenceProfile() async {
     final selected = await _pickOccurrenceRelatedAccountProfile(
       excludedProfileIds:
@@ -656,6 +651,80 @@ class _TenantAdminEventProgrammingItemEditorSheetState
         );
       },
     );
+  }
+
+  Future<void> _pickProgrammingLocation() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) {
+        final options = [
+          const (value: '', label: 'Sem local específico'),
+          ...widget.venues.map(
+            (venue) => (value: venue.id, label: venue.displayName),
+          ),
+        ];
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(
+                title: Text('Local da programação'),
+                subtitle: Text(
+                  'Selecione um local específico para este item de programação.',
+                ),
+              ),
+              for (final option in options)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Semantics(
+                    button: true,
+                    label: option.label,
+                    child: ExcludeSemantics(
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          key: Key(
+                            'tenantAdminProgrammingLocationOption_${option.value.isEmpty ? 'none' : option.value}',
+                          ),
+                          style: TextButton.styleFrom(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                          ),
+                          onPressed: () => unawaited(
+                            widget.closeModalSheet(context, option.value),
+                          ),
+                          icon: _draft.selectedLocationProfileId ==
+                                      option.value ||
+                                  (_draft.selectedLocationProfileId == null &&
+                                      option.value.isEmpty)
+                              ? const Icon(Icons.check, size: 18)
+                              : const SizedBox(width: 18),
+                          label: Text(option.label),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _draft.selectedLocationProfileId = selected.isEmpty ? null : selected;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -791,31 +860,44 @@ class _TenantAdminEventProgrammingItemEditorSheetState
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              key: const Key('tenantAdminProgrammingLocationProfileDropdown'),
-              initialValue: _draft.selectedLocationProfileId,
-              decoration: const InputDecoration(
-                labelText: 'Local da programação (opcional)',
-              ),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: '',
-                  child: _DropdownSemanticLabel('Sem local específico'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Local da programação (opcional)',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
                 ),
-                ...widget.venues.map(
-                  (venue) => DropdownMenuItem<String>(
-                    value: venue.id,
-                    child: _DropdownSemanticLabel(venue.displayName),
+                const SizedBox(height: 8),
+                Semantics(
+                  button: true,
+                  label: 'Local da programação. $_selectedLocationLabel',
+                  child: ExcludeSemantics(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        key: const Key(
+                          'tenantAdminProgrammingLocationProfileDropdown',
+                        ),
+                        onPressed: _pickProgrammingLocation,
+                        style: OutlinedButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        icon: const Icon(Icons.place_outlined),
+                        label: Text(
+                          _selectedLocationLabel,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _draft.selectedLocationProfileId =
-                      value == null || value.isEmpty ? null : value;
-                  _errorMessage = null;
-                });
-              },
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),

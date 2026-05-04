@@ -1074,13 +1074,19 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
       findsOneWidget,
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+    );
     await tester.tap(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
     );
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('Sem local específico'), findsWidgets);
     expect(find.bySemanticsLabel('Venue A'), findsWidgets);
-    await tester.tap(find.text('Venue A').last);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-1')),
+    );
     await tester.pumpAndSettle();
     await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
@@ -1279,11 +1285,17 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTitleField')),
       'Apresentação especial',
     );
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Venue A').last);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-1')),
+    );
     await tester.pumpAndSettle();
     await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
@@ -1296,11 +1308,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Editar item de programação'), findsOneWidget);
 
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sem local específico').last);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_none')),
+    );
     await tester.pumpAndSettle();
     await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
