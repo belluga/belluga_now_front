@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -21,11 +22,6 @@ typedef TenantAdminEventRelatedProfilePicker
     = Future<TenantAdminAccountProfile?> Function({
   required Set<String> excludedProfileIds,
 });
-
-typedef TenantAdminEventModalCloser = Future<bool> Function<T>(
-  BuildContext context, [
-  T? result,
-]);
 
 Future<void> showTenantAdminEventOccurrenceEditorSheet({
   required BuildContext context,
@@ -128,24 +124,6 @@ class _MissingOccurrenceEditorSheet extends StatelessWidget {
           const SizedBox(height: 12),
           const Text('Esta data não está mais disponível para edição.'),
         ],
-      ),
-    );
-  }
-}
-
-class _DropdownSemanticLabel extends StatelessWidget {
-  const _DropdownSemanticLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      button: true,
-      label: label,
-      child: ExcludeSemantics(
-        child: Text(label),
       ),
     );
   }
@@ -569,6 +547,19 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
   String? _errorMessage;
 
+  String get _selectedLocationLabel {
+    final selectedId = _draft.selectedLocationProfileId;
+    if (selectedId == null || selectedId.isEmpty) {
+      return 'Sem local específico';
+    }
+    for (final venue in widget.venues) {
+      if (venue.id == selectedId) {
+        return venue.displayName;
+      }
+    }
+    return 'Sem local específico';
+  }
+
   Future<void> _linkOccurrenceProfile() async {
     final selected = await _pickOccurrenceRelatedAccountProfile(
       excludedProfileIds:
@@ -656,6 +647,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
         );
       },
     );
+  }
+
+  Future<void> _pickProgrammingLocation() async {
+    final selected = await showTenantAdminAccountProfileLocationPickerSheet(
+      context: context,
+      venues: widget.venues,
+      selectedLocationProfileId: _draft.selectedLocationProfileId,
+      title: 'Local da programação',
+      subtitle: 'Selecione um local específico para este item de programação.',
+      keyPrefix: 'tenantAdminProgrammingLocation',
+      closeModalSheet: widget.closeModalSheet,
+    );
+
+    if (selected == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _draft.selectedLocationProfileId = selected.isEmpty ? null : selected;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -791,31 +803,44 @@ class _TenantAdminEventProgrammingItemEditorSheetState
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              key: const Key('tenantAdminProgrammingLocationProfileDropdown'),
-              initialValue: _draft.selectedLocationProfileId,
-              decoration: const InputDecoration(
-                labelText: 'Local da programação (opcional)',
-              ),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: '',
-                  child: _DropdownSemanticLabel('Sem local específico'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Local da programação (opcional)',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
                 ),
-                ...widget.venues.map(
-                  (venue) => DropdownMenuItem<String>(
-                    value: venue.id,
-                    child: _DropdownSemanticLabel(venue.displayName),
+                const SizedBox(height: 8),
+                Semantics(
+                  button: true,
+                  label: 'Local da programação. $_selectedLocationLabel',
+                  child: ExcludeSemantics(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        key: const Key(
+                          'tenantAdminProgrammingLocationProfileDropdown',
+                        ),
+                        onPressed: _pickProgrammingLocation,
+                        style: OutlinedButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        icon: const Icon(Icons.place_outlined),
+                        label: Text(
+                          _selectedLocationLabel,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _draft.selectedLocationProfileId =
-                      value == null || value.isEmpty ? null : value;
-                  _errorMessage = null;
-                });
-              },
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),
