@@ -651,6 +651,19 @@ class TenantAdminSettingsRepository
     return origin.replace(path: path);
   }
 
+  Uri _buildTenantSettingsValuesNamespaceActionUri({
+    required String namespace,
+    required String action,
+  }) {
+    final origin = _resolveTenantOriginUri();
+    final encodedNamespace = Uri.encodeComponent(namespace.trim());
+    final encodedAction = Uri.encodeComponent(action.trim());
+    return origin.replace(
+      path:
+          '/admin/api/v1/settings/values/$encodedNamespace/$encodedAction',
+    );
+  }
+
   Uri _buildTenantAppDomainsUri() {
     final origin = _resolveTenantOriginUri();
     return origin.replace(path: '/admin/api/v1/appdomains');
