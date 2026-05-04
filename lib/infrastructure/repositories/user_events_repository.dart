@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -20,16 +21,19 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsBackendContract? backend,
     AppDataRepositoryContract? appDataRepository,
+    AuthRepositoryContract? authRepository,
     InvitesRepositoryContract Function()? invitesRepositoryResolver,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _backend = backend ?? LaravelUserEventsBackend(),
         _appDataRepository = appDataRepository,
+        _authRepository = authRepository,
         _invitesRepositoryResolver = invitesRepositoryResolver;
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsBackendContract _backend;
   AppDataRepositoryContract? _appDataRepository;
+  AuthRepositoryContract? _authRepository;
   final InvitesRepositoryContract Function()? _invitesRepositoryResolver;
   InvitesRepositoryContract? _invitesRepository;
 
@@ -42,6 +46,17 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     }
     _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
     return _appDataRepository;
+  }
+
+  AuthRepositoryContract? get _resolvedAuthRepository {
+    if (_authRepository != null) {
+      return _authRepository;
+    }
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      return null;
+    }
+    _authRepository = GetIt.I.get<AuthRepositoryContract>();
+    return _authRepository;
   }
 
   InvitesRepositoryContract? get _resolvedInvitesRepository {
@@ -111,6 +126,11 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
+    final authRepository = _resolvedAuthRepository;
+    if (authRepository != null && !authRepository.isAuthorized) {
+      return const <VenueEventResume>[];
+    }
+
     final fallbackImage = _resolveDefaultEventImage();
     final events = await _scheduleRepository.loadConfirmedEvents(
       showPastOnly: ScheduleRepoBool.fromRaw(

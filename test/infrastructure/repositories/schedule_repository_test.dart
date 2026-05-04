@@ -7,6 +7,45 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'loadHomeAgenda skips events that fail domain mapping and keeps valid items',
+    () async {
+      final backend = _CapturingScheduleBackend(
+        pagedResponses: [
+          EventPageDTO(
+            events: [
+              _buildEventDto(
+                eventId: 'invalid-event-id',
+                occurrenceId: '507f1f77bcf86cd799439012',
+              ),
+              _buildEventDto(
+                eventId: '507f1f77bcf86cd799439013',
+                occurrenceId: '507f1f77bcf86cd799439014',
+              ),
+            ],
+            hasMore: false,
+          ),
+        ],
+      );
+      final repository = ScheduleRepository(backend: backend);
+
+      final result = await repository.loadHomeAgenda(
+        showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+        searchQuery: ScheduleRepoString.fromRaw('', defaultValue: ''),
+        confirmedOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      );
+
+      expect(
+        result.map((event) => event.id.value),
+        ['507f1f77bcf86cd799439013'],
+      );
+      expect(
+        repository.homeAgendaStreamValue.value?.map((event) => event.id.value),
+        ['507f1f77bcf86cd799439013'],
+      );
+    },
+  );
+
   test('loadHomeAgenda maps events when event type description is null',
       () async {
     final backend = _CapturingScheduleBackend(
