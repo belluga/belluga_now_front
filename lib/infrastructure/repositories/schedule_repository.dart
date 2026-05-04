@@ -274,9 +274,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     );
 
     return _SchedulePageSlice(
-      events: List<EventModel>.unmodifiable(
-        pageDto.events.map((event) => event.toDomain()),
-      ),
+      events: pageDto.toDomainEvents(),
       hasMore: pageDto.hasMore,
     );
   }

@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
@@ -21,18 +22,24 @@ class TenantHomeController implements Disposable {
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
+    AuthRepositoryContract? authRepository,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>();
+            GetIt.I.get<LocationOriginServiceContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null);
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
 
   final UserEventsRepositoryContract _userEventsRepository;
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final AuthRepositoryContract? _authRepository;
   final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
@@ -62,6 +69,12 @@ class TenantHomeController implements Disposable {
   }
 
   Future<void> loadMyEvents() async {
+    if (_authRepository != null && !_authRepository.isAuthorized) {
+      if (_isDisposed) return;
+      myEventsFilteredStreamValue.addValue(const <VenueEventResume>[]);
+      return;
+    }
+
     final previousValue = myEventsFilteredStreamValue.value;
     try {
       final events = await _userEventsRepository.fetchMyEvents();
