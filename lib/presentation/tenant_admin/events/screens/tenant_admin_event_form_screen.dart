@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_occurrence_editor_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -80,11 +81,8 @@ class _TenantAdminEventFormScreenState
     _TenantAdminEventFormViewModel viewModel,
   ) {
     final formState = viewModel.formState;
-    final allowedTaxonomies = _allowedTaxonomyDefinitions(
-      taxonomies: viewModel.taxonomies,
-      eventTypes: viewModel.eventTypes,
-      formState: formState,
-    );
+    final allowedTaxonomies =
+        _controller.allowedTaxonomyDefinitionsForSelectedEventType();
 
     return TenantAdminFormScaffold(
       closePolicy: buildTenantAdminCurrentRouteBackPolicy(
@@ -163,6 +161,8 @@ class _TenantAdminEventFormScreenState
                 taxonomies: allowedTaxonomies,
                 termsBySlug: viewModel.termsBySlug,
                 formState: formState,
+                isLoading: viewModel.taxonomyLoading,
+                loadError: viewModel.taxonomyError,
               ),
               const SizedBox(height: 24),
               TenantAdminPrimaryFormAction(
@@ -680,29 +680,95 @@ class _TenantAdminEventFormScreenState
           if (formState.locationMode == 'physical' ||
               formState.locationMode == 'hybrid') ...[
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: formState.selectedVenueId,
-              decoration: const InputDecoration(
-                labelText: 'Host físico (perfil)',
+            FormField<String>(
+              key: ValueKey<String?>(
+                'tenantAdminEventVenueField_${formState.locationMode}_${formState.selectedVenueId}',
               ),
-              items: venues
-                  .map(
-                    (venue) => DropdownMenuItem<String>(
-                      value: venue.id,
-                      child: Text(venue.displayName),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged:
-                  venues.isEmpty ? null : _controller.updateEventVenueSelection,
-              validator: (value) {
+              initialValue: formState.selectedVenueId,
+              validator: (_) {
                 if (formState.locationMode == 'physical' ||
                     formState.locationMode == 'hybrid') {
-                  if (value == null || value.trim().isEmpty) {
+                  final selectedVenueId = formState.selectedVenueId?.trim();
+                  if (selectedVenueId == null || selectedVenueId.isEmpty) {
                     return 'Host físico é obrigatório para ${formState.locationMode}.';
                   }
                 }
                 return null;
+              },
+              builder: (state) {
+                final selectedLabel = _selectedVenueLabel(
+                  venues,
+                  formState.selectedVenueId,
+                );
+
+                Future<void> pickVenue() async {
+                  final selected =
+                      await showTenantAdminAccountProfileLocationPickerSheet(
+                    context: context,
+                    venues: venues,
+                    selectedLocationProfileId: formState.selectedVenueId,
+                    title: 'Local do evento',
+                    subtitle:
+                        'Selecione o perfil anfitrião físico deste evento.',
+                    keyPrefix: 'tenantAdminEventLocation',
+                    closeModalSheet: _closeModalSheet,
+                    includeEmptyOption: false,
+                  );
+                  if (selected == null) {
+                    return;
+                  }
+                  _controller.updateEventVenueSelection(selected);
+                  state.didChange(selected);
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Host físico (perfil)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Semantics(
+                      button: true,
+                      label: 'Host físico (perfil). $selectedLabel',
+                      child: ExcludeSemantics(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const Key(
+                              'tenantAdminEventLocationProfileDropdown',
+                            ),
+                            onPressed: venues.isEmpty ? null : pickVenue,
+                            style: OutlinedButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                            icon: const Icon(Icons.place_outlined),
+                            label: Text(
+                              selectedLabel,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (state.errorText != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        state.errorText!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ],
+                  ],
+                );
               },
             ),
             if (venues.isEmpty) ...[
@@ -749,6 +815,21 @@ class _TenantAdminEventFormScreenState
         ],
       ),
     );
+  }
+
+  String _selectedVenueLabel(
+    List<TenantAdminAccountProfile> venues,
+    String? selectedVenueId,
+  ) {
+    if (selectedVenueId == null || selectedVenueId.trim().isEmpty) {
+      return 'Selecione um local';
+    }
+    for (final venue in venues) {
+      if (venue.id == selectedVenueId) {
+        return venue.displayName;
+      }
+    }
+    return 'Selecione um local';
   }
 
   Widget _buildRelatedAccountProfilesSection(
@@ -1019,47 +1100,72 @@ class _TenantAdminEventFormScreenState
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug,
     required TenantAdminEventFormState formState,
+    required bool isLoading,
+    required String? loadError,
   }) {
     return TenantAdminFormSectionCard(
       title: 'Taxonomias',
       description: 'Termos permitidos para o tipo de evento selecionado.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: taxonomies.map((taxonomy) {
-          final terms = termsBySlug[taxonomy.slug] ??
-              const <TenantAdminTaxonomyTermDefinition>[];
-          final selected = formState.selectedTaxonomyTerms[taxonomy.slug] ??
-              const <String>{};
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                taxonomy.name,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: terms
-                    .map(
-                      (term) => FilterChip(
-                        label: Text(term.name),
-                        selected: selected.contains(term.slug),
-                        onSelected: (isSelected) =>
-                            _controller.toggleEventTaxonomyTerm(
-                          taxonomySlug: taxonomy.slug,
-                          termSlug: term.slug,
-                          isSelected: isSelected,
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-              const SizedBox(height: 12),
-            ],
-          );
-        }).toList(growable: false),
+        children: [
+          if (isLoading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+          ],
+          if (loadError?.trim().isNotEmpty == true) ...[
+            Text(
+              'Nao foi possivel carregar os termos das taxonomias.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          ...taxonomies.map((taxonomy) {
+            final terms = termsBySlug[taxonomy.slug] ??
+                const <TenantAdminTaxonomyTermDefinition>[];
+            final selected = formState.selectedTaxonomyTerms[taxonomy.slug] ??
+                const <String>{};
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  taxonomy.name,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                if (terms.isEmpty)
+                  Text(
+                    isLoading
+                        ? 'Carregando termos...'
+                        : 'Nenhum termo cadastrado para esta taxonomia.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: terms
+                        .map(
+                          (term) => FilterChip(
+                            label: Text(term.name),
+                            selected: selected.contains(term.slug),
+                            onSelected: (isSelected) =>
+                                _controller.toggleEventTaxonomyTerm(
+                              taxonomySlug: taxonomy.slug,
+                              termSlug: term.slug,
+                              isSelected: isSelected,
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }),
+        ],
       ),
     );
   }
@@ -1068,24 +1174,21 @@ class _TenantAdminEventFormScreenState
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug,
     required TenantAdminEventFormState formState,
+    required bool isLoading,
+    required String? loadError,
   }) {
-    final visibleTaxonomies = taxonomies
-        .where(
-          (taxonomy) => (termsBySlug[taxonomy.slug] ??
-                  const <TenantAdminTaxonomyTermDefinition>[])
-              .isNotEmpty,
-        )
-        .toList(growable: false);
-    if (visibleTaxonomies.isEmpty) {
+    if (taxonomies.isEmpty) {
       return const <Widget>[];
     }
 
     return <Widget>[
       const SizedBox(height: 16),
       _buildTaxonomySection(
-        taxonomies: visibleTaxonomies,
+        taxonomies: taxonomies,
         termsBySlug: termsBySlug,
         formState: formState,
+        isLoading: isLoading,
+        loadError: loadError,
       ),
     ];
   }
@@ -1739,10 +1842,8 @@ class _TenantAdminEventFormScreenState
         .toList(growable: false);
 
     final taxonomyTerms = <TenantAdminTaxonomyTerm>[];
-    final allowedTaxonomySlugs = _allowedTaxonomySlugsForSelectedType(
-      eventTypes: eventTypes,
-      formState: formState,
-    );
+    final allowedTaxonomySlugs =
+        _controller.allowedTaxonomySlugsForSelectedEventType;
     formState.selectedTaxonomyTerms.forEach((taxonomySlug, termSlugs) {
       if (!allowedTaxonomySlugs.contains(taxonomySlug.trim())) {
         return;
@@ -1899,43 +2000,6 @@ class _TenantAdminEventFormScreenState
     }
     return TimezoneConverter.utcToLocal(value);
   }
-
-  Set<String> _allowedTaxonomySlugsForSelectedType({
-    required List<TenantAdminEventType> eventTypes,
-    required TenantAdminEventFormState formState,
-  }) {
-    final selectedTypeSlug = formState.selectedTypeSlug?.trim();
-    if (selectedTypeSlug == null || selectedTypeSlug.isEmpty) {
-      return const <String>{};
-    }
-    final selectedType = eventTypes.firstWhereOrNull(
-      (type) => type.slug.trim() == selectedTypeSlug,
-    );
-    if (selectedType == null) {
-      return const <String>{};
-    }
-    return selectedType.allowedTaxonomies.value
-        .map((slug) => slug.trim())
-        .where((slug) => slug.isNotEmpty)
-        .toSet();
-  }
-
-  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions({
-    required List<TenantAdminTaxonomyDefinition> taxonomies,
-    required List<TenantAdminEventType> eventTypes,
-    required TenantAdminEventFormState formState,
-  }) {
-    final allowed = _allowedTaxonomySlugsForSelectedType(
-      eventTypes: eventTypes,
-      formState: formState,
-    );
-    if (allowed.isEmpty) {
-      return const <TenantAdminTaxonomyDefinition>[];
-    }
-    return taxonomies
-        .where((taxonomy) => allowed.contains(taxonomy.slug.trim()))
-        .toList(growable: false);
-  }
 }
 
 class _TenantAdminEventFormViewModel {
@@ -1950,6 +2014,8 @@ class _TenantAdminEventFormViewModel {
     required this.eventTypes,
     required this.taxonomies,
     required this.termsBySlug,
+    required this.taxonomyLoading,
+    required this.taxonomyError,
     required this.selectedCover,
     required this.isCoverBusy,
     required this.isCoverMarkedForRemoval,
@@ -1965,6 +2031,8 @@ class _TenantAdminEventFormViewModel {
   final List<TenantAdminEventType> eventTypes;
   final List<TenantAdminTaxonomyDefinition> taxonomies;
   final Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug;
+  final bool taxonomyLoading;
+  final String? taxonomyError;
   final XFile? selectedCover;
   final bool isCoverBusy;
   final bool isCoverMarkedForRemoval;
@@ -2019,61 +2087,87 @@ class _TenantAdminEventFormStateScope extends StatelessWidget {
                                       streamValue:
                                           controller.taxonomiesStreamValue,
                                       builder: (context, taxonomies) {
-                                        return StreamValueBuilder<
-                                            Map<
-                                                String,
-                                                List<
-                                                    TenantAdminTaxonomyTermDefinition>>>(
+                                        return StreamValueBuilder<bool>(
                                           streamValue: controller
-                                              .taxonomyTermsBySlugStreamValue,
-                                          builder: (context, termsBySlug) {
-                                            return StreamValueBuilder<XFile?>(
+                                              .taxonomyLoadingStreamValue,
+                                          builder: (context, taxonomyLoading) {
+                                            return StreamValueBuilder<String?>(
                                               streamValue: controller
-                                                  .eventCoverFileStreamValue,
+                                                  .taxonomyErrorStreamValue,
                                               builder:
-                                                  (context, selectedCover) {
-                                                return StreamValueBuilder<bool>(
+                                                  (context, taxonomyError) {
+                                                return StreamValueBuilder<
+                                                    Map<
+                                                        String,
+                                                        List<
+                                                            TenantAdminTaxonomyTermDefinition>>>(
                                                   streamValue: controller
-                                                      .eventCoverBusyStreamValue,
+                                                      .taxonomyTermsBySlugStreamValue,
                                                   builder:
-                                                      (context, isCoverBusy) {
+                                                      (context, termsBySlug) {
                                                     return StreamValueBuilder<
-                                                        bool>(
+                                                        XFile?>(
                                                       streamValue: controller
-                                                          .eventCoverRemoveStreamValue,
+                                                          .eventCoverFileStreamValue,
                                                       builder: (
                                                         context,
-                                                        isCoverMarkedForRemoval,
+                                                        selectedCover,
                                                       ) {
-                                                        return builder(
-                                                          context,
-                                                          _TenantAdminEventFormViewModel(
-                                                            formState:
-                                                                formState,
-                                                            submitError:
-                                                                submitError,
-                                                            isSubmitting:
-                                                                isSubmitting,
-                                                            venues: venues,
-                                                            partyCandidatesLoading:
-                                                                partyCandidatesLoading,
-                                                            partyCandidatesError:
-                                                                partyCandidatesError,
-                                                            relatedAccountProfiles:
-                                                                relatedAccountProfiles,
-                                                            eventTypes:
-                                                                eventTypes,
-                                                            taxonomies:
-                                                                taxonomies,
-                                                            termsBySlug:
-                                                                termsBySlug,
-                                                            selectedCover:
-                                                                selectedCover,
-                                                            isCoverBusy:
-                                                                isCoverBusy,
-                                                            isCoverMarkedForRemoval:
+                                                        return StreamValueBuilder<
+                                                            bool>(
+                                                          streamValue: controller
+                                                              .eventCoverBusyStreamValue,
+                                                          builder: (
+                                                            context,
+                                                            isCoverBusy,
+                                                          ) {
+                                                            return StreamValueBuilder<
+                                                                bool>(
+                                                              streamValue:
+                                                                  controller
+                                                                      .eventCoverRemoveStreamValue,
+                                                              builder: (
+                                                                context,
                                                                 isCoverMarkedForRemoval,
-                                                          ),
+                                                              ) {
+                                                                return builder(
+                                                                  context,
+                                                                  _TenantAdminEventFormViewModel(
+                                                                    formState:
+                                                                        formState,
+                                                                    submitError:
+                                                                        submitError,
+                                                                    isSubmitting:
+                                                                        isSubmitting,
+                                                                    venues:
+                                                                        venues,
+                                                                    partyCandidatesLoading:
+                                                                        partyCandidatesLoading,
+                                                                    partyCandidatesError:
+                                                                        partyCandidatesError,
+                                                                    relatedAccountProfiles:
+                                                                        relatedAccountProfiles,
+                                                                    eventTypes:
+                                                                        eventTypes,
+                                                                    taxonomies:
+                                                                        taxonomies,
+                                                                    termsBySlug:
+                                                                        termsBySlug,
+                                                                    taxonomyLoading:
+                                                                        taxonomyLoading,
+                                                                    taxonomyError:
+                                                                        taxonomyError,
+                                                                    selectedCover:
+                                                                        selectedCover,
+                                                                    isCoverBusy:
+                                                                        isCoverBusy,
+                                                                    isCoverMarkedForRemoval:
+                                                                        isCoverMarkedForRemoval,
+                                                                  ),
+                                                                );
+                                                              },
+                                                            );
+                                                          },
                                                         );
                                                       },
                                                     );
