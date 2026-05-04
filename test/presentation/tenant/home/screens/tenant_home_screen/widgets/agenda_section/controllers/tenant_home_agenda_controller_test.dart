@@ -1247,7 +1247,8 @@ void main() {
         );
         final appDataRepository = _FakeAppDataRepository(appData);
         final scheduleRepository = _FakeScheduleRepository();
-        final locationOriginService = _DelayedTenantDefaultLocationOriginService(
+        final locationOriginService =
+            _DelayedTenantDefaultLocationOriginService(
           appData.tenantDefaultOrigin!,
         );
         final controller = TenantHomeAgendaController(
@@ -1276,7 +1277,8 @@ void main() {
         await initFuture;
         await Future<void>.delayed(const Duration(milliseconds: 25));
 
-        expect(scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(
+            scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
         expect(
           scheduleRepository.requestOriginHistory,
           isNotEmpty,
@@ -2461,6 +2463,117 @@ void main() {
 
       controller.onDispose();
     });
+
+    testWidgets(
+      'anonymous home agenda scrolls through every event available inside the current range',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final backend = _AnonymousHomeRangeScrollBackend();
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(backend: backend),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          authRepository: _FakeAuthRepository(authorized: false),
+          isWebRuntime: false,
+        );
+
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaBody(controller: controller),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Evento Range 01'), findsOneWidget);
+
+        await _scrollHomeAgendaUntilVisible(
+          tester,
+          find.text('Evento Range 12'),
+        );
+
+        final displayedTitles = _displayedEvents(controller)
+            ?.map((event) => event.title.value)
+            .toList(growable: false);
+
+        expect(
+          displayedTitles,
+          backend.expectedInRangeTitles,
+        );
+        expect(displayedTitles, isNot(contains('Evento Fora 01')));
+        expect(displayedTitles, isNot(contains('Evento Fora 02')));
+      },
+    );
+
+    testWidgets(
+      'anonymous home agenda keeps valid events visible when one backend item fails to parse',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _MalformedAgendaPayloadBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          authRepository: _FakeAuthRepository(authorized: false),
+          isWebRuntime: false,
+        );
+
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaBody(controller: controller),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Evento resiliente'), findsOneWidget);
+        expect(find.text('Evento parse quebrado'), findsNothing);
+        expect(find.text('Evento domain quebrado'), findsNothing);
+        expect(
+          _displayedEvents(controller)?.map((event) => event.title.value),
+          ['Evento resiliente'],
+        );
+      },
+    );
 
     test('home agenda compact-state setter publishes only real changes', () {
       final controller = _buildAgendaController(
@@ -4207,6 +4320,292 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
   }
 }
 
+class _AnonymousHomeRangeScrollBackend implements ScheduleBackendContract {
+  static const double _tenantLat = -20.671339;
+  static const double _tenantLng = -40.495395;
+  static const int _pageSize = 7;
+
+  final List<_AnonymousHomeRangeEventSeed> _events =
+      <_AnonymousHomeRangeEventSeed>[
+    ...List<_AnonymousHomeRangeEventSeed>.generate(
+      12,
+      (index) => _AnonymousHomeRangeEventSeed(
+        title: 'Evento Range ${(index + 1).toString().padLeft(2, '0')}',
+        lat: _tenantLat,
+        lng: _tenantLng,
+        day: index + 1,
+      ),
+    ),
+    const _AnonymousHomeRangeEventSeed(
+      title: 'Evento Fora 01',
+      lat: -20.521339,
+      lng: -40.495395,
+      day: 21,
+    ),
+    const _AnonymousHomeRangeEventSeed(
+      title: 'Evento Fora 02',
+      lat: -20.671339,
+      lng: -40.315395,
+      day: 22,
+    ),
+  ];
+
+  List<String> get expectedInRangeTitles => _events
+      .where((event) => event.title.startsWith('Evento Range'))
+      .map((event) => event.title)
+      .toList(growable: false);
+
+  @override
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
+    final seed = _events.first;
+    return seed.toDto(index: 0);
+  }
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    int? pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (showPastOnly ||
+        liveNowOnly ||
+        confirmedOnly ||
+        originLat == null ||
+        originLng == null ||
+        maxDistanceMeters == null ||
+        searchQuery != null && searchQuery.trim().isNotEmpty ||
+        (categories?.isNotEmpty ?? false) ||
+        (tags?.isNotEmpty ?? false) ||
+        (taxonomy?.isNotEmpty ?? false) ||
+        (occurrenceIds?.isNotEmpty ?? false)) {
+      return EventPageDTO(events: const <EventDTO>[], hasMore: false);
+    }
+
+    final inRange = _events.where((event) {
+      final distanceMeters = haversineDistanceMeters(
+        coordinateA: CityCoordinate(
+          latitudeValue: LatitudeValue()..parse(originLat.toString()),
+          longitudeValue: LongitudeValue()..parse(originLng.toString()),
+        ),
+        coordinateB: CityCoordinate(
+          latitudeValue: LatitudeValue()..parse(event.lat.toString()),
+          longitudeValue: LongitudeValue()..parse(event.lng.toString()),
+        ),
+      );
+      return distanceMeters.value <= maxDistanceMeters;
+    }).toList(growable: false);
+
+    final effectivePageSize = pageSize ?? _pageSize;
+    final start = (page - 1) * effectivePageSize;
+    if (start >= inRange.length) {
+      return EventPageDTO(events: const <EventDTO>[], hasMore: false);
+    }
+
+    final pageItems = inRange.skip(start).take(effectivePageSize).toList();
+    final hasMore = start + effectivePageSize < inRange.length;
+
+    return EventPageDTO(
+      events: pageItems
+          .asMap()
+          .entries
+          .map((entry) => entry.value.toDto(index: start + entry.key))
+          .toList(growable: false),
+      hasMore: hasMore,
+    );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+}
+
+class _AnonymousHomeRangeEventSeed {
+  const _AnonymousHomeRangeEventSeed({
+    required this.title,
+    required this.lat,
+    required this.lng,
+    required this.day,
+  });
+
+  final String title;
+  final double lat;
+  final double lng;
+  final int day;
+
+  EventDTO toDto({required int index}) {
+    final dayLabel = day.toString().padLeft(2, '0');
+    final idLabel = index.toString().padLeft(2, '0');
+    final eventId = index.toRadixString(16).padLeft(24, '0');
+    final occurrenceId = (index + 1000).toRadixString(16).padLeft(24, '0');
+
+    return EventDTO.fromJson({
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'slug': 'evento-range-$idLabel',
+      'title': title,
+      'content': 'Conteudo $title',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': title,
+        'geo': {
+          'type': 'Point',
+          'coordinates': [lng, lat],
+        },
+      },
+      'date_time_start': '2026-05-${dayLabel}T20:00:00+00:00',
+      'linked_account_profiles': const [],
+      'tags': const ['music'],
+    });
+  }
+}
+
+class _MalformedAgendaPayloadBackend implements ScheduleBackendContract {
+  static const String _validEventId = '507f1f77bcf86cd799439741';
+  static const String _validOccurrenceId = '507f1f77bcf86cd799439742';
+
+  @override
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async {
+    return EventDTO.fromJson(
+      _validPayload(
+        eventId: _validEventId,
+        occurrenceId: _validOccurrenceId,
+        title: 'Evento resiliente',
+      ),
+    );
+  }
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    int? pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (page > 1) {
+      return EventPageDTO(events: const <EventDTO>[], hasMore: false);
+    }
+
+    return EventPageDTO.fromJson({
+      'items': [
+        {
+          ..._validPayload(
+            eventId: '507f1f77bcf86cd799439751',
+            occurrenceId: '507f1f77bcf86cd799439752',
+            title: 'Evento parse quebrado',
+          ),
+          'occurrences': [
+            {
+              'occurrence_id': '507f1f77bcf86cd799439752',
+              'date_time_start': 'not-a-date',
+            },
+          ],
+        },
+        _validPayload(
+          eventId: 'invalid-event-id',
+          occurrenceId: '507f1f77bcf86cd799439762',
+          title: 'Evento domain quebrado',
+        ),
+        _validPayload(
+          eventId: _validEventId,
+          occurrenceId: _validOccurrenceId,
+          title: 'Evento resiliente',
+        ),
+      ],
+      'has_more': false,
+    });
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  static Map<String, dynamic> _validPayload({
+    required String eventId,
+    required String occurrenceId,
+    required String title,
+  }) {
+    return <String, dynamic>{
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'slug': title.toLowerCase().replaceAll(' ', '-'),
+      'title': title,
+      'content': 'Conteudo $title',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': title,
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': '2099-01-01T20:00:00+00:00',
+      'linked_account_profiles': const [],
+      'tags': const ['music'],
+    };
+  }
+}
+
 class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
   int fetchEventsPageCallCount = 0;
 
@@ -4242,6 +4641,29 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
       maxDistanceMeters: maxDistanceMeters,
     );
   }
+}
+
+Future<void> _scrollHomeAgendaUntilVisible(
+  WidgetTester tester,
+  Finder target,
+) async {
+  final scrollable = find.byType(Scrollable).first;
+
+  for (var attempt = 0; attempt < 8; attempt++) {
+    if (target.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.drag(scrollable, const Offset(0, -500));
+    await tester.pump();
+    await tester.pumpAndSettle();
+  }
+
+  expect(
+    target,
+    findsOneWidget,
+    reason: 'Expected anonymous home agenda to reach the final in-range event '
+        'through normal scroll pagination.',
+  );
 }
 
 class _HomeVsGenericPagedBackend implements ScheduleBackendContract {

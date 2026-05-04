@@ -5,10 +5,12 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -46,6 +48,7 @@ void main() {
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
+      authRepository: _FakeAuthRepository(authorized: true),
     );
     await userEventsRepository.confirmEventAttendance(
       userEventsRepoString(_CapturingScheduleBackend.eventId),
@@ -57,6 +60,7 @@ void main() {
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
     );
 
     await controller.init();
@@ -87,6 +91,7 @@ void main() {
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
+      authRepository: _FakeAuthRepository(authorized: true),
     );
     await userEventsRepository.confirmEventAttendance(
       userEventsRepoString(_CapturingScheduleBackend.eventId),
@@ -98,6 +103,7 @@ void main() {
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
     );
 
     await controller.init();
@@ -128,6 +134,7 @@ void main() {
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
+      authRepository: _FakeAuthRepository(authorized: true),
     );
 
     final events = await userEventsRepository.fetchMyEvents();
@@ -136,12 +143,49 @@ void main() {
     expect(backend.requests.map((sample) => sample.page), [1, 2]);
     expect(backend.requests.every((sample) => sample.confirmedOnly), isTrue);
   });
+
+  test('anonymous home flow skips confirmed_only agenda request', () async {
+    final tenantDefaultOrigin = _buildCoordinate(
+      latitude: -20.671339,
+      longitude: -40.495395,
+    );
+    final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend();
+
+    GetIt.I.registerSingleton<AppData>(appData);
+
+    final scheduleRepository = ScheduleRepository(
+      backend: backend,
+    );
+    final userEventsRepository = UserEventsRepository(
+      scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    final controller = _buildTenantHomeController(
+      userEventsRepository: userEventsRepository,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    await controller.init();
+
+    expect(backend.requests, isEmpty);
+    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+
+    controller.onDispose();
+  });
 }
 
 TenantHomeController _buildTenantHomeController({
   required UserEventsRepositoryContract userEventsRepository,
   required UserLocationRepositoryContract userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
+  AuthRepositoryContract? authRepository,
 }) {
   return TenantHomeController(
     userEventsRepository: userEventsRepository,
@@ -151,6 +195,7 @@ TenantHomeController _buildTenantHomeController({
       appDataRepository: appDataRepository,
       userLocationRepository: userLocationRepository,
     ),
+    authRepository: authRepository,
   );
 }
 
@@ -262,6 +307,78 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
       'kind': 'free_confirmation',
     };
   }
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({required bool authorized}) : _authorized = authorized;
+
+  bool _authorized;
+
+  @override
+  Object get backend => throw UnimplementedError();
+
+  @override
+  String get userToken => _authorized ? 'token' : '';
+
+  @override
+  void setUserToken(AuthRepositoryContractParamString? token) {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-1';
+
+  @override
+  Future<String?> getUserId() async => _authorized ? 'user-1' : null;
+
+  @override
+  bool get isUserLoggedIn => _authorized;
+
+  @override
+  bool get isAuthorized => _authorized;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
+
+  @override
+  Future<void> logout() async {
+    _authorized = false;
+    userStreamValue.addValue(null);
+  }
+
+  @override
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
+
+  @override
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _AgendaRequestSample {
