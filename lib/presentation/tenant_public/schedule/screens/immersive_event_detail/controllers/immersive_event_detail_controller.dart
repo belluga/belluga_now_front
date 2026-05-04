@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/gamification/mission_resume.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_completion_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_progress_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_reward_value.dart';
-import 'package:belluga_now/domain/gamification/value_objects/mission_total_required_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_share_session_context.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_decline_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_declined_at_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pending_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -16,12 +16,11 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -62,6 +61,10 @@ class ImmersiveEventDetailController implements Disposable {
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
+  StreamSubscription<InviteShareSessionContext?>?
+      _shareSessionContextSubscription;
+  StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
+      _confirmedOccurrenceIdsSubscription;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteProfileIdsSubscription;
   StreamValue<EventModel?> get eventStreamValue =>
@@ -73,10 +76,16 @@ class ImmersiveEventDetailController implements Disposable {
 
   void init(EventModel event) {
     final resolvedEvent = _alignEventToSelectedOccurrence(event);
-    _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
-    _hydrateState(resolvedEvent);
+    final currentEvent = eventStreamValue.value;
+    final hasSameSelectedTarget =
+        _isSameSelectedEventTarget(currentEvent, resolvedEvent);
+    final effectiveEvent =
+        hasSameSelectedTarget && currentEvent != null ? currentEvent : resolvedEvent;
+    if (!hasSameSelectedTarget) {
+      _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
+    }
+    _hydrateState(effectiveEvent);
     _bindFavoriteAccountProfileState();
-    unawaited(_refreshConfirmationState(resolvedEvent.id.value));
   }
 
   void selectOccurrence(EventModel event, EventOccurrenceOption occurrence) {
@@ -89,18 +98,30 @@ class ImmersiveEventDetailController implements Disposable {
     _hydrateState(selectedEvent);
   }
 
+  bool _isSameSelectedEventTarget(
+    EventModel? current,
+    EventModel candidate,
+  ) {
+    if (current == null) {
+      return false;
+    }
+    return current.id.value == candidate.id.value &&
+        current.selectedOccurrenceId == candidate.selectedOccurrenceId;
+  }
+
   // Reactive state
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
-
-  // New state for Immersive Screen
-  final missionStreamValue = StreamValue<MissionResume?>();
+  final isConfirmationStateLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   // Delegate to repository for single source of truth
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
-      get sentInvitesByEventStreamValue =>
-          _invitesRepository.sentInvitesByEventStreamValue;
+      get sentInvitesByOccurrenceStreamValue =>
+          _invitesRepository.sentInvitesByOccurrenceStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  final isShareActionLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository?.appData.mainLogoDarkUrl.value;
@@ -130,6 +151,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
+  bool get isAuthorized => _isAuthorized;
+
   bool isLinkedProfileFavoritable(String profileType) {
     final normalized = profileType.trim();
     if (normalized.isEmpty) {
@@ -153,9 +176,6 @@ class ImmersiveEventDetailController implements Disposable {
   LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
     String accountProfileId,
   ) {
-    if (!_isAuthorized) {
-      return LinkedProfileFavoriteToggleOutcome.requiresAuthentication;
-    }
     final repository = _accountProfilesRepository;
     if (repository == null) {
       return LinkedProfileFavoriteToggleOutcome.unavailable;
@@ -168,26 +188,45 @@ class ImmersiveEventDetailController implements Disposable {
 
   void _hydrateState(EventModel event) {
     unawaited(_pendingInvitesSubscription?.cancel());
+    unawaited(_shareSessionContextSubscription?.cancel());
+    unawaited(_confirmedOccurrenceIdsSubscription?.cancel());
     _pendingInvitesSubscription = null;
+    _shareSessionContextSubscription = null;
+    _confirmedOccurrenceIdsSubscription = null;
 
-    final isConfirmedLocally = _userEventsRepository.isEventConfirmed(
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    final isConfirmedLocally = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
-        event.id.value,
+        occurrenceId ?? '',
         defaultValue: '',
         isRequired: true,
       ),
     );
-    isConfirmedStreamValue
-        .addValue(isConfirmedLocally.value || event.isConfirmedValue.value);
-
-    _updateReceivedInvites(
-      _invitesRepository.pendingInvitesStreamValue.value,
-      event.id.value,
-    );
+    final eventConfirmed = event.isConfirmedValue.value;
+    isConfirmationStateLoadingStreamValue.addValue(false);
+    isConfirmedStreamValue.addValue(isConfirmedLocally.value || eventConfirmed);
 
     _pendingInvitesSubscription = _invitesRepository
         .pendingInvitesStreamValue.stream
-        .listen((invites) => _updateReceivedInvites(invites, event.id.value));
+        .listen((_) => _refreshReceivedInvitesFor(event));
+    _shareSessionContextSubscription = _invitesRepository
+        .shareCodeSessionContextStreamValue.stream
+        .listen((_) => _refreshReceivedInvitesFor(event));
+    _confirmedOccurrenceIdsSubscription = _userEventsRepository
+        .confirmedOccurrenceIdsStream.stream
+        .listen((_) {
+      final current = eventStreamValue.value;
+      final currentOccurrenceId = current?.selectedOccurrenceId?.trim();
+      if (current == null ||
+          currentOccurrenceId == null ||
+          currentOccurrenceId.isEmpty) {
+        return;
+      }
+      _applyConfirmationState(currentOccurrenceId);
+      _refreshReceivedInvitesFor(current);
+    });
+
+    _refreshReceivedInvitesFor(event);
   }
 
   EventModel _eventWithSelectedOccurrence(
@@ -267,11 +306,10 @@ class ImmersiveEventDetailController implements Disposable {
     return _eventWithSelectedOccurrence(event, occurrenceId);
   }
 
-  Future<void> _refreshConfirmationState(String eventId) async {
-    await _userEventsRepository.refreshConfirmedEventIds();
-    final isConfirmedFromBackend = _userEventsRepository.isEventConfirmed(
+  void _applyConfirmationState(String occurrenceId) {
+    final isConfirmedFromBackend = _userEventsRepository.isOccurrenceConfirmed(
       userEventsRepoString(
-        eventId,
+        occurrenceId,
         defaultValue: '',
         isRequired: true,
       ),
@@ -283,11 +321,200 @@ class ImmersiveEventDetailController implements Disposable {
     );
   }
 
-  void _updateReceivedInvites(List<InviteModel> invites, String eventId) {
+  void _refreshReceivedInvitesFor(EventModel event) {
+    _updateReceivedInvites(
+      _invitesRepository.pendingInvitesStreamValue.value,
+      event,
+      _invitesRepository.shareCodeSessionContextStreamValue.value,
+    );
+  }
+
+  void _updateReceivedInvites(
+    List<InviteModel> invites,
+    EventModel event,
+    InviteShareSessionContext? shareSessionContext,
+  ) {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (_isSelectedOccurrenceConfirmed(occurrenceId)) {
+      _invitesRepository.setImmersiveReceivedInvites(const <InviteModel>[]);
+      return;
+    }
+
     final filtered = invites
-        .where((invite) => invite.eventIdValue.value == eventId)
+        .where((invite) =>
+            invite.eventIdValue.value == event.id.value &&
+            (occurrenceId == null ||
+                occurrenceId.isEmpty ||
+                invite.occurrenceIdValue.value == occurrenceId))
         .toList();
+    final sessionInvite =
+        _matchingShareSessionContextInvite(event, shareSessionContext);
+    if (sessionInvite != null &&
+        !_hasInviteForSameOccurrence(filtered, sessionInvite)) {
+      filtered.add(sessionInvite);
+    }
     _invitesRepository.setImmersiveReceivedInvites(filtered);
+  }
+
+  bool _isSelectedOccurrenceConfirmed(String? occurrenceId) {
+    final normalized = occurrenceId?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return false;
+    }
+    if (isConfirmedStreamValue.value) {
+      return true;
+    }
+    final repositoryState = _userEventsRepository.isOccurrenceConfirmed(
+      userEventsRepoString(
+        normalized,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    return repositoryState.value ||
+        (eventStreamValue.value?.isConfirmedValue.value ?? false);
+  }
+
+  InviteModel? _matchingShareSessionContextInvite(
+    EventModel event,
+    InviteShareSessionContext? shareSessionContext,
+  ) {
+    if (shareSessionContext == null) {
+      return null;
+    }
+    final invite = shareSessionContext.invite;
+    if (invite.eventIdValue.value != event.id.value) {
+      return null;
+    }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId != null &&
+        occurrenceId.isNotEmpty &&
+        invite.occurrenceIdValue.value != occurrenceId) {
+      return null;
+    }
+    return invite;
+  }
+
+  bool _hasInviteForSameOccurrence(
+    List<InviteModel> invites,
+    InviteModel candidate,
+  ) {
+    return invites.any((invite) =>
+        invite.id == candidate.id ||
+        (invite.eventIdValue.value == candidate.eventIdValue.value &&
+            invite.occurrenceIdValue.value ==
+                candidate.occurrenceIdValue.value));
+  }
+
+  InviteShareSessionContext? _shareSessionContextForInviteId(
+    String inviteId,
+  ) {
+    final current = _invitesRepository.shareCodeSessionContextStreamValue.value;
+    if (current == null) {
+      return null;
+    }
+    final inviteIdValue = InviteIdValue();
+    try {
+      inviteIdValue.parse(inviteId);
+    } catch (_) {
+      return null;
+    }
+    if (!current.matchesInviteId(inviteIdValue)) {
+      return null;
+    }
+    return current;
+  }
+
+  String? shareCodeForInvite(InviteModel invite) {
+    final direct = _shareSessionContextForInviteId(invite.id)?.shareCode;
+    if (direct != null && direct.trim().isNotEmpty) {
+      return direct;
+    }
+
+    final primaryInviteId = invite.primaryInviteId?.trim();
+    if (primaryInviteId != null && primaryInviteId.isNotEmpty) {
+      final primary =
+          _shareSessionContextForInviteId(primaryInviteId)?.shareCode.trim();
+      if (primary != null && primary.isNotEmpty) {
+        return primary;
+      }
+    }
+
+    for (final inviter in invite.inviters) {
+      final inviteId = inviter.inviteId.trim();
+      if (inviteId.isEmpty) {
+        continue;
+      }
+      final shareCode =
+          _shareSessionContextForInviteId(inviteId)?.shareCode.trim();
+      if (shareCode != null && shareCode.isNotEmpty) {
+        return shareCode;
+      }
+    }
+    return null;
+  }
+
+  String? shareCodeForSelectedEvent() {
+    final event = eventStreamValue.value;
+    if (event == null) {
+      return null;
+    }
+    final shareSessionContext =
+        _invitesRepository.shareCodeSessionContextStreamValue.value;
+    if (_matchingShareSessionContextInvite(event, shareSessionContext) ==
+        null) {
+      return null;
+    }
+    final shareCode = shareSessionContext?.shareCode.trim();
+    return shareCode == null || shareCode.isEmpty ? null : shareCode;
+  }
+
+  Future<Uri?> createShareUriForSelectedEvent() async {
+    if (isShareActionLoadingStreamValue.value) {
+      return null;
+    }
+
+    final event = eventStreamValue.value;
+    final eventId = event?.id.value.trim() ?? '';
+    final occurrenceId = event?.selectedOccurrenceId?.trim() ?? '';
+    if (event == null || eventId.isEmpty || occurrenceId.isEmpty) {
+      return null;
+    }
+
+    isShareActionLoadingStreamValue.addValue(true);
+    try {
+      final result = await _invitesRepository.createShareCode(
+        eventId: invitesRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        occurrenceId: invitesRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      return buildShareUri(result);
+    } finally {
+      isShareActionLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Uri? buildShareUri(InviteShareCodeResult? shareCode) {
+    if (shareCode == null || shareCode.code.trim().isEmpty) {
+      return null;
+    }
+
+    final origin = _appDataRepository?.appData.mainDomainValue.value.origin;
+    if (origin == null) {
+      return null;
+    }
+
+    final base = origin.toString().replaceFirst(RegExp(r'/$'), '');
+    return Uri.parse(
+      '$base/invite?code=${Uri.encodeQueryComponent(shareCode.code)}',
+    );
   }
 
   void _bindFavoriteAccountProfileState() {
@@ -323,6 +550,10 @@ class ImmersiveEventDetailController implements Disposable {
     if (event == null) {
       return AttendanceConfirmationResult.skipped;
     }
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (occurrenceId == null || occurrenceId.isEmpty) {
+      return AttendanceConfirmationResult.skipped;
+    }
 
     isLoadingStreamValue.addValue(true);
 
@@ -333,21 +564,12 @@ class ImmersiveEventDetailController implements Disposable {
           defaultValue: '',
           isRequired: true,
         ),
+        occurrenceId: userEventsRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
       );
-      await _refreshConfirmationState(event.id.value);
-
-      // Activate mission upon confirmation.
-      missionStreamValue.addValue(MissionResume(
-        titleValue: TitleValue(defaultValue: 'Missao VIP Ativa!')
-          ..parse('Missao VIP Ativa!'),
-        descriptionValue: DescriptionValue(
-            defaultValue: 'Traga 3 amigos para ganhar 1 drink.')
-          ..parse('Traga 3 amigos para ganhar 1 drink.'),
-        progressValue: const MissionProgressValue(0),
-        totalRequiredValue: const MissionTotalRequiredValue(3),
-        rewardValue: const MissionRewardValue('#DRINK123'),
-        isCompletedValue: const MissionCompletionValue(false),
-      ));
       return AttendanceConfirmationResult.confirmed;
     } finally {
       isLoadingStreamValue.addValue(false);
@@ -355,21 +577,24 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
-    final eventId = eventStreamValue.value?.id.value;
     isLoadingStreamValue.addValue(true);
     try {
-      final result = await _invitesRepository.acceptInvite(
-        invitesRepoString(
-          inviteId,
-          defaultValue: '',
-          isRequired: true,
-        ),
-      );
-      if (result.status == 'accepted' &&
-          eventId != null &&
-          eventId.isNotEmpty) {
-        await _refreshConfirmationState(eventId);
-      }
+      final shareSessionContext = _shareSessionContextForInviteId(inviteId);
+      final result = shareSessionContext == null
+          ? await _invitesRepository.acceptInvite(
+              invitesRepoString(
+                inviteId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+          : await _invitesRepository.acceptInviteByCode(
+              invitesRepoString(
+                shareSessionContext.shareCode,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            );
       return result;
     } finally {
       isLoadingStreamValue.addValue(false);
@@ -379,6 +604,22 @@ class ImmersiveEventDetailController implements Disposable {
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
     try {
+      final shareSessionContext = _shareSessionContextForInviteId(inviteId);
+      if (shareSessionContext != null) {
+        _invitesRepository.clearShareCodeSessionContext(
+          code: invitesRepoString(
+            shareSessionContext.shareCode,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+        return InviteDeclineResult(
+          inviteIdValue: InviteIdValue()..parse(inviteId),
+          statusValue: const InviteDeclineStatusValue('declined'),
+          groupHasOtherPendingValue: const InviteHasOtherPendingValue(false),
+          declinedAtValue: InviteDeclinedAtValue(DateTime.now()),
+        );
+      }
       return await _invitesRepository.declineInvite(
         invitesRepoString(
           inviteId,
@@ -394,11 +635,14 @@ class ImmersiveEventDetailController implements Disposable {
   @override
   void onDispose() {
     _pendingInvitesSubscription?.cancel();
+    _shareSessionContextSubscription?.cancel();
+    _confirmedOccurrenceIdsSubscription?.cancel();
     _favoriteProfileIdsSubscription?.cancel();
     _invitesRepository.clearImmersiveDetailState();
     isConfirmedStreamValue.dispose();
+    isConfirmationStateLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
-    missionStreamValue.dispose();
+    isShareActionLoadingStreamValue.dispose();
     favoriteAccountProfileIdsStreamValue.dispose();
     scrollController.dispose();
   }

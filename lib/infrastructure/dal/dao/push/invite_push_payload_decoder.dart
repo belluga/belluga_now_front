@@ -26,7 +26,11 @@ class InvitePushPayloadDecoder {
     final dtos = <InviteDto>[];
     for (final entry in entries) {
       try {
-        dtos.add(InviteDto.fromJson(entry));
+        final dto = InviteDto.fromJson(entry);
+        if (dto.eventId.trim().isEmpty || dto.occurrenceId.trim().isEmpty) {
+          continue;
+        }
+        dtos.add(dto);
       } catch (_) {
         // Ignore malformed invite entries from push payloads.
       }

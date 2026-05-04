@@ -7,8 +7,104 @@ plugins {
 }
 
 // Imports essenciais para as classes Java
-import java.util.Properties
 import java.io.FileInputStream
+import java.net.URI
+import java.util.Locale
+import java.util.Properties
+
+private val appLinkRoutePathPrefixes = listOf(
+    "/invite",
+    "/convites",
+    "/agenda",
+    "/agenda/evento",
+    "/descobrir",
+    "/mapa",
+    "/location/permission",
+    "/parceiro",
+    "/privacy-policy",
+    "/profile",
+    "/home",
+    "/static",
+)
+
+private val appLinkRouteExactPaths = listOf("/")
+
+private fun normalizeAppLinkHosts(raw: String?): List<String> {
+    if (raw.isNullOrBlank()) {
+        return emptyList()
+    }
+
+    return raw
+        .split(',', ';', '\n')
+        .asSequence()
+        .map { it.trim().trim('"', '\'') }
+        .map(::extractAppLinkHost)
+        .map { it.lowercase(Locale.ROOT).trim().removeSuffix(".") }
+        .filter { it.isNotBlank() }
+        .filter { host ->
+            host.length <= 253 &&
+                !host.contains("..") &&
+                !host.contains("*") &&
+                host.matches(Regex("[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?"))
+        }
+        .distinct()
+        .toList()
+}
+
+private fun extractAppLinkHost(value: String): String {
+    if (value.isBlank()) {
+        return ""
+    }
+
+    val candidate = if (value.contains("://")) value else "https://$value"
+    return try {
+        URI(candidate).host ?: ""
+    } catch (_: IllegalArgumentException) {
+        value
+            .substringAfter("://")
+            .substringBefore("/")
+            .substringBefore(":")
+    }
+}
+
+private fun generateAppLinksManifest(hosts: List<String>): String {
+    val filters = hosts.joinToString("\n") { host ->
+        val dataElements = buildList {
+            appLinkRoutePathPrefixes.forEach { path ->
+                add("""                <data android:scheme="https" android:host="$host" android:pathPrefix="$path" />""")
+            }
+            appLinkRouteExactPaths.forEach { path ->
+                add("""                <data android:scheme="https" android:host="$host" android:path="$path" />""")
+            }
+        }.joinToString("\n")
+
+        """
+            |            <intent-filter android:autoVerify="true">
+            |                <action android:name="android.intent.action.VIEW" />
+            |                <category android:name="android.intent.category.DEFAULT" />
+            |                <category android:name="android.intent.category.BROWSABLE" />
+            |$dataElements
+            |            </intent-filter>
+        """.trimMargin()
+    }
+
+    return """
+        |<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        |    <application>
+        |        <activity android:name=".MainActivity">
+        |$filters
+        |        </activity>
+        |    </application>
+        |</manifest>
+    """.trimMargin() + "\n"
+}
+
+private fun String.toGradleTaskSegment(): String =
+    replaceFirstChar { char ->
+        if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString()
+    }
+
+val appLinkHostsByFlavor = mutableMapOf<String, List<String>>()
 
 android {
     namespace = "com.belluga_now"
@@ -50,7 +146,11 @@ android {
             keystoresDir.listFiles { _, name -> name.endsWith(".properties") }?.forEach { propertiesFile ->
                 val flavorName = propertiesFile.nameWithoutExtension
                 val flavorProperties = Properties()
-                flavorProperties.load(FileInputStream(propertiesFile))
+                FileInputStream(propertiesFile).use { stream ->
+                    flavorProperties.load(stream)
+                }
+                val appLinkHosts =
+                    normalizeAppLinkHosts(flavorProperties.getProperty("appLinkHosts"))
 
                 signingConfigs.create(flavorName) {
                     keyAlias = flavorProperties["keyAlias"] as String
@@ -65,9 +165,50 @@ android {
                 flavor.applicationId = flavorProperties["applicationId"] as String
                 flavor.applicationIdSuffix = null
                 flavor.signingConfig = signingConfigs.getByName(flavorName)
+
+                if (appLinkHosts.isNotEmpty()) {
+                    appLinkHostsByFlavor[flavorName] = appLinkHosts
+                }
             }
         }
     }
+
+    sourceSets {
+        appLinkHostsByFlavor.keys.forEach { flavorName ->
+            maybeCreate(flavorName).manifest.srcFile(
+                layout.buildDirectory
+                    .file("generated/app-link-manifests/$flavorName/AndroidManifest.xml")
+                    .get()
+                    .asFile,
+            )
+        }
+    }
+}
+
+appLinkHostsByFlavor.forEach { (flavorName, appLinkHosts) ->
+    val taskFlavorName = flavorName.toGradleTaskSegment()
+    val taskName = "generate${taskFlavorName}AppLinksManifest"
+    val outputFile = layout.buildDirectory.file(
+        "generated/app-link-manifests/$flavorName/AndroidManifest.xml",
+    )
+    val manifestTask = tasks.register(taskName) {
+        inputs.property("appLinkHosts", appLinkHosts.joinToString(","))
+        outputs.file(outputFile)
+        doLast {
+            val output = outputFile.get().asFile
+            output.parentFile.mkdirs()
+            output.writeText(generateAppLinksManifest(appLinkHosts))
+        }
+    }
+
+    tasks
+        .matching {
+            it.name.startsWith("process$taskFlavorName") &&
+                it.name.endsWith("MainManifest")
+        }
+        .configureEach {
+            dependsOn(manifestTask)
+        }
 }
 
 dependencies {

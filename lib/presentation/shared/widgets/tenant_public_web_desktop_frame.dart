@@ -13,8 +13,14 @@ class TenantPublicWebDesktopFrame extends StatelessWidget {
 
   static const double _defaultMaxContentWidth = 430.0;
 
+  static const Set<String> _fullWidthRouteNames = {
+    CityMapRoute.name,
+    PoiDetailsRoute.name,
+  };
+
   static const Set<String> _framedRouteNames = {
     TenantHomeRoute.name,
+    TenantPrivacyPolicyRoute.name,
     DiscoveryRoute.name,
     PartnerDetailRoute.name,
     StaticAssetDetailRoute.name,
@@ -23,9 +29,8 @@ class TenantPublicWebDesktopFrame extends StatelessWidget {
     InviteFlowRoute.name,
     InviteEntryRoute.name,
     InviteShareRoute.name,
+    ContactGroupManagementRoute.name,
     AppPromotionRoute.name,
-    CityMapRoute.name,
-    PoiDetailsRoute.name,
     LocationPermissionRoute.name,
     ProfileRoute.name,
   };
@@ -42,6 +47,10 @@ class TenantPublicWebDesktopFrame extends StatelessWidget {
 
     final normalizedRouteName = routeName.trim();
     if (normalizedRouteName.isEmpty) {
+      return false;
+    }
+
+    if (_fullWidthRouteNames.contains(normalizedRouteName)) {
       return false;
     }
 

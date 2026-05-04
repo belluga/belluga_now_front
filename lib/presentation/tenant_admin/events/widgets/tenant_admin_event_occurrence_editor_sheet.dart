@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -19,11 +22,6 @@ typedef TenantAdminEventRelatedProfilePicker
     = Future<TenantAdminAccountProfile?> Function({
   required Set<String> excludedProfileIds,
 });
-
-typedef TenantAdminEventModalCloser = Future<bool> Function<T>(
-  BuildContext context, [
-  T? result,
-]);
 
 Future<void> showTenantAdminEventOccurrenceEditorSheet({
   required BuildContext context,
@@ -244,6 +242,107 @@ class _TenantAdminEventOccurrenceEditorSheetState
     setState(() => _errorMessage = null);
   }
 
+  Widget _buildOccurrenceTaxonomySection(BuildContext context) {
+    return StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
+      streamValue: widget.controller.taxonomiesStreamValue,
+      builder: (context, _) {
+        final allowedTaxonomies =
+            widget.controller.allowedTaxonomyDefinitionsForSelectedEventType();
+        if (allowedTaxonomies.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return StreamValueBuilder<
+            Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+          streamValue: widget.controller.taxonomyTermsBySlugStreamValue,
+          builder: (context, termsByTaxonomy) {
+            final visibleGroups = allowedTaxonomies
+                .map(
+                  (taxonomy) => (
+                    taxonomy: taxonomy,
+                    terms: termsByTaxonomy[taxonomy.slug] ??
+                        const <TenantAdminTaxonomyTermDefinition>[],
+                  ),
+                )
+                .where((entry) => entry.terms.isNotEmpty)
+                .toList(growable: false);
+            if (visibleGroups.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            final selectedTerms =
+                _selectedOccurrenceTaxonomyTerms(widget.occurrence);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(height: 28),
+                Text(
+                  'Taxonomias da ocorrência',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Quando informadas, substituem as taxonomias do evento nesta data.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                for (final group in visibleGroups) ...[
+                  Text(
+                    group.taxonomy.name,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final term in group.terms)
+                        FilterChip(
+                          key: Key(
+                            'tenantAdminOccurrenceTaxonomy_${group.taxonomy.slug}_${term.slug}',
+                          ),
+                          label: Text(term.name),
+                          selected: selectedTerms[group.taxonomy.slug]
+                                  ?.contains(term.slug) ??
+                              false,
+                          onSelected: (isSelected) {
+                            setState(() {
+                              widget.controller.toggleOccurrenceTaxonomyTerm(
+                                occurrenceKey: widget.occurrenceKey,
+                                taxonomySlug: group.taxonomy.slug,
+                                termSlug: term.slug,
+                                isSelected: isSelected,
+                              );
+                              _errorMessage = null;
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Map<String, Set<String>> _selectedOccurrenceTaxonomyTerms(
+    TenantAdminEventOccurrence occurrence,
+  ) {
+    final selectedTerms = <String, Set<String>>{};
+    for (final term in occurrence.taxonomyTerms) {
+      final taxonomySlug = term.type.trim();
+      final termSlug = term.value.trim();
+      if (taxonomySlug.isEmpty || termSlug.isEmpty) {
+        continue;
+      }
+      selectedTerms.putIfAbsent(taxonomySlug, () => <String>{}).add(termSlug);
+    }
+    return selectedTerms;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -319,6 +418,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
               ),
               onTap: _pickEnd,
             ),
+            _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
             Text(
               'Perfis próprios da ocorrência',
@@ -447,6 +547,19 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
   String? _errorMessage;
 
+  String get _selectedLocationLabel {
+    final selectedId = _draft.selectedLocationProfileId;
+    if (selectedId == null || selectedId.isEmpty) {
+      return 'Sem local específico';
+    }
+    for (final venue in widget.venues) {
+      if (venue.id == selectedId) {
+        return venue.displayName;
+      }
+    }
+    return 'Sem local específico';
+  }
+
   Future<void> _linkOccurrenceProfile() async {
     final selected = await _pickOccurrenceRelatedAccountProfile(
       excludedProfileIds:
@@ -536,6 +649,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     );
   }
 
+  Future<void> _pickProgrammingLocation() async {
+    final selected = await showTenantAdminAccountProfileLocationPickerSheet(
+      context: context,
+      venues: widget.venues,
+      selectedLocationProfileId: _draft.selectedLocationProfileId,
+      title: 'Local da programação',
+      subtitle: 'Selecione um local específico para este item de programação.',
+      keyPrefix: 'tenantAdminProgrammingLocation',
+      closeModalSheet: widget.closeModalSheet,
+    );
+
+    if (selected == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _draft.selectedLocationProfileId = selected.isEmpty ? null : selected;
+      _errorMessage = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
@@ -576,6 +710,20 @@ class _TenantAdminEventProgrammingItemEditorSheetState
               keyboardType: TextInputType.datetime,
               onChanged: (value) {
                 _draft.time = value;
+                _errorMessage = null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('tenantAdminProgrammingEndTimeField'),
+              initialValue: _draft.endTime,
+              decoration: const InputDecoration(
+                labelText: 'Horário de fim (opcional)',
+                hintText: '18:00',
+              ),
+              keyboardType: TextInputType.datetime,
+              onChanged: (value) {
+                _draft.endTime = value;
                 _errorMessage = null;
               },
             ),
@@ -655,31 +803,44 @@ class _TenantAdminEventProgrammingItemEditorSheetState
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              key: const Key('tenantAdminProgrammingLocationProfileDropdown'),
-              initialValue: _draft.selectedLocationProfileId,
-              decoration: const InputDecoration(
-                labelText: 'Local da programação (opcional)',
-              ),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: '',
-                  child: Text('Sem local específico'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Local da programação (opcional)',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
                 ),
-                ...widget.venues.map(
-                  (venue) => DropdownMenuItem<String>(
-                    value: venue.id,
-                    child: Text(venue.displayName),
+                const SizedBox(height: 8),
+                Semantics(
+                  button: true,
+                  label: 'Local da programação. $_selectedLocationLabel',
+                  child: ExcludeSemantics(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        key: const Key(
+                          'tenantAdminProgrammingLocationProfileDropdown',
+                        ),
+                        onPressed: _pickProgrammingLocation,
+                        style: OutlinedButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        icon: const Icon(Icons.place_outlined),
+                        label: Text(
+                          _selectedLocationLabel,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _draft.selectedLocationProfileId =
-                      value == null || value.isEmpty ? null : value;
-                  _errorMessage = null;
-                });
-              },
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),
@@ -757,7 +918,9 @@ class _ProgrammingItemListTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
-      leading: Text(item.time),
+      leading: Text(
+        item.endTime == null ? item.time : '${item.time} às ${item.endTime}',
+      ),
       title: Text(
         item.title ??
             TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(

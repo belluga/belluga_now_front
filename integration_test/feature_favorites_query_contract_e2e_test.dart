@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
@@ -23,15 +22,6 @@ void main() {
   const userIdKey = 'user_id';
   const deviceIdKey = 'device_id';
 
-  const seededEmail =
-      String.fromEnvironment('FAVORITES_E2E_EMAIL', defaultValue: '');
-  const seededPassword =
-      String.fromEnvironment('FAVORITES_E2E_PASSWORD', defaultValue: '');
-  const expectNonEmpty = bool.fromEnvironment(
-    'FAVORITES_E2E_EXPECT_NON_EMPTY',
-    defaultValue: false,
-  );
-
   Future<void> clearAuthStorage() async {
     await AuthRepository.storage.delete(key: userTokenKey);
     await AuthRepository.storage.delete(key: userIdKey);
@@ -51,7 +41,8 @@ void main() {
     }
   }
 
-  testWidgets('Favorites query contract works against real backend', (
+  testWidgets(
+      'Anonymous favorites toggle and readback work against real backend', (
     _,
   ) async {
     await clearAuthStorage();
@@ -75,27 +66,55 @@ void main() {
     );
 
     final authRepository = AuthRepository();
-    await authRepository.init();
     GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+    await authRepository.init();
+    expect(
+      authRepository.userToken.trim(),
+      isNotEmpty,
+      reason: 'Anonymous identity bootstrap must issue a bearer token.',
+    );
+    expect(
+      (await authRepository.getUserId())?.trim(),
+      isNotEmpty,
+      reason: 'Anonymous identity bootstrap must persist a user id.',
+    );
 
-    if (seededEmail.trim().isNotEmpty && seededPassword.trim().isNotEmpty) {
-      await authRepository.loginWithEmailPassword(
-        authRepoString(seededEmail.trim()),
-        authRepoString(seededPassword.trim()),
+    final accountProfiles =
+        await backend.accountProfiles.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 10,
+    );
+    final targetProfiles = accountProfiles.profiles
+        .where((profile) => profile.id.trim().isNotEmpty)
+        .toList(growable: false);
+    expect(
+      targetProfiles,
+      isNotEmpty,
+      reason:
+          'Favorites e2e requires at least one public account profile to toggle.',
+    );
+
+    final target = targetProfiles.first;
+    final targetId = target.id.trim();
+
+    await backend.favorites.favoriteAccountProfile(targetId);
+    List<FavoritePreviewDTO> favorites;
+    try {
+      favorites = await waitForFavoriteState(
+        backend,
+        targetId,
+        shouldExist: true,
       );
-    } else {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final email = 'favorites-e2e-$now@belluga.test';
-      const password = 'SecurePass!123';
-      await authRepository.signUpWithEmailPassword(
-        authRepoString('Favorites E2E Tester'),
-        authRepoString(email),
-        authRepoString(password),
-      );
+    } finally {
+      await backend.favorites.unfavoriteAccountProfile(targetId);
     }
 
-    final favorites = await backend.favorites.fetchFavorites();
     expect(favorites, isA<List<FavoritePreviewDTO>>());
+    expect(
+      favorites.any((item) => isFavoriteTarget(item, targetId)),
+      isTrue,
+      reason: 'Favorited account profile must appear in GET /favorites.',
+    );
 
     for (final item in favorites) {
       expect(item.id.trim(), isNotEmpty);
@@ -105,16 +124,51 @@ void main() {
       expect(item.targetId?.trim(), isNotEmpty);
     }
 
-    if (expectNonEmpty) {
-      expect(
-        favorites,
-        isNotEmpty,
-        reason:
-            'Set FAVORITES_E2E_EMAIL/FAVORITES_E2E_PASSWORD for a seeded user.',
-      );
-      assertFavoritesOrdering(favorites);
-    }
+    assertFavoritesOrdering(favorites);
+
+    final afterUnfavorite = await waitForFavoriteState(
+      backend,
+      targetId,
+      shouldExist: false,
+    );
+    expect(
+      afterUnfavorite.any((item) => isFavoriteTarget(item, targetId)),
+      isFalse,
+      reason: 'Unfavorited account profile must disappear from GET /favorites.',
+    );
   });
+}
+
+Future<List<FavoritePreviewDTO>> waitForFavoriteState(
+  BackendContract backend,
+  String targetId, {
+  required bool shouldExist,
+  Duration timeout = const Duration(seconds: 20),
+  Duration step = const Duration(seconds: 1),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var latest = <FavoritePreviewDTO>[];
+
+  while (DateTime.now().isBefore(deadline)) {
+    latest = await backend.favorites.fetchFavorites();
+    final containsTarget =
+        latest.any((item) => isFavoriteTarget(item, targetId));
+    if (containsTarget == shouldExist) {
+      return latest;
+    }
+    await Future<void>.delayed(step);
+  }
+
+  throw TestFailure(
+    'Timed out waiting for favorite target $targetId to '
+    '${shouldExist ? 'appear' : 'disappear'}. Latest ids: '
+    '${latest.map((item) => item.targetId ?? item.id).join(', ')}',
+  );
+}
+
+bool isFavoriteTarget(FavoritePreviewDTO item, String targetId) {
+  final normalized = targetId.trim();
+  return item.targetId?.trim() == normalized || item.id.trim() == normalized;
 }
 
 void assertFavoritesOrdering(List<FavoritePreviewDTO> items) {

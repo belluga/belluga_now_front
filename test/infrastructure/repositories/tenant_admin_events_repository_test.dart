@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
@@ -1236,6 +1237,21 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   @override
   Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
       AuthRepositoryContractParamString password) async {}
+
+  @override
+  Future<AuthPhoneOtpChallenge> requestPhoneOtpChallenge(
+    AuthRepositoryContractParamString phone, {
+    AuthRepositoryContractParamString? deliveryChannel,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> verifyPhoneOtpChallenge({
+    required AuthRepositoryContractParamString challengeId,
+    required AuthRepositoryContractParamString phone,
+    required AuthRepositoryContractParamString code,
+  }) async {}
 
   @override
   Future<void> signUpWithEmailPassword(

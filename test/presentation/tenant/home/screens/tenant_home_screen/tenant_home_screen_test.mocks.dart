@@ -681,19 +681,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
 
   @override
   _i2.StreamValue<_i44.TenantHomeAgendaDisplayState?>
-      get displayStateStreamValue =>
-      (super.noSuchMethod(
-        Invocation.getter(#displayStateStreamValue),
-        returnValue: _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
-          this,
-          Invocation.getter(#displayStateStreamValue),
-        ),
-        returnValueForMissingStub:
-            _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
-          this,
-          Invocation.getter(#displayStateStreamValue),
-        ),
-      ) as _i2.StreamValue<_i44.TenantHomeAgendaDisplayState?>);
+      get displayStateStreamValue => (super.noSuchMethod(
+            Invocation.getter(#displayStateStreamValue),
+            returnValue: _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
+              this,
+              Invocation.getter(#displayStateStreamValue),
+            ),
+            returnValueForMissingStub:
+                _FakeStreamValue_0<_i44.TenantHomeAgendaDisplayState?>(
+              this,
+              Invocation.getter(#displayStateStreamValue),
+            ),
+          ) as _i2.StreamValue<_i44.TenantHomeAgendaDisplayState?>);
 
   @override
   _i2.StreamValue<bool> get isInitialLoadingStreamValue => (super.noSuchMethod(
@@ -930,9 +929,9 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i30.Future<void>);
 
   @override
-  bool isEventConfirmed(String? eventId) => (super.noSuchMethod(
+  bool isOccurrenceConfirmed(String? eventId) => (super.noSuchMethod(
         Invocation.method(
-          #isEventConfirmed,
+          #isOccurrenceConfirmed,
           [eventId],
         ),
         returnValue: false,
@@ -1110,6 +1109,20 @@ class MockInvitesBannerBuilderController extends _i1.Mock
           Invocation.getter(#pendingInvitesStreamValue),
         ),
       ) as _i2.StreamValue<List<_i38.InviteModel>>);
+
+  @override
+  _i2.StreamValue<bool> get isPendingInvitesDisplayReadyStreamValue =>
+      (super.noSuchMethod(
+        Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        returnValue: _FakeStreamValue_0<bool>(
+          this,
+          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        ),
+        returnValueForMissingStub: _FakeStreamValue_0<bool>(
+          this,
+          Invocation.getter(#isPendingInvitesDisplayReadyStreamValue),
+        ),
+      ) as _i2.StreamValue<bool>);
 
   @override
   bool get hasPendingInvites => (super.noSuchMethod(

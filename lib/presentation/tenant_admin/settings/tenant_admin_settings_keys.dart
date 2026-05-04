@@ -30,8 +30,12 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_integration_firebase');
   static const hubIntegrationResend =
       ValueKey('tenant_admin_settings_hub_integration_resend');
+  static const hubIntegrationOutbound =
+      ValueKey('tenant_admin_settings_hub_integration_outbound');
   static const hubIntegrationAppLinks =
       ValueKey('tenant_admin_settings_hub_integration_app_links');
+  static const hubIntegrationPush =
+      ValueKey('tenant_admin_settings_hub_integration_push');
   static const hubIntegrationTelemetry =
       ValueKey('tenant_admin_settings_hub_integration_telemetry');
 
@@ -98,6 +102,9 @@ class TenantAdminSettingsKeys {
       'tenant_admin_settings_technical_integrations_app_links_section');
   static const technicalIntegrationsResendSection =
       ValueKey('tenant_admin_settings_technical_integrations_resend_section');
+  static const technicalIntegrationsOutboundSection = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_section',
+  );
   static const technicalIntegrationsResendTokenEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_resend_token_edit',
   );
@@ -119,11 +126,53 @@ class TenantAdminSettingsKeys {
   static const technicalIntegrationsSaveResend = ValueKey(
     'tenant_admin_settings_technical_integrations_save_resend',
   );
+  static const technicalIntegrationsOutboundWhatsappWebhookEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_whatsapp_webhook_edit',
+  );
+  static const technicalIntegrationsOutboundOtpWebhookEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_webhook_edit',
+  );
+  static const technicalIntegrationsOutboundOtpSmsUrlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_sms_url_edit',
+  );
+  static const technicalIntegrationsOutboundOtpUseWhatsappSwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_use_whatsapp_switch',
+  );
+  static const technicalIntegrationsOutboundOtpSmsSecondarySwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_sms_secondary_switch',
+  );
+  static const technicalIntegrationsOutboundOtpDeliveryChannel = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_delivery_channel',
+  );
+  static const technicalIntegrationsOutboundOtpTtlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_ttl_edit',
+  );
+  static const technicalIntegrationsOutboundOtpCooldownEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_cooldown_edit',
+  );
+  static const technicalIntegrationsOutboundOtpMaxAttemptsEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_outbound_otp_max_attempts_edit',
+  );
+  static const technicalIntegrationsSaveOutbound = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_outbound',
+  );
   static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_android_package_edit',
   );
+  static const technicalIntegrationsAppLinksAndroidPublicationSwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_android_publication_switch',
+  );
+  static const technicalIntegrationsAppLinksAndroidStoreUrlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_android_store_url_edit',
+  );
   static const technicalIntegrationsAppLinksFingerprintsEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_fingerprints_edit',
+  );
+  static const technicalIntegrationsAppLinksIosPublicationSwitch = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_publication_switch',
+  );
+  static const technicalIntegrationsAppLinksIosStoreUrlEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_store_url_edit',
   );
   static const technicalIntegrationsAppLinksIosTeamIdEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_ios_team_id_edit',

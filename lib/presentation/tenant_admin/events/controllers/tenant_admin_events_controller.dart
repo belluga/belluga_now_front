@@ -155,6 +155,8 @@ class TenantAdminEventsController implements Disposable {
   String? _loadedTaxonomyTermsKey;
   String? _loadingTaxonomyTermsKey;
   int _taxonomyTermsLoadSerial = 0;
+  String? _eventTypeTaxonomyFallbackSlug;
+  Set<String> _eventTypeTaxonomyFallbackAllowedSlugs = const <String>{};
 
   final StreamValue<List<TenantAdminAccountProfile>>
       venueCandidatesStreamValue =
@@ -499,6 +501,19 @@ class TenantAdminEventsController implements Disposable {
           selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
     }
+    final initialEventTypeSlug = existingEvent?.type.slug.trim();
+    final fallbackAllowedSlugs = <String>{
+      ...?existingEvent?.type.allowedTaxonomies.value
+          .map((slug) => slug.trim())
+          .where((slug) => slug.isNotEmpty),
+    };
+    _eventTypeTaxonomyFallbackSlug =
+        initialEventTypeSlug == null || initialEventTypeSlug.isEmpty
+            ? null
+            : initialEventTypeSlug;
+    _eventTypeTaxonomyFallbackAllowedSlugs = Set<String>.unmodifiable(
+      fallbackAllowedSlugs,
+    );
     final localOccurrences = existingEvent?.occurrences
             .map(_toLocalOccurrence)
             .toList(growable: false) ??
@@ -735,6 +750,58 @@ class TenantAdminEventsController implements Disposable {
     }
     _replaceEventFormState(
       current.copyWith(selectedTaxonomyTerms: next),
+    );
+  }
+
+  List<TenantAdminTaxonomyDefinition>
+      allowedTaxonomyDefinitionsForSelectedEventType() {
+    final allowedTaxonomies = _allowedTaxonomiesForEventType(
+      eventFormStateStreamValue.value.selectedTypeSlug,
+    );
+    if (allowedTaxonomies.isEmpty) {
+      return const <TenantAdminTaxonomyDefinition>[];
+    }
+    return taxonomiesStreamValue.value
+        .where((taxonomy) => allowedTaxonomies.contains(taxonomy.slug.trim()))
+        .toList(growable: false);
+  }
+
+  Set<String> get allowedTaxonomySlugsForSelectedEventType =>
+      Set<String>.unmodifiable(
+        _allowedTaxonomiesForEventType(
+          eventFormStateStreamValue.value.selectedTypeSlug,
+        ),
+      );
+
+  void toggleOccurrenceTaxonomyTerm({
+    required String occurrenceKey,
+    required String taxonomySlug,
+    required String termSlug,
+    required bool isSelected,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    if (!_isTaxonomyAllowedForSelectedEventType(taxonomySlug, current)) {
+      return;
+    }
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) {
+        final next = _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms);
+        final bucket = next.putIfAbsent(taxonomySlug, () => <String>{});
+        if (isSelected) {
+          bucket.add(termSlug);
+        } else {
+          bucket.remove(termSlug);
+          if (bucket.isEmpty) {
+            next.remove(taxonomySlug);
+          }
+        }
+        return _copyOccurrence(
+          occurrence,
+          taxonomyTerms: _taxonomyTermsFromSelectionMap(next),
+        );
+      },
+      sort: false,
     );
   }
 
@@ -1192,16 +1259,58 @@ class TenantAdminEventsController implements Disposable {
     final allowedTaxonomies = _allowedTaxonomiesForEventType(
       state.selectedTypeSlug,
     );
-    if (allowedTaxonomies.isEmpty) {
-      if (state.selectedTaxonomyTerms.isEmpty) {
-        return state;
+    final sanitizedSelectedTaxonomyTerms = _sanitizeTaxonomySelectionMap(
+      state.selectedTaxonomyTerms,
+      allowedTaxonomies,
+    );
+    final sanitizedOccurrences = state.occurrences.map((occurrence) {
+      final sanitizedTerms = _sanitizeTaxonomyTerms(
+        occurrence.taxonomyTerms,
+        allowedTaxonomies,
+      );
+      if (_taxonomyTermMapsEqual(
+        _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms),
+        _taxonomyTermsToSelectionMap(sanitizedTerms),
+      )) {
+        return occurrence;
       }
-      return state
-          .copyWith(selectedTaxonomyTerms: const <String, Set<String>>{});
+      return _copyOccurrence(occurrence, taxonomyTerms: sanitizedTerms);
+    }).toList(growable: false);
+
+    final selectedUnchanged = _taxonomyTermMapsEqual(
+      state.selectedTaxonomyTerms,
+      sanitizedSelectedTaxonomyTerms,
+    );
+    final occurrencesUnchanged = _occurrenceTaxonomyTermsEqual(
+      state.occurrences,
+      sanitizedOccurrences,
+    );
+
+    if (selectedUnchanged && occurrencesUnchanged) {
+      return state;
+    }
+    return state.copyWith(
+      selectedTaxonomyTerms: Map<String, Set<String>>.unmodifiable(
+        sanitizedSelectedTaxonomyTerms.map(
+          (key, value) => MapEntry(key, Set<String>.unmodifiable(value)),
+        ),
+      ),
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+        sanitizedOccurrences,
+      ),
+    );
+  }
+
+  Map<String, Set<String>> _sanitizeTaxonomySelectionMap(
+    Map<String, Set<String>> termsByTaxonomy,
+    Set<String> allowedTaxonomies,
+  ) {
+    if (allowedTaxonomies.isEmpty) {
+      return const <String, Set<String>>{};
     }
 
     final sanitized = <String, Set<String>>{};
-    for (final entry in state.selectedTaxonomyTerms.entries) {
+    for (final entry in termsByTaxonomy.entries) {
       final taxonomySlug = entry.key.trim();
       if (!allowedTaxonomies.contains(taxonomySlug)) {
         continue;
@@ -1214,15 +1323,17 @@ class TenantAdminEventsController implements Disposable {
         sanitized[taxonomySlug] = values;
       }
     }
+    return sanitized;
+  }
 
-    if (_taxonomyTermMapsEqual(state.selectedTaxonomyTerms, sanitized)) {
-      return state;
-    }
-    return state.copyWith(
-      selectedTaxonomyTerms: Map<String, Set<String>>.unmodifiable(
-        sanitized.map(
-          (key, value) => MapEntry(key, Set<String>.unmodifiable(value)),
-        ),
+  TenantAdminTaxonomyTerms _sanitizeTaxonomyTerms(
+    TenantAdminTaxonomyTerms taxonomyTerms,
+    Set<String> allowedTaxonomies,
+  ) {
+    return _taxonomyTermsFromSelectionMap(
+      _sanitizeTaxonomySelectionMap(
+        _taxonomyTermsToSelectionMap(taxonomyTerms),
+        allowedTaxonomies,
       ),
     );
   }
@@ -1248,10 +1359,18 @@ class TenantAdminEventsController implements Disposable {
       if (type.slug.trim() != normalizedTypeSlug) {
         continue;
       }
-      return type.allowedTaxonomies.value
+      final allowed = type.allowedTaxonomies.value
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
           .toSet();
+      if (allowed.isNotEmpty) {
+        return allowed;
+      }
+      break;
+    }
+    if (_eventTypeTaxonomyFallbackSlug == normalizedTypeSlug &&
+        _eventTypeTaxonomyFallbackAllowedSlugs.isNotEmpty) {
+      return _eventTypeTaxonomyFallbackAllowedSlugs;
     }
     return const <String>{};
   }
@@ -1272,6 +1391,61 @@ class TenantAdminEventsController implements Disposable {
       }
     }
     return true;
+  }
+
+  bool _occurrenceTaxonomyTermsEqual(
+    List<TenantAdminEventOccurrence> left,
+    List<TenantAdminEventOccurrence> right,
+  ) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (!_taxonomyTermMapsEqual(
+        _taxonomyTermsToSelectionMap(left[index].taxonomyTerms),
+        _taxonomyTermsToSelectionMap(right[index].taxonomyTerms),
+      )) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Map<String, Set<String>> _taxonomyTermsToSelectionMap(
+    TenantAdminTaxonomyTerms taxonomyTerms,
+  ) {
+    final selectedTaxonomyTerms = <String, Set<String>>{};
+    for (final term in taxonomyTerms) {
+      final taxonomySlug = term.type.trim();
+      final termSlug = term.value.trim();
+      if (taxonomySlug.isEmpty || termSlug.isEmpty) {
+        continue;
+      }
+      selectedTaxonomyTerms
+          .putIfAbsent(taxonomySlug, () => <String>{})
+          .add(termSlug);
+    }
+    return selectedTaxonomyTerms;
+  }
+
+  TenantAdminTaxonomyTerms _taxonomyTermsFromSelectionMap(
+    Map<String, Set<String>> termsByTaxonomy,
+  ) {
+    final terms = TenantAdminTaxonomyTerms();
+    final taxonomySlugs = termsByTaxonomy.keys.toList(growable: false)..sort();
+    for (final taxonomySlug in taxonomySlugs) {
+      final termSlugs = termsByTaxonomy[taxonomySlug]!.toList(growable: false)
+        ..sort();
+      for (final termSlug in termSlugs) {
+        terms.add(
+          tenantAdminTaxonomyTermFromRaw(
+            type: taxonomySlug,
+            value: termSlug,
+          ),
+        );
+      }
+    }
+    return terms;
   }
 
   void initEventTypeForm({
@@ -2148,6 +2322,8 @@ class TenantAdminEventsController implements Disposable {
     _loadedTaxonomyTermsKey = null;
     _loadingTaxonomyTermsKey = null;
     _taxonomyTermsLoadSerial += 1;
+    _eventTypeTaxonomyFallbackSlug = null;
+    _eventTypeTaxonomyFallbackAllowedSlugs = const <String>{};
     taxonomyLoadingStreamValue.addValue(false);
     taxonomyErrorStreamValue.addValue(null);
     eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
@@ -2197,6 +2373,7 @@ class TenantAdminEventsController implements Disposable {
       relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
       relatedAccountProfiles: occurrence.relatedAccountProfiles,
       programmingItems: occurrence.programmingItems,
+      taxonomyTerms: occurrence.taxonomyTerms,
     );
   }
 
@@ -2304,6 +2481,7 @@ class TenantAdminEventsController implements Disposable {
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIds,
     List<TenantAdminAccountProfile>? relatedAccountProfiles,
     List<TenantAdminEventProgrammingItem>? programmingItems,
+    TenantAdminTaxonomyTerms? taxonomyTerms,
   }) {
     return TenantAdminEventOccurrence(
       occurrenceIdValue: tenantAdminOptionalText(occurrence.occurrenceId),
@@ -2321,6 +2499,7 @@ class TenantAdminEventsController implements Disposable {
       relatedAccountProfiles:
           relatedAccountProfiles ?? occurrence.relatedAccountProfiles,
       programmingItems: programmingItems ?? occurrence.programmingItems,
+      taxonomyTerms: taxonomyTerms ?? occurrence.taxonomyTerms,
     );
   }
 
@@ -2431,6 +2610,7 @@ class TenantAdminEventsController implements Disposable {
   ) {
     return TenantAdminEventProgrammingItem(
       timeValue: tenantAdminRequiredText(item.time),
+      endTimeValue: tenantAdminOptionalText(item.endTime),
       titleValue: tenantAdminOptionalText(item.title),
       accountProfileIdValues: item.accountProfileIds
           .where((entry) => entry.value != profileId)
@@ -2508,6 +2688,9 @@ class TenantAdminEventsController implements Disposable {
         for (final item in occurrence.programmingItems)
           _programmingItemFingerprint(item),
       ],
+      'taxonomyTerms': _taxonomyTermsFingerprint(
+        _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms),
+      ),
     };
   }
 
@@ -2516,6 +2699,7 @@ class TenantAdminEventsController implements Disposable {
   ) {
     return <String, Object?>{
       'time': item.time,
+      'endTime': item.endTime,
       'title': item.title,
       'accountProfileIds': [
         for (final profileId in item.accountProfileIds) profileId.value,

@@ -4,6 +4,8 @@ import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/app_data/location_origin_reason.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
@@ -25,6 +27,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -34,9 +37,11 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -56,6 +61,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 List<EventModel>? _displayedEvents(TenantHomeAgendaController controller) =>
     controller.displayStateStreamValue.value?.events;
@@ -152,6 +158,42 @@ void main() {
           appDataRepository.maxRadiusMeters.value,
           closeTo(expectedMeters, 0.001),
         );
+        expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'seeds initial radius with a 10 km floor when user is inside tenant default radius',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 50,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.673800'),
+              longitudeValue: LongitudeValue()..parse('-40.497700'),
+            ),
+          );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(days: 1),
+        );
+
+        await controller.init();
+
+        expect(controller.radiusMetersStreamValue.value, 10000);
+        expect(appDataRepository.maxRadiusMeters.value, 10000);
         expect(appDataRepository.setMaxRadiusMetersCallCount, 1);
 
         controller.onDispose();
@@ -410,6 +452,43 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'refreshes home agenda when canonical proximity preference changes externally',
+      () async {
+        final appData = _buildAppData(
+          minKm: 2,
+          defaultKm: 7,
+          maxKm: 15,
+        );
+        final scheduleRepository = _FakeScheduleRepository();
+        final proximityRepository = _FakeProximityPreferencesRepository(
+          preference: _proximityPreference(7000),
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(appData),
+          proximityPreferencesRepository: proximityRepository,
+          radiusRefreshDebounce: const Duration(milliseconds: 20),
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(controller.radiusMetersStreamValue.value, 7000);
+
+        proximityRepository.setCurrentPreference(_proximityPreference(4000));
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+
+        expect(controller.radiusMetersStreamValue.value, 4000);
+        expect(scheduleRepository.getEventsPageCallCount, 2);
+        expect(scheduleRepository.lastMaxDistanceMeters, 4000);
+
+        controller.onDispose();
+      },
+    );
 
     test('normalizes invalid tenant radius settings when parsing app data', () {
       final appData = _buildAppData(
@@ -1159,6 +1238,62 @@ void main() {
     });
 
     test(
+      'preserved refresh waits for canonical origin resolution before issuing the first agenda request',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationOriginService = _DelayedTenantDefaultLocationOriginService(
+          appData.tenantDefaultOrigin!,
+        );
+        final controller = TenantHomeAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          appDataRepository: appDataRepository,
+          proximityPreferencesRepository: _FakeProximityPreferencesRepository(
+            preference: _proximityPreference(9000),
+          ),
+          locationOriginService: locationOriginService,
+          radiusRefreshDebounce: Duration.zero,
+        );
+
+        final initFuture = controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        expect(
+          scheduleRepository.getEventsPageCallCount,
+          0,
+          reason:
+              'No agenda request should be sent before canonical origin resolution completes.',
+        );
+
+        locationOriginService.releaseFirstResolve();
+        await initFuture;
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        expect(scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(
+          scheduleRepository.requestOriginHistory,
+          isNotEmpty,
+        );
+        expect(
+          scheduleRepository.requestOriginHistory
+              .every((sample) => sample.lat != null && sample.lng != null),
+          isTrue,
+          reason:
+              'Every first-page agenda request must carry canonical origin coordinates once refresh resumes.',
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'uses live user location and persists live mode when within tenant max radius of tenant origin',
       () async {
         final appData = _buildAppData(
@@ -1644,6 +1779,108 @@ void main() {
     });
 
     test(
+      'auto refreshes agenda when canonical origin mode changes even for sub-1km coordinate deltas',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+
+        await appDataRepository.setLocationOriginSettings(
+          LocationOriginSettings.userFixedLocation(
+            fixedLocationReference: CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.668900'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+
+        expect(scheduleRepository.getEventsPageCallCount, 2);
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.668900, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'radius narrowing clears stale preserved agenda results when the tighter query returns empty',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository()
+          ..writeHomeAgendaCache(
+            events: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '507f1f77bcf86cd799439012',
+                title: 'Evento Cacheado',
+                slug: 'evento-cacheado',
+              ),
+            ],
+            hasMore: false,
+            originLat: -20.671339,
+            originLng: -40.495395,
+            maxDistanceMeters: 5000,
+          );
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = false;
+
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          radiusRefreshDebounce: const Duration(milliseconds: 20),
+        );
+
+        await controller.init();
+        expect(scheduleRepository.getEventsPageCallCount, 0);
+        expect(
+          _displayedEvents(controller)?.single.title.value,
+          'Evento Cacheado',
+        );
+
+        controller.setRadiusMeters(1000);
+        await Future<void>.delayed(const Duration(milliseconds: 420));
+
+        expect(
+            scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(scheduleRepository.getEventsPageCallCount, lessThanOrEqualTo(3));
+        expect(_displayedEvents(controller), isEmpty);
+        expect(controller.hasMoreStreamValue.value, isFalse);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'auto refresh does not publish transient empty agenda before recovered first page',
       () async {
         final appData = _buildAppData(
@@ -2073,6 +2310,116 @@ void main() {
       controller.onDispose();
     });
 
+    test('invite filter cycles from compact all to Convites and Confirmados',
+        () {
+      final controller = _buildAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(
+            minKm: 1,
+            defaultKm: 5,
+            maxKm: 10,
+          ),
+        ),
+      );
+
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+
+      controller.cycleInviteFilter();
+      expect(
+          controller.inviteFilterStreamValue.value, InviteFilter.pendingOnly);
+
+      controller.cycleInviteFilter();
+      expect(
+        controller.inviteFilterStreamValue.value,
+        InviteFilter.confirmedOnly,
+      );
+
+      controller.cycleInviteFilter();
+      expect(controller.inviteFilterStreamValue.value, InviteFilter.none);
+
+      controller.onDispose();
+    });
+
+    test(
+      'Convites filters pending received invites while Confirmados filters direct attendance confirmations',
+      () async {
+        const pendingOccurrenceId = '507f1f77bcf86cd799439551';
+        const confirmedOccurrenceId = '507f1f77bcf86cd799439552';
+        const unrelatedOccurrenceId = '507f1f77bcf86cd799439553';
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        scheduleRepository.writeHomeAgendaCache(
+          events: <EventModel>[
+            _buildHomeAgendaEvent(
+              occurrenceId: pendingOccurrenceId,
+              title: 'Convite pendente',
+              slug: 'convite-pendente',
+            ),
+            _buildHomeAgendaEvent(
+              occurrenceId: confirmedOccurrenceId,
+              title: 'Presença confirmada direta',
+              slug: 'presenca-confirmada-direta',
+            ),
+            _buildHomeAgendaEvent(
+              occurrenceId: unrelatedOccurrenceId,
+              title: 'Evento comum',
+              slug: 'evento-comum',
+            ),
+          ],
+          hasMore: false,
+          maxDistanceMeters: appData.mapRadiusDefaultMeters,
+          originLat: appData.tenantDefaultOrigin?.latitude,
+          originLng: appData.tenantDefaultOrigin?.longitude,
+        );
+        final invitesRepository = _FakeInvitesRepository();
+        invitesRepository.pendingInvitesStreamValue.addValue([
+          _buildPendingInvite(occurrenceId: pendingOccurrenceId),
+        ]);
+        final userEventsRepository = _FakeUserEventsRepository();
+        userEventsRepository.confirmedOccurrenceIdsStream.addValue({
+          userEventsRepoString(
+            confirmedOccurrenceId,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        });
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+
+        controller.setInviteFilter(InviteFilter.pendingOnly);
+        expect(
+          _displayedEvents(controller)?.map((event) => event.title.value),
+          <String>['Convite pendente'],
+        );
+
+        controller.setInviteFilter(InviteFilter.confirmedOnly);
+        expect(
+          _displayedEvents(controller)?.map((event) => event.title.value),
+          <String>['Presença confirmada direta'],
+          reason:
+              'Confirmed attendance is sourced from confirmed occurrence ids, not invite acceptance.',
+        );
+
+        controller.onDispose();
+      },
+    );
+
     testWidgets('home agenda body does not load next page on initial build',
         (tester) async {
       final appData = _buildAppData(
@@ -2476,6 +2823,53 @@ void main() {
   });
 }
 
+EventModel _buildHomeAgendaEvent({
+  required String occurrenceId,
+  required String title,
+  required String slug,
+}) {
+  return EventDTO.fromJson({
+    'event_id': occurrenceId.replaceRange(23, 24, '0'),
+    'occurrence_id': occurrenceId,
+    'slug': slug,
+    'title': title,
+    'content': 'Conteudo',
+    'type': {
+      'id': 'type-1',
+      'name': 'Show',
+      'slug': 'show',
+      'description': null,
+    },
+    'location': {
+      'mode': 'physical',
+      'display_name': 'Praia do Morro',
+      'geo': {
+        'type': 'Point',
+        'coordinates': [-40.495395, -20.671339],
+      },
+    },
+    'date_time_start': '2026-03-06T20:00:00+00:00',
+    'linked_account_profiles': const [],
+    'tags': const ['music'],
+  }).toDomain();
+}
+
+InviteModel _buildPendingInvite({required String occurrenceId}) {
+  return buildInviteModelFromPrimitives(
+    id: 'invite-$occurrenceId',
+    eventId: occurrenceId.replaceRange(23, 24, '0'),
+    eventName: 'Convite pendente',
+    eventDateTime: DateTime.utc(2026, 3, 6, 20),
+    eventImageUrl: 'https://tenant.test/invite.jpg',
+    location: 'Praia do Morro',
+    hostName: 'Boora',
+    message: 'Vamos?',
+    tags: const ['music'],
+    occurrenceId: occurrenceId,
+    inviterName: 'Ana',
+  );
+}
+
 class _DeferredAttachScrollController extends ScrollController {
   bool _hasAttachedClients = false;
   double _attachedOffset = 0;
@@ -2512,6 +2906,7 @@ TenantHomeAgendaController _buildAgendaController({
   DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
+  ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   AuthRepositoryContract? authRepository,
   TelemetryRepositoryContract? telemetryRepository,
   bool? isWebRuntime,
@@ -2524,9 +2919,9 @@ TenantHomeAgendaController _buildAgendaController({
     userEventsRepository: userEventsRepository,
     discoveryFiltersRepository: discoveryFiltersRepository,
     invitesRepository: invitesRepository,
-    userLocationRepository: userLocationRepository,
     appDataRepository: appDataRepository,
     authRepository: authRepository,
+    proximityPreferencesRepository: proximityPreferencesRepository,
     telemetryRepository: telemetryRepository,
     locationOriginService: LocationOriginService(
       appDataRepository: appDataRepository,
@@ -2770,6 +3165,66 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   bool get hasPersistedMaxRadiusPreference => _hasPersistedMaxRadiusPreference;
 }
 
+class _DelayedTenantDefaultLocationOriginService
+    implements LocationOriginServiceContract {
+  _DelayedTenantDefaultLocationOriginService(this._tenantDefaultCoordinate);
+
+  final CityCoordinate _tenantDefaultCoordinate;
+  final Completer<void> _firstResolveGate = Completer<void>();
+
+  void releaseFirstResolve() {
+    if (_firstResolveGate.isCompleted) {
+      return;
+    }
+    _firstResolveGate.complete();
+  }
+
+  @override
+  final StreamValue<LocationOriginResolution?> effectiveOriginStreamValue =
+      StreamValue<LocationOriginResolution?>(defaultValue: null);
+
+  @override
+  Future<LocationOriginResolution> resolve(
+    LocationOriginResolutionRequest request,
+  ) async {
+    if (!_firstResolveGate.isCompleted) {
+      await _firstResolveGate.future;
+    }
+    final resolution = LocationOriginResolution(
+      settings: LocationOriginSettings.tenantDefaultLocation(
+        fixedLocationReference: _tenantDefaultCoordinate,
+        reason: LocationOriginReason.unavailable,
+      ),
+      effectiveCoordinate: _tenantDefaultCoordinate,
+      liveUserCoordinate: null,
+      tenantDefaultCoordinate: _tenantDefaultCoordinate,
+      userFixedCoordinate: null,
+      distanceFromTenantDefaultOriginValue: null,
+    );
+    effectiveOriginStreamValue.addValue(resolution);
+    return resolution;
+  }
+
+  @override
+  Future<LocationOriginResolution> resolveAndPersist(
+    LocationOriginResolutionRequest request,
+  ) {
+    return resolve(request);
+  }
+
+  @override
+  LocationOriginResolution resolveCached() {
+    return const LocationOriginResolution(
+      settings: null,
+      effectiveCoordinate: null,
+      liveUserCoordinate: null,
+      tenantDefaultCoordinate: null,
+      userFixedCoordinate: null,
+      distanceFromTenantDefaultOriginValue: null,
+    );
+  }
+}
+
 AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
   DiscoveryFilterSelection selection,
 ) {
@@ -2819,6 +3274,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+  double? lastMaxDistanceMeters;
+  final List<({double? lat, double? lng})> requestOriginHistory =
+      <({double? lat, double? lng})>[];
   List<String>? lastCategories;
   List<String>? lastTaxonomy;
   Completer<void>? nextFetchGate;
@@ -2872,6 +3330,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     bool showPastOnly = false,
     String searchQuery = '',
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3004,6 +3463,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     getEventsPageCallCount += 1;
     lastOriginLat = originLat?.value;
     lastOriginLng = originLng?.value;
+    lastMaxDistanceMeters = maxDistanceMeters?.value;
+    requestOriginHistory.add((lat: lastOriginLat, lng: lastOriginLng));
     final fetchGate = nextFetchGate;
     if (fetchGate != null) {
       nextFetchGate = null;
@@ -3040,6 +3501,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3059,6 +3521,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepoBool showPastOnly,
     ScheduleRepoString? searchQuery,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3095,6 +3558,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3112,6 +3576,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -3133,6 +3598,39 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       onDelta(delta);
     });
   }
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({
+    ProximityPreference? preference,
+  }) {
+    setCurrentPreference(preference);
+  }
+
+  int updateMaxDistanceMetersCalls = 0;
+
+  @override
+  Future<void> updateMaxDistanceMeters(
+    DistanceInMetersValue meters,
+  ) async {
+    updateMaxDistanceMetersCalls += 1;
+    setCurrentPreference(
+      ProximityPreference(
+        maxDistanceMetersValue: meters,
+        locationPreference: proximityPreference?.locationPreference ??
+            const ProximityLocationPreference.liveDeviceLocation(),
+      ),
+    );
+  }
+}
+
+ProximityPreference _proximityPreference(double meters) {
+  return ProximityPreference(
+    maxDistanceMetersValue: DistanceInMetersValue(defaultValue: meters)
+      ..parse(meters.toString()),
+    locationPreference: const ProximityLocationPreference.liveDeviceLocation(),
+  );
 }
 
 class _FakeHomeAgendaState {
@@ -3264,6 +3762,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3285,6 +3784,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3352,6 +3852,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3377,6 +3878,7 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3469,6 +3971,7 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3554,6 +4057,7 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3636,6 +4140,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3660,6 +4165,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3715,6 +4221,7 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3761,6 +4268,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3803,6 +4311,7 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3865,6 +4374,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3889,6 +4399,7 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -3952,6 +4463,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -4000,6 +4512,7 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
     List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
+    List<String>? occurrenceIds,
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
@@ -4104,11 +4617,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return const [];
   }
@@ -4287,13 +4800,15 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -4302,16 +4817,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
+  Future<void> refreshConfirmedOccurrenceIds() async {
     if (throwOnRefreshConfirmedIds) {
       throw Exception('forced confirmed ids failure');
     }

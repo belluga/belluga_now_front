@@ -1,3 +1,7 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -29,8 +33,8 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -125,14 +129,7 @@ void main() {
       }
     });
 
-    await tester.pumpWidget(
-      MediaQuery(
-        data: MediaQueryData(padding: EdgeInsets.only(top: 24)),
-        child: MaterialApp(
-          home: EventSearchScreen(),
-        ),
-      ),
-    );
+    await _pumpEventSearchScreen(tester);
 
     await _pumpUntilFound(
       tester,
@@ -192,6 +189,39 @@ void main() {
   });
 }
 
+Future<void> _pumpEventSearchScreen(WidgetTester tester) async {
+  final router = _RecordingStackRouter();
+  final routeData = RouteData(
+    route: _FakeRouteMatch(
+      name: EventSearchRoute.name,
+      fullPath: '/agenda',
+      meta: canonicalRouteMeta(
+        family: CanonicalRouteFamily.eventSearch,
+      ),
+    ),
+    router: router,
+    stackKey: const ValueKey('stack'),
+    pendingChildren: const [],
+    type: const RouteType.material(),
+  );
+
+  await tester.pumpWidget(
+    MediaQuery(
+      data: const MediaQueryData(padding: EdgeInsets.only(top: 24)),
+      child: StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const EventSearchScreen(),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 Future<void> _pumpUntilFound(
   WidgetTester tester,
   Finder finder, {
@@ -208,6 +238,69 @@ Future<void> _pumpUntilFound(
   throw TestFailure(
     'Timed out waiting for ${finder.describeMatch(Plurality.many)}.',
   );
+}
+
+class _RecordingStackRouter extends Fake implements StackRouter {
+  @override
+  RootStackRouter get root => _FakeRootStackRouter('/agenda');
+
+  @override
+  bool canPop({
+    bool ignoreChildRoutes = false,
+    bool ignoreParentRoutes = false,
+    bool ignorePagelessRoutes = false,
+  }) {
+    return false;
+  }
+
+  @override
+  Future<bool> pop<T extends Object?>([T? result]) async => false;
+
+  @override
+  Future<void> replaceAll(
+    List<PageRouteInfo<dynamic>> routes, {
+    OnNavigationFailure? onFailure,
+    bool updateExistingRoutes = true,
+  }) async {}
+}
+
+class _FakeRootStackRouter extends Fake implements RootStackRouter {
+  _FakeRootStackRouter(this.currentPath);
+
+  @override
+  final String currentPath;
+
+  @override
+  Object? get pathState => null;
+
+  @override
+  RootStackRouter get root => this;
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({
+    required this.name,
+    required this.fullPath,
+    required this.meta,
+    PageRouteInfo<dynamic>? pageRouteInfo,
+  }) : pageRouteInfo = pageRouteInfo ?? EventSearchRoute();
+
+  @override
+  final String name;
+
+  @override
+  final String fullPath;
+
+  @override
+  final Map<String, dynamic> meta;
+
+  final PageRouteInfo<dynamic> pageRouteInfo;
+
+  @override
+  Parameters get queryParams => const Parameters({});
+
+  @override
+  PageRouteInfo<dynamic> toPageRouteInfo() => pageRouteInfo;
 }
 
 class FakeEventSearchScreenController extends EventSearchScreenController {
@@ -251,6 +344,7 @@ class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
     List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
@@ -308,17 +402,19 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
 
 class FakeUserEventsRepository implements UserEventsRepositoryContract {
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      _confirmedEventIdsStream =
+      _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
   @override
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedEventIdsStream => _confirmedEventIdsStream;
+      get confirmedOccurrenceIdsStream => _confirmedOccurrenceIdsStream;
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
@@ -327,16 +423,18 @@ class FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 }
 
 class FakeInvitesRepository extends InvitesRepositoryContract {
@@ -402,11 +500,11 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventSlug) async {
     return [];
   }

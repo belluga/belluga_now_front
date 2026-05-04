@@ -1,9 +1,9 @@
 class InviteShareCodeTargetRef {
   const InviteShareCodeTargetRef({
     required this.eventId,
-    this.occurrenceId,
+    required this.occurrenceId,
   });
 
   final String eventId;
-  final String? occurrenceId;
+  final String occurrenceId;
 }

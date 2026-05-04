@@ -39,6 +39,7 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.canUseTabFooter,
     this.onSharePressed,
     this.shareIcon = Icons.share,
+    this.isShareLoading = false,
     super.key,
   }) : assert(
           heroContent != null || heroContentBuilder != null,
@@ -95,6 +96,9 @@ class ImmersiveDetailScreen extends StatefulWidget {
 
   /// Optional icon used by the share action when [onSharePressed] is provided.
   final IconData shareIcon;
+
+  /// Whether the canonical share action is currently generating its payload.
+  final bool isShareLoading;
 
   @override
   State<ImmersiveDetailScreen> createState() => _ImmersiveDetailScreenState();
@@ -186,7 +190,14 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
               key: const Key('immersiveSwipeSurface'),
               behavior: HitTestBehavior.translucent,
               onHorizontalDragEnd: (details) {
-                _controller.onHorizontalSwipeEnd(details.primaryVelocity);
+                final primaryVelocity = details.primaryVelocity;
+                if (primaryVelocity == null) {
+                  return;
+                }
+                if (_handleActiveTabHorizontalSwipe(primaryVelocity)) {
+                  return;
+                }
+                _controller.onHorizontalSwipeEnd(primaryVelocity);
               },
               child: NestedScrollView(
                 key: _controller.nestedScrollViewKey,
@@ -223,6 +234,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         context: context,
                         icon: Icons.arrow_back,
                         innerBoxIsScrolled: innerBoxIsScrolled,
+                        tooltip: 'Voltar',
                         padding: const EdgeInsets.only(
                           left: 8,
                           right: 4,
@@ -239,7 +251,27 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                             context: context,
                             icon: widget.shareIcon,
                             innerBoxIsScrolled: innerBoxIsScrolled,
-                            onPressed: widget.onSharePressed!,
+                            tooltip: 'Compartilhar',
+                            iconWidget: widget.isShareLoading
+                                ? SizedBox(
+                                    key: const Key(
+                                      'immersiveShareActionLoading',
+                                    ),
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        innerBoxIsScrolled
+                                            ? colorScheme.onSurface
+                                            : Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                            onPressed: widget.isShareLoading
+                                ? null
+                                : widget.onSharePressed!,
                             key: const Key('immersiveShareAction'),
                           ),
                         const SizedBox(width: 8),
@@ -348,10 +380,12 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
 
   Widget _buildAppBarActionButton({
     required BuildContext context,
-    required IconData icon,
+    IconData? icon,
     required bool innerBoxIsScrolled,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     EdgeInsetsGeometry padding = const EdgeInsets.only(right: 8),
+    Widget? iconWidget,
+    String? tooltip,
     Key? key,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -373,7 +407,8 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
         ),
         child: IconButton(
           key: key,
-          icon: Icon(icon, color: foregroundColor),
+          tooltip: tooltip,
+          icon: iconWidget ?? Icon(icon, color: foregroundColor),
           onPressed: onPressed,
         ),
       ),
@@ -383,5 +418,27 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   Color _contentColorForBackground(Color backgroundColor) {
     final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
     return brightness == Brightness.dark ? Colors.white : Colors.black87;
+  }
+
+  bool _handleActiveTabHorizontalSwipe(double primaryVelocity) {
+    if (widget.tabs.isEmpty) {
+      return false;
+    }
+    final safeIndex = _controller.currentTabIndexStreamValue.value.clamp(
+      0,
+      widget.tabs.length - 1,
+    );
+    final handler = widget.tabs[safeIndex].onHorizontalSwipeEnd;
+    if (handler == null) {
+      return false;
+    }
+
+    return handler(
+      direction: primaryVelocity < 0
+          ? ImmersiveHorizontalSwipeDirection.forward
+          : ImmersiveHorizontalSwipeDirection.backward,
+      activateTab: _activateTab,
+      currentTabIndex: safeIndex,
+    );
   }
 }

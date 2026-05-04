@@ -7,6 +7,7 @@ import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/application/router/guards/web_anonymous_fallback_guard.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/controllers/contact_group_management_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,9 @@ class InvitesModule extends ModuleContract {
     );
     registerLazySingleton<InviteShareScreenController>(
       () => InviteShareScreenController(),
+    );
+    registerLazySingleton<ContactGroupManagementController>(
+      () => ContactGroupManagementController(),
     );
   }
 
@@ -50,6 +54,12 @@ class InvitesModule extends ModuleContract {
         AutoRoute(
           path: '/convites/compartilhar',
           page: InviteShareRoute.page,
+          guards: [TenantRouteGuard(), AuthRouteGuard()],
+          meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteShare),
+        ),
+        AutoRoute(
+          path: '/convites/grupos',
+          page: ContactGroupManagementRoute.page,
           guards: [TenantRouteGuard(), AuthRouteGuard()],
           meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteShare),
         ),

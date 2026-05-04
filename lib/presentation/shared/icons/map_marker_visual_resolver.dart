@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 
 import 'package:belluga_now/presentation/shared/icons/map_marker_icon_catalog.dart';
@@ -5,7 +6,7 @@ import 'package:belluga_now/presentation/shared/icons/map_marker_icon_catalog.da
 class MapMarkerVisualResolver {
   const MapMarkerVisualResolver._();
 
-  static const IconData fallbackIcon = Icons.place;
+  static const IconData fallbackIcon = BooraIcons.local;
 
   static IconData resolveIcon(String? rawIcon) {
     final token = MapMarkerIconToken.fromStorage(rawIcon);

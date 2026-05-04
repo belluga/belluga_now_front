@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +80,44 @@ void main() {
     expect(payload['event_parties'], isEmpty);
   });
 
+  test(
+      'encodes occurrence identity and explicit empty occurrence arrays for full-form clears',
+      () {
+    const encoder = TenantAdminEventsRequestEncoder();
+    final payload = encoder.encodeDraft(
+      TenantAdminEventDraft(
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            occurrenceIdValue:
+                tenantAdminOptionalText('507f1f77bcf86cd799439011'),
+            occurrenceSlugValue: tenantAdminOptionalText('evento-abc-0'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime(2026, 4, 5, 20),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrence =
+        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
+
+    expect(occurrence['occurrence_id'], '507f1f77bcf86cd799439011');
+    expect(occurrence['occurrence_slug'], 'evento-abc-0');
+    expect(occurrence['event_parties'], isEmpty);
+    expect(occurrence['taxonomy_terms'], isEmpty);
+    expect(occurrence['programming_items'], isEmpty);
+  });
+
   test('encodes occurrence-owned profiles and programação place refs', () {
     const encoder = TenantAdminEventsRequestEncoder();
     final payload = encoder.encodeDraft(
@@ -93,12 +133,16 @@ void main() {
             dateTimeStartValue: tenantAdminDateTime(
               DateTime(2026, 4, 5, 20),
             ),
+            taxonomyTerms: _taxonomyTermsFromRaw({
+              'sport': ['football'],
+            }),
             relatedAccountProfileIdValues: [
               TenantAdminAccountProfileIdValue('artist-1'),
             ],
             programmingItems: [
               TenantAdminEventProgrammingItem(
                 timeValue: tenantAdminRequiredText('17:00'),
+                endTimeValue: tenantAdminOptionalText('18:30'),
                 titleValue: tenantAdminOptionalText('Abertura'),
                 accountProfileIdValues: [
                   TenantAdminAccountProfileIdValue('artist-1'),
@@ -126,10 +170,17 @@ void main() {
         'permissions': {'can_edit': true},
       },
     ]);
+    expect(occurrence['taxonomy_terms'], [
+      {
+        'type': 'sport',
+        'value': 'football',
+      },
+    ]);
     expect(occurrence.containsKey('location'), isFalse);
     expect(occurrence['programming_items'], [
       {
         'time': '17:00',
+        'end_time': '18:30',
         'title': 'Abertura',
         'account_profile_ids': ['artist-1'],
         'place_ref': {
@@ -139,4 +190,18 @@ void main() {
       },
     ]);
   });
+}
+
+TenantAdminTaxonomyTerms _taxonomyTermsFromRaw(
+  Map<String, List<String>> termsByTaxonomy,
+) {
+  final taxonomyTerms = TenantAdminTaxonomyTerms();
+  for (final entry in termsByTaxonomy.entries) {
+    for (final value in entry.value) {
+      taxonomyTerms.add(
+        tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value),
+      );
+    }
+  }
+  return taxonomyTerms;
 }

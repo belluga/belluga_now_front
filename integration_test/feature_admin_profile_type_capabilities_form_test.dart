@@ -291,6 +291,15 @@ class _FakeTenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    TenantAdminAccountProfilesRepoString profileType,
+  ) async {
+    return (await fetchProfileTypes()).firstWhere(
+      (definition) => definition.type == profileType.value,
+    );
+  }
+
+  @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
@@ -413,6 +422,7 @@ class _FakeTenantAdminAccountProfilesRepository
   Future<TenantAdminProfileTypeDefinition> createProfileType({
     required TenantAdminAccountProfilesRepoString type,
     required TenantAdminAccountProfilesRepoString label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
     required TenantAdminProfileTypeCapabilities capabilities,
   }) async {
@@ -429,6 +439,7 @@ class _FakeTenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
     TenantAdminAccountProfilesRepoString? label,
+    TenantAdminAccountProfilesRepoString? pluralLabel,
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {

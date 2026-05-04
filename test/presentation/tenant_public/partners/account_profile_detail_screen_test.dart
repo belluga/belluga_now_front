@@ -126,7 +126,7 @@ void main() {
     expect(
       find.descendant(
         of: avatarFinder,
-        matching: find.byIcon(Icons.music_note),
+        matching: find.byIcon(BooraIcons.musicalNote),
       ),
       findsOneWidget,
     );
@@ -562,7 +562,7 @@ void main() {
     final liveEvent = _buildArtistAgendaEvents().first;
     final expectedSchedule =
         '${DateFormat.E().format(liveEvent.startDateTime).toUpperCase()}, '
-        '${liveEvent.startDateTime.day.toString().padLeft(2, '0')} • ${liveEvent.startDateTime.timeLabel} - '
+        '${liveEvent.startDateTime.day.toString().padLeft(2, '0')} • ${liveEvent.startDateTime.timeLabel} às '
         '${DateFormat.E().format((liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3)))).toUpperCase()}, '
         '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).day.toString().padLeft(2, '0')} • '
         '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).timeLabel}';
@@ -630,6 +630,40 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('live agenda highlight compresses counterpart chips as e mais X',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildProfileWithCrowdedLiveAgenda(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(
+          const Key(
+            'accountProfileAgendaLiveCounterparts_507f1f77bcf86cd799439151',
+          ),
+        ),
+        matching: find.text('Ananda Torres'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('e mais 2'), findsOneWidget);
+    expect(find.text('DJ Lua'), findsNothing);
+    expect(find.text('Coletivo Sol'), findsNothing);
   });
 
   testWidgets('future-only agenda does not render Acontecendo Agora section',
@@ -790,7 +824,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(BooraIcons.invite_solid), findsNothing);
+    expect(find.byIcon(BooraIcons.inviteSolid), findsNothing);
     expect(find.text('87'), findsNothing);
   });
 
@@ -1689,6 +1723,37 @@ AccountProfileModel _buildArtistHostAwareProfile() {
           '507f1f77bcf86cd799439099',
           '507f1f77bcf86cd799439199',
         ],
+      ),
+    ],
+  );
+}
+
+AccountProfileModel _buildProfileWithCrowdedLiveAgenda() {
+  final now = DateTime.now().toUtc();
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439151',
+    name: 'Casa do Som',
+    slug: 'casa-do-som',
+    type: 'restaurant',
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439051',
+        occurrenceId: '507f1f77bcf86cd799439151',
+        slug: 'noite-colaborativa',
+        title: 'Noite Colaborativa',
+        eventTypeLabel: 'Show',
+        location: 'Palco Principal',
+        venueId: '507f1f77bcf86cd799439151',
+        venueTitle: 'Casa do Som',
+        startDateTime: now.subtract(const Duration(minutes: 20)),
+        endDateTime: now.add(const Duration(hours: 2)),
+        artistNames: const ['Ananda Torres', 'DJ Lua', 'Coletivo Sol'],
+        artistIds: const [
+          '507f1f77bcf86cd799439152',
+          '507f1f77bcf86cd799439153',
+          '507f1f77bcf86cd799439154',
+        ],
+        imageUri: Uri.parse('https://example.com/noite-colaborativa.jpg'),
       ),
     ],
   );

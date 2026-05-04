@@ -230,7 +230,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: {});
   List<VenueEventResume> _events;
@@ -252,24 +252,28 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {
+  Future<void> refreshConfirmedOccurrenceIds() async {
     if (throwOnRefreshConfirmedIds) {
       throw Exception('forced confirmed ids failure');
     }
   }
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(
-        confirmedEventIdsStream.value.contains(eventId),
+        confirmedOccurrenceIdsStream.value.contains(eventId),
         defaultValue: false,
         isRequired: true,
       );

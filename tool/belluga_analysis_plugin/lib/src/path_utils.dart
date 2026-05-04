@@ -51,6 +51,40 @@ bool isGeneratedFilePath(String path) {
       normalized.endsWith('.mocks.dart');
 }
 
+bool isProjectTestFilePath(String path) {
+  final normalized = normalizePath(path);
+  return _containsSegment(normalized, '/test/') ||
+      normalized.startsWith('test/') ||
+      _containsSegment(normalized, '/integration_test/') ||
+      normalized.startsWith('integration_test/');
+}
+
+bool isNavigatorPolicyFilePath(String path) {
+  final normalized = normalizePath(path);
+  if (isGeneratedFilePath(normalized)) {
+    return false;
+  }
+
+  if (normalized.startsWith('lib/') ||
+      normalized.startsWith('test/') ||
+      normalized.startsWith('integration_test/')) {
+    return true;
+  }
+
+  return _containsSegment(
+        normalized,
+        '/tool/belluga_analysis_plugin/test_fixtures/lint_matrix/lib/',
+      ) ||
+      _containsSegment(
+        normalized,
+        '/tool/belluga_analysis_plugin/test_fixtures/lint_matrix/test/',
+      ) ||
+      _containsSegment(
+        normalized,
+        '/tool/belluga_analysis_plugin/test_fixtures/lint_matrix/integration_test/',
+      );
+}
+
 bool isUiPresentationFilePath(String path) {
   if (!isPresentationFilePath(path)) {
     return false;

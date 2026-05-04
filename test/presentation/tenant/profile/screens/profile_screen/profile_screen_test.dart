@@ -1,17 +1,42 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
+import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_timezone_value.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -148,7 +173,12 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
+  _FakeProfileAvatarStorage({
+    this.throwOnClear = false,
+  });
+
   String? _path;
+  bool throwOnClear;
 
   @override
   Future<ProfileAvatarPathValue?> readAvatarPath() async =>
@@ -161,8 +191,148 @@ class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
 
   @override
   Future<void> clearAvatarPath() async {
+    if (throwOnClear) {
+      throw StateError('secure storage delete failed');
+    }
     _path = null;
   }
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {}
+
+class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
+  _FakeSelfProfileRepository({
+    required SelfProfile initialProfile,
+    this.seedStream = true,
+  }) : _profile = initialProfile {
+    if (seedStream) {
+      currentProfileStreamValue.addValue(initialProfile);
+    }
+  }
+
+  SelfProfile _profile;
+  final bool seedStream;
+  UserDisplayNameValue? lastDisplayNameValue;
+  DescriptionValue? lastBioValue;
+  Object? updateError;
+
+  Completer<SelfProfile>? fetchCompleter;
+
+  @override
+  Future<SelfProfile> fetchCurrentProfile() async {
+    if (fetchCompleter != null) {
+      final profile = await fetchCompleter!.future;
+      _profile = profile;
+      currentProfileStreamValue.addValue(profile);
+      return profile;
+    }
+    currentProfileStreamValue.addValue(_profile);
+    return _profile;
+  }
+
+  @override
+  Future<SelfProfile> updateCurrentProfile({
+    UserDisplayNameValue? displayNameValue,
+    DescriptionValue? bioValue,
+    UserTimezoneValue? timezoneValue,
+    UserProfileMediaUpload? avatarUpload,
+    DomainBooleanValue? removeAvatarValue,
+  }) async {
+    if (updateError != null) {
+      throw updateError!;
+    }
+    lastDisplayNameValue = displayNameValue;
+    lastBioValue = bioValue;
+    _profile = _buildSelfProfile(
+      userId: _profile.userId,
+      accountProfileId: _profile.accountProfileId,
+      displayName: displayNameValue?.value ?? _profile.displayName,
+      bio: bioValue?.value ?? _profile.bio,
+      phone: _profile.phone,
+      avatarUrl: _profile.avatarUrl,
+      pendingInvitesCount: _profile.pendingInvitesCount,
+      confirmedEventsCount: _profile.confirmedEventsCount,
+      timezone: timezoneValue?.value ?? _profile.timezone,
+    );
+    currentProfileStreamValue.addValue(_profile);
+    return _profile;
+  }
+}
+
+class _FakeInvitesRepository extends InvitesRepositoryContract {
+  List<InviteableRecipient> inviteableRecipients = const [];
+  Completer<List<InviteableRecipient>>? inviteableRecipientsCompleter;
+
+  @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    if (inviteableRecipientsCompleter != null) {
+      return inviteableRecipientsCompleter!.future;
+    }
+    return inviteableRecipients;
+  }
+
+  @override
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async =>
+      const <InviteModel>[];
+
+  @override
+  Future<InviteRuntimeSettings> fetchSettings() async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<InviteDeclineResult> declineInvite(
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<InviteAcceptResult> acceptInviteByCode(
+    InvitesRepositoryContractPrimString code,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+      InviteContacts contacts) async {
+    return const <InviteContactMatch>[];
+  }
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required InvitesRepositoryContractPrimString eventId,
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> sendInvites(
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
+
+  @override
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) async =>
+      const <SentInviteStatus>[];
 }
 
 class _FakeUser implements UserContract {
@@ -254,10 +424,24 @@ void main() {
           _FakeAuthRepository(backend: _FakeBackendContract());
       final appDataRepository = _FakeAppDataRepository();
       final avatarStorage = _FakeProfileAvatarStorage();
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+        ),
+      );
+      final invitesRepository = _FakeInvitesRepository();
 
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
       GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
       GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
+      GetIt.I.registerSingleton<SelfProfileRepositoryContract>(
+        selfProfileRepository,
+      );
+      GetIt.I.registerSingleton<InvitesRepositoryContract>(invitesRepository);
+      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+        _FakeProximityPreferencesRepository(),
+      );
 
       // Guardrail: profile must resolve from repositories, never from another feature controller.
       expect(
@@ -273,10 +457,8 @@ void main() {
       authorized: true,
       initialUser: _buildUser(),
     );
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-    await tester.pumpWidget(
-      _buildRoutedTestApp(router: mockRouter),
-    );
+    await _pumpProfileScreen(tester,
+        controller: controller, router: mockRouter);
 
     await tester.pump();
     await tester.pump();
@@ -286,6 +468,69 @@ void main() {
     expect(find.text('Alice Smith'), findsWidgets);
   });
 
+  testWidgets(
+    'Profile removes legacy fields, keeps phone read-only, and exposes profile actions',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+      );
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Email'), findsNothing);
+      expect(find.text('Visibilidade'), findsNothing);
+      expect(find.text('Alterar senha'), findsNothing);
+      expect(find.text('Pessoas'), findsNothing);
+      expect(find.text('Alterado'), findsNothing);
+      expect(find.text('Telefone'), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('profile-radius-expanded')),
+          findsOneWidget);
+
+      final originPreferenceTile =
+          find.byKey(const Key('profileOriginPreferenceTile'));
+      await tester.ensureVisible(originPreferenceTile);
+      await tester.tap(originPreferenceTile);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Fixa'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Selecionar no mapa'), findsOneWidget);
+      expect(find.byKey(const Key('profileSaveOriginPreferenceButton')),
+          findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Profile radius picker caps UI at 50 km',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+      );
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('profile-radius-expanded')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('50 km'), findsOneWidget);
+      expect(find.text('100 km'), findsNothing);
+    },
+  );
+
   testWidgets('profile visible back falls back to home when no history exists',
       (tester) async {
     final controller = _buildController(
@@ -293,11 +538,8 @@ void main() {
       initialUser: _buildUser(),
     );
     mockRouter.canPopResult = false;
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(router: mockRouter),
-    );
+    await _pumpProfileScreen(tester,
+        controller: controller, router: mockRouter);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.arrow_back));
@@ -316,11 +558,8 @@ void main() {
       initialUser: _buildUser(),
     );
     mockRouter.canPopResult = false;
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(router: mockRouter),
-    );
+    await _pumpProfileScreen(tester,
+        controller: controller, router: mockRouter);
     await tester.pumpAndSettle();
 
     final popScope = tester.widget<PopScope<dynamic>>(
@@ -341,11 +580,8 @@ void main() {
       initialUser: _buildUser(),
     );
     mockRouter.canPopResult = true;
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(router: mockRouter),
-    );
+    await _pumpProfileScreen(tester,
+        controller: controller, router: mockRouter);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.arrow_back));
@@ -360,17 +596,24 @@ void main() {
     final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
     final appDataRepository = _FakeAppDataRepository();
     final avatarStorage = _FakeProfileAvatarStorage();
+    final selfProfileRepository = _FakeSelfProfileRepository(
+      initialProfile: _buildSelfProfile(
+        userId: '507f1f77bcf86cd799439011',
+        accountProfileId: 'profile-self',
+      ),
+    );
 
     final controller = ProfileScreenController(
       authRepository: authRepository,
       appDataRepository: appDataRepository,
       avatarStorage: avatarStorage,
+      selfProfileRepository: selfProfileRepository,
+      invitesRepository: _FakeInvitesRepository(),
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
     );
 
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-    await tester.pumpWidget(
-      _buildRoutedTestApp(router: mockRouter),
-    );
+    await _pumpProfileScreen(tester,
+        controller: controller, router: mockRouter);
     await tester.pump();
 
     expect(find.text('Alice Smith'), findsNothing);
@@ -388,11 +631,245 @@ void main() {
 
     expect(find.text('Alice Smith'), findsWidgets);
   });
+
+  testWidgets(
+    'profile screen reuses cached repository profile immediately while refresh resolves silently',
+    (tester) async {
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: '507f1f77bcf86cd799439011',
+          accountProfileId: 'profile-self',
+          displayName: 'Alice Cache',
+          bio: 'Bio cacheada',
+          phone: '+5527999991111',
+        ),
+      )..fetchCompleter = Completer<SelfProfile>();
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(name: 'Alice Cache'),
+        selfProfileRepository: selfProfileRepository,
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Alice Cache'), findsWidgets);
+      expect(find.text('Bio cacheada'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'profile screen keeps loading when no cached repository profile exists yet',
+    (tester) async {
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: '507f1f77bcf86cd799439011',
+          accountProfileId: 'profile-self',
+          displayName: 'Alice Cache',
+          bio: 'Bio cacheada',
+          phone: '+5527999991111',
+        ),
+        seedStream: false,
+      )..fetchCompleter = Completer<SelfProfile>();
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(name: 'Alice Cache'),
+        selfProfileRepository: selfProfileRepository,
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(find.text('Alice Cache'), findsNothing);
+    },
+  );
+
+  test('Profile controller persists editable fields and rehydrates values',
+      () async {
+    final selfProfileRepository = _FakeSelfProfileRepository(
+      initialProfile: _buildSelfProfile(
+        userId: 'user-1',
+        accountProfileId: 'profile-1',
+        displayName: 'Alice Smith',
+        bio: 'Bio inicial',
+        phone: '+5527999991111',
+      ),
+    );
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+      selfProfileRepository: selfProfileRepository,
+    );
+
+    await controller.refreshProfile();
+    controller.nameController.text = 'Alice Persistida';
+    controller.descriptionController.text = 'Bio persistida';
+
+    await controller.saveProfile();
+
+    expect(
+        selfProfileRepository.lastDisplayNameValue?.value, 'Alice Persistida');
+    expect(selfProfileRepository.lastBioValue?.value, 'Bio persistida');
+    expect(controller.nameController.text, 'Alice Persistida');
+    expect(controller.descriptionController.text, 'Bio persistida');
+  });
+
+  test(
+    'Profile controller omits unchanged bio when only the name changes',
+    () async {
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Alice Smith',
+          bio: '',
+          phone: '+5527999991111',
+        ),
+      );
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: selfProfileRepository,
+      );
+
+      await controller.refreshProfile();
+      controller.nameController.text = 'Alice Persistida';
+
+      await controller.saveProfile();
+
+      expect(
+        selfProfileRepository.lastDisplayNameValue?.value,
+        'Alice Persistida',
+      );
+      expect(selfProfileRepository.lastBioValue, isNull);
+    },
+  );
+
+  test(
+    'Profile controller treats avatar cleanup failure as non-fatal after backend save',
+    () async {
+      final avatarStorage = _FakeProfileAvatarStorage(throwOnClear: true);
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Alice Smith',
+          bio: 'Bio inicial',
+          phone: '+5527999991111',
+        ),
+      );
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        avatarStorage: avatarStorage,
+        selfProfileRepository: selfProfileRepository,
+      );
+
+      await controller.refreshProfile();
+      controller.nameController.text = 'Alice Persistida';
+
+      await controller.saveProfile();
+
+      expect(selfProfileRepository.lastDisplayNameValue?.value,
+          'Alice Persistida');
+      expect(controller.nameController.text, 'Alice Persistida');
+      expect(controller.hasPendingChanges, isFalse);
+      expect(controller.localAvatarPathStreamValue.value, isNull);
+    },
+  );
+
+  test(
+      'Profile controller hides phone placeholder names coming from profile payload',
+      () async {
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+      selfProfileRepository: _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: '+55 27 99999-1111',
+          bio: '',
+          phone: '+55 27 99999-1111',
+        ),
+      ),
+    );
+
+    await controller.refreshProfile();
+
+    expect(controller.nameController.text, isEmpty);
+  });
+
+  test(
+      'Profile controller surfaces friendly save errors without raw exception text',
+      () async {
+    final selfProfileRepository = _FakeSelfProfileRepository(
+      initialProfile: _buildSelfProfile(
+        userId: 'user-1',
+        accountProfileId: 'profile-1',
+        displayName: 'Alice Smith',
+        bio: 'Bio inicial',
+        phone: '+5527999991111',
+      ),
+    )..updateError = StateError('HTTP 422 profile endpoint exploded');
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+      selfProfileRepository: selfProfileRepository,
+    );
+
+    await controller.refreshProfile();
+    controller.nameController.text = 'Alice Persistida';
+
+    await expectLater(
+      controller.saveProfile(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'Nao foi possivel salvar o perfil agora. Tente novamente.',
+        ),
+      ),
+    );
+  });
+}
+
+Future<void> _pumpProfileScreen(
+  WidgetTester tester, {
+  required ProfileScreenController controller,
+  required _RecordingStackRouter router,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1200, 2000);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
+  GetIt.I.registerSingleton<ProfileScreenController>(controller);
+  await tester.pumpWidget(_buildRoutedTestApp(router: router));
 }
 
 ProfileScreenController _buildController({
   bool authorized = false,
   UserContract? initialUser,
+  ProfileAvatarStorageContract? avatarStorage,
+  SelfProfileRepositoryContract? selfProfileRepository,
+  InvitesRepositoryContract? invitesRepository,
 }) {
   final authRepository = _FakeAuthRepository(
     backend: _FakeBackendContract(),
@@ -400,12 +877,25 @@ ProfileScreenController _buildController({
     initialUser: initialUser,
   );
   final appDataRepository = _FakeAppDataRepository();
-  final avatarStorage = _FakeProfileAvatarStorage();
+  final resolvedAvatarStorage = avatarStorage ?? _FakeProfileAvatarStorage();
+  final profileRepository = selfProfileRepository ??
+      _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: initialUser?.uuidValue.value.toString() ?? 'user-1',
+          accountProfileId: 'profile-self',
+          displayName: initialUser?.profile.nameValue?.value ?? 'Alice Smith',
+          bio: 'Bio inicial',
+          phone: '+5527999991111',
+        ),
+      );
 
   return ProfileScreenController(
     authRepository: authRepository,
     appDataRepository: appDataRepository,
-    avatarStorage: avatarStorage,
+    avatarStorage: resolvedAvatarStorage,
+    selfProfileRepository: profileRepository,
+    invitesRepository: invitesRepository ?? _FakeInvitesRepository(),
+    proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
   );
 }
 
@@ -438,13 +928,66 @@ Widget _buildRoutedTestApp({
   );
 }
 
-UserContract _buildUser() {
+UserContract _buildUser({
+  String name = 'Alice Smith',
+}) {
   return _FakeUser(
     uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     profile: UserProfileContract(
-      nameValue: FullNameValue()..parse('Alice Smith'),
+      nameValue: FullNameValue()..parse(name),
       emailValue: EmailAddressValue()..parse('alice@example.com'),
     ),
+  );
+}
+
+SelfProfile _buildSelfProfile({
+  required String userId,
+  required String accountProfileId,
+  String displayName = 'Alice Smith',
+  String bio = '',
+  String phone = '',
+  String? avatarUrl,
+  int pendingInvitesCount = 0,
+  int confirmedEventsCount = 0,
+  String? timezone,
+}) {
+  final userIdValue = UserIdValue()..parse(userId);
+  final accountProfileIdValue = InviteAccountProfileIdValue(
+    isRequired: false,
+    minLenght: null,
+  );
+  if (accountProfileId.isNotEmpty) {
+    accountProfileIdValue.parse(accountProfileId);
+  }
+  final displayNameValue =
+      UserDisplayNameValue(isRequired: false, minLenght: null)
+        ..parse(displayName);
+  final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
+    ..parse(bio);
+  final phoneValue = AuthPhoneOtpPhoneValue(isRequired: false, minLenght: null)
+    ..parse(phone);
+  final avatarValue = UserAvatarValue();
+  if (avatarUrl != null && avatarUrl.isNotEmpty) {
+    avatarValue.parse(avatarUrl);
+  }
+  final pendingInvitesCountValue = SelfProfilePendingInvitesCountValue()
+    ..set(pendingInvitesCount);
+  final confirmedEventsCountValue = SelfProfileConfirmedEventsCountValue()
+    ..set(confirmedEventsCount);
+  final timezoneValue = UserTimezoneValue();
+  if (timezone != null && timezone.isNotEmpty) {
+    timezoneValue.parse(timezone);
+  }
+  return SelfProfile(
+    userIdValue: userIdValue,
+    accountProfileIdValue: accountProfileIdValue,
+    displayNameValue: displayNameValue,
+    bioValue: bioValue,
+    phoneValue: phoneValue,
+    avatarValue: avatarValue,
+    pendingInvitesCountValue: pendingInvitesCountValue,
+    confirmedEventsCountValue: confirmedEventsCountValue,
+    timezoneValue: timezoneValue,
   );
 }
 

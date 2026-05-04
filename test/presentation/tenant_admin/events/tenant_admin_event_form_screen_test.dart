@@ -187,6 +187,79 @@ void main() {
     ]);
   });
 
+  testWidgets(
+      'edit flow keeps taxonomy UI visible when event type catalog omits allowed taxonomies',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439032'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-taxonomy-fallback'),
+      slugValue: tenantAdminRequiredText('evt-taxonomy-fallback'),
+      titleValue: tenantAdminRequiredText('Evento com fallback de taxonomia'),
+      contentValue: tenantAdminOptionalText('<p>Conteúdo</p>'),
+      type: TenantAdminEventType.withAllowedTaxonomies(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439032'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+          const ['music_genre'],
+        ),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Rock'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Music Genre'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+    expect(taxonomiesRepository.fetchTermsCalls, 0);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
+      ['tax-1'],
+    ]);
+  });
+
   testWidgets('reloads taxonomy terms in one batch when event type changes',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -365,7 +438,7 @@ void main() {
     expect(taxonomiesRepository.batchFetchTaxonomyIds, isEmpty);
   });
 
-  testWidgets('does not render allowed taxonomy groups with no terms',
+  testWidgets('renders empty state when allowed taxonomy has no terms',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -424,9 +497,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Taxonomias'), findsOneWidget);
     expect(find.text('Music Genre'), findsOneWidget);
     expect(find.text('Rock'), findsOneWidget);
-    expect(find.text('Empty Topic'), findsNothing);
+    expect(find.text('Empty Topic'), findsOneWidget);
+    expect(
+      find.text('Nenhum termo cadastrado para esta taxonomia.'),
+      findsOneWidget,
+    );
     expect(taxonomiesRepository.fetchTermsCalls, 0);
     expect(taxonomiesRepository.batchFetchTaxonomyIds, [
       ['tax-empty', 'tax-1'],
@@ -645,6 +723,143 @@ void main() {
     expect(
         eventsRepository.lastCreateDraft?.occurrences.first.dateTimeStart.isUtc,
         isTrue);
+  });
+
+  testWidgets('authors occurrence taxonomy overrides from the date editor',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType.withAllowedTaxonomies(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439023'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+          const ['music_genre'],
+        ),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+
+    const rockKey = Key('tenantAdminOccurrenceTaxonomy_music_genre_rock');
+    await tester.scrollUntilVisible(
+      find.byKey(rockKey),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(rockKey));
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final occurrenceTerms = eventsRepository
+        .lastCreateDraft?.occurrences[1].taxonomyTerms
+        .map((term) => '${term.type}:${term.value}')
+        .toList(growable: false);
+    expect(occurrenceTerms, ['music_genre:rock']);
+  });
+
+  testWidgets(
+      'authors occurrence programming optional end time from the date editor',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439023'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingTimeField')),
+      '17:00',
+    );
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
+      '18:30',
+    );
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingTitleField')),
+      'Show com encerramento',
+    );
+    await _tapProgrammingSaveButton(tester);
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final programmingItem = eventsRepository
+        .lastCreateDraft?.occurrences[1].programmingItems.single;
+    expect(programmingItem?.time, '17:00');
+    expect(programmingItem?.endTime, '18:30');
+    expect(programmingItem?.title, 'Show com encerramento');
   });
 
   testWidgets('adds a second occurrence date before edit submit',
@@ -937,13 +1152,21 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
       findsOneWidget,
     );
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Venue A').last);
+    expect(find.bySemanticsLabel('Sem local específico'), findsWidgets);
+    expect(find.bySemanticsLabel('Venue A'), findsWidgets);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-1')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+    await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
@@ -1064,7 +1287,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Artist A').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+    await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
 
     expect(
@@ -1140,13 +1363,19 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTitleField')),
       'Apresentação especial',
     );
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Venue A').last);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-1')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+    await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('Local: Venue A'), findsOneWidget);
@@ -1157,13 +1386,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Editar item de programação'), findsOneWidget);
 
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sem local específico').last);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_none')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+    await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('Local: Venue A'), findsNothing);
@@ -1173,6 +1408,133 @@ void main() {
     final occurrence =
         controller.eventFormStateStreamValue.value.occurrences[1];
     expect(occurrence.programmingItems.single.placeRef, isNull);
+  });
+
+  testWidgets('programming location picker filters venues by search',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository()
+      ..physicalHostCandidates = [
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-1',
+          accountId: 'acc-venue-1',
+          profileType: 'venue',
+          displayName: 'Venue A',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.611121,
+            longitude: -40.498617,
+          ),
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-2',
+          accountId: 'acc-venue-2',
+          profileType: 'venue',
+          displayName: 'Casa do Jazz',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.612121,
+            longitude: -40.498917,
+          ),
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-3',
+          accountId: 'acc-venue-3',
+          profileType: 'venue',
+          displayName: 'Arena do Sol',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.612521,
+            longitude: -40.499217,
+          ),
+        ),
+      ];
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439100'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingTimeField')),
+      '13:00',
+    );
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingTitleField')),
+      'Apresentação especial',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('tenantAdminProgrammingLocationSearchField')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('Venue A'), findsWidgets);
+    expect(find.bySemanticsLabel('Casa do Jazz'), findsWidgets);
+    expect(find.bySemanticsLabel('Arena do Sol'), findsWidgets);
+
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminProgrammingLocationSearchField')),
+      'Jazz',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Sem local específico'), findsWidgets);
+    expect(find.bySemanticsLabel('Casa do Jazz'), findsWidgets);
+    expect(find.bySemanticsLabel('Venue A'), findsNothing);
+    expect(find.bySemanticsLabel('Arena do Sol'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-2')),
+    );
+    await tester.pumpAndSettle();
+    await _tapProgrammingSaveButton(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Local: Casa do Jazz'), findsOneWidget);
+
+    await _closeOccurrenceSheet(tester);
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences[1];
+    expect(occurrence.programmingItems.single.placeRef?.id, 'venue-2');
   });
 
   testWidgets(
@@ -1232,7 +1594,7 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTitleField')),
       'Abertura principal',
     );
-    await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
+    await _tapProgrammingSaveButton(tester);
     await tester.pumpAndSettle();
 
     expect(
@@ -2289,6 +2651,128 @@ void main() {
     expect(draft.placeRef, isNull);
   });
 
+  testWidgets('physical mode venue picker filters venues by search',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository()
+      ..physicalHostCandidates = [
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-1',
+          accountId: 'acc-venue-1',
+          profileType: 'venue',
+          displayName: 'Venue A',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.611121,
+            longitude: -40.498617,
+          ),
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-2',
+          accountId: 'acc-venue-2',
+          profileType: 'venue',
+          displayName: 'Casa do Jazz',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.612121,
+            longitude: -40.498917,
+          ),
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-3',
+          accountId: 'acc-venue-3',
+          profileType: 'venue',
+          displayName: 'Arena do Sol',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.612521,
+            longitude: -40.499217,
+          ),
+        ),
+      ];
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+        nameValue: tenantAdminRequiredText('Live'),
+        slugValue: tenantAdminRequiredText('live'),
+        descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+
+    await tester.scrollUntilVisible(
+      find.text('Online'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Online').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Physical').last);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('tenantAdminEventLocationSearchField')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('Venue A'), findsWidgets);
+    expect(find.bySemanticsLabel('Casa do Jazz'), findsWidgets);
+    expect(find.bySemanticsLabel('Arena do Sol'), findsWidgets);
+
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminEventLocationSearchField')),
+      'Jazz',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Casa do Jazz'), findsWidgets);
+    expect(find.bySemanticsLabel('Venue A'), findsNothing);
+    expect(find.bySemanticsLabel('Arena do Sol'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('tenantAdminEventLocationOption_venue-2')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final draft = eventsRepository.lastCreateDraft;
+    expect(draft, isNotNull);
+    expect(draft!.location?.mode, 'physical');
+    expect(draft.location?.latitude, -20.612121);
+    expect(draft.location?.longitude, -40.498917);
+    expect(draft.location?.online, isNull);
+    expect(draft.placeRef?.id, 'venue-2');
+  });
+
   testWidgets('submits without description text (content optional)',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -2929,6 +3413,14 @@ Future<void> _closeOccurrenceSheet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
+  final saveButton = find.byKey(const Key('tenantAdminProgrammingSaveButton'));
+  await tester.ensureVisible(saveButton);
+  await tester.pumpAndSettle();
+  await tester.tap(saveButton);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _addOccurrenceProgrammingTitleOnly(
   WidgetTester tester, {
   required String time,
@@ -2952,8 +3444,7 @@ Future<void> _addOccurrenceProgrammingTitleOnly(
     find.byKey(const Key('tenantAdminProgrammingTitleField')),
     title,
   );
-  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
-  await tester.pumpAndSettle();
+  await _tapProgrammingSaveButton(tester);
 }
 
 Future<void> _addOccurrenceProgrammingWithNewProfile(
@@ -2983,8 +3474,7 @@ Future<void> _addOccurrenceProgrammingWithNewProfile(
   await tester.pumpAndSettle();
   await tester.tap(find.text(profileName).last);
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
-  await tester.pumpAndSettle();
+  await _tapProgrammingSaveButton(tester);
 }
 
 Future<void> _addOccurrenceProgrammingWithExistingProfile(
@@ -3014,8 +3504,7 @@ Future<void> _addOccurrenceProgrammingWithExistingProfile(
   await tester.pumpAndSettle();
   await tester.tap(find.text(profileName).last);
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('tenantAdminProgrammingSaveButton')));
-  await tester.pumpAndSettle();
+  await _tapProgrammingSaveButton(tester);
 }
 
 TenantAdminTaxonomyTerms _tenantAdminTaxonomyTerms(
@@ -3031,6 +3520,28 @@ TenantAdminTaxonomyTerms _tenantAdminTaxonomyTerms(
 class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   List<TenantAdminEventType> eventTypes = <TenantAdminEventType>[];
+  List<TenantAdminAccountProfile> physicalHostCandidates =
+      <TenantAdminAccountProfile>[
+    tenantAdminAccountProfileFromRaw(
+      id: 'venue-1',
+      accountId: 'acc-venue',
+      profileType: 'venue',
+      displayName: 'Venue A',
+      location: tenantAdminLocationFromRaw(
+        latitude: -20.611121,
+        longitude: -40.498617,
+      ),
+    ),
+  ];
+  List<TenantAdminAccountProfile> relatedAccountProfileCandidates =
+      <TenantAdminAccountProfile>[
+    tenantAdminAccountProfileFromRaw(
+      id: 'artist-1',
+      accountId: 'acc-artist',
+      profileType: 'artist',
+      displayName: 'Artist A',
+    ),
+  ];
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;
   TenantAdminEventDraft? lastUpdateDraft;
@@ -3115,26 +3626,10 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     final items = switch (candidateType) {
-      TenantAdminEventAccountProfileCandidateType.physicalHost => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'venue-1',
-            accountId: 'acc-venue',
-            profileType: 'venue',
-            displayName: 'Venue A',
-            location: tenantAdminLocationFromRaw(
-              latitude: -20.611121,
-              longitude: -40.498617,
-            ),
-          ),
-        ],
-      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'artist-1',
-            accountId: 'acc-artist',
-            profileType: 'artist',
-            displayName: 'Artist A',
-          ),
-        ],
+      TenantAdminEventAccountProfileCandidateType.physicalHost =>
+        physicalHostCandidates,
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile =>
+        relatedAccountProfileCandidates,
     };
     return tenantAdminPagedResultFromRaw(
       items: items,

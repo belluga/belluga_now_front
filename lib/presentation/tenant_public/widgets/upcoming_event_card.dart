@@ -97,90 +97,104 @@ class UpcomingEventCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(18),
-          child: Stack(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  width: 84,
+                  height: 112,
+                  child: _UpcomingEventImage(imageUri: data.imageUri),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: SizedBox(
-                        width: 84,
-                        child: _UpcomingEventImage(imageUri: data.imageUri),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: statusWidget == null ? 0 : statusIconSize + 14,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              data.metaLabel,
-                              key: _scopedKey('Meta'),
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w800,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data.metaLabel,
+                                key: _scopedKey('Meta'),
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              data.headline,
-                              key: _scopedKey('Headline'),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                height: 1,
-                              ),
-                            ),
-                            if (data.counterparts.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Wrap(
-                                key: _scopedKey('Counterparts'),
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: data.counterparts
-                                    .asMap()
-                                    .entries
-                                    .map(
-                                      (entry) => _UpcomingEventCounterpartChip(
-                                        key: _scopedKey(
-                                          'Counterpart${entry.key}',
-                                        ),
-                                        counterpart: entry.value,
-                                      ),
-                                    )
-                                    .toList(growable: false),
+                              const SizedBox(height: 6),
+                              Text(
+                                data.headline,
+                                key: _scopedKey('Headline'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  height: 1,
+                                ),
                               ),
                             ],
-                            if (_buildVenueLine(context)
-                                case final venueLine?) ...[
-                              const SizedBox(height: 8),
-                              venueLine,
-                            ],
-                          ],
+                          ),
                         ),
-                      ),
+                        if (statusWidget != null) ...[
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: statusIconSize,
+                            child: Align(
+                              alignment: Alignment.topRight,
+                              child: statusWidget,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                    if (data.counterparts.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildCounterpartWrap(),
+                    ],
+                    if (_buildVenueLine(context) case final venueLine?) ...[
+                      const SizedBox(height: 8),
+                      venueLine,
+                    ],
                   ],
                 ),
               ),
-              if (statusWidget != null)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: statusWidget,
-                ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCounterpartWrap() {
+    final visibleCounterparts = data.counterparts.length > 1
+        ? data.counterparts.take(1).toList(growable: false)
+        : data.counterparts;
+    final hiddenCount = data.counterparts.length - visibleCounterparts.length;
+    return Wrap(
+      key: _scopedKey('Counterparts'),
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        ...visibleCounterparts.asMap().entries.map(
+              (entry) => _UpcomingEventCounterpartChip(
+                key: _scopedKey('Counterpart${entry.key}'),
+                counterpart: entry.value,
+              ),
+            ),
+        if (hiddenCount > 0)
+          _UpcomingEventMoreCounterpartChip(
+            key: _scopedKey('CounterpartMore'),
+            hiddenCount: hiddenCount,
+          ),
+      ],
     );
   }
 
@@ -258,14 +272,42 @@ class UpcomingEventCard extends StatelessWidget {
         event.startDateTime.month == explicitEnd.month &&
         event.startDateTime.day == explicitEnd.day;
     if (sameDay) {
-      return '$weekday, $day • ${event.startDateTime.timeLabel} - ${explicitEnd.timeLabel}'
-          .toUpperCase();
+      return '${weekday.toUpperCase()}, $day • ${event.startDateTime.timeLabel} às ${explicitEnd.timeLabel}';
     }
 
     final endWeekday = DateFormat.E().format(explicitEnd);
     final endDay = explicitEnd.day.toString().padLeft(2, '0');
-    return '$weekday, $day • ${event.startDateTime.timeLabel} - $endWeekday, $endDay • ${explicitEnd.timeLabel}'
-        .toUpperCase();
+    return '${weekday.toUpperCase()}, $day • ${event.startDateTime.timeLabel} às '
+        '${endWeekday.toUpperCase()}, $endDay • ${explicitEnd.timeLabel}';
+  }
+}
+
+class _UpcomingEventMoreCounterpartChip extends StatelessWidget {
+  const _UpcomingEventMoreCounterpartChip({
+    super.key,
+    required this.hiddenCount,
+  });
+
+  final int hiddenCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'e mais $hiddenCount',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
   }
 }
 
@@ -279,7 +321,6 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxLabelWidth = MediaQuery.sizeOf(context).width * 0.42;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -291,8 +332,7 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
         children: [
           _UpcomingEventCounterpartVisual(counterpart: counterpart),
           const SizedBox(width: 6),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxLabelWidth),
+          Flexible(
             child: Text(
               counterpart.label,
               maxLines: 1,

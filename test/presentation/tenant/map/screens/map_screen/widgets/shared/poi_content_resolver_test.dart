@@ -99,7 +99,9 @@ void main() {
       );
 
       expect(
-          PoiContentResolver.eventScheduleLabel(poi), '07/04 • 18:30 - 20:00');
+        PoiContentResolver.eventScheduleLabel(poi),
+        '07/04 • 18:30 às 20:00',
+      );
     });
 
     test('type label prefers payload category over technical refType', () {

@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final String? materializedInviteId;
   final List<String> materializedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
+  final List<String> acceptedShareCodes = <String>[];
   final List<String> declinedInviteIds = <String>[];
 
   @override
@@ -87,15 +89,17 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-          InvitesRepositoryContractPrimString code) async =>
-      buildInviteAcceptResult(
-        inviteId: 'mock-${code.value}',
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+      InvitesRepositoryContractPrimString code) async {
+    acceptedShareCodes.add(code.value);
+    return buildInviteAcceptResult(
+      inviteId: 'mock-${code.value}',
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  }
 
   @override
   Future<InviteDeclineResult> declineInvite(
@@ -155,7 +159,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
@@ -165,7 +169,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
           InvitesRepositoryContractPrimString eventSlug) async =>
       const [];
 }
@@ -212,7 +216,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
@@ -224,17 +228,21 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
@@ -404,6 +412,7 @@ void main() {
 
     expect(find.text('Recusar'), findsOneWidget);
     expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.text('Ver detalhes'), findsOneWidget);
     expect(find.byIcon(Icons.swipe), findsOneWidget);
     expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
   });
@@ -438,11 +447,47 @@ void main() {
     expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
   });
 
-  testWidgets('Unauthenticated invite accepts through canonical anonymous flow',
+  testWidgets('Invite flow shows loading state before initialization',
+      (tester) async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(router, queryParams: const {});
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowCoordinator(
+              invites: [],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Bóra pro App!'), findsNothing);
+  });
+
+  testWidgets(
+      'Unauthenticated app invite asks for authentication before accept',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
     final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
       telemetryRepository: _FakeTelemetryRepository(),
       authRepository: _FakeAuthRepository(authorized: false),
@@ -474,15 +519,17 @@ void main() {
     await tester.pump();
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Aceitar').evaluate().isNotEmpty) {
+      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
         break;
       }
     }
 
-    expect(find.text('Aceitar'), findsOneWidget);
-    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsNothing);
+    expect(find.text('Recusar'), findsNothing);
+    expect(find.text('Ver detalhes'), findsOneWidget);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
 
-    await tester.tap(find.text('Aceitar'));
+    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
     await tester.pump();
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -491,8 +538,11 @@ void main() {
       }
     }
 
-    expect(router.lastPushedPath, isNull);
-    expect(router.lastPushed, isA<InviteShareRoute>());
+    expect(router.lastPushedPath,
+        '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9');
+    expect(router.lastPushed, isNull);
+    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.acceptedInviteIds, isEmpty);
   });
 
   testWidgets('Authenticated share invite accept uses canonical invite action',

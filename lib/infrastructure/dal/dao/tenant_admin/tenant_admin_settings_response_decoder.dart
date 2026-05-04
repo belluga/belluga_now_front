@@ -159,6 +159,14 @@ class TenantAdminSettingsResponseDecoder {
     return _mapResendEmailSettings(payload);
   }
 
+  TenantAdminOutboundIntegrationsSettings decodeOutboundIntegrationsSettings(
+    Object? rawResponse,
+  ) {
+    final outboundIntegrations =
+        _extractOutboundIntegrationsPayload(rawResponse);
+    return _mapOutboundIntegrationsSettings(outboundIntegrations);
+  }
+
   TenantAdminPushSettings decodePushSettings(Object? rawResponse) {
     final payload = _envelopeDecoder.decodeDataMap(
       rawResponse,
@@ -359,6 +367,28 @@ class TenantAdminSettingsResponseDecoder {
         return const <String, dynamic>{};
       }
       throw Exception('Unexpected app_links payload shape.');
+    }
+    return Map<String, dynamic>.from(payload);
+  }
+
+  Map<String, dynamic> _extractOutboundIntegrationsPayload(Object? raw) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      raw,
+      label: 'outbound_integrations settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('outbound_integrations')) {
+      final outboundIntegrationsRaw = payload['outbound_integrations'];
+      if (outboundIntegrationsRaw is Map) {
+        return Map<String, dynamic>.from(outboundIntegrationsRaw);
+      }
+      if (outboundIntegrationsRaw == null) {
+        return const <String, dynamic>{};
+      }
+      if (outboundIntegrationsRaw is List && outboundIntegrationsRaw.isEmpty) {
+        return const <String, dynamic>{};
+      }
+      throw Exception('Unexpected outbound_integrations payload shape.');
     }
     return Map<String, dynamic>.from(payload);
   }
@@ -664,6 +694,55 @@ class TenantAdminSettingsResponseDecoder {
     );
   }
 
+  TenantAdminOutboundIntegrationsSettings _mapOutboundIntegrationsSettings(
+    Map<String, dynamic> map,
+  ) {
+    final whatsappRaw = map['whatsapp'];
+    final whatsapp = whatsappRaw is Map
+        ? Map<String, dynamic>.from(whatsappRaw)
+        : const <String, dynamic>{};
+    final otpRaw = map['otp'];
+    final otp = otpRaw is Map
+        ? Map<String, dynamic>.from(otpRaw)
+        : const <String, dynamic>{};
+
+    final whatsappWebhookUrl = _normalizeOptionalText(whatsapp['webhook_url']);
+    final otpWebhookUrl = _normalizeOptionalText(otp['webhook_url']);
+    final deliveryChannelRaw =
+        _normalizeOptionalText(otp['delivery_channel']) ??
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp;
+    final deliveryChannel = _isValidOutboundOtpDeliveryChannel(
+      deliveryChannelRaw,
+    )
+        ? deliveryChannelRaw.toLowerCase()
+        : TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp;
+
+    return TenantAdminOutboundIntegrationsSettings(
+      whatsappWebhookUrlValue: whatsappWebhookUrl == null
+          ? null
+          : _optionalUrlValue(whatsappWebhookUrl),
+      otpWebhookUrlValue:
+          otpWebhookUrl == null ? null : _optionalUrlValue(otpWebhookUrl),
+      otpUseWhatsappWebhookValue: _booleanValue(
+        _parseBool(otp['use_whatsapp_webhook'] ?? true),
+      ),
+      otpDeliveryChannelValue: _tokenValue(deliveryChannel),
+      otpTtlMinutesValue: _positiveIntValue(
+        _parseInt(otp['ttl_minutes']) ??
+            TenantAdminOutboundIntegrationsSettings.defaultOtpTtlMinutes,
+      ),
+      otpResendCooldownSecondsValue: _positiveIntValue(
+        _parseInt(otp['resend_cooldown_seconds']) ??
+            TenantAdminOutboundIntegrationsSettings
+                .defaultOtpResendCooldownSeconds,
+      ),
+      otpMaxAttemptsValue: _positiveIntValue(
+        _parseInt(otp['max_attempts']) ??
+            TenantAdminOutboundIntegrationsSettings.defaultOtpMaxAttempts,
+      ),
+    );
+  }
+
   TenantAdminTelemetryIntegration _mapTelemetry(Map<String, dynamic> map) {
     final type = map['type']?.toString().trim() ?? '';
     final trackAll = _parseBool(map['track_all']);
@@ -767,6 +846,14 @@ class TenantAdminSettingsResponseDecoder {
           .toList(growable: false);
     }
     return const <String>[];
+  }
+
+  bool _isValidOutboundOtpDeliveryChannel(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized ==
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp ||
+        normalized ==
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelSms;
   }
 
   TenantAdminResendEmailRecipients _resendEmailRecipients(

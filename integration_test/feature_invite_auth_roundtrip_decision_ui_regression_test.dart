@@ -6,6 +6,8 @@ import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
+import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -54,7 +56,7 @@ void main() {
   });
 
   testWidgets(
-      'invite auth round-trip keeps explicit decision UI and never auto-accepts',
+      'anonymous invite preview keeps explicit decision UI and authenticated continuation never auto-accepts',
       (tester) async {
     final repository = _RecordingInvitesRepository();
     final authRepository = _MutableAuthRepository(authorized: false);
@@ -88,20 +90,31 @@ void main() {
 
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+      if (controller.displayInvitesStreamValue.value.isNotEmpty) {
         break;
       }
     }
 
-    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
-    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
-    await tester.pump();
-
-    expect(
-      router.lastPushedPath,
-      '/auth/login?redirect=%2Finvite%3Fcode%3DSHARE-CODE-123',
-    );
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+    expect(controller.displayInvitesStreamValue.value, hasLength(1));
     expect(repository.materializedShareCodes, isEmpty);
+    expect(repository.previewedShareCodes, ['SHARE-CODE-123']);
+    controller.markImageLoaded(
+      controller.displayInvitesStreamValue.value.first.eventImageUrl,
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Recusar').evaluate().isNotEmpty &&
+          find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
+    expect(router.lastPushedPath, isNull);
     expect(router.replaceAllCalled, isFalse);
 
     authRepository.authorized = true;
@@ -223,7 +236,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts) async =>
+          InviteContacts contacts) async =>
       const [];
 
   @override
@@ -235,7 +248,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       buildInviteShareCodeResult(
         code: 'SHARE123',
         eventId: eventId.value,
-        occurrenceId: occurrenceId?.value,
+        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
       );
 
   @override
@@ -245,7 +258,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
           InvitesRepositoryContractPrimString eventSlug) async =>
       const [];
 }
@@ -312,8 +325,7 @@ class _MutableAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
@@ -358,7 +370,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedEventIdsStream =
+      confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
           defaultValue: const {});
 
@@ -370,17 +382,21 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
   Future<void> unconfirmEventAttendance(
-      UserEventsRepositoryContractPrimString eventId) async {}
+    UserEventsRepositoryContractPrimString eventId, {
+    required UserEventsRepositoryContractPrimString occurrenceId,
+  }) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedOccurrenceIds() async {}
 
   @override
-  UserEventsRepositoryContractPrimBool isEventConfirmed(
+  UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
           UserEventsRepositoryContractPrimString eventId) =>
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
@@ -428,7 +444,11 @@ RouteData _buildRouteData(
   required Map<String, dynamic> queryParams,
 }) {
   final match = RouteMatch(
-    config: AutoRoute(page: InviteFlowRoute.page, path: '/invite'),
+    config: AutoRoute(
+      page: InviteEntryRoute.page,
+      path: '/invite',
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteEntry),
+    ),
     segments: const ['invite'],
     stringMatch: '/invite',
     key: const ValueKey('invite'),

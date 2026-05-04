@@ -1,10 +1,12 @@
 export 'deferred_link_capture_code_value.dart';
 export 'deferred_link_failure_reason_value.dart';
 export 'deferred_link_store_channel_value.dart';
+export 'deferred_link_target_path_value.dart';
 
 import 'deferred_link_capture_code_value.dart';
 import 'deferred_link_failure_reason_value.dart';
 import 'deferred_link_store_channel_value.dart';
+import 'deferred_link_target_path_value.dart';
 
 DeferredLinkCaptureCodeValue deferredLinkCode(
   Object? raw, {
@@ -45,6 +47,21 @@ DeferredLinkFailureReasonValue deferredLinkFailureReason(
     return raw;
   }
   return DeferredLinkFailureReasonValue.fromRaw(
+    raw,
+    defaultValue: defaultValue,
+    isRequired: isRequired,
+  );
+}
+
+DeferredLinkTargetPathValue deferredLinkTargetPath(
+  Object? raw, {
+  String defaultValue = '',
+  bool isRequired = false,
+}) {
+  if (raw is DeferredLinkTargetPathValue) {
+    return raw;
+  }
+  return DeferredLinkTargetPathValue.fromRaw(
     raw,
     defaultValue: defaultValue,
     isRequired: isRequired,

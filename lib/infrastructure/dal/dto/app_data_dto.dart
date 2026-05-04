@@ -1,4 +1,5 @@
 import 'package:belluga_now/application/functions/to_hex.dart';
+import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/firebase_settings.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/domain/app_data/value_object/app_data_href_value.dar
 import 'package:belluga_now/domain/app_data/value_object/app_data_map_filter_catalog_keys_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_port_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_required_text_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_publication_store_url_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/push_enabled_value.dart';
@@ -40,6 +42,7 @@ import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/theme_data_settings/color_scheme_data.dart';
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart';
 import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/color_required_value.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -272,6 +275,10 @@ class AppDataDTO {
       ),
       firebaseSettings: _buildFirebaseSettings(firebase),
       pushSettings: _buildPushSettings(push),
+      phoneOtpSmsFallbackEnabledValue: _buildBooleanValue(
+        _resolvePhoneOtpSmsFallbackEnabled(settings),
+      ),
+      publicationSettings: _resolvePublicationSettings(settings),
       tenantDefaultOrigin: tenantDefaultOrigin,
       mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
       mapRadiusDefaultMetersValue: _buildDistanceValue(
@@ -792,6 +799,104 @@ class AppDataDTO {
     return List<String>.unmodifiable(ordered);
   }
 
+  static bool _resolvePhoneOtpSmsFallbackEnabled(
+    Map<String, dynamic>? rawSettings,
+  ) {
+    final settings = rawSettings ?? const <String, dynamic>{};
+    final tenantPublicAuth = settings['tenant_public_auth'] is Map
+        ? Map<String, dynamic>.from(settings['tenant_public_auth'] as Map)
+        : const <String, dynamic>{};
+    final phoneOtp = tenantPublicAuth['phone_otp'] is Map
+        ? Map<String, dynamic>.from(tenantPublicAuth['phone_otp'] as Map)
+        : const <String, dynamic>{};
+
+    if (_resolveLooseBoolean(phoneOtp['sms_fallback_enabled'])) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static AppPublicationSettings _resolvePublicationSettings(
+    Map<String, dynamic>? rawSettings,
+  ) {
+    final settings = rawSettings ?? const <String, dynamic>{};
+    final hasExplicitConfig = settings.containsKey('app_links');
+    final appLinks = settings['app_links'] is Map
+        ? Map<String, dynamic>.from(settings['app_links'] as Map)
+        : const <String, dynamic>{};
+
+    return AppPublicationSettings(
+      hasExplicitConfigValue: _publicationBooleanValue(hasExplicitConfig),
+      android: _resolvePublicationPlatform(appLinks['android']),
+      ios: _resolvePublicationPlatform(appLinks['ios']),
+    );
+  }
+
+  static AppPublicationPlatformSettings _resolvePublicationPlatform(
+    Object? rawPlatform,
+  ) {
+    if (rawPlatform is! Map) {
+      return AppPublicationPlatformSettings(
+        enabledValue: _publicationBooleanValue(false),
+        storeUrlValue: _publicationStoreUrlValue(null),
+      );
+    }
+    final platform = Map<String, dynamic>.from(rawPlatform);
+    return AppPublicationPlatformSettings(
+      enabledValue: _publicationBooleanValue(
+        _resolveLooseBoolean(platform['enabled']),
+      ),
+      storeUrlValue: _publicationStoreUrlValue(
+        _normalizeOptionalUrl(platform['store_url']),
+      ),
+    );
+  }
+
+  static DomainBooleanValue _publicationBooleanValue(bool raw) {
+    final value = DomainBooleanValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  static AppPublicationStoreUrlValue _publicationStoreUrlValue(String? raw) {
+    final value = AppPublicationStoreUrlValue();
+    value.parse(raw);
+    return value;
+  }
+
+  static bool _resolveLooseBoolean(Object? raw) {
+    if (raw is bool) {
+      return raw;
+    }
+    if (raw is num) {
+      return raw != 0;
+    }
+    if (raw is String) {
+      final normalized = raw.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  static String? _normalizeOptionalUrl(Object? raw) {
+    if (raw is! String) {
+      return null;
+    }
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(normalized);
+    if (uri == null || !uri.hasScheme || uri.host.trim().isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
   static T _parseRequired<T extends ValueObject<dynamic>>(
     String? rawValue,
     T Function() builder,
@@ -835,6 +940,11 @@ class AppDataDTO {
 
   static PushEnabledValue _buildEnabledValue(bool rawValue) {
     final value = PushEnabledValue()..parse(rawValue.toString());
+    return value;
+  }
+
+  static DomainBooleanValue _buildBooleanValue(bool rawValue) {
+    final value = DomainBooleanValue()..parse(rawValue.toString());
     return value;
   }
 

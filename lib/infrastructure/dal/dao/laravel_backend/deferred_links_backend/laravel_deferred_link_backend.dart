@@ -62,6 +62,7 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
     return DeferredLinkResolutionDto(
       status: data['status']?.toString().trim() ?? 'not_captured',
       code: data['code']?.toString().trim(),
+      targetPath: data['target_path']?.toString().trim(),
       storeChannel: data['store_channel']?.toString().trim(),
       failureReason: data['failure_reason']?.toString().trim(),
     );

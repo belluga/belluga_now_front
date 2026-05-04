@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -10,9 +12,31 @@ class InvitesBannerBuilderController {
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 
   final InvitesRepositoryContract _invitesRepository;
+  final isPendingInvitesDisplayReadyStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  void init() {
+    isPendingInvitesDisplayReadyStreamValue.addValue(false);
+    unawaited(_revalidatePendingInvitesForDisplay());
+  }
 
   StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
       _invitesRepository.pendingInvitesStreamValue;
 
-  bool get hasPendingInvites => _invitesRepository.hasPendingInvites.value;
+  bool get hasPendingInvites =>
+      isPendingInvitesDisplayReadyStreamValue.value &&
+      pendingInvitesStreamValue.value.isNotEmpty;
+
+  Future<void> _revalidatePendingInvitesForDisplay() async {
+    try {
+      await _invitesRepository.refreshPendingInvites();
+      isPendingInvitesDisplayReadyStreamValue.addValue(true);
+    } catch (_) {
+      isPendingInvitesDisplayReadyStreamValue.addValue(false);
+    }
+  }
+
+  void onDispose() {
+    isPendingInvitesDisplayReadyStreamValue.dispose();
+  }
 }
