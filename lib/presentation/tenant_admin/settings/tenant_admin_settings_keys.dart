@@ -32,6 +32,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_integration_resend');
   static const hubIntegrationOutbound =
       ValueKey('tenant_admin_settings_hub_integration_outbound');
+  static const hubIntegrationPhoneOtpReviewAccess =
+      ValueKey('tenant_admin_settings_hub_integration_phone_otp_review_access');
   static const hubIntegrationAppLinks =
       ValueKey('tenant_admin_settings_hub_integration_app_links');
   static const hubIntegrationPush =
@@ -100,6 +102,9 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_technical_integrations_back_button');
   static const technicalIntegrationsAppLinksSection = ValueKey(
       'tenant_admin_settings_technical_integrations_app_links_section');
+  static const technicalIntegrationsPhoneOtpReviewAccessSection = ValueKey(
+    'tenant_admin_settings_technical_integrations_phone_otp_review_access_section',
+  );
   static const technicalIntegrationsResendSection =
       ValueKey('tenant_admin_settings_technical_integrations_resend_section');
   static const technicalIntegrationsOutboundSection = ValueKey(
@@ -155,6 +160,21 @@ class TenantAdminSettingsKeys {
   );
   static const technicalIntegrationsSaveOutbound = ValueKey(
     'tenant_admin_settings_technical_integrations_save_outbound',
+  );
+  static const technicalIntegrationsPhoneOtpReviewPhoneEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_phone_otp_review_phone_edit',
+  );
+  static const technicalIntegrationsPhoneOtpReviewCodeEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_phone_otp_review_code_edit',
+  );
+  static const technicalIntegrationsPhoneOtpReviewCodeHash = ValueKey(
+    'tenant_admin_settings_technical_integrations_phone_otp_review_code_hash',
+  );
+  static const technicalIntegrationsPhoneOtpReviewGenerateHash = ValueKey(
+    'tenant_admin_settings_technical_integrations_phone_otp_review_generate_hash',
+  );
+  static const technicalIntegrationsSavePhoneOtpReviewAccess = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_phone_otp_review_access',
   );
   static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_android_package_edit',

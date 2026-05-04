@@ -124,6 +124,18 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminOutboundIntegrationsSettings settings,
   });
 
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      fetchPhoneOtpReviewAccessSettings();
+
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      updatePhoneOtpReviewAccessSettings({
+    required TenantAdminPhoneOtpReviewAccessSettings settings,
+  });
+
+  Future<String> generatePhoneOtpReviewAccessCodeHash({
+    required TenantAdminRequiredTextValue code,
+  });
+
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   });

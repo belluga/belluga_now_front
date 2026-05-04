@@ -53,6 +53,22 @@ class TenantAdminSettingsRequestEncoder {
     });
   }
 
+  Map<String, dynamic> encodePhoneOtpReviewAccessSettingsPatch(
+    TenantAdminPhoneOtpReviewAccessSettings settings,
+  ) {
+    return encodeSettingsPatchPayload(
+      settings.rawPhoneOtpReviewAccess.value,
+    );
+  }
+
+  Map<String, dynamic> encodePhoneOtpReviewAccessCodeHashRequest({
+    required TenantAdminRequiredTextValue code,
+  }) {
+    return <String, dynamic>{
+      'code': code.value,
+    };
+  }
+
   Map<String, dynamic> encodeSettingsPatchPayload(
     Map<String, dynamic> source,
   ) {
