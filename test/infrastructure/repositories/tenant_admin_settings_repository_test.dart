@@ -209,6 +209,24 @@ void main() {
   });
 
   test(
+      'fetchPhoneOtpReviewAccessSettings parses phone_otp_review_access namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchPhoneOtpReviewAccessSettings();
+
+    expect(settings.phoneE164, '+15551234567');
+    expect(settings.codeHash, r'$2y$12$fixture-review-code-hash');
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
+  test(
       'updateOutboundIntegrationsSettings patches outbound_integrations compatibility payload',
       () async {
     final adapter = _RoutingAdapter();
@@ -251,6 +269,71 @@ void main() {
     expect(payload['otp.max_attempts'], 4);
     expect(updated.otpDeliveryChannel, 'whatsapp');
     expect(updated.otpUseWhatsappWebhook, isTrue);
+  });
+
+  test(
+      'updatePhoneOtpReviewAccessSettings patches phone_otp_review_access namespace payload',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updatePhoneOtpReviewAccessSettings(
+      settings: TenantAdminPhoneOtpReviewAccessSettings(
+        rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
+          'phone_e164': '+15559876543',
+          'code_hash': r'$2y$12$updated-review-code-hash',
+        }),
+        phoneE164Value: _optionalTextValue('+15559876543'),
+        codeHashValue: _optionalTextValue(r'$2y$12$updated-review-code-hash'),
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(
+      request.uri.path,
+      '/admin/api/v1/settings/values/phone_otp_review_access',
+    );
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['phone_e164'], '+15559876543');
+    expect(payload['code_hash'], r'$2y$12$updated-review-code-hash');
+    expect(payload.containsKey('code'), isFalse);
+    expect(updated.phoneE164, '+15559876543');
+    expect(updated.codeHash, r'$2y$12$updated-review-code-hash');
+  });
+
+  test(
+      'generatePhoneOtpReviewAccessCodeHash posts helper code and decodes hash',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final generatedHash = await repository.generatePhoneOtpReviewAccessCodeHash(
+      code: _requiredTextValue('654321'),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.method, 'POST');
+    expect(
+      request.uri.path,
+      '/admin/api/v1/settings/values/phone_otp_review_access/hash',
+    );
+    expect(
+      request.data,
+      equals(<String, dynamic>{
+        'code': '654321',
+      }),
+    );
+    expect(generatedHash, r'$2y$12$generated-review-code-hash');
   });
 
   test('updateDiscoveryFiltersSettings preserves dotted surface keys',
@@ -1818,6 +1901,10 @@ class _RoutingAdapter implements HttpClientAdapter {
                     'max_attempts': 5,
                   },
                 },
+                'phone_otp_review_access': {
+                  'phone_e164': '+15551234567',
+                  'code_hash': r'$2y$12$fixture-review-code-hash',
+                },
                 'map_ui': {
                   'radius': {
                     'min_km': 1,
@@ -2007,6 +2094,25 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'outbound_integrations': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/phone_otp_review_access') &&
+        method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'phone_otp_review_access': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/phone_otp_review_access/hash') &&
+        method == 'POST') {
+      return _jsonResponse({
+        'data': {
+          'code_hash': r'$2y$12$generated-review-code-hash',
         },
       });
     }
