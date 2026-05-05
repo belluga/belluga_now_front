@@ -1701,18 +1701,33 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
 
+    final helperCode =
+        _normalizeOptionalText(phoneOtpReviewAccessHelperCodeController.text);
     final codeHash =
         _normalizeOptionalText(phoneOtpReviewAccessCodeHashController.text);
-    if (phoneE164 != null && codeHash == null) {
-      remoteErrorStreamValue.addValue(
-        'Gere o hash do código de revisão antes de salvar.',
+    if (phoneE164 == null) {
+      if (helperCode != null) {
+        remoteErrorStreamValue.addValue(
+          'Informe o telefone E.164 antes de salvar o código de revisão.',
+        );
+        return null;
+      }
+
+      return TenantAdminPhoneOtpReviewAccessSettings(
+        rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue(
+          const <String, dynamic>{
+            'phone_e164': null,
+            'code_hash': null,
+          },
+        ),
+        phoneE164Value: null,
+        codeHashValue: null,
       );
-      return null;
     }
 
-    if (phoneE164 == null && codeHash != null) {
+    if (codeHash == null) {
       remoteErrorStreamValue.addValue(
-        'Informe o telefone E.164 antes de salvar o hash de revisão.',
+        'Gere o hash do código de revisão antes de salvar.',
       );
       return null;
     }
@@ -1726,8 +1741,8 @@ class TenantAdminSettingsController implements Disposable {
       rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue(
         Map<String, dynamic>.unmodifiable(rawPhoneOtpReviewAccess),
       ),
-      phoneE164Value: phoneE164 == null ? null : _optionalTextValue(phoneE164),
-      codeHashValue: codeHash == null ? null : _optionalTextValue(codeHash),
+      phoneE164Value: _optionalTextValue(phoneE164),
+      codeHashValue: _optionalTextValue(codeHash),
     );
   }
 

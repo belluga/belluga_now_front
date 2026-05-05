@@ -558,6 +558,93 @@ void main() {
     expect(controller.phoneOtpReviewAccessHelperCodeController.text, isEmpty);
   });
 
+  testWidgets(
+      'clearing the review phone disables phone OTP review access and clears the stored hash',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection:
+              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+        ),
+      ),
+    );
+
+    final phoneRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      phoneRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: phoneRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Telefone E.164'),
+      '',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
+      isNull,
+    );
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
+      isNull,
+    );
+    expect(
+      settingsRepository
+          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
+      containsPair('phone_e164', null),
+    );
+    expect(
+      settingsRepository
+          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
+      containsPair('code_hash', null),
+    );
+  });
+
   testWidgets('renders domains screen with active-domain actions',
       (tester) async {
     final repository = _FakeAppDataRepository(
