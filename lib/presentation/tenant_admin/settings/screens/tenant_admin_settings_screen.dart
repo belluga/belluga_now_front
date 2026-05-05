@@ -308,6 +308,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                     .withValues(alpha: 0.6),
               ),
               KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationPhoneOtpReviewAccess,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.lock_open_outlined,
+                  title: 'Acesso OTP review',
+                  subtitle: 'Telefone dedicado + hash do código de revisão',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
                 key: TenantAdminSettingsKeys.hubIntegrationAppLinks,
                 child: TenantAdminHubIntegrationRow(
                   icon: Icons.link_outlined,

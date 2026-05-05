@@ -167,6 +167,43 @@ class TenantAdminSettingsResponseDecoder {
     return _mapOutboundIntegrationsSettings(outboundIntegrations);
   }
 
+  TenantAdminPhoneOtpReviewAccessSettings decodePhoneOtpReviewAccessSettings(
+    Object? rawResponse,
+  ) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'phone_otp_review_access settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('phone_e164') || payload.containsKey('code_hash')) {
+      return _mapPhoneOtpReviewAccessSettings(payload);
+    }
+
+    return _mapPhoneOtpReviewAccessSettings(
+      _extractNamedMap(
+        payload,
+        namespace: 'phone_otp_review_access',
+      ),
+    );
+  }
+
+  String decodePhoneOtpReviewAccessCodeHash(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'phone_otp_review_access code hash',
+      emptyWhenDataIsNotMap: true,
+    );
+    final nestedPayload = payload['phone_otp_review_access'];
+    final source = nestedPayload is Map
+        ? Map<String, dynamic>.from(nestedPayload)
+        : payload;
+    final codeHash = _normalizeOptionalText(source['code_hash']);
+    if (codeHash == null || codeHash.isEmpty) {
+      throw Exception('phone_otp_review_access code_hash response is empty.');
+    }
+    return codeHash;
+  }
+
   TenantAdminPushSettings decodePushSettings(Object? rawResponse) {
     final payload = _envelopeDecoder.decodeDataMap(
       rawResponse,
@@ -740,6 +777,21 @@ class TenantAdminSettingsResponseDecoder {
         _parseInt(otp['max_attempts']) ??
             TenantAdminOutboundIntegrationsSettings.defaultOtpMaxAttempts,
       ),
+    );
+  }
+
+  TenantAdminPhoneOtpReviewAccessSettings _mapPhoneOtpReviewAccessSettings(
+    Map<String, dynamic> map,
+  ) {
+    final phoneE164 = _normalizeOptionalText(map['phone_e164']);
+    final codeHash = _normalizeOptionalText(map['code_hash']);
+
+    return TenantAdminPhoneOtpReviewAccessSettings(
+      rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue(
+        Map<String, dynamic>.unmodifiable(map),
+      ),
+      phoneE164Value: phoneE164 == null ? null : _optionalTextValue(phoneE164),
+      codeHashValue: codeHash == null ? null : _optionalTextValue(codeHash),
     );
   }
 

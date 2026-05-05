@@ -774,6 +774,45 @@ void main() {
     );
   });
 
+  testWidgets(
+      'agenda keeps a future occurrence visible when the backend readback repeats event_id with a different occurrence_id',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistRecurringOccurrenceProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Acontecendo Agora'), findsOneWidget);
+    expect(find.text('Próximos Eventos'), findsOneWidget);
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaLiveCard_507f1f77bcf86cd799439221',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439222',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('renders account profile tabs in fixed MVP order',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1549,6 +1588,50 @@ AccountProfileModel _buildArtistLiveOnlyProfile() {
     type: 'artist',
     tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
     agendaEvents: [_buildArtistAgendaEvents().first],
+    isVerified: true,
+    acceptedInvites: 87,
+  );
+}
+
+AccountProfileModel _buildArtistRecurringOccurrenceProfile() {
+  final now = DateTime.now().toUtc();
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439221',
+        slug: 'jazz-na-orla',
+        title: 'Jazz na Orla',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.subtract(const Duration(minutes: 45)),
+        endDateTime: now.add(const Duration(hours: 1)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/jazz-na-orla.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439222',
+        slug: 'jazz-na-orla',
+        title: 'Jazz na Orla',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.add(const Duration(days: 1)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/jazz-na-orla.jpg'),
+      ),
+    ],
     isVerified: true,
     acceptedInvites: 87,
   );

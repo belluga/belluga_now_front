@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
 class TenantAdminSettingsRequestEncoder {
   const TenantAdminSettingsRequestEncoder();
@@ -51,6 +52,22 @@ class TenantAdminSettingsRequestEncoder {
         'max_attempts': settings.otpMaxAttempts,
       },
     });
+  }
+
+  Map<String, dynamic> encodePhoneOtpReviewAccessSettingsPatch(
+    TenantAdminPhoneOtpReviewAccessSettings settings,
+  ) {
+    return encodeSettingsPatchPayload(
+      settings.rawPhoneOtpReviewAccess.value,
+    );
+  }
+
+  Map<String, dynamic> encodePhoneOtpReviewAccessCodeHashRequest({
+    required TenantAdminRequiredTextValue code,
+  }) {
+    return <String, dynamic>{
+      'code': code.value,
+    };
   }
 
   Map<String, dynamic> encodeSettingsPatchPayload(

@@ -295,6 +295,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationPhoneOtpReviewAccess),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(TenantAdminSettingsKeys.hubIntegrationAppLinks),
       findsOneWidget,
     );
@@ -360,6 +364,285 @@ void main() {
     expect(find.text('Tenant Test'), findsOneWidget);
     expect(find.text('guarappari.test'), findsWidgets);
     expect(find.text('project-test'), findsOneWidget);
+  });
+
+  testWidgets(
+      'loads phone OTP review access readback without restoring cleartext helper input',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection:
+              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+        ),
+      ),
+    );
+
+    final phoneRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+      skipOffstage: false,
+    );
+    final helperRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
+      skipOffstage: false,
+    );
+    final hashRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      phoneRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: phoneRow, matching: find.text('+15551234567')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: helperRow, matching: find.text('-')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: hashRow,
+        matching: find.text(r'$2y$12$fixture-review-code-hash'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'generates and saves phone OTP review access settings without persisting cleartext helper input',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection:
+              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+        ),
+      ),
+    );
+
+    final phoneRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+      skipOffstage: false,
+    );
+    final helperRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
+      skipOffstage: false,
+    );
+    final hashRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
+      skipOffstage: false,
+    );
+    final generateButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewGenerateHash,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      phoneRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: phoneRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Telefone E.164'),
+      '+15559876543',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: helperRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Código de revisão'),
+      '654321',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      generateButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(generateButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.generatedPhoneOtpReviewAccessCode, '654321');
+    expect(
+      find.descendant(
+        of: hashRow,
+        matching: find.text(r'$2y$12$generated-review-code-hash'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
+      '+15559876543',
+    );
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
+      r'$2y$12$generated-review-code-hash',
+    );
+    expect(
+      settingsRepository
+          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value
+          .containsKey('code'),
+      isFalse,
+    );
+    expect(controller.phoneOtpReviewAccessHelperCodeController.text, isEmpty);
+  });
+
+  testWidgets(
+      'clearing the review phone disables phone OTP review access and clears the stored hash',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection:
+              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+        ),
+      ),
+    );
+
+    final phoneRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      phoneRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: phoneRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Telefone E.164'),
+      '',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
+      isNull,
+    );
+    expect(
+      settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
+      isNull,
+    );
+    expect(
+      settingsRepository
+          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
+      containsPair('phone_e164', null),
+    );
+    expect(
+      settingsRepository
+          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
+      containsPair('code_hash', null),
+    );
   });
 
   testWidgets('renders domains screen with active-domain actions',
@@ -3031,6 +3314,8 @@ class _FakeTenantAdminSettingsRepository
   String? updatedFirebaseProjectId;
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminOutboundIntegrationsSettings? updatedOutboundIntegrationsSettings;
+  TenantAdminPhoneOtpReviewAccessSettings? updatedPhoneOtpReviewAccessSettings;
+  String? generatedPhoneOtpReviewAccessCode;
   TenantAdminTelemetryIntegration? lastTelemetryIntegration;
   final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
@@ -3089,6 +3374,15 @@ class _FakeTenantAdminSettingsRepository
     ccRecipients: _resendRecipients(['ops@belluga.space']),
     bccRecipients: TenantAdminResendEmailRecipients(),
     replyToRecipients: _resendRecipients(['reply@belluga.space']),
+  );
+  TenantAdminPhoneOtpReviewAccessSettings _phoneOtpReviewAccessSettings =
+      TenantAdminPhoneOtpReviewAccessSettings(
+    rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
+      'phone_e164': '+15551234567',
+      'code_hash': r'$2y$12$fixture-review-code-hash',
+    }),
+    phoneE164Value: _optionalText('+15551234567'),
+    codeHashValue: _optionalText(r'$2y$12$fixture-review-code-hash'),
   );
   TenantAdminOutboundIntegrationsSettings _outboundIntegrationsSettings =
       TenantAdminOutboundIntegrationsSettings(
@@ -3221,6 +3515,12 @@ class _FakeTenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      fetchPhoneOtpReviewAccessSettings() async {
+    return _phoneOtpReviewAccessSettings;
+  }
+
+  @override
   Future<TenantAdminOutboundIntegrationsSettings>
       fetchOutboundIntegrationsSettings() async {
     return _outboundIntegrationsSettings;
@@ -3296,6 +3596,24 @@ class _FakeTenantAdminSettingsRepository
     updatedResendEmailSettings = settings;
     _resendEmailSettings = settings;
     return settings;
+  }
+
+  @override
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      updatePhoneOtpReviewAccessSettings({
+    required TenantAdminPhoneOtpReviewAccessSettings settings,
+  }) async {
+    updatedPhoneOtpReviewAccessSettings = settings;
+    _phoneOtpReviewAccessSettings = settings;
+    return settings;
+  }
+
+  @override
+  Future<String> generatePhoneOtpReviewAccessCodeHash({
+    required TenantAdminRequiredTextValue code,
+  }) async {
+    generatedPhoneOtpReviewAccessCode = code.value;
+    return r'$2y$12$generated-review-code-hash';
   }
 
   @override
