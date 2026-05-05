@@ -8,6 +8,7 @@ import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_sett
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_app_links_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_firebase_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_outbound_integrations_section.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_phone_otp_review_access_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_push_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_resend_email_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
@@ -37,6 +38,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
   final GlobalKey _firebaseSectionKey = GlobalKey();
   final GlobalKey _resendSectionKey = GlobalKey();
   final GlobalKey _outboundSectionKey = GlobalKey();
+  final GlobalKey _phoneOtpReviewAccessSectionKey = GlobalKey();
   final GlobalKey _appLinksSectionKey = GlobalKey();
   final GlobalKey _pushSectionKey = GlobalKey();
   final GlobalKey _telemetrySectionKey = GlobalKey();
@@ -58,6 +60,8 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
     final targetKey = switch (widget.initialSection) {
       TenantAdminSettingsIntegrationSection.appLinks => _appLinksSectionKey,
       TenantAdminSettingsIntegrationSection.firebase => _firebaseSectionKey,
+      TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess =>
+        _phoneOtpReviewAccessSectionKey,
       TenantAdminSettingsIntegrationSection.resend => _resendSectionKey,
       TenantAdminSettingsIntegrationSection.outbound => _outboundSectionKey,
       TenantAdminSettingsIntegrationSection.push => _pushSectionKey,
@@ -117,6 +121,20 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
             description: 'URLs de envio por fila para WhatsApp e OTP.',
             icon: Icons.webhook_outlined,
             child: TenantAdminSettingsOutboundIntegrationsSection(
+              controller: _controller,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        KeyedSubtree(
+          key: _phoneOtpReviewAccessSectionKey,
+          child: TenantAdminSettingsSection(
+            key: TenantAdminSettingsKeys
+                .technicalIntegrationsPhoneOtpReviewAccessSection,
+            title: 'Acesso de revisão OTP',
+            description: 'Telefone dedicado e hash do código de revisão.',
+            icon: Icons.lock_open_outlined,
+            child: TenantAdminSettingsPhoneOtpReviewAccessSection(
               controller: _controller,
             ),
           ),

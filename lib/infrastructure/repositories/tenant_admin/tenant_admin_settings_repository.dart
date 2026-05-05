@@ -388,6 +388,66 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      fetchPhoneOtpReviewAccessSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePhoneOtpReviewAccessSettings(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load phone_otp_review_access settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminPhoneOtpReviewAccessSettings>
+      updatePhoneOtpReviewAccessSettings({
+    required TenantAdminPhoneOtpReviewAccessSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'phone_otp_review_access'),
+        data: _requestEncoder.encodePhoneOtpReviewAccessSettingsPatch(
+          settings,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePhoneOtpReviewAccessSettings(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update phone_otp_review_access settings');
+    }
+  }
+
+  @override
+  Future<String> generatePhoneOtpReviewAccessCodeHash({
+    required TenantAdminRequiredTextValue code,
+  }) async {
+    try {
+      final response = await _dio.postUri(
+        _buildTenantSettingsValuesNamespaceActionUri(
+          namespace: 'phone_otp_review_access',
+          action: 'hash',
+        ),
+        data: _requestEncoder.encodePhoneOtpReviewAccessCodeHashRequest(
+          code: code,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePhoneOtpReviewAccessCodeHash(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'generate phone_otp_review_access code hash');
+    }
+  }
+
+  @override
   Future<TenantAdminPushSettings> updatePushSettings({
     required TenantAdminPushSettings settings,
   }) async {
@@ -589,6 +649,19 @@ class TenantAdminSettingsRepository
         ? '/admin/api/v1/settings/values'
         : '/admin/api/v1/settings/values/$encodedNamespace';
     return origin.replace(path: path);
+  }
+
+  Uri _buildTenantSettingsValuesNamespaceActionUri({
+    required String namespace,
+    required String action,
+  }) {
+    final origin = _resolveTenantOriginUri();
+    final encodedNamespace = Uri.encodeComponent(namespace.trim());
+    final encodedAction = Uri.encodeComponent(action.trim());
+    return origin.replace(
+      path:
+          '/admin/api/v1/settings/values/$encodedNamespace/$encodedAction',
+    );
   }
 
   Uri _buildTenantAppDomainsUri() {

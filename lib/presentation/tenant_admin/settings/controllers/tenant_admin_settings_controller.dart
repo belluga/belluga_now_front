@@ -27,6 +27,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_app_link_path_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boolean_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
@@ -159,6 +160,10 @@ class TenantAdminSettingsController implements Disposable {
     defaultValue:
         TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
   );
+  final StreamValue<bool> phoneOtpReviewAccessSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> phoneOtpReviewAccessHashGeneratingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> pushSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> telemetrySubmittingStreamValue =
@@ -238,6 +243,12 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController outboundOtpResendCooldownSecondsController =
       TextEditingController();
   final TextEditingController outboundOtpMaxAttemptsController =
+      TextEditingController();
+  final TextEditingController phoneOtpReviewAccessPhoneController =
+      TextEditingController();
+  final TextEditingController phoneOtpReviewAccessHelperCodeController =
+      TextEditingController();
+  final TextEditingController phoneOtpReviewAccessCodeHashController =
       TextEditingController();
 
   final TextEditingController pushMaxTtlDaysController =
@@ -469,6 +480,14 @@ class TenantAdminSettingsController implements Disposable {
         final outboundIntegrationsSettings =
             await _settingsRepository.fetchOutboundIntegrationsSettings();
         _applyOutboundIntegrationsSettings(outboundIntegrationsSettings);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final phoneOtpReviewAccessSettings =
+            await _settingsRepository.fetchPhoneOtpReviewAccessSettings();
+        _applyPhoneOtpReviewAccessSettings(phoneOtpReviewAccessSettings);
       } catch (error) {
         errors.add(error.toString());
       }
@@ -1071,6 +1090,52 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  Future<void> generatePhoneOtpReviewAccessCodeHash() async {
+    final code =
+        _normalizeOptionalText(phoneOtpReviewAccessHelperCodeController.text);
+    if (code == null) {
+      remoteErrorStreamValue.addValue(
+        'Informe o código de revisão antes de gerar o hash.',
+      );
+      return;
+    }
+
+    phoneOtpReviewAccessHashGeneratingStreamValue.addValue(true);
+    try {
+      final generatedHash =
+          await _settingsRepository.generatePhoneOtpReviewAccessCodeHash(
+        code: _requiredTextValue(code),
+      );
+      phoneOtpReviewAccessCodeHashController.text = generatedHash;
+      _reportSuccess('Hash do código de revisão gerado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      phoneOtpReviewAccessHashGeneratingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> savePhoneOtpReviewAccessSettings() async {
+    final parsed = _buildPhoneOtpReviewAccessSettings();
+    if (parsed == null) {
+      return;
+    }
+
+    phoneOtpReviewAccessSubmittingStreamValue.addValue(true);
+    try {
+      final updated =
+          await _settingsRepository.updatePhoneOtpReviewAccessSettings(
+        settings: parsed,
+      );
+      _applyPhoneOtpReviewAccessSettings(updated);
+      _reportSuccess('Acesso de revisão OTP atualizado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      phoneOtpReviewAccessSubmittingStreamValue.addValue(false);
+    }
+  }
+
   Future<void> savePushSettings() async {
     final parsed = _buildPushSettings();
     if (parsed == null) {
@@ -1372,6 +1437,7 @@ class TenantAdminSettingsController implements Disposable {
     clearTelemetryForm();
     _resetResendEmailDraft();
     _resetOutboundIntegrationsDraft();
+    _resetPhoneOtpReviewAccessDraft();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
@@ -1448,6 +1514,14 @@ class TenantAdminSettingsController implements Disposable {
         '${TenantAdminOutboundIntegrationsSettings.defaultOtpResendCooldownSeconds}';
     outboundOtpMaxAttemptsController.text =
         '${TenantAdminOutboundIntegrationsSettings.defaultOtpMaxAttempts}';
+  }
+
+  void _resetPhoneOtpReviewAccessDraft() {
+    phoneOtpReviewAccessSubmittingStreamValue.addValue(false);
+    phoneOtpReviewAccessHashGeneratingStreamValue.addValue(false);
+    phoneOtpReviewAccessPhoneController.clear();
+    phoneOtpReviewAccessHelperCodeController.clear();
+    phoneOtpReviewAccessCodeHashController.clear();
   }
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
@@ -1614,6 +1688,47 @@ class TenantAdminSettingsController implements Disposable {
       );
       return null;
     }
+  }
+
+  TenantAdminPhoneOtpReviewAccessSettings?
+      _buildPhoneOtpReviewAccessSettings() {
+    final phoneE164 =
+        _normalizeOptionalText(phoneOtpReviewAccessPhoneController.text);
+    if (phoneE164 != null && !_isValidE164Phone(phoneE164)) {
+      remoteErrorStreamValue.addValue(
+        'Telefone de revisão inválido. Use o formato E.164.',
+      );
+      return null;
+    }
+
+    final codeHash =
+        _normalizeOptionalText(phoneOtpReviewAccessCodeHashController.text);
+    if (phoneE164 != null && codeHash == null) {
+      remoteErrorStreamValue.addValue(
+        'Gere o hash do código de revisão antes de salvar.',
+      );
+      return null;
+    }
+
+    if (phoneE164 == null && codeHash != null) {
+      remoteErrorStreamValue.addValue(
+        'Informe o telefone E.164 antes de salvar o hash de revisão.',
+      );
+      return null;
+    }
+
+    final rawPhoneOtpReviewAccess = <String, dynamic>{
+      'phone_e164': phoneE164,
+      'code_hash': codeHash,
+    };
+
+    return TenantAdminPhoneOtpReviewAccessSettings(
+      rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue(
+        Map<String, dynamic>.unmodifiable(rawPhoneOtpReviewAccess),
+      ),
+      phoneE164Value: phoneE164 == null ? null : _optionalTextValue(phoneE164),
+      codeHashValue: codeHash == null ? null : _optionalTextValue(codeHash),
+    );
   }
 
   TenantAdminPushSettings? _buildPushSettings() {
@@ -1804,6 +1919,14 @@ class TenantAdminSettingsController implements Disposable {
     resendEmailCcController.text = _recipientText(settings.cc);
     resendEmailBccController.text = _recipientText(settings.bcc);
     resendEmailReplyToController.text = _recipientText(settings.replyTo);
+  }
+
+  void _applyPhoneOtpReviewAccessSettings(
+    TenantAdminPhoneOtpReviewAccessSettings settings,
+  ) {
+    phoneOtpReviewAccessPhoneController.text = settings.phoneE164 ?? '';
+    phoneOtpReviewAccessCodeHashController.text = settings.codeHash ?? '';
+    phoneOtpReviewAccessHelperCodeController.clear();
   }
 
   void _applyOutboundIntegrationsSettings(
@@ -2323,6 +2446,11 @@ class TenantAdminSettingsController implements Disposable {
     return address.isNotEmpty && _isValidEmailAddress(address);
   }
 
+  bool _isValidE164Phone(String raw) {
+    final pattern = RegExp(r'^\+[1-9]\d{7,14}$');
+    return pattern.hasMatch(raw);
+  }
+
   bool _isValidSha256Fingerprint(String raw) {
     final pattern = RegExp(r'^([A-F0-9]{2}:){31}[A-F0-9]{2}$');
     return pattern.hasMatch(raw);
@@ -2480,6 +2608,8 @@ class TenantAdminSettingsController implements Disposable {
     outboundOtpUseWhatsappWebhookStreamValue.dispose();
     outboundOtpSmsSecondaryEnabledStreamValue.dispose();
     outboundOtpDeliveryChannelStreamValue.dispose();
+    phoneOtpReviewAccessSubmittingStreamValue.dispose();
+    phoneOtpReviewAccessHashGeneratingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
     brandingSubmittingStreamValue.dispose();
@@ -2517,6 +2647,9 @@ class TenantAdminSettingsController implements Disposable {
     outboundOtpTtlMinutesController.dispose();
     outboundOtpResendCooldownSecondsController.dispose();
     outboundOtpMaxAttemptsController.dispose();
+    phoneOtpReviewAccessPhoneController.dispose();
+    phoneOtpReviewAccessHelperCodeController.dispose();
+    phoneOtpReviewAccessCodeHashController.dispose();
     pushMaxTtlDaysController.dispose();
     pushMaxPerMinuteController.dispose();
     pushMaxPerHourController.dispose();
