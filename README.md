@@ -213,6 +213,14 @@ Build local com lane derivada da branch atual:
 ./script/build_lane.sh appbundle --release --flavor <novo_tenant>
 ```
 
+Run local com helper Delphi (workspace com `delphi-ai` atualizado):
+
+```bash
+./script/run_lane.sh --flavor <novo_tenant>
+./script/run_lane.sh stage --debug --flavor <novo_tenant>
+./script/run_lane.sh main --release --flavor <novo_tenant> -d <device-id>
+```
+
 Regra do helper:
 - branch `main` -> `config/defines/main.json`
 - branch `stage` -> `config/defines/stage.json`
@@ -220,6 +228,7 @@ Regra do helper:
 - `config/defines/local.override.json` só é aplicado quando a lane resolvida é `dev`
 - o helper valida a origem efetiva (`BOOTSTRAP_BASE_URL` ou `LANDLORD_DOMAIN`) antes do build
 - o helper valida a existência do artifact gerado ao final do build (`apk`, `appbundle`, `web`)
+- `./script/run_lane.sh` usa o mesmo resolver de lane/defines e delega a seleção de device ao `flutter run`
 
 Execução de integração (WSL + device), com define tenant por padrão:
 
