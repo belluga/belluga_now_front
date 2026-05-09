@@ -166,6 +166,14 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> pushSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> pushCredentialsSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool?> pushEnabledStreamValue =
+      StreamValue<bool?>(defaultValue: null);
+  final StreamValue<TenantAdminPushStatus?> pushStatusStreamValue =
+      StreamValue<TenantAdminPushStatus?>(defaultValue: null);
+  final StreamValue<bool> pushCredentialsConfiguredStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> telemetrySubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> brandingSubmittingStreamValue =
@@ -256,6 +264,12 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController pushMaxPerMinuteController =
       TextEditingController();
   final TextEditingController pushMaxPerHourController =
+      TextEditingController();
+  final TextEditingController pushCredentialsProjectIdController =
+      TextEditingController();
+  final TextEditingController pushCredentialsClientEmailController =
+      TextEditingController();
+  final TextEditingController pushCredentialsPrivateKeyController =
       TextEditingController();
 
   final TextEditingController telemetryEventsController =
@@ -464,6 +478,28 @@ class TenantAdminSettingsController implements Disposable {
         if (firebaseSettings != null) {
           _applyFirebaseSettings(firebaseSettings);
         }
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final pushSettings = await _settingsRepository.fetchPushSettings();
+        _applyPushSettings(pushSettings);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final pushStatus = await _settingsRepository.fetchPushStatus();
+        pushStatusStreamValue.addValue(pushStatus);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final pushCredentials =
+            await _settingsRepository.fetchPushCredentials();
+        _applyPushCredentials(pushCredentials);
       } catch (error) {
         errors.add(error.toString());
       }
@@ -1041,6 +1077,7 @@ class TenantAdminSettingsController implements Disposable {
         settings: parsed,
       );
       _applyFirebaseSettings(updated);
+      await _reloadPushOperationalState();
       _reportSuccess('Firebase atualizado com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
@@ -1151,11 +1188,64 @@ class TenantAdminSettingsController implements Disposable {
         settings: parsed,
       );
       _applyPushSettings(updated);
+      await _reloadPushOperationalState();
       _reportSuccess('Push atualizado com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       pushSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> enablePush() async {
+    pushSubmittingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      final updated = await _settingsRepository.enablePush();
+      _applyPushSettings(updated);
+      await _reloadPushOperationalState();
+      _reportSuccess('Push habilitado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      pushSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> disablePush() async {
+    pushSubmittingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      final updated = await _settingsRepository.disablePush();
+      _applyPushSettings(updated);
+      await _reloadPushOperationalState();
+      _reportSuccess('Push desabilitado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      pushSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> savePushCredentials() async {
+    final parsed = _buildPushCredentials();
+    if (parsed == null) {
+      return;
+    }
+
+    pushCredentialsSubmittingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      final updated = await _settingsRepository.upsertPushCredentials(
+        credentials: parsed,
+      );
+      _applyPushCredentials(updated);
+      await _reloadPushOperationalState();
+      _reportSuccess('Credenciais de push atualizadas com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      pushCredentialsSubmittingStreamValue.addValue(false);
     }
   }
 
@@ -1427,6 +1517,7 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '30';
     pushMaxPerMinuteController.text = '$maxPerMinute';
     pushMaxPerHourController.text = '$maxPerHour';
+    pushEnabledStreamValue.addValue(push?.enabled);
   }
 
   void _resetTenantScopedForms() {
@@ -1438,6 +1529,7 @@ class TenantAdminSettingsController implements Disposable {
     _resetResendEmailDraft();
     _resetOutboundIntegrationsDraft();
     _resetPhoneOtpReviewAccessDraft();
+    _resetPushDraft();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
@@ -1487,6 +1579,16 @@ class TenantAdminSettingsController implements Disposable {
     appLinksIosBundleIdController.clear();
     appLinksAndroidStoreUrlController.clear();
     appLinksIosStoreUrlController.clear();
+  }
+
+  void _resetPushDraft() {
+    pushSubmittingStreamValue.addValue(false);
+    pushCredentialsSubmittingStreamValue.addValue(false);
+    pushStatusStreamValue.addValue(null);
+    pushCredentialsConfiguredStreamValue.addValue(false);
+    pushCredentialsProjectIdController.clear();
+    pushCredentialsClientEmailController.clear();
+    pushCredentialsPrivateKeyController.clear();
   }
 
   void _resetResendEmailDraft() {
@@ -1760,6 +1862,41 @@ class TenantAdminSettingsController implements Disposable {
     );
   }
 
+  TenantAdminPushCredentials? _buildPushCredentials() {
+    final projectId =
+        _normalizeOptionalText(pushCredentialsProjectIdController.text);
+    if (projectId == null) {
+      remoteErrorStreamValue.addValue(
+        'Informe o Project ID do Firebase antes de salvar as credenciais.',
+      );
+      return null;
+    }
+
+    final clientEmail =
+        _normalizeOptionalText(pushCredentialsClientEmailController.text);
+    if (clientEmail == null || !_isValidEmailAddress(clientEmail)) {
+      remoteErrorStreamValue.addValue(
+        'Informe um client_email valido para as credenciais de push.',
+      );
+      return null;
+    }
+
+    final privateKey =
+        _normalizeOptionalText(pushCredentialsPrivateKeyController.text);
+    if (privateKey == null) {
+      remoteErrorStreamValue.addValue(
+        'Informe a private_key antes de salvar as credenciais de push.',
+      );
+      return null;
+    }
+
+    return TenantAdminPushCredentials(
+      projectIdValue: _requiredTextValue(projectId),
+      clientEmailValue: _emailAddressValue(clientEmail),
+      privateKeyValue: _requiredTextValue(privateKey),
+    );
+  }
+
   TenantAdminAppLinksSettings? _buildAppLinksSettings() {
     final androidPackageName =
         _normalizeOptionalText(appLinksAndroidPackageNameController.text);
@@ -2013,6 +2150,21 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '${settings.maxTtlDays}';
     pushMaxPerMinuteController.text = '${settings.maxPerMinute}';
     pushMaxPerHourController.text = '${settings.maxPerHour}';
+    pushEnabledStreamValue.addValue(settings.enabled);
+  }
+
+  void _applyPushCredentials(TenantAdminPushCredentials? credentials) {
+    pushCredentialsConfiguredStreamValue.addValue(credentials != null);
+    pushCredentialsProjectIdController.text = credentials?.projectId ?? '';
+    pushCredentialsClientEmailController.text = credentials?.clientEmail ?? '';
+    pushCredentialsPrivateKeyController.clear();
+  }
+
+  Future<void> _reloadPushOperationalState() async {
+    final pushStatus = await _settingsRepository.fetchPushStatus();
+    pushStatusStreamValue.addValue(pushStatus);
+    final pushCredentials = await _settingsRepository.fetchPushCredentials();
+    _applyPushCredentials(pushCredentials);
   }
 
   void _applyAppLinksSettings(TenantAdminAppLinksSettings settings) {
@@ -2626,6 +2778,10 @@ class TenantAdminSettingsController implements Disposable {
     phoneOtpReviewAccessSubmittingStreamValue.dispose();
     phoneOtpReviewAccessHashGeneratingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
+    pushCredentialsSubmittingStreamValue.dispose();
+    pushEnabledStreamValue.dispose();
+    pushStatusStreamValue.dispose();
+    pushCredentialsConfiguredStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
     brandingSubmittingStreamValue.dispose();
     brandingBrightnessStreamValue.dispose();
@@ -2668,6 +2824,9 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.dispose();
     pushMaxPerMinuteController.dispose();
     pushMaxPerHourController.dispose();
+    pushCredentialsProjectIdController.dispose();
+    pushCredentialsClientEmailController.dispose();
+    pushCredentialsPrivateKeyController.dispose();
     telemetryEventsController.dispose();
     telemetryTokenController.dispose();
     telemetryUrlController.dispose();

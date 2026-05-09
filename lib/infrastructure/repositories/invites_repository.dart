@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
@@ -41,6 +42,7 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
@@ -57,19 +59,24 @@ class InvitesRepository extends InvitesRepositoryContract
   static const Duration _contactImportCacheTtl = Duration(hours: 12);
   static const String _tenantIdStorageKey = 'tenant_id';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const Duration _inviteRealtimeReconnectDelay = Duration(seconds: 3);
 
   InvitesRepository({
     InvitesBackendContract? backend,
     FriendsRepositoryContract? friendsRepository,
     InviteContactImportCacheContract? contactImportCache,
+    AuthRepositoryContract? authRepository,
     DateTime Function()? now,
+    Future<void> Function(Duration duration)? wait,
     Future<String?> Function()? currentUserIdProvider,
     Future<String?> Function()? tenantCacheScopeProvider,
     Future<String?> Function()? persistedTenantCacheScopeProvider,
     UserEventsRepositoryContract Function()? userEventsRepositoryResolver,
   })  : _backend = backend ?? LaravelInvitesBackend(),
         _contactImportCache = contactImportCache ?? InviteContactImportCache(),
+        _authRepository = authRepository,
         _now = now ?? DateTime.now,
+        _wait = wait ?? Future<void>.delayed,
         _currentUserIdProvider = currentUserIdProvider,
         _tenantCacheScopeProvider = tenantCacheScopeProvider,
         _persistedTenantCacheScopeProvider = persistedTenantCacheScopeProvider,
@@ -77,7 +84,9 @@ class InvitesRepository extends InvitesRepositoryContract
 
   final InvitesBackendContract _backend;
   final InviteContactImportCacheContract _contactImportCache;
+  AuthRepositoryContract? _authRepository;
   final DateTime Function() _now;
+  final Future<void> Function(Duration duration) _wait;
   final Future<String?> Function()? _currentUserIdProvider;
   final Future<String?> Function()? _tenantCacheScopeProvider;
   final Future<String?> Function()? _persistedTenantCacheScopeProvider;
@@ -85,6 +94,24 @@ class InvitesRepository extends InvitesRepositoryContract
   final InvitesResponseDecoder _responseDecoder =
       const InvitesResponseDecoder();
   UserEventsRepositoryContract? _userEventsRepository;
+  StreamSubscription<Object?>? _inviteRealtimeAuthSubscription;
+  StreamSubscription<InviteRealtimeDeltaDto>? _inviteRealtimeStreamSubscription;
+  Future<void>? _inviteRealtimeLoopFuture;
+  Future<void>? _inviteRealtimeRefreshFuture;
+  String? _inviteRealtimeLastEventId;
+  String? _inviteRealtimeBoundUserId;
+  int _inviteRealtimeGeneration = 0;
+
+  AuthRepositoryContract? get _resolvedAuthRepository {
+    if (_authRepository != null) {
+      return _authRepository;
+    }
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      return null;
+    }
+    _authRepository = GetIt.I.get<AuthRepositoryContract>();
+    return _authRepository;
+  }
 
   UserEventsRepositoryContract? get _resolvedUserEventsRepository {
     if (_userEventsRepository != null) {
@@ -100,6 +127,13 @@ class InvitesRepository extends InvitesRepositoryContract
     }
     _userEventsRepository = GetIt.I.get<UserEventsRepositoryContract>();
     return _userEventsRepository;
+  }
+
+  @override
+  Future<void> init() async {
+    await super.init();
+    _bindInviteRealtimeAuthLifecycle();
+    await _syncInviteRealtimeLifecycle();
   }
 
   @override
@@ -146,6 +180,171 @@ class InvitesRepository extends InvitesRepositoryContract
     }
 
     return invites;
+  }
+
+  void _bindInviteRealtimeAuthLifecycle() {
+    if (_inviteRealtimeAuthSubscription != null) {
+      return;
+    }
+    final authRepository = _resolvedAuthRepository;
+    if (authRepository == null) {
+      return;
+    }
+
+    _inviteRealtimeAuthSubscription =
+        authRepository.userStreamValue.stream.listen((_) {
+      unawaited(_syncInviteRealtimeLifecycle());
+    });
+  }
+
+  Future<void> _syncInviteRealtimeLifecycle() async {
+    final authRepository = _resolvedAuthRepository;
+    final isAuthorized = authRepository?.isAuthorized ?? false;
+    final nextUserId = isAuthorized ? await _currentUserId() : null;
+    final normalizedUserId = _normalizeNullable(nextUserId);
+
+    if (normalizedUserId == _inviteRealtimeBoundUserId &&
+        _inviteRealtimeLoopFuture != null) {
+      return;
+    }
+
+    _inviteRealtimeBoundUserId = normalizedUserId;
+    _inviteRealtimeLastEventId = null;
+    _inviteRealtimeGeneration += 1;
+    final generation = _inviteRealtimeGeneration;
+
+    await _inviteRealtimeStreamSubscription?.cancel();
+    _inviteRealtimeStreamSubscription = null;
+
+    if (normalizedUserId == null) {
+      _inviteRealtimeLoopFuture = null;
+      return;
+    }
+
+    final loopFuture = _runInviteRealtimeLoop(generation);
+    _inviteRealtimeLoopFuture = loopFuture;
+    await Future<void>.value();
+  }
+
+  Future<void> _runInviteRealtimeLoop(int generation) async {
+    while (generation == _inviteRealtimeGeneration &&
+        _inviteRealtimeBoundUserId != null) {
+      try {
+        final streamDone = Completer<void>();
+        final subscription = _backend.watchInvitesStream(
+          lastEventId: _inviteRealtimeLastEventId,
+        ).listen(
+          _applyInviteRealtimeDelta,
+          onError: (Object error, StackTrace stackTrace) {
+            if (!streamDone.isCompleted) {
+              streamDone.completeError(error, stackTrace);
+            }
+          },
+          onDone: () {
+            if (!streamDone.isCompleted) {
+              streamDone.complete();
+            }
+          },
+          cancelOnError: true,
+        );
+        _inviteRealtimeStreamSubscription = subscription;
+        await streamDone.future;
+      } catch (_) {
+        // The loop retries on the next cycle.
+      } finally {
+        await _inviteRealtimeStreamSubscription?.cancel();
+        _inviteRealtimeStreamSubscription = null;
+      }
+
+      if (generation != _inviteRealtimeGeneration ||
+          _inviteRealtimeBoundUserId == null) {
+        break;
+      }
+
+      await _wait(_inviteRealtimeReconnectDelay);
+    }
+
+    if (generation == _inviteRealtimeGeneration) {
+      _inviteRealtimeLoopFuture = null;
+    }
+  }
+
+  void _applyInviteRealtimeDelta(InviteRealtimeDeltaDto delta) {
+    if (delta.lastEventId != null && delta.lastEventId!.trim().isNotEmpty) {
+      _inviteRealtimeLastEventId = delta.lastEventId!.trim();
+    }
+
+    if (delta.isUpsert) {
+      _upsertRealtimeInvite(delta);
+      return;
+    }
+
+    if (delta.isDeleted) {
+      _removePendingInviteTarget(
+        eventId: delta.eventId!,
+        occurrenceId: delta.occurrenceId!,
+      );
+      return;
+    }
+
+    unawaited(_refreshPendingInvitesFromRealtime());
+  }
+
+  void _upsertRealtimeInvite(InviteRealtimeDeltaDto delta) {
+    final inviteDto = delta.invite;
+    if (inviteDto == null) {
+      return;
+    }
+
+    try {
+      final next = upsertItems(
+        current: pendingInvitesStreamValue.value,
+        updates: [inviteDto.toDomain()],
+        idResolver: (invite) => invite.idValue.value,
+      );
+      pendingInvitesStreamValue.addValue(next);
+    } catch (_) {
+      unawaited(_refreshPendingInvitesFromRealtime());
+    }
+  }
+
+  Future<void> _refreshPendingInvitesFromRealtime() {
+    final inFlight = _inviteRealtimeRefreshFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final refresh = refreshPendingInvites().whenComplete(() {
+      _inviteRealtimeRefreshFuture = null;
+    });
+    _inviteRealtimeRefreshFuture = refresh;
+    return refresh;
+  }
+
+  void _removePendingInviteTarget({
+    required String eventId,
+    required String occurrenceId,
+  }) {
+    final normalizedEventId = eventId.trim();
+    final normalizedOccurrenceId = occurrenceId.trim();
+    if (normalizedEventId.isEmpty || normalizedOccurrenceId.isEmpty) {
+      return;
+    }
+
+    final current = pendingInvitesStreamValue.value;
+    final next = current
+        .where(
+          (invite) =>
+              invite.eventId != normalizedEventId ||
+              invite.occurrenceId != normalizedOccurrenceId,
+        )
+        .toList(growable: false);
+
+    if (next.length == current.length) {
+      return;
+    }
+
+    pendingInvitesStreamValue.addValue(next);
   }
 
   @override
@@ -599,12 +798,13 @@ class InvitesRepository extends InvitesRepositoryContract
       return _normalizeNullable(await provider());
     }
 
-    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+    final authRepository = _resolvedAuthRepository;
+    if (authRepository == null) {
       return null;
     }
 
     return _normalizeNullable(
-      await GetIt.I.get<AuthRepositoryContract>().getUserId(),
+      await authRepository.getUserId(),
     );
   }
 

@@ -1711,6 +1711,244 @@ void main() {
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
   });
 
+  testWidgets('push section toggles enable state and saves throttling settings',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.push,
+        ),
+      ),
+    );
+
+    final section = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsPushSection,
+      skipOffstage: false,
+    );
+    final ttlRow = find.byKey(
+      const ValueKey('tenant_admin_settings_push_ttl_edit'),
+      skipOffstage: false,
+    );
+    final savePushButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSavePush,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      section,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+          skipOffstage: false,
+        ),
+        matching: find.text('Nao'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPushEnable,
+        skipOffstage: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.enablePushCallCount, 1);
+    expect(
+      find.descendant(
+        of: find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+          skipOffstage: false,
+        ),
+        matching: find.text('Sim'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPushDisable,
+        skipOffstage: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.disablePushCallCount, 1);
+
+    await tester.scrollUntilVisible(
+      ttlRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: ttlRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Max TTL (dias)'),
+      '14',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      savePushButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(savePushButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedPushSettings, isNotNull);
+    expect(settingsRepository.updatedPushSettings!.maxTtlDays, 14);
+  });
+
+  testWidgets('push section saves FCM credentials via remote repository',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.push,
+        ),
+      ),
+    );
+
+    final projectIdRow = find.byKey(
+      TenantAdminSettingsKeys
+          .technicalIntegrationsPushCredentialsProjectIdEdit,
+      skipOffstage: false,
+    );
+    final clientEmailRow = find.byKey(
+      TenantAdminSettingsKeys
+          .technicalIntegrationsPushCredentialsClientEmailEdit,
+      skipOffstage: false,
+    );
+    final privateKeyRow = find.byKey(
+      TenantAdminSettingsKeys
+          .technicalIntegrationsPushCredentialsPrivateKeyEdit,
+      skipOffstage: false,
+    );
+    final saveCredentialsButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSavePushCredentials,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      projectIdRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: projectIdRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Project ID'),
+      'project-updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: clientEmailRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Client email'),
+      'push-updated@tenant-a.test',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: privateKeyRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'private_key'),
+      '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveCredentialsButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(saveCredentialsButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedPushCredentials, isNotNull);
+    expect(settingsRepository.updatedPushCredentials!.projectId, 'project-updated');
+    expect(
+      settingsRepository.updatedPushCredentials!.clientEmail,
+      'push-updated@tenant-a.test',
+    );
+    expect(
+      settingsRepository.updatedPushCredentials!.privateKey,
+      contains('BEGIN PRIVATE KEY'),
+    );
+  });
+
   testWidgets('saves resend email settings via remote repository',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -3312,10 +3550,14 @@ class _FakeTenantAdminSettingsRepository
   final List<String> createdDomainPaths = <String>[];
   final List<String> deletedDomainIds = <String>[];
   String? updatedFirebaseProjectId;
+  TenantAdminPushSettings? updatedPushSettings;
+  TenantAdminPushCredentials? updatedPushCredentials;
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminOutboundIntegrationsSettings? updatedOutboundIntegrationsSettings;
   TenantAdminPhoneOtpReviewAccessSettings? updatedPhoneOtpReviewAccessSettings;
   String? generatedPhoneOtpReviewAccessCode;
+  int enablePushCallCount = 0;
+  int disablePushCallCount = 0;
   TenantAdminTelemetryIntegration? lastTelemetryIntegration;
   final List<String> deletedTelemetryTypes = <String>[];
   TenantAdminBrandingUpdateInput? lastBrandingInput;
@@ -3399,6 +3641,20 @@ class _FakeTenantAdminSettingsRepository
       TenantAdminTelemetrySettingsSnapshot(
     integrations: const [],
     availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
+  );
+  TenantAdminPushSettings _pushSettings = TenantAdminPushSettings(
+    maxTtlDaysValue: _positiveInt(30),
+    maxPerMinuteValue: _positiveInt(60),
+    maxPerHourValue: _positiveInt(600),
+    enabledValue: _booleanValue(false),
+  );
+  TenantAdminPushStatus _pushStatus = TenantAdminPushStatus(
+    statusValue: _requiredText('not_configured'),
+  );
+  TenantAdminPushCredentials? _pushCredentials = TenantAdminPushCredentials(
+    idValue: _requiredText('push-credential-1'),
+    projectIdValue: _requiredText('project-test'),
+    clientEmailValue: _emailAddressValue('push-service@tenant-a.test'),
   );
 
   @override
@@ -3510,8 +3766,82 @@ class _FakeTenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminPushSettings> fetchPushSettings() async {
+    return _pushSettings;
+  }
+
+  @override
+  Future<TenantAdminPushStatus> fetchPushStatus() async {
+    return _pushStatus;
+  }
+
+  @override
+  Future<TenantAdminPushSettings> enablePush() async {
+    enablePushCallCount += 1;
+    _pushSettings = TenantAdminPushSettings(
+      maxTtlDaysValue: _positiveInt(_pushSettings.maxTtlDays),
+      maxPerMinuteValue: _positiveInt(_pushSettings.maxPerMinute),
+      maxPerHourValue: _positiveInt(_pushSettings.maxPerHour),
+      enabledValue: _booleanValue(true),
+    );
+    _pushStatus = TenantAdminPushStatus(
+      statusValue: _requiredText('pending_tests'),
+    );
+    return _pushSettings;
+  }
+
+  @override
+  Future<TenantAdminPushSettings> disablePush() async {
+    disablePushCallCount += 1;
+    _pushSettings = TenantAdminPushSettings(
+      maxTtlDaysValue: _positiveInt(_pushSettings.maxTtlDays),
+      maxPerMinuteValue: _positiveInt(_pushSettings.maxPerMinute),
+      maxPerHourValue: _positiveInt(_pushSettings.maxPerHour),
+      enabledValue: _booleanValue(false),
+    );
+    _pushStatus = TenantAdminPushStatus(
+      statusValue: _requiredText('not_configured'),
+    );
+    return _pushSettings;
+  }
+
+  @override
+  Future<TenantAdminPushCredentials?> fetchPushCredentials() async {
+    return _pushCredentials;
+  }
+
+  @override
+  Future<TenantAdminPushCredentials> upsertPushCredentials({
+    required TenantAdminPushCredentials credentials,
+  }) async {
+    updatedPushCredentials = credentials;
+    _pushCredentials = TenantAdminPushCredentials(
+      idValue: _requiredText('push-credential-1'),
+      projectIdValue: _requiredText(credentials.projectId),
+      clientEmailValue: _emailAddressValue(credentials.clientEmail),
+    );
+    return _pushCredentials!;
+  }
+
+  @override
   Future<TenantAdminResendEmailSettings> fetchResendEmailSettings() async {
     return _resendEmailSettings;
+  }
+
+  @override
+  Future<TenantAdminPushSettings> updatePushSettings({
+    required TenantAdminPushSettings settings,
+  }) async {
+    updatedPushSettings = settings;
+    _pushSettings = TenantAdminPushSettings(
+      maxTtlDaysValue: _positiveInt(settings.maxTtlDays),
+      maxPerMinuteValue: _positiveInt(settings.maxPerMinute),
+      maxPerHourValue: _positiveInt(settings.maxPerHour),
+      enabledValue: _pushSettings.enabled == null
+          ? null
+          : _booleanValue(_pushSettings.enabled!),
+    );
+    return _pushSettings;
   }
 
   @override
@@ -3623,13 +3953,6 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     updatedOutboundIntegrationsSettings = settings;
     _outboundIntegrationsSettings = settings;
-    return settings;
-  }
-
-  @override
-  Future<TenantAdminPushSettings> updatePushSettings({
-    required TenantAdminPushSettings settings,
-  }) async {
     return settings;
   }
 

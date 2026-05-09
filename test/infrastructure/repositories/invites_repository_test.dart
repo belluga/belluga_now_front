@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -12,15 +16,168 @@ import 'package:belluga_now/domain/user/value_objects/user_display_name_value.da
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('init binds realtime stream and upserts invite deltas', () async {
+    final firstStream = StreamController<InviteRealtimeDeltaDto>();
+    final backend = _FakeInvitesBackend(
+      inviteRealtimeStreams: [firstStream.stream],
+    );
+    final authRepository = _FakeInvitesAuthRepository(
+      userId: 'user-1',
+      authorized: true,
+    );
+    final waitCompleters = <Completer<void>>[];
+    final repository = InvitesRepository(
+      backend: backend,
+      authRepository: authRepository,
+      wait: (duration) {
+        final completer = Completer<void>();
+        waitCompleters.add(completer);
+        return completer.future;
+      },
+    );
+
+    await repository.init();
+
+    expect(backend.watchInvitesLastEventIds, [null]);
+
+    firstStream.add(
+      InviteRealtimeDeltaDto(
+        type: 'invite.upsert',
+        lastEventId: 'cursor-1',
+        invite: _inviteDto(_buildInvitePayload(id: 'invite-live-1')),
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(repository.pendingInvitesStreamValue.value, hasLength(1));
+    expect(repository.pendingInvitesStreamValue.value.single.id, 'invite-live-1');
+
+    await firstStream.close();
+    await pumpEventQueue();
+
+    expect(waitCompleters, hasLength(1));
+  });
+
+  test('realtime delete delta removes matching pending invite group', () async {
+    final firstStream = StreamController<InviteRealtimeDeltaDto>();
+    final backend = _FakeInvitesBackend(
+      fetchInvitesResponse: {
+        'invites': [
+          _buildInvitePayload(
+            id: 'invite-1',
+            eventId: 'event-1',
+            occurrenceId: 'occurrence-1',
+          ),
+        ],
+      },
+      inviteRealtimeStreams: [firstStream.stream],
+    );
+    final repository = InvitesRepository(
+      backend: backend,
+      authRepository: _FakeInvitesAuthRepository(
+        userId: 'user-1',
+        authorized: true,
+      ),
+      wait: (_) => Future<void>.value(),
+    );
+
+    await repository.init();
+    expect(repository.pendingInvitesStreamValue.value, hasLength(1));
+
+    firstStream.add(
+      const InviteRealtimeDeltaDto(
+        type: 'invite.deleted',
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(repository.pendingInvitesStreamValue.value, isEmpty);
+  });
+
+  test('realtime loop reconnects with last event id after stream closes',
+      () async {
+    final firstStream = StreamController<InviteRealtimeDeltaDto>();
+    final secondStream = StreamController<InviteRealtimeDeltaDto>();
+    final waitCompleters = <Completer<void>>[];
+    final backend = _FakeInvitesBackend(
+      inviteRealtimeStreams: [firstStream.stream, secondStream.stream],
+    );
+    final repository = InvitesRepository(
+      backend: backend,
+      authRepository: _FakeInvitesAuthRepository(
+        userId: 'user-1',
+        authorized: true,
+      ),
+      wait: (duration) {
+        final completer = Completer<void>();
+        waitCompleters.add(completer);
+        return completer.future;
+      },
+    );
+
+    await repository.init();
+
+    firstStream.add(
+      InviteRealtimeDeltaDto(
+        type: 'invite.upsert',
+        lastEventId: 'cursor-1',
+        invite: _inviteDto(_buildInvitePayload(id: 'invite-live-1')),
+      ),
+    );
+    await pumpEventQueue();
+    await firstStream.close();
+    await pumpEventQueue();
+
+    expect(waitCompleters, hasLength(1));
+
+    waitCompleters.single.complete();
+    await pumpEventQueue();
+
+    expect(backend.watchInvitesLastEventIds, [null, 'cursor-1']);
+
+    await secondStream.close();
+  });
+
+  test('auth transition rebinds realtime stream when user becomes authorized',
+      () async {
+    final firstStream = StreamController<InviteRealtimeDeltaDto>();
+    final authRepository = _FakeInvitesAuthRepository(
+      userId: null,
+      authorized: false,
+    );
+    final backend = _FakeInvitesBackend(
+      inviteRealtimeStreams: [firstStream.stream],
+    );
+    final repository = InvitesRepository(
+      backend: backend,
+      authRepository: authRepository,
+      wait: (_) => Future<void>.value(),
+    );
+
+    await repository.init();
+    expect(backend.watchInvitesLastEventIds, isEmpty);
+
+    authRepository.setAuthorized(userId: 'user-1');
+    await pumpEventQueue();
+
+    expect(backend.watchInvitesLastEventIds, [null]);
+    await firstStream.close();
+  });
 
   test('previewShareCode decodes canonical preview payload', () async {
     final repository = InvitesRepository(
@@ -827,6 +984,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? updateContactGroupResponse,
     Map<String, dynamic>? sendInvitesResponse,
     Map<String, dynamic>? createShareCodeResponse,
+    List<Stream<InviteRealtimeDeltaDto>> inviteRealtimeStreams = const [],
     Map<String, dynamic> Function(Map<String, dynamic> payload)?
         importContactsResponseBuilder,
   })  : _fetchInvitesResponse = fetchInvitesResponse ?? const {'invites': []},
@@ -890,6 +1048,9 @@ class _FakeInvitesBackend implements InvitesBackendContract {
                 'occurrence_id': 'occurrence-1',
               },
             },
+        _inviteRealtimeStreams = List<Stream<InviteRealtimeDeltaDto>>.from(
+          inviteRealtimeStreams,
+        ),
         _importContactsResponseBuilder = importContactsResponseBuilder;
 
   final Map<String, dynamic> _fetchInvitesResponse;
@@ -904,12 +1065,14 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _updateContactGroupResponse;
   final Map<String, dynamic> _sendInvitesResponse;
   final Map<String, dynamic> _createShareCodeResponse;
+  final List<Stream<InviteRealtimeDeltaDto>> _inviteRealtimeStreams;
   final Map<String, dynamic> Function(Map<String, dynamic> payload)?
       _importContactsResponseBuilder;
 
   int fetchInvitesCalls = 0;
   final List<String> acceptInviteCalls = <String>[];
   final List<String> acceptShareCodeCalls = <String>[];
+  final List<String?> watchInvitesLastEventIds = <String?>[];
   final List<Map<String, dynamic>> sentInvitePayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> createdShareCodePayloads =
@@ -954,6 +1117,17 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   }) async {
     fetchInvitesCalls += 1;
     return _fetchInvitesResponse;
+  }
+
+  @override
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
+    String? lastEventId,
+  }) {
+    watchInvitesLastEventIds.add(lastEventId);
+    if (_inviteRealtimeStreams.isEmpty) {
+      return const Stream<InviteRealtimeDeltaDto>.empty();
+    }
+    return _inviteRealtimeStreams.removeAt(0);
   }
 
   @override
@@ -1036,7 +1210,119 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   }
 }
 
+class _FakeInvitesAuthRepository extends AuthRepositoryContract<_FakeUser> {
+  _FakeInvitesAuthRepository({
+    required String? userId,
+    required bool authorized,
+  })  : _userId = userId,
+        _authorized = authorized {
+    if (userId != null) {
+      userStreamValue.addValue(_buildUser(userId));
+    }
+  }
+
+  String? _userId;
+  bool _authorized;
+
+  void setAuthorized({
+    required String userId,
+  }) {
+    _userId = userId;
+    _authorized = true;
+    userStreamValue.addValue(_buildUser(userId));
+  }
+
+  @override
+  Object get backend => Object();
+
+  @override
+  String get userToken => 'token';
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-id';
+
+  @override
+  Future<String?> getUserId() async => _userId;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  bool get isAuthorized => _authorized;
+
+  @override
+  bool get isUserLoggedIn => _userId != null;
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
+
+  @override
+  void setUserToken(AuthRepositoryContractParamString? token) {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> updateUser(UserCustomData data) async {}
+}
+
+class _FakeUser extends UserContract {
+  _FakeUser({
+    required super.uuidValue,
+    required super.profile,
+  });
+}
+
+_FakeUser _buildUser(String id) {
+  final normalizedId = _mongoIdSeed(id);
+  return _FakeUser(
+    uuidValue: MongoIDValue(defaultValue: normalizedId)..parse(normalizedId),
+    profile: UserProfileContract(),
+  );
+}
+
+InviteDto _inviteDto(Map<String, dynamic> payload) => InviteDto.fromJson(payload);
+
 String _sha256(String raw) => sha256.convert(utf8.encode(raw)).toString();
+
+String _mongoIdSeed(String raw) {
+  final normalized = raw.trim();
+  final validMongoId = RegExp(r'^[a-fA-F0-9]{24}$');
+  if (validMongoId.hasMatch(normalized)) {
+    return normalized.toLowerCase();
+  }
+  return _sha256(normalized).substring(0, 24);
+}
 
 InviteContactRegionCodeValue _regionCodeValue(String raw) =>
     InviteContactRegionCodeValue()..parse(raw);

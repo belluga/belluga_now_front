@@ -23,6 +23,24 @@ class TenantAdminSettingsRequestEncoder {
     return encodeSettingsPatchPayload(settings.rawAppLinks);
   }
 
+  Map<String, dynamic> encodeFirebaseSettingsPatch(
+    TenantAdminFirebaseSettings settings,
+  ) {
+    return Map<String, dynamic>.from(settings.toJson().value);
+  }
+
+  Map<String, dynamic> encodePushSettingsPatch(
+    TenantAdminPushSettings settings,
+  ) {
+    return Map<String, dynamic>.from(settings.toJson().value);
+  }
+
+  Map<String, dynamic> encodePushCredentialsUpsert(
+    TenantAdminPushCredentials credentials,
+  ) {
+    return Map<String, dynamic>.from(credentials.toUpsertPayload().value);
+  }
+
   Map<String, dynamic> encodeResendEmailSettingsPatch(
     TenantAdminResendEmailSettings settings,
   ) {

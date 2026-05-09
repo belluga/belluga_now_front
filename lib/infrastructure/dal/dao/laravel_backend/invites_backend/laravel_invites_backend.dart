@@ -1,14 +1,24 @@
+import 'dart:convert';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelInvitesBackend implements InvitesBackendContract {
-  LaravelInvitesBackend({Dio? dio}) : _dio = dio ?? Dio();
+  LaravelInvitesBackend({Dio? dio, SseClient? sseClient})
+      : _dio = dio ?? Dio(),
+        _sseClient = sseClient ?? createSseClient();
 
   final Dio _dio;
+  final SseClient _sseClient;
+  final InvitesResponseDecoder _responseDecoder =
+      const InvitesResponseDecoder();
 
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
@@ -17,6 +27,12 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
       bootstrapIfEmpty: true,
+    );
+  }
+
+  Map<String, String> _streamHeaders({bool includeJsonAccept = false}) {
+    return TenantPublicAuthHeaders.buildSync(
+      includeJsonAccept: includeJsonAccept,
     );
   }
 
@@ -32,6 +48,24 @@ class LaravelInvitesBackend implements InvitesBackendContract {
         'page_size': pageSize,
       },
     );
+  }
+
+  @override
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
+    String? lastEventId,
+  }) {
+    final uri = Uri.parse('$_apiBaseUrl/v1/invites/stream');
+    return _sseClient
+        .connect(
+          uri,
+          lastEventId: lastEventId,
+          headers: _streamHeaders(),
+        )
+        .map((message) => _parseRealtimeDelta(
+              data: message.data,
+              fallbackType: message.event,
+              lastEventId: message.id,
+            ));
   }
 
   @override
@@ -224,5 +258,52 @@ class LaravelInvitesBackend implements InvitesBackendContract {
       '(${error.requestOptions.uri}): '
       '${data ?? error.message}',
     );
+  }
+
+  InviteRealtimeDeltaDto _parseRealtimeDelta({
+    required String data,
+    String? fallbackType,
+    String? lastEventId,
+  }) {
+    final decoded = jsonDecode(data);
+    if (decoded is! Map) {
+      throw const FormatException(
+        'Malformed invite realtime payload: expected object.',
+      );
+    }
+
+    final payload = Map<String, dynamic>.from(decoded);
+    final resolvedType =
+        _stringOrNull(payload['type']) ??
+            fallbackType?.trim() ??
+            'invite.updated';
+
+    final invitePayload = payload['invite'];
+    final inviteDto = invitePayload == null
+        ? null
+        : _responseDecoder.decodeRequiredInviteDto(
+            invitePayload,
+            context: 'invite realtime delta',
+          );
+
+    final targetRef = payload['target_ref'];
+    final targetRefMap =
+        targetRef is Map ? Map<String, dynamic>.from(targetRef) : null;
+
+    return InviteRealtimeDeltaDto(
+      type: resolvedType,
+      invite: inviteDto,
+      eventId: _stringOrNull(targetRefMap?['event_id']),
+      occurrenceId: _stringOrNull(targetRefMap?['occurrence_id']),
+      lastEventId: lastEventId,
+    );
+  }
+
+  String? _stringOrNull(Object? raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
   }
 }

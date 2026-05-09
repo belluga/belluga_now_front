@@ -1,9 +1,14 @@
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 
 abstract class InvitesBackendContract {
   Future<Map<String, dynamic>> fetchInvites({
     required int page,
     required int pageSize,
+  });
+
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
+    String? lastEventId,
   });
 
   Future<Map<String, dynamic>> fetchSettings();
