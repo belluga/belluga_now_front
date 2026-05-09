@@ -187,6 +187,19 @@
     return rawBranding;
   }
 
+  function isAppDataBootstrapPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+
+    return (
+      payload.type != null &&
+      payload.name != null &&
+      payload.main_domain != null &&
+      payload.theme_data_settings != null
+    );
+  }
+
   function normalizeHexColor(rawColor) {
     if (typeof rawColor !== 'string') {
       return null;
@@ -476,11 +489,17 @@
         }
       } finally {
         window.clearTimeout(bootstrapTimeoutId);
-        const resolvedPayload = extractBrandingPayload(resolvedBranding);
+        const extractedPayload = extractBrandingPayload(resolvedBranding);
+        const resolvedPayload = isAppDataBootstrapPayload(extractedPayload)
+          ? extractedPayload
+          : null;
 
         // Persist the resolved payload on the global scope so Flutter can read it even if it
         // attaches the `brandingReady` listener after this event is dispatched.
         window.__brandingPayload = resolvedPayload;
+        if (!resolvedPayload && extractedPayload && !bootstrapError) {
+          bootstrapError = 'Branding payload malformed in environment bootstrap.';
+        }
         window.__brandingBootstrapError = resolvedPayload
           ? null
           : (bootstrapError || 'Branding payload missing from environment bootstrap.');

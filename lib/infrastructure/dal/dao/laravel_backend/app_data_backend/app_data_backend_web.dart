@@ -18,9 +18,12 @@ external JSString? get brandingBootstrapError;
 class AppDataBackend implements AppDataBackendContract {
   @override
   Future<AppDataDTO> fetch() {
+    final initialRawPayload = brandingPayload;
+
     return WebBootstrapHandshake<AppDataDTO>(
-      initialValue: _readResolvedBootstrapPayload(),
+      initialValue: _tryDecodeAppData(initialRawPayload),
       initialErrorMessage: _readBootstrapError(),
+      hasInitialRawPayload: initialRawPayload != null,
       timeout: const Duration(seconds: 15),
       waitForEventValue: _waitForBrandingReadyPayload,
     ).resolve();
@@ -32,14 +35,6 @@ class AppDataBackend implements AppDataBackendContract {
       return null;
     }
     return error;
-  }
-
-  AppDataDTO? _readResolvedBootstrapPayload() {
-    final preResolved = brandingPayload;
-    if (preResolved == null) {
-      return null;
-    }
-    return _tryDecodeAppData(preResolved);
   }
 
   Future<AppDataDTO> _waitForBrandingReadyPayload() {

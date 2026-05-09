@@ -10,6 +10,7 @@ void main() {
     final handshake = WebBootstrapHandshake<String>(
       initialValue: 'ready',
       initialErrorMessage: null,
+      hasInitialRawPayload: true,
       timeout: const Duration(milliseconds: 20),
       waitForEventValue: () async {
         waitCalled = true;
@@ -28,6 +29,7 @@ void main() {
     final handshake = WebBootstrapHandshake<String>(
       initialValue: null,
       initialErrorMessage: null,
+      hasInitialRawPayload: false,
       timeout: const Duration(milliseconds: 40),
       waitForEventValue: () async {
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -46,6 +48,7 @@ void main() {
     final handshake = WebBootstrapHandshake<String>(
       initialValue: null,
       initialErrorMessage: 'Environment bootstrap failed [503]',
+      hasInitialRawPayload: false,
       timeout: const Duration(milliseconds: 20),
       waitForEventValue: () async {
         waitCalled = true;
@@ -66,10 +69,40 @@ void main() {
     expect(waitCalled, isFalse);
   });
 
+  test(
+      'fails immediately when a raw bootstrap payload exists but cannot decode',
+      () async {
+    var waitCalled = false;
+    final handshake = WebBootstrapHandshake<String>(
+      initialValue: null,
+      initialErrorMessage: null,
+      hasInitialRawPayload: true,
+      timeout: const Duration(milliseconds: 20),
+      waitForEventValue: () async {
+        waitCalled = true;
+        return 'unexpected';
+      },
+    );
+
+    await expectLater(
+      handshake.resolve(),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains(
+              'Branding payload malformed during bootstrap pre-resolution.'),
+        ),
+      ),
+    );
+    expect(waitCalled, isFalse);
+  });
+
   test('times out when bootstrap never resolves', () async {
     final handshake = WebBootstrapHandshake<String>(
       initialValue: null,
       initialErrorMessage: null,
+      hasInitialRawPayload: false,
       timeout: const Duration(milliseconds: 5),
       waitForEventValue: () => Completer<String>().future,
     );
