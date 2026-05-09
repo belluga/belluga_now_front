@@ -187,6 +187,19 @@
     return rawBranding;
   }
 
+  function isAppDataBootstrapPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+
+    return (
+      payload.type != null &&
+      payload.name != null &&
+      payload.main_domain != null &&
+      payload.theme_data_settings != null
+    );
+  }
+
   function normalizeHexColor(rawColor) {
     if (typeof rawColor !== 'string') {
       return null;
@@ -445,32 +458,60 @@
       applySplashLogo(brandingPayload, systemPreferredBrightness);
     };
 
-    (async function () {
+    async function resolveBrandingBootstrap() {
       // Always fetch from the current host/origin.
       // This keeps local dev deterministic and allows host-based tenant resolution on Web.
       let resolvedBranding = null;
+      let bootstrapError = null;
       const environmentUrl = '/api/v1/environment';
+      const bootstrapTimeoutMs = 15000;
+      const bootstrapController = new AbortController();
+      const bootstrapTimeoutId = window.setTimeout(() => {
+        bootstrapController.abort();
+      }, bootstrapTimeoutMs);
 
       try {
-        const response = await fetch(environmentUrl);
+        const response = await fetch(environmentUrl, {
+          signal: bootstrapController.signal,
+        });
         if (response.ok) {
           const freshBranding = await response.json();
           resolvedBranding = freshBranding;
           applyBranding(freshBranding);
+        } else {
+          bootstrapError = `Environment bootstrap failed [${response.status}]`;
         }
       } catch (error) {
-        // Ignore network failures; Flutter will fall back.
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          bootstrapError = 'Environment bootstrap timed out before Flutter startup.';
+        } else {
+          bootstrapError = error instanceof Error ? error.message : String(error);
+        }
       } finally {
+        window.clearTimeout(bootstrapTimeoutId);
+        const extractedPayload = extractBrandingPayload(resolvedBranding);
+        const resolvedPayload = isAppDataBootstrapPayload(extractedPayload)
+          ? extractedPayload
+          : null;
+
         // Persist the resolved payload on the global scope so Flutter can read it even if it
         // attaches the `brandingReady` listener after this event is dispatched.
-        window.__brandingPayload = extractBrandingPayload(resolvedBranding);
+        window.__brandingPayload = resolvedPayload;
+        if (!resolvedPayload && extractedPayload && !bootstrapError) {
+          bootstrapError = 'Branding payload malformed in environment bootstrap.';
+        }
+        window.__brandingBootstrapError = resolvedPayload
+          ? null
+          : (bootstrapError || 'Branding payload missing from environment bootstrap.');
 
         window.dispatchEvent(new CustomEvent('brandingReady', { detail: window.__brandingPayload }));
       }
-    })();
+    }
 
     // Bootstrap Flutter after pre-route safety checks are done.
-    startFlutter();
+    resolveBrandingBootstrap().finally(() => {
+      startFlutter();
+    });
   });
 </script>
 </head>
