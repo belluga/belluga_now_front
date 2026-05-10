@@ -73,7 +73,64 @@ void main() {
     );
 
     expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
+    expect(
+      adapter.requests.single.data,
+      equals(<String, dynamic>{
+        'apiKey': 'api-key-b',
+        'appId': 'app-id-b',
+        'projectId': 'project-b',
+        'messagingSenderId': 'sender-b',
+        'storageBucket': 'bucket-b',
+      }),
+    );
     expect(updated.projectId, 'project-b');
+  });
+
+  test('fetchPushSettings parses push response', () async {
+    final adapter = _RoutingAdapter(
+      pushSettingsPayload: const <String, dynamic>{
+        'enabled': true,
+        'max_ttl_days': 14,
+        'throttles': <String, dynamic>{
+          'max_per_minute': 20,
+          'max_per_hour': 120,
+        },
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchPushSettings();
+
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/push');
+    expect(settings.maxTtlDays, 14);
+    expect(settings.maxPerMinute, 20);
+    expect(settings.maxPerHour, 120);
+    expect(settings.enabled, isTrue);
+  });
+
+  test('fetchPushStatus parses root status response', () async {
+    final adapter = _RoutingAdapter(
+      pushStatusPayload: const <String, dynamic>{
+        'status': 'pending_tests',
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final status = await repository.fetchPushStatus();
+
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/push/status');
+    expect(status.status, 'pending_tests');
+    expect(status.isPendingTests, isTrue);
   });
 
   test('fetchResendEmailSettings parses resend_email namespace payload',
@@ -128,10 +185,122 @@ void main() {
 
     final requestData = adapter.requests.single.data as Map<String, dynamic>;
     expect(adapter.requests.single.uri.path, '/api/v1/settings/push');
-    expect(requestData['push'], isA<Map<String, dynamic>>());
+    expect(
+      requestData,
+      equals(<String, dynamic>{
+        'max_ttl_days': 14,
+        'throttles': <String, dynamic>{
+          'max_per_minute': 20,
+          'max_per_hour': 120,
+        },
+      }),
+    );
     expect(updated.maxTtlDays, 14);
     expect(updated.maxPerMinute, 20);
     expect(updated.maxPerHour, 120);
+  });
+
+  test('enablePush posts enable action and parses enabled state', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.enablePush();
+
+    expect(adapter.requests.single.method, 'POST');
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/push/enable');
+    expect(updated.enabled, isTrue);
+  });
+
+  test('disablePush posts disable action and parses enabled state', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.disablePush();
+
+    expect(adapter.requests.single.method, 'POST');
+    expect(adapter.requests.single.uri.path, '/api/v1/settings/push/disable');
+    expect(updated.enabled, isFalse);
+  });
+
+  test('fetchPushCredentials returns stored credentials without private key',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final credentials = await repository.fetchPushCredentials();
+
+    expect(
+      adapter.requests.single.uri.path,
+      '/api/v1/settings/push/credentials',
+    );
+    expect(credentials, isNotNull);
+    expect(credentials!.projectId, 'project-a');
+    expect(credentials.clientEmail, 'push-service@tenant-a.test');
+    expect(credentials.privateKey, isNull);
+  });
+
+  test('fetchPushCredentials returns null when no credentials exist', () async {
+    final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final credentials = await repository.fetchPushCredentials();
+
+    expect(credentials, isNull);
+  });
+
+  test('upsertPushCredentials sends direct payload and parses response',
+      () async {
+    final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.upsertPushCredentials(
+      credentials: TenantAdminPushCredentials(
+        projectIdValue: _requiredTextValue('project-updated'),
+        clientEmailValue: _emailAddressValue('push-updated@tenant-a.test'),
+        privateKeyValue: _requiredTextValue('-----BEGIN PRIVATE KEY-----'),
+      ),
+    );
+
+    expect(
+      adapter.requests.single.uri.path,
+      '/api/v1/settings/push/credentials',
+    );
+    expect(
+      adapter.requests.single.data,
+      equals(<String, dynamic>{
+        'project_id': 'project-updated',
+        'client_email': 'push-updated@tenant-a.test',
+        'private_key': '-----BEGIN PRIVATE KEY-----',
+      }),
+    );
+    expect(updated.projectId, 'project-updated');
+    expect(updated.clientEmail, 'push-updated@tenant-a.test');
+    expect(updated.privateKey, isNull);
   });
 
   test('updateResendEmailSettings patches resend_email namespace payload',
@@ -1766,9 +1935,12 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.environmentPayloadByHost,
     this.environmentDelayByHost,
     this.settingsValuesPayload,
+    this.pushSettingsPayload,
+    this.pushStatusPayload,
     this.createDomainValidationMessage,
     List<Map<String, dynamic>>? domainsPayload,
     Map<String, dynamic>? appDomainsPayload,
+    List<Map<String, dynamic>>? pushCredentialsPayload,
     Map<String, bool>? typedAppDomainPersistedByPlatform,
   })  : _appDomainsPayload = Map<String, dynamic>.from(
           appDomainsPayload ??
@@ -1790,6 +1962,16 @@ class _RoutingAdapter implements HttpClientAdapter {
                   'ios': true,
               },
         ),
+        _pushCredentialsPayload = (pushCredentialsPayload ??
+                [
+                  {
+                    'id': 'push-credential-1',
+                    'project_id': 'project-a',
+                    'client_email': 'push-service@tenant-a.test',
+                  },
+                ])
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: true),
         _domainsPayload = (domainsPayload ??
                 [
                   {
@@ -1818,9 +2000,12 @@ class _RoutingAdapter implements HttpClientAdapter {
   final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
   final Map<String, Duration>? environmentDelayByHost;
   final Map<String, dynamic>? settingsValuesPayload;
+  final Map<String, dynamic>? pushSettingsPayload;
+  final Map<String, dynamic>? pushStatusPayload;
   final String? createDomainValidationMessage;
   final Map<String, dynamic> _appDomainsPayload;
   final Map<String, bool> _typedAppDomainPersistedByPlatform;
+  final List<Map<String, dynamic>> _pushCredentialsPayload;
   final List<Map<String, dynamic>> _domainsPayload;
   final List<RequestOptions> requests = [];
 
@@ -1852,12 +2037,89 @@ class _RoutingAdapter implements HttpClientAdapter {
 
     if (path.endsWith('/settings/firebase') && method == 'PATCH') {
       final request = options.data as Map<String, dynamic>;
-      return _jsonResponse({'data': request['firebase']});
+      return _jsonResponse({'data': request});
+    }
+
+    if (path.endsWith('/settings/push') && method == 'GET') {
+      return _jsonResponse({
+        'data': pushSettingsPayload ??
+            {
+              'enabled': false,
+              'max_ttl_days': 30,
+              'throttles': {
+                'max_per_minute': 60,
+                'max_per_hour': 600,
+              },
+            },
+      });
     }
 
     if (path.endsWith('/settings/push') && method == 'PATCH') {
       final request = options.data as Map<String, dynamic>;
-      return _jsonResponse({'data': request['push']});
+      return _jsonResponse({
+        'data': {
+          ...request,
+          'enabled': false,
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/push/status') && method == 'GET') {
+      return _jsonResponse(
+        pushStatusPayload ??
+            const <String, dynamic>{
+              'status': 'not_configured',
+            },
+      );
+    }
+
+    if (path.endsWith('/settings/push/enable') && method == 'POST') {
+      return _jsonResponse({
+        'data': {
+          'enabled': true,
+          'max_ttl_days': 30,
+          'throttles': {
+            'max_per_minute': 60,
+            'max_per_hour': 600,
+          },
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/push/disable') && method == 'POST') {
+      return _jsonResponse({
+        'data': {
+          'enabled': false,
+          'max_ttl_days': 30,
+          'throttles': {
+            'max_per_minute': 60,
+            'max_per_hour': 600,
+          },
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/push/credentials') && method == 'GET') {
+      return _jsonResponse({
+        'data': _pushCredentialsPayload,
+      });
+    }
+
+    if (path.endsWith('/settings/push/credentials') && method == 'PUT') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      final nextCredential = <String, dynamic>{
+        'id': _pushCredentialsPayload.isEmpty
+            ? 'push-credential-created'
+            : (_pushCredentialsPayload.first['id'] ?? 'push-credential-1'),
+        'project_id': request['project_id'],
+        'client_email': request['client_email'],
+      };
+      _pushCredentialsPayload
+        ..clear()
+        ..add(nextCredential);
+      return _jsonResponse({
+        'data': nextCredential,
+      });
     }
 
     if (path.endsWith('/settings/values') && method == 'GET') {

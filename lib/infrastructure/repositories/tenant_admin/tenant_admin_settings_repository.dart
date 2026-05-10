@@ -306,7 +306,7 @@ class TenantAdminSettingsRepository
     try {
       final response = await _dio.patchUri(
         _buildTenantPublicApiUri('/settings/firebase'),
-        data: {'firebase': settings.toJson()},
+        data: _requestEncoder.encodeFirebaseSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
       final mapped = _responseDecoder.decodeFirebaseSettings(
@@ -318,6 +318,87 @@ class TenantAdminSettingsRepository
       return mapped;
     } on DioException catch (error) {
       throw _wrapError(error, 'update firebase settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushSettings> fetchPushSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantPublicApiUri('/settings/push'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load push settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushStatus> fetchPushStatus() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantPublicApiUri('/settings/push/status'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushStatus(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load push status');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushSettings> enablePush() async {
+    try {
+      final response = await _dio.postUri(
+        _buildTenantPublicApiUri('/settings/push/enable'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'enable push');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushSettings> disablePush() async {
+    try {
+      final response = await _dio.postUri(
+        _buildTenantPublicApiUri('/settings/push/disable'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'disable push');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushCredentials?> fetchPushCredentials() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantPublicApiUri('/settings/push/credentials'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushCredentials(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load push credentials');
+    }
+  }
+
+  @override
+  Future<TenantAdminPushCredentials> upsertPushCredentials({
+    required TenantAdminPushCredentials credentials,
+  }) async {
+    try {
+      final response = await _dio.putUri(
+        _buildTenantPublicApiUri('/settings/push/credentials'),
+        data: _requestEncoder.encodePushCredentialsUpsert(credentials),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodePushCredentialItem(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'save push credentials');
     }
   }
 
@@ -454,7 +535,7 @@ class TenantAdminSettingsRepository
     try {
       final response = await _dio.patchUri(
         _buildTenantPublicApiUri('/settings/push'),
-        data: {'push': settings.toJson()},
+        data: _requestEncoder.encodePushSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
       return _responseDecoder.decodePushSettings(response.data);
