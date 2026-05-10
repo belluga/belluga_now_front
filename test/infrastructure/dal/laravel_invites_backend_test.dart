@@ -67,6 +67,7 @@ void main() {
 
     expect(sseClient.lastUri?.path, '/api/v1/invites/stream');
     expect(sseClient.lastUri?.queryParameters['access_token'], 'test-token');
+    expect(sseClient.lastUri?.queryParameters['last_event_id'], 'cursor-1');
     expect(sseClient.lastEventId, 'cursor-1');
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
   });
