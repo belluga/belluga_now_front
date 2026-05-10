@@ -66,6 +66,7 @@ void main() {
     backend.watchInvitesStream(lastEventId: 'cursor-1');
 
     expect(sseClient.lastUri?.path, '/api/v1/invites/stream');
+    expect(sseClient.lastUri?.queryParameters['access_token'], 'test-token');
     expect(sseClient.lastEventId, 'cursor-1');
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
   });
