@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_editable_value_row.dart';
@@ -448,7 +449,7 @@ class _PushSecretEditSheetState extends State<_PushSecretEditSheet> {
     if (form == null || !form.validate()) {
       return;
     }
-    Navigator.of(context).pop(_controller.text.trim());
+    context.router.pop(_controller.text.trim());
   }
 
   @override

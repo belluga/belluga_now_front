@@ -151,6 +151,7 @@ void main() {
 
   testWidgets('tenant bootstrap reaches home without framework exceptions',
       (tester) async {
+    _takeAllExceptions(tester);
     _registerTenantBootstrapDependencies();
 
     final initializationModule = InitializationModule();
@@ -186,6 +187,7 @@ void main() {
   testWidgets(
       'tenant privacy policy route resolves without framework exceptions',
       (tester) async {
+    _takeAllExceptions(tester);
     _registerTenantBootstrapDependencies();
 
     final homeModule = HomeModule();
@@ -220,6 +222,7 @@ void main() {
 
   testWidgets('tenant privacy policy legacy path redirects to canonical route',
       (tester) async {
+    _takeAllExceptions(tester);
     _registerTenantBootstrapDependencies();
 
     final homeModule = HomeModule();
@@ -254,6 +257,7 @@ void main() {
   testWidgets(
       'invite fallback navigation reaches tenant home without framework exceptions',
       (tester) async {
+    _takeAllExceptions(tester);
     _registerTenantBootstrapDependencies(
       invitesRepository: _FakeInvitesRepository(
         hasPendingInvites: false,

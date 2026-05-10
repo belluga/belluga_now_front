@@ -48,6 +48,7 @@ void main() {
         return completer.future;
       },
     );
+    addTearDown(repository.dispose);
 
     await repository.init();
 
@@ -93,6 +94,7 @@ void main() {
       ),
       wait: (_) => Future<void>.value(),
     );
+    addTearDown(repository.dispose);
 
     await repository.init();
     expect(repository.pendingInvitesStreamValue.value, hasLength(1));
@@ -129,6 +131,7 @@ void main() {
         return completer.future;
       },
     );
+    addTearDown(repository.dispose);
 
     await repository.init();
 
@@ -168,6 +171,7 @@ void main() {
       authRepository: authRepository,
       wait: (_) => Future<void>.value(),
     );
+    addTearDown(repository.dispose);
 
     await repository.init();
     expect(backend.watchInvitesLastEventIds, isEmpty);

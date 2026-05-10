@@ -98,6 +98,7 @@ class InvitesRepository extends InvitesRepositoryContract
   StreamSubscription<InviteRealtimeDeltaDto>? _inviteRealtimeStreamSubscription;
   Future<void>? _inviteRealtimeLoopFuture;
   Future<void>? _inviteRealtimeRefreshFuture;
+  Completer<void>? _inviteRealtimeStopCompleter;
   String? _inviteRealtimeLastEventId;
   String? _inviteRealtimeBoundUserId;
   int _inviteRealtimeGeneration = 0;
@@ -134,6 +135,23 @@ class InvitesRepository extends InvitesRepositoryContract
     await super.init();
     _bindInviteRealtimeAuthLifecycle();
     await _syncInviteRealtimeLifecycle();
+  }
+
+  Future<void> dispose() async {
+    _inviteRealtimeBoundUserId = null;
+    _inviteRealtimeLastEventId = null;
+    _inviteRealtimeGeneration += 1;
+    _signalInviteRealtimeStop();
+    await _inviteRealtimeStreamSubscription?.cancel();
+    _inviteRealtimeStreamSubscription = null;
+    await _inviteRealtimeAuthSubscription?.cancel();
+    _inviteRealtimeAuthSubscription = null;
+    final loopFuture = _inviteRealtimeLoopFuture;
+    _inviteRealtimeLoopFuture = null;
+    if (loopFuture != null) {
+      await loopFuture;
+    }
+    _inviteRealtimeRefreshFuture = null;
   }
 
   @override
@@ -212,6 +230,7 @@ class InvitesRepository extends InvitesRepositoryContract
     _inviteRealtimeLastEventId = null;
     _inviteRealtimeGeneration += 1;
     final generation = _inviteRealtimeGeneration;
+    _signalInviteRealtimeStop();
 
     await _inviteRealtimeStreamSubscription?.cancel();
     _inviteRealtimeStreamSubscription = null;
@@ -221,12 +240,17 @@ class InvitesRepository extends InvitesRepositoryContract
       return;
     }
 
-    final loopFuture = _runInviteRealtimeLoop(generation);
+    final stopCompleter = Completer<void>();
+    _inviteRealtimeStopCompleter = stopCompleter;
+    final loopFuture = _runInviteRealtimeLoop(generation, stopCompleter);
     _inviteRealtimeLoopFuture = loopFuture;
     await Future<void>.value();
   }
 
-  Future<void> _runInviteRealtimeLoop(int generation) async {
+  Future<void> _runInviteRealtimeLoop(
+    int generation,
+    Completer<void> stopCompleter,
+  ) async {
     while (generation == _inviteRealtimeGeneration &&
         _inviteRealtimeBoundUserId != null) {
       try {
@@ -248,7 +272,10 @@ class InvitesRepository extends InvitesRepositoryContract
           cancelOnError: true,
         );
         _inviteRealtimeStreamSubscription = subscription;
-        await streamDone.future;
+        await Future.any([
+          streamDone.future,
+          stopCompleter.future,
+        ]);
       } catch (_) {
         // The loop retries on the next cycle.
       } finally {
@@ -261,12 +288,26 @@ class InvitesRepository extends InvitesRepositoryContract
         break;
       }
 
-      await _wait(_inviteRealtimeReconnectDelay);
+      await Future.any([
+        _wait(_inviteRealtimeReconnectDelay),
+        stopCompleter.future,
+      ]);
     }
 
     if (generation == _inviteRealtimeGeneration) {
       _inviteRealtimeLoopFuture = null;
     }
+    if (identical(_inviteRealtimeStopCompleter, stopCompleter)) {
+      _inviteRealtimeStopCompleter = null;
+    }
+  }
+
+  void _signalInviteRealtimeStop() {
+    final stopCompleter = _inviteRealtimeStopCompleter;
+    if (stopCompleter == null || stopCompleter.isCompleted) {
+      return;
+    }
+    stopCompleter.complete();
   }
 
   void _applyInviteRealtimeDelta(InviteRealtimeDeltaDto delta) {
