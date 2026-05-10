@@ -212,6 +212,39 @@ class TenantAdminSettingsResponseDecoder {
     return _mapPushSettings(payload);
   }
 
+  TenantAdminPushStatus decodePushStatus(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeRootMap(
+      rawResponse,
+      label: 'push status',
+    );
+    final status = _normalizeOptionalText(payload['status']);
+    if (status == null || status.isEmpty) {
+      throw Exception('Push status response is empty.');
+    }
+    return TenantAdminPushStatus(
+      statusValue: _requiredTextValue(status),
+    );
+  }
+
+  TenantAdminPushCredentials? decodePushCredentials(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeListMap(
+      rawResponse,
+      label: 'push credentials',
+    );
+    if (payload.isEmpty) {
+      return null;
+    }
+    return _mapPushCredentials(payload.first);
+  }
+
+  TenantAdminPushCredentials decodePushCredentialItem(Object? rawResponse) {
+    final payload = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'push credential',
+    );
+    return _mapPushCredentials(payload);
+  }
+
   TenantAdminTelemetrySettingsSnapshot decodeTelemetrySnapshot(
     Object? rawResponse,
   ) {
@@ -710,6 +743,30 @@ class TenantAdminSettingsResponseDecoder {
       maxTtlDaysValue: _positiveIntValue(ttlDays),
       maxPerMinuteValue: _positiveIntValue(maxPerMinute),
       maxPerHourValue: _positiveIntValue(maxPerHour),
+      enabledValue: map.containsKey('enabled')
+          ? _booleanValue(_parseBool(map['enabled']))
+          : null,
+    );
+  }
+
+  TenantAdminPushCredentials _mapPushCredentials(Map<String, dynamic> map) {
+    final projectId = _requireNonEmptyString(
+      map['project_id'],
+      fieldName: 'push_credentials.project_id',
+    );
+    final clientEmail = _requireNonEmptyString(
+      map['client_email'],
+      fieldName: 'push_credentials.client_email',
+    );
+    final id = _normalizeOptionalText(map['id']);
+    final privateKey = _normalizeOptionalText(map['private_key']);
+    return TenantAdminPushCredentials(
+      idValue: id == null || id.isEmpty ? null : _requiredTextValue(id),
+      projectIdValue: _requiredTextValue(projectId),
+      clientEmailValue: _emailAddressValue(clientEmail),
+      privateKeyValue: privateKey == null || privateKey.isEmpty
+          ? null
+          : _requiredTextValue(privateKey),
     );
   }
 
@@ -838,6 +895,12 @@ class TenantAdminSettingsResponseDecoder {
     return value;
   }
 
+  EmailAddressValue _emailAddressValue(String raw) {
+    final value = EmailAddressValue();
+    value.parse(raw);
+    return value;
+  }
+
   TenantAdminHexColorValue _hexColorValue(String raw) {
     final value = TenantAdminHexColorValue();
     value.parse(raw);
@@ -914,12 +977,6 @@ class TenantAdminSettingsResponseDecoder {
     return TenantAdminResendEmailRecipients(
       rawValues.map(_emailAddressValue),
     );
-  }
-
-  EmailAddressValue _emailAddressValue(String raw) {
-    final value = EmailAddressValue();
-    value.parse(raw);
-    return value;
   }
 
   String _requireNonEmptyString(

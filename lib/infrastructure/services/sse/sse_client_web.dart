@@ -34,7 +34,13 @@ class _WebSseClient implements SseClient {
       handleMessage(event, eventType: event.type);
     });
 
-    for (final eventType in const ['event.created', 'event.updated', 'event.deleted']) {
+    for (final eventType in const [
+      'event.created',
+      'event.updated',
+      'event.deleted',
+      'invite.upsert',
+      'invite.deleted',
+    ]) {
       eventSource.addEventListener(
         eventType,
         (event) => handleMessage(event as html.MessageEvent, eventType: eventType),

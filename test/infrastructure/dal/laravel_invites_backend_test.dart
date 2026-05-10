@@ -8,6 +8,8 @@ import 'package:belluga_now/domain/repositories/value_objects/auth_repository_co
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
+import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
+import 'package:belluga_now/infrastructure/services/sse/sse_message.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -52,6 +54,68 @@ void main() {
       'Bearer refreshed-token',
     );
     expect(adapter.lastRequest?.uri.path, '/api/v1/invites');
+  });
+
+  test('watchInvitesStream forwards auth and last event id', () {
+    final sseClient = _RecordingSseClient();
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
+      sseClient: sseClient,
+    );
+
+    backend.watchInvitesStream(lastEventId: 'cursor-1');
+
+    expect(sseClient.lastUri?.path, '/api/v1/invites/stream');
+    expect(sseClient.lastUri?.queryParameters['access_token'], 'test-token');
+    expect(sseClient.lastEventId, 'cursor-1');
+    expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
+  });
+
+  test('watchInvitesStream decodes canonical upsert payload', () async {
+    final sseClient = _RecordingSseClient(
+      stream: Stream<SseMessage>.value(
+        SseMessage(
+          event: 'invite.upsert',
+          id: '2026-05-09T10:00:00Z',
+          data:
+              '{"type":"invite.upsert","invite":{"target_ref":{"event_id":"event-1","occurrence_id":"occurrence-1"},"event_name":"Invite Event","event_date":"2099-01-01T20:00:00Z","event_image_url":"https://example.com/event.png","location":"Centro","host_name":"Belluga","message":"Bora?","tags":["music"],"attendance_policy":"free_confirmation_only","inviter_candidates":[{"invite_id":"invite-1","display_name":"Ana","status":"pending","principal_kind":"user","principal_id":"user-1"}]}}',
+        ),
+      ),
+    );
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
+      sseClient: sseClient,
+    );
+
+    final delta = await backend.watchInvitesStream().first;
+
+    expect(delta.isUpsert, isTrue);
+    expect(delta.lastEventId, '2026-05-09T10:00:00Z');
+    expect(delta.invite?.eventId, 'event-1');
+    expect(delta.invite?.occurrenceId, 'occurrence-1');
+  });
+
+  test('watchInvitesStream decodes canonical delete payload', () async {
+    final sseClient = _RecordingSseClient(
+      stream: Stream<SseMessage>.value(
+        SseMessage(
+          event: 'invite.deleted',
+          id: '2026-05-09T10:00:01Z',
+          data:
+              '{"type":"invite.deleted","target_ref":{"event_id":"event-1","occurrence_id":"occurrence-1"}}',
+        ),
+      ),
+    );
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
+      sseClient: sseClient,
+    );
+
+    final delta = await backend.watchInvitesStream().first;
+
+    expect(delta.isDeleted, isTrue);
+    expect(delta.eventId, 'event-1');
+    expect(delta.occurrenceId, 'occurrence-1');
   });
 }
 
@@ -154,6 +218,29 @@ class _RecordingAdapter implements HttpClientAdapter {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
     );
+  }
+}
+
+class _RecordingSseClient implements SseClient {
+  _RecordingSseClient({
+    Stream<SseMessage>? stream,
+  }) : _stream = stream ?? const Stream<SseMessage>.empty();
+
+  final Stream<SseMessage> _stream;
+  Uri? lastUri;
+  Map<String, String>? lastHeaders;
+  String? lastEventId;
+
+  @override
+  Stream<SseMessage> connect(
+    Uri uri, {
+    Map<String, String>? headers,
+    String? lastEventId,
+  }) {
+    lastUri = uri;
+    lastHeaders = headers;
+    this.lastEventId = lastEventId;
+    return _stream;
   }
 }
 

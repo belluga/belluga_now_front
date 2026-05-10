@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/repositories/value_objects/invite_contact_reg
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
@@ -386,6 +387,12 @@ class _ColdCacheInvitesBackend implements InvitesBackendContract {
     required int pageSize,
   }) async =>
       const <String, dynamic>{'invites': <Map<String, dynamic>>[]};
+
+  @override
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
+    String? lastEventId,
+  }) =>
+      const Stream<InviteRealtimeDeltaDto>.empty();
 
   @override
   Future<Map<String, dynamic>> fetchSettings() async =>

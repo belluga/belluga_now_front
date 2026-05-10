@@ -105,6 +105,8 @@ class TenantAdminSettingsKeys {
   static const technicalIntegrationsPhoneOtpReviewAccessSection = ValueKey(
     'tenant_admin_settings_technical_integrations_phone_otp_review_access_section',
   );
+  static const technicalIntegrationsPushSection =
+      ValueKey('tenant_admin_settings_technical_integrations_push_section');
   static const technicalIntegrationsResendSection =
       ValueKey('tenant_admin_settings_technical_integrations_resend_section');
   static const technicalIntegrationsOutboundSection = ValueKey(
@@ -175,6 +177,36 @@ class TenantAdminSettingsKeys {
   );
   static const technicalIntegrationsSavePhoneOtpReviewAccess = ValueKey(
     'tenant_admin_settings_technical_integrations_save_phone_otp_review_access',
+  );
+  static const technicalIntegrationsPushStatusRow = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_status_row',
+  );
+  static const technicalIntegrationsPushEnabledRow = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_enabled_row',
+  );
+  static const technicalIntegrationsPushCredentialsRow = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_credentials_row',
+  );
+  static const technicalIntegrationsPushEnable = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_enable',
+  );
+  static const technicalIntegrationsPushDisable = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_disable',
+  );
+  static const technicalIntegrationsPushCredentialsProjectIdEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_credentials_project_id_edit',
+  );
+  static const technicalIntegrationsPushCredentialsClientEmailEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_credentials_client_email_edit',
+  );
+  static const technicalIntegrationsPushCredentialsPrivateKeyEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_push_credentials_private_key_edit',
+  );
+  static const technicalIntegrationsSavePushCredentials = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_push_credentials',
+  );
+  static const technicalIntegrationsSavePush = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_push',
   );
   static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
     'tenant_admin_settings_technical_integrations_app_links_android_package_edit',

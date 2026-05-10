@@ -110,6 +110,20 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminFirebaseSettings settings,
   });
 
+  Future<TenantAdminPushSettings> fetchPushSettings();
+
+  Future<TenantAdminPushStatus> fetchPushStatus();
+
+  Future<TenantAdminPushSettings> enablePush();
+
+  Future<TenantAdminPushSettings> disablePush();
+
+  Future<TenantAdminPushCredentials?> fetchPushCredentials();
+
+  Future<TenantAdminPushCredentials> upsertPushCredentials({
+    required TenantAdminPushCredentials credentials,
+  });
+
   Future<TenantAdminResendEmailSettings> fetchResendEmailSettings();
 
   Future<TenantAdminResendEmailSettings> updateResendEmailSettings({
