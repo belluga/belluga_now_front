@@ -54,7 +54,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Stream<InviteRealtimeDeltaDto> watchInvitesStream({
     String? lastEventId,
   }) {
-    final uri = _inviteStreamUri();
+    final uri = _inviteStreamUri(lastEventId: lastEventId);
     return _sseClient
         .connect(
           uri,
@@ -68,17 +68,19 @@ class LaravelInvitesBackend implements InvitesBackendContract {
             ));
   }
 
-  Uri _inviteStreamUri() {
+  Uri _inviteStreamUri({String? lastEventId}) {
     final uri = Uri.parse('$_apiBaseUrl/v1/invites/stream');
     final token = TenantPublicAuthHeaders.currentToken();
-    if (token.isEmpty) {
+    final cursor = lastEventId?.trim() ?? '';
+    if (token.isEmpty && cursor.isEmpty) {
       return uri;
     }
 
     return uri.replace(
       queryParameters: <String, String>{
         ...uri.queryParameters,
-        'access_token': token,
+        if (token.isNotEmpty) 'access_token': token,
+        if (cursor.isNotEmpty) 'last_event_id': cursor,
       },
     );
   }
