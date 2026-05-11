@@ -381,6 +381,8 @@ class _TenantAdminEventFormScreenState
     required List<TenantAdminAccountProfile> venues,
   }) {
     final occurrences = formState.occurrences;
+    final canEditPrimaryOccurrence =
+        formState.startAt != null || occurrences.isNotEmpty;
     if (occurrences.length > 1) {
       return TenantAdminFormSectionCard(
         title: 'Datas',
@@ -464,6 +466,18 @@ class _TenantAdminEventFormScreenState
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: const Key('tenantAdminEventEditPrimaryOccurrenceButton'),
+              onPressed: canEditPrimaryOccurrence
+                  ? () => _openPrimaryOccurrenceEditor(venues: venues)
+                  : null,
+              icon: const Icon(Icons.tune_outlined),
+              label: const Text('Editar ocorrência principal'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
             child: _buildAddOccurrenceInlineButton(
               formState: formState,
               venues: venues,
@@ -471,6 +485,27 @@ class _TenantAdminEventFormScreenState
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _openPrimaryOccurrenceEditor({
+    required List<TenantAdminAccountProfile> venues,
+  }) async {
+    final currentState = _controller.eventFormStateStreamValue.value;
+    if (currentState.startAt == null && currentState.occurrences.isEmpty) {
+      return;
+    }
+    final occurrenceKey = _controller.primaryOccurrenceKey() ??
+        _controller.ensurePrimaryOccurrenceDraft();
+    await showTenantAdminEventOccurrenceEditorSheet(
+      context: context,
+      controller: _controller,
+      occurrenceKey: occurrenceKey,
+      title: 'Editar ocorrência principal',
+      venues: venues,
+      pickDateTime: _pickDateTime,
+      pickRelatedAccountProfile: _pickRelatedAccountProfile,
+      closeModalSheet: _closeModalSheet,
     );
   }
 

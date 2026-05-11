@@ -75,7 +75,7 @@ void main() {
             builder: (context, slots) {
               return NestedScrollView(
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  slots.header,
+                  ...slots.headerSlivers,
                 ],
                 body: slots.body,
               );

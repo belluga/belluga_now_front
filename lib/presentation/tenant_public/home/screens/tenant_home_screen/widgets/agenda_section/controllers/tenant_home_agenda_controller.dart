@@ -368,7 +368,7 @@ class TenantHomeAgendaController extends Object
       _listenForCanonicalOriginChanges();
       _ifAlive(() => isInitialLoadingStreamValue.addValue(false));
       _ifAlive(() => initialLoadingLabelStreamValue.addValue(''));
-      unawaited(_reconcileEffectiveOriginAfterCacheRestore());
+      unawaited(_revalidateRestoredHomeAgendaCache());
       return;
     }
 
@@ -1017,28 +1017,25 @@ class TenantHomeAgendaController extends Object
     await _refresh(preserveCurrentResults: true);
   }
 
-  Future<void> _reconcileEffectiveOriginAfterCacheRestore() async {
+  Future<void> _revalidateRestoredHomeAgendaCache() async {
     if (_isDisposed) {
       return;
     }
-    final previousOriginLat = _effectiveOriginLat;
-    final previousOriginLng = _effectiveOriginLng;
-    final previousOriginSettings = _effectiveOriginSettings;
-    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
-    if (!changed) {
+    try {
+      await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    } catch (error) {
+      debugPrint(
+        'TenantHomeAgendaController._revalidateRestoredHomeAgendaCache '
+        'origin resolution failed: $error',
+      );
+    }
+    if (_isDisposed) {
       return;
     }
-    if (!_shouldRefreshForOriginChange(
-      previousOriginSettings: previousOriginSettings,
-      nextOriginSettings: _effectiveOriginSettings,
-      previousOriginLat: previousOriginLat,
-      previousOriginLng: previousOriginLng,
-      nextOriginLat: _effectiveOriginLat,
-      nextOriginLng: _effectiveOriginLng,
-    )) {
-      return;
-    }
-    await _refresh(preserveCurrentResults: true);
+    await _refresh(
+      preserveCurrentResults: true,
+      resolveOrigin: false,
+    );
   }
 
   bool _shouldRefreshForOriginChange({

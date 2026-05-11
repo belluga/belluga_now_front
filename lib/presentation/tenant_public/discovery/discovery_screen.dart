@@ -28,6 +28,8 @@ class DiscoveryScreen extends StatefulWidget {
 }
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
+  static const double _headerCollapsedExtent = 72;
+
   final DiscoveryScreenController _controller =
       GetIt.I.get<DiscoveryScreenController>();
 
@@ -207,14 +209,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 delegate:
                                                     DiscoveryFilterHeaderDelegate(
                                                   extent:
-                                                      _discoveryHeaderExtent(
-                                                    hasCanonicalFilters:
-                                                        hasCanonicalFilters,
-                                                    showFilterPanel:
-                                                        showFilterPanel,
-                                                    catalog: catalog,
-                                                    selection: filterSelection,
-                                                  ),
+                                                      _headerCollapsedExtent,
                                                   title: 'Descubra',
                                                   action: Row(
                                                     mainAxisSize:
@@ -232,18 +227,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                  filterBuilder: () {
-                                                    if (!showFilterPanel) {
-                                                      return const SizedBox
-                                                          .shrink();
-                                                    }
-                                                    return _buildCanonicalDiscoveryFilters(
-                                                      context,
-                                                      catalog: catalog,
-                                                      selection:
-                                                          filterSelection,
-                                                    );
-                                                  },
+                                                ),
+                                              ),
+                                            if (showDiscoveryHeader &&
+                                                showFilterPanel)
+                                              SliverToBoxAdapter(
+                                                child:
+                                                    _buildCanonicalDiscoveryFilters(
+                                                  context,
+                                                  catalog: catalog,
+                                                  selection: filterSelection,
                                                 ),
                                               ),
                                             SliverToBoxAdapter(
@@ -511,28 +504,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           );
         },
       ),
-    );
-  }
-
-  double _discoveryHeaderExtent({
-    required bool hasCanonicalFilters,
-    required bool showFilterPanel,
-    required DiscoveryFilterCatalog catalog,
-    required DiscoveryFilterSelection selection,
-  }) {
-    if (!hasCanonicalFilters || !showFilterPanel) {
-      return 72;
-    }
-    return _hasVisibleTaxonomyGroups(catalog, selection) ? 236 : 136;
-  }
-
-  bool _hasVisibleTaxonomyGroups(
-    DiscoveryFilterCatalog catalog,
-    DiscoveryFilterSelection selection,
-  ) {
-    return hasVisibleDiscoveryFilterTaxonomyGroups(
-      catalog: catalog,
-      selection: selection,
     );
   }
 }

@@ -10,14 +10,15 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/location_origin_resolution_request.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -26,7 +27,6 @@ import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/a
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
-import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
@@ -114,7 +114,6 @@ void main() {
         scheduleRepository: FakeScheduleRepository(),
         userEventsRepository: FakeUserEventsRepository(),
         invitesRepository: FakeInvitesRepository(),
-        userLocationRepository: FakeUserLocationRepository(),
         appDataRepository: AppDataRepository(
           backend: FakeAppDataBackend(),
           localInfoSource: FakeAppDataLocalInfoSource(),
@@ -151,7 +150,6 @@ void main() {
       scheduleRepository: FakeScheduleRepository(),
       userEventsRepository: FakeUserEventsRepository(),
       invitesRepository: FakeInvitesRepository(),
-      userLocationRepository: FakeUserLocationRepository(),
       appDataRepository: AppDataRepository(
         backend: FakeAppDataBackend(),
         localInfoSource: FakeAppDataLocalInfoSource(),
@@ -173,7 +171,7 @@ void main() {
             builder: (context, slots) {
               return CustomScrollView(
                 slivers: [
-                  slots.header,
+                  ...slots.headerSlivers,
                 ],
               );
             },
@@ -308,18 +306,13 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
     required ScheduleRepositoryContract scheduleRepository,
     required UserEventsRepositoryContract userEventsRepository,
     required InvitesRepositoryContract invitesRepository,
-    required UserLocationRepositoryContract userLocationRepository,
     required AppDataRepository appDataRepository,
   }) : super(
           scheduleRepository: scheduleRepository,
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
-          userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
-          locationOriginService: LocationOriginService(
-            appDataRepository: appDataRepository,
-            userLocationRepository: userLocationRepository,
-          ),
+          locationOriginService: FakeLocationOriginService(),
         );
 
   @override
@@ -361,18 +354,13 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
     required ScheduleRepositoryContract scheduleRepository,
     required UserEventsRepositoryContract userEventsRepository,
     required InvitesRepositoryContract invitesRepository,
-    required UserLocationRepositoryContract userLocationRepository,
     required AppDataRepository appDataRepository,
   }) : super(
           scheduleRepository: scheduleRepository,
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
-          userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
-          locationOriginService: LocationOriginService(
-            appDataRepository: appDataRepository,
-            userLocationRepository: userLocationRepository,
-          ),
+          locationOriginService: FakeLocationOriginService(),
         );
 
   bool _disposed = false;
@@ -516,69 +504,6 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 }
 
-class FakeUserLocationRepository implements UserLocationRepositoryContract {
-  final StreamValue<CityCoordinate?> _userLocationStreamValue =
-      StreamValue<CityCoordinate?>(defaultValue: null);
-  final StreamValue<CityCoordinate?> _lastKnownLocationStreamValue =
-      StreamValue<CityCoordinate?>(defaultValue: null);
-  final StreamValue<DateTime?> _lastKnownCapturedAtStreamValue =
-      StreamValue<DateTime?>(defaultValue: null);
-  final StreamValue<double?> _lastKnownAccuracyStreamValue =
-      StreamValue<double?>(defaultValue: null);
-  final StreamValue<String?> _lastKnownAddressStreamValue =
-      StreamValue<String?>(defaultValue: null);
-
-  @override
-  @override
-  final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
-          defaultValue: LocationResolutionPhase.unknown);
-
-  @override
-  StreamValue<String?> get lastKnownAddressStreamValue =>
-      _lastKnownAddressStreamValue;
-
-  @override
-  StreamValue<DateTime?> get lastKnownCapturedAtStreamValue =>
-      _lastKnownCapturedAtStreamValue;
-
-  @override
-  StreamValue<double?> get lastKnownAccuracyStreamValue =>
-      _lastKnownAccuracyStreamValue;
-
-  @override
-  StreamValue<CityCoordinate?> get lastKnownLocationStreamValue =>
-      _lastKnownLocationStreamValue;
-
-  @override
-  StreamValue<CityCoordinate?> get userLocationStreamValue =>
-      _userLocationStreamValue;
-
-  @override
-  Future<void> ensureLoaded() async {}
-
-  @override
-  Future<String?> resolveUserLocation() async => null;
-
-  @override
-  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
-
-  @override
-  Future<bool> startTracking({
-    LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      false;
-
-  @override
-  Future<void> stopTracking() async {}
-
-  @override
-  Future<void> setLastKnownAddress(Object? address) async {}
-
-  @override
-  Future<bool> warmUpIfPermitted() async => false;
-}
-
 class FakeAppDataBackend implements AppDataBackendContract {
   @override
   Future<AppDataDTO> fetch() async {
@@ -600,4 +525,38 @@ class FakeAppDataLocalInfoSource extends AppDataLocalInfoSource {
         href: '',
         device: '',
       );
+}
+
+class FakeLocationOriginService implements LocationOriginServiceContract {
+  @override
+  final StreamValue<LocationOriginResolution?> effectiveOriginStreamValue =
+      StreamValue<LocationOriginResolution?>(defaultValue: null);
+
+  @override
+  Future<LocationOriginResolution> resolve(
+    LocationOriginResolutionRequest request,
+  ) async {
+    final resolution = resolveCached();
+    effectiveOriginStreamValue.addValue(resolution);
+    return resolution;
+  }
+
+  @override
+  Future<LocationOriginResolution> resolveAndPersist(
+    LocationOriginResolutionRequest request,
+  ) {
+    return resolve(request);
+  }
+
+  @override
+  LocationOriginResolution resolveCached() {
+    return const LocationOriginResolution(
+      settings: null,
+      effectiveCoordinate: null,
+      liveUserCoordinate: null,
+      tenantDefaultCoordinate: null,
+      userFixedCoordinate: null,
+      distanceFromTenantDefaultOriginValue: null,
+    );
+  }
 }
