@@ -227,14 +227,33 @@ class TenantAdminSettingsResponseDecoder {
   }
 
   TenantAdminPushCredentials? decodePushCredentials(Object? rawResponse) {
-    final payload = _envelopeDecoder.decodeListMap(
+    final root = _envelopeDecoder.decodeRootMap(
       rawResponse,
       label: 'push credentials',
     );
-    if (payload.isEmpty) {
+    final data = root['data'];
+    if (data == null) {
       return null;
     }
-    return _mapPushCredentials(payload.first);
+    if (data is Map<String, dynamic>) {
+      return _mapPushCredentials(data);
+    }
+    if (data is Map) {
+      return _mapPushCredentials(Map<String, dynamic>.from(data));
+    }
+    if (data is List) {
+      if (data.isEmpty) {
+        return null;
+      }
+      final first = data.first;
+      if (first is Map<String, dynamic>) {
+        return _mapPushCredentials(first);
+      }
+      if (first is Map) {
+        return _mapPushCredentials(Map<String, dynamic>.from(first));
+      }
+    }
+    throw Exception('Unexpected push credentials response shape.');
   }
 
   TenantAdminPushCredentials decodePushCredentialItem(Object? rawResponse) {

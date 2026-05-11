@@ -254,6 +254,35 @@ void main() {
     expect(credentials.privateKey, isNull);
   });
 
+  test('fetchPushCredentials accepts single credential envelope response',
+      () async {
+    final adapter = _RoutingAdapter(
+      pushCredentialsResponseData: {
+        'id': 'push-credential-object',
+        'project_id': 'project-object',
+        'client_email': 'push-object@tenant-a.test',
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final credentials = await repository.fetchPushCredentials();
+
+    expect(
+      adapter.requests.single.uri.path,
+      '/api/v1/settings/push/credentials',
+    );
+    expect(credentials, isNotNull);
+    expect(credentials!.id, 'push-credential-object');
+    expect(credentials.projectId, 'project-object');
+    expect(credentials.clientEmail, 'push-object@tenant-a.test');
+    expect(credentials.privateKey, isNull);
+  });
+
   test('fetchPushCredentials returns null when no credentials exist', () async {
     final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -1938,6 +1967,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.pushSettingsPayload,
     this.pushStatusPayload,
     this.createDomainValidationMessage,
+    this.pushCredentialsResponseData,
     List<Map<String, dynamic>>? domainsPayload,
     Map<String, dynamic>? appDomainsPayload,
     List<Map<String, dynamic>>? pushCredentialsPayload,
@@ -2003,6 +2033,7 @@ class _RoutingAdapter implements HttpClientAdapter {
   final Map<String, dynamic>? pushSettingsPayload;
   final Map<String, dynamic>? pushStatusPayload;
   final String? createDomainValidationMessage;
+  final Object? pushCredentialsResponseData;
   final Map<String, dynamic> _appDomainsPayload;
   final Map<String, bool> _typedAppDomainPersistedByPlatform;
   final List<Map<String, dynamic>> _pushCredentialsPayload;
@@ -2101,7 +2132,7 @@ class _RoutingAdapter implements HttpClientAdapter {
 
     if (path.endsWith('/settings/push/credentials') && method == 'GET') {
       return _jsonResponse({
-        'data': _pushCredentialsPayload,
+        'data': pushCredentialsResponseData ?? _pushCredentialsPayload,
       });
     }
 
