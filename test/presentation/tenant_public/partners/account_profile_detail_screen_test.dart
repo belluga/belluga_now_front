@@ -491,8 +491,8 @@ void main() {
       find.byKey(const Key('immersiveCollapsedTitle')),
     );
     final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
-    final collapsedTitleCenter = tester.getCenter(
-      find.byKey(const Key('immersiveCollapsedTitle')),
+    final collapsedHeaderCenter = tester.getCenter(
+      find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
     );
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
@@ -507,8 +507,44 @@ void main() {
     expect(collapsedTitle.maxLines, 2);
     expect(collapsedTitle.overflow, TextOverflow.ellipsis);
     expect(sliverAppBar.toolbarHeight, 72);
+    expect((collapsedHeaderCenter.dy - toolbarCenterY).abs(),
+        lessThanOrEqualTo(8));
+  });
+
+  testWidgets(
+      'collapsed header keeps taxonomy labels readable after hero scroll',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(NestedScrollView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
+    final collapsedTaxonomy = find.byKey(
+      const Key('accountProfileCollapsedTaxonomySummary'),
+    );
+    expect(collapsedTaxonomy, findsOneWidget);
     expect(
-        (collapsedTitleCenter.dy - toolbarCenterY).abs(), lessThanOrEqualTo(8));
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Sunset Premium'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('live agenda highlight navigates to the highlighted event',
