@@ -528,7 +528,7 @@ void main() {
       _buildRoutedTestApp(
         router: _RecordingStackRouter(),
         child: AccountProfileDetailScreen(
-          accountProfile: _buildArtistProfile().copyWith(
+          accountProfile: _buildArtistProfileWithManyTaxonomies().copyWith(
             nameValue: TitleValue()
               ..parse('Pop Rock Nacional e Internacional na Orla'),
           ),
@@ -567,6 +567,20 @@ void main() {
       find.descendant(
         of: collapsedTaxonomy,
         matching: find.text('Sunset Premium'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Teatro Experimental'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Gastronomia Autoral'),
       ),
       findsOneWidget,
     );
@@ -1635,6 +1649,25 @@ AccountProfileModel _buildArtistProfile() {
     slug: 'cafe-de-la-musique',
     type: 'artist',
     tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: _buildArtistAgendaEvents(),
+    isVerified: true,
+    acceptedInvites: 87,
+  );
+}
+
+AccountProfileModel _buildArtistProfileWithManyTaxonomies() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const [
+      'Sunset Premium',
+      'Praia',
+      'Guarapari',
+      'Teatro Experimental',
+      'Gastronomia Autoral',
+    ],
     agendaEvents: _buildArtistAgendaEvents(),
     isVerified: true,
     acceptedInvites: 87,
