@@ -116,27 +116,39 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
               builder: (context, isPanelVisible) {
                 final showFilterPanel =
                     isPanelVisible && catalog.filters.isNotEmpty;
-                final filterExtent = showFilterPanel
-                    ? _filterPanelExtent(catalog, selection)
-                    : 0.0;
-                final headerHeight = kToolbarHeight + filterExtent;
 
                 return widget.builder(
                   context,
                   HomeAgendaSectionSlots(
-                    header: SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _PinnedHeaderDelegate(
-                        minHeight: headerHeight,
-                        maxHeight: headerHeight,
-                        child: _HomeAgendaHeader(
-                          controller: widget.controller,
-                          catalog: catalog,
-                          selection: selection,
-                          showFilterPanel: showFilterPanel,
+                    headerSlivers: [
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _PinnedHeaderDelegate(
+                          minHeight: kToolbarHeight,
+                          maxHeight: kToolbarHeight,
+                          child: SizedBox(
+                            height: kToolbarHeight,
+                            child: HomeAgendaAppBar(
+                              controller: widget.controller,
+                              onFilterPressed: () =>
+                                  _handleFilterPressed(isPanelVisible),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      if (showFilterPanel)
+                        SliverToBoxAdapter(
+                          child: _HomeAgendaFilterPanelReveal(
+                            onRevealFinished: widget
+                                .controller.completeDiscoveryFilterPanelReveal,
+                            child: _HomeAgendaFilterPanel(
+                              controller: widget.controller,
+                              catalog: catalog,
+                              selection: selection,
+                            ),
+                          ),
+                        ),
+                    ],
                     body: HomeAgendaBody(controller: widget.controller),
                   ),
                 );
@@ -148,56 +160,56 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     );
   }
 
-  double _filterPanelExtent(
-    DiscoveryFilterCatalog catalog,
-    DiscoveryFilterSelection selection,
-  ) {
-    return _hasVisibleTaxonomyGroups(catalog, selection) ? 184 : 72;
-  }
-
-  bool _hasVisibleTaxonomyGroups(
-    DiscoveryFilterCatalog catalog,
-    DiscoveryFilterSelection selection,
-  ) {
-    return hasVisibleDiscoveryFilterTaxonomyGroups(
-      catalog: catalog,
-      selection: selection,
-    );
+  void _handleFilterPressed(bool isPanelVisible) {
+    if (isPanelVisible) {
+      widget.controller.closeDiscoveryFilterPanel();
+      return;
+    }
+    widget.controller.openDiscoveryFilterPanelForReveal();
   }
 }
 
-class _HomeAgendaHeader extends StatelessWidget {
-  const _HomeAgendaHeader({
-    required this.controller,
-    required this.catalog,
-    required this.selection,
-    required this.showFilterPanel,
+class _HomeAgendaFilterPanelReveal extends StatefulWidget {
+  const _HomeAgendaFilterPanelReveal({
+    required this.child,
+    required this.onRevealFinished,
   });
 
-  final TenantHomeAgendaController controller;
-  final DiscoveryFilterCatalog catalog;
-  final DiscoveryFilterSelection selection;
-  final bool showFilterPanel;
+  final Widget child;
+  final VoidCallback onRevealFinished;
+
+  @override
+  State<_HomeAgendaFilterPanelReveal> createState() =>
+      _HomeAgendaFilterPanelRevealState();
+}
+
+class _HomeAgendaFilterPanelRevealState
+    extends State<_HomeAgendaFilterPanelReveal> {
+  final GlobalKey _panelKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final panelContext = _panelKey.currentContext;
+      if (panelContext == null) {
+        widget.onRevealFinished();
+        return;
+      }
+      Scrollable.ensureVisible(
+        panelContext,
+        alignment: 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ).whenComplete(widget.onRevealFinished);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: kToolbarHeight,
-            child: HomeAgendaAppBar(controller: controller),
-          ),
-          if (showFilterPanel)
-            _HomeAgendaFilterPanel(
-              controller: controller,
-              catalog: catalog,
-              selection: selection,
-            ),
-        ],
-      ),
+    return KeyedSubtree(
+      key: _panelKey,
+      child: widget.child,
     );
   }
 }
@@ -221,18 +233,21 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
         return StreamValueBuilder<bool>(
           streamValue: controller.isPageLoadingStreamValue,
           builder: (context, isPageLoading) {
-            return Semantics(
-              container: true,
-              label: 'Painel de filtros de eventos',
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: DiscoveryFilterBar(
-                  catalog: catalog,
-                  selection: selection,
-                  policy: controller.discoveryFilterPolicy,
-                  isLoading: isInitialLoading || isPageLoading,
-                  iconBuilder: buildDiscoveryFilterVisualIcon,
-                  onSelectionChanged: controller.setDiscoveryFilterSelection,
+            return Material(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Semantics(
+                container: true,
+                label: 'Painel de filtros de eventos',
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: DiscoveryFilterBar(
+                    catalog: catalog,
+                    selection: selection,
+                    policy: controller.discoveryFilterPolicy,
+                    isLoading: isInitialLoading || isPageLoading,
+                    iconBuilder: buildDiscoveryFilterVisualIcon,
+                    onSelectionChanged: controller.setDiscoveryFilterSelection,
+                  ),
                 ),
               ),
             );
@@ -266,7 +281,10 @@ class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return SizedBox.expand(child: child);
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SizedBox.expand(child: child),
+    );
   }
 
   @override

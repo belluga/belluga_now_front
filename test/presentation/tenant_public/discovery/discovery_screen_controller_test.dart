@@ -765,35 +765,13 @@ void main() {
         ),
       },
     );
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final primaryFilter = catalog.filters.first;
+    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: const DiscoveryFilterCatalog(
-          surface: 'discovery.account_profiles',
-          filters: <DiscoveryFilterCatalogItem>[
-            DiscoveryFilterCatalogItem(
-              key: 'venues',
-              label: 'Palcos',
-              target: 'account_profile',
-              entities: <String>{'account_profile'},
-              typesByEntity: <String, Set<String>>{
-                'account_profile': <String>{'venue'},
-              },
-            ),
-          ],
-          taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-            'cuisine': DiscoveryFilterTaxonomyGroupOption(
-              key: 'cuisine',
-              label: 'Cozinha',
-              terms: <DiscoveryFilterTaxonomyTermOption>[
-                DiscoveryFilterTaxonomyTermOption(
-                  value: 'japanese',
-                  label: 'Japonesa',
-                ),
-              ],
-            ),
-          },
-        ),
+        catalog: catalog,
       ),
     );
     GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
@@ -827,7 +805,7 @@ void main() {
     expect(header.pinned, isTrue);
     expect(find.text('Descubra'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+      find.byKey(_primaryFilterKey(primaryFilter)),
       findsNothing,
     );
     expect(find.byKey(const ValueKey<String>('discovery-filter-button')),
@@ -838,17 +816,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+      find.byKey(_primaryFilterKey(primaryFilter)),
       findsOneWidget,
     );
-    expect(find.text('Cozinha'), findsNothing);
+    expect(find.text(taxonomyGroup.label), findsNothing);
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('discoveryFilterPrimary_venues')),
+      find.byKey(_primaryFilterKey(primaryFilter)),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Cozinha'), findsNothing);
+    expect(find.text(taxonomyGroup.label), findsNothing);
     expect(
       find.byKey(const ValueKey<String>('discovery-filter-badge')),
       findsOneWidget,
@@ -863,13 +841,100 @@ void main() {
 
     expect(find.text('Descubra'), findsOneWidget);
     expect(
-      find.byKey(
-        const ValueKey<String>('discoveryFilterSelectedPrimary_venues'),
-      ),
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
       findsNothing,
     );
     expect(
       find.byKey(const ValueKey<String>('discovery-filter-badge')),
+      findsOneWidget,
+    );
+
+    await tester
+        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen renders secondary taxonomy filters after primary selection without overflow',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: List<AccountProfileModel>.generate(
+            12,
+            (index) => _profile(
+              id: _mongoId('taxonomy-ui-$index'),
+              type: 'venue',
+              name: 'Perfil Taxonomia $index',
+            ),
+          ),
+          hasMore: false,
+        ),
+      },
+    );
+    final catalog =
+        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+    final primaryFilter = catalog.filters.single;
+    final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
+    final firstTaxonomyGroup = taxonomyGroups.first;
+    final secondTaxonomyGroup = taxonomyGroups.last;
+    final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
+    final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: catalog,
+      ),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester
+        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(_primaryFilterKey(primaryFilter)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text(firstTaxonomyGroup.label), findsOneWidget);
+    expect(find.text(secondTaxonomyGroup.label), findsOneWidget);
+    expect(
+      find.byKey(_taxonomyChipKey(firstTaxonomyGroup, firstTaxonomyTerm)),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
       findsOneWidget,
     );
 
@@ -1229,34 +1294,13 @@ void main() {
         ),
       },
     );
+    final catalog =
+        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+    final primaryFilter = catalog.filters.single;
+    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
+    final taxonomyTerm = taxonomyGroup.terms.single;
     final filtersRepository = _FakeDiscoveryFiltersRepository(
-      catalog: const DiscoveryFilterCatalog(
-        surface: 'discovery.account_profiles',
-        filters: <DiscoveryFilterCatalogItem>[
-          DiscoveryFilterCatalogItem(
-            key: 'venues',
-            label: 'Locais',
-            target: 'account_profile',
-            entities: <String>{'account_profile'},
-            typesByEntity: <String, Set<String>>{
-              'account_profile': <String>{'venue'},
-            },
-            taxonomyKeys: <String>{'music_styles'},
-          ),
-        ],
-        taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-          'music_styles': DiscoveryFilterTaxonomyGroupOption(
-            key: 'music_styles',
-            label: 'Estilos',
-            terms: <DiscoveryFilterTaxonomyTermOption>[
-              DiscoveryFilterTaxonomyTermOption(
-                value: 'rock',
-                label: 'Rock',
-              ),
-            ],
-          ),
-        },
-      ),
+      catalog: catalog,
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
@@ -1265,20 +1309,20 @@ void main() {
 
     await controller.init();
     controller.setDiscoveryFilterSelection(
-      const DiscoveryFilterSelection(
-        primaryKeys: <String>{'venues'},
+      DiscoveryFilterSelection(
+        primaryKeys: <String>{primaryFilter.key},
         taxonomyTermKeys: <String, Set<String>>{
-          'music_styles': <String>{'rock'},
+          taxonomyGroup.key: <String>{taxonomyTerm.value},
         },
       ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
     expect(filtersRepository.requestedSurfaces, ['discovery.account_profiles']);
-    expect(repository.pageRequests.last.typeFilters, ['venue']);
-    expect(repository.pageRequests.last.taxonomyFilters, [
-      'music_styles:rock',
-    ]);
+    expect(repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList());
+    expect(repository.pageRequests.last.taxonomyFilters,
+        [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
     controller.onDispose();
   });
 
@@ -1296,20 +1340,25 @@ void main() {
         ),
       },
     );
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final primaryFilter = catalog.filters.first;
+    final secondaryFilter = catalog.filters.last;
+    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+    final taxonomyTerm = taxonomyGroup.terms.single;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
+        catalog: catalog,
       ),
     );
 
     await controller.init();
 
     controller.setDiscoveryFilterSelection(
-      const DiscoveryFilterSelection(
-        primaryKeys: <String>{'venues', 'artists'},
+      DiscoveryFilterSelection(
+        primaryKeys: <String>{primaryFilter.key, secondaryFilter.key},
         taxonomyTermKeys: <String, Set<String>>{
-          'cuisine': <String>{'japanese'},
+          taxonomyGroup.key: <String>{taxonomyTerm.value},
         },
       ),
     );
@@ -1318,14 +1367,15 @@ void main() {
     expect(controller.discoveryFilterPolicy.primarySelectionMode,
         DiscoveryFilterSelectionMode.single);
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{'venues'});
-    expect(repository.pageRequests.last.typeFilters, ['venue']);
+        <String>{primaryFilter.key});
+    expect(repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList());
     expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
 
     controller.setDiscoveryFilterSelection(
-      const DiscoveryFilterSelection(
+      DiscoveryFilterSelection(
         taxonomyTermKeys: <String, Set<String>>{
-          'cuisine': <String>{'japanese'},
+          taxonomyGroup.key: <String>{taxonomyTerm.value},
         },
       ),
     );
@@ -1350,40 +1400,47 @@ void main() {
         ),
       },
     );
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final primaryFilter = catalog.filters.first;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: _accountProfileDiscoveryFilterCatalogWithMultipleTypes(),
+        catalog: catalog,
       ),
     );
 
     await controller.init();
     controller.setDiscoveryFilterPanelVisible(true);
     controller.setDiscoveryFilterSelection(
-      const DiscoveryFilterSelection(primaryKeys: <String>{'venues'}),
+      DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
     );
 
     controller.updateDiscoveryFilterPanelVisibilityFromScroll(24);
 
     expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{'venues'});
+        <String>{primaryFilter.key});
     controller.onDispose();
   });
 
   test(
       'discovery restores persisted canonical filter selection before first fetch',
       () async {
+    final catalog =
+        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+    final primaryFilter = catalog.filters.single;
+    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
+    final taxonomyTerm = taxonomyGroup.terms.single;
     final appDataRepository = _FakeAppDataRepository(
       appData: _buildAppData(),
       maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
       discoveryFilterSelections: <String,
           AppDataDiscoveryFilterSelectionSnapshot>{
         'discovery.account_profiles': _appDataSelectionSnapshot(
-          const DiscoveryFilterSelection(
-            primaryKeys: <String>{'venues'},
+          DiscoveryFilterSelection(
+            primaryKeys: <String>{primaryFilter.key},
             taxonomyTermKeys: <String, Set<String>>{
-              'music_styles': <String>{'rock'},
+              taxonomyGroup.key: <String>{taxonomyTerm.value},
             },
           ),
         ),
@@ -1405,44 +1462,18 @@ void main() {
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
       discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: const DiscoveryFilterCatalog(
-          surface: 'discovery.account_profiles',
-          filters: <DiscoveryFilterCatalogItem>[
-            DiscoveryFilterCatalogItem(
-              key: 'venues',
-              label: 'Locais',
-              target: 'account_profile',
-              entities: <String>{'account_profile'},
-              typesByEntity: <String, Set<String>>{
-                'account_profile': <String>{'venue'},
-              },
-              taxonomyKeys: <String>{'music_styles'},
-            ),
-          ],
-          taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-            'music_styles': DiscoveryFilterTaxonomyGroupOption(
-              key: 'music_styles',
-              label: 'Estilos',
-              terms: <DiscoveryFilterTaxonomyTermOption>[
-                DiscoveryFilterTaxonomyTermOption(
-                  value: 'rock',
-                  label: 'Rock',
-                ),
-              ],
-            ),
-          },
-        ),
+        catalog: catalog,
       ),
     );
 
     await controller.init();
 
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{'venues'});
-    expect(repository.pageRequests.last.typeFilters, ['venue']);
-    expect(repository.pageRequests.last.taxonomyFilters, [
-      'music_styles:rock',
-    ]);
+        <String>{primaryFilter.key});
+    expect(repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList());
+    expect(repository.pageRequests.last.taxonomyFilters,
+        [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
     controller.onDispose();
   });
 
@@ -1515,12 +1546,16 @@ void main() {
 
 DiscoveryFilterCatalog
     _accountProfileDiscoveryFilterCatalogWithMultipleTypes() {
-  return const DiscoveryFilterCatalog(
+  final firstFilterKey = _fixtureFilterKey(1);
+  final secondFilterKey = _fixtureFilterKey(2);
+  final taxonomyKey = _fixtureTaxonomyKey(1);
+  final taxonomyTermValue = _fixtureTaxonomyTermValue(1);
+  return DiscoveryFilterCatalog(
     surface: 'discovery.account_profiles',
     filters: <DiscoveryFilterCatalogItem>[
       DiscoveryFilterCatalogItem(
-        key: 'venues',
-        label: 'Locais',
+        key: firstFilterKey,
+        label: _fixtureFilterLabel(1),
         target: 'account_profile',
         entities: <String>{'account_profile'},
         typesByEntity: <String, Set<String>>{
@@ -1528,8 +1563,8 @@ DiscoveryFilterCatalog
         },
       ),
       DiscoveryFilterCatalogItem(
-        key: 'artists',
-        label: 'Artistas',
+        key: secondFilterKey,
+        label: _fixtureFilterLabel(2),
         target: 'account_profile',
         entities: <String>{'account_profile'},
         typesByEntity: <String, Set<String>>{
@@ -1538,18 +1573,99 @@ DiscoveryFilterCatalog
       ),
     ],
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-      'cuisine': DiscoveryFilterTaxonomyGroupOption(
-        key: 'cuisine',
-        label: 'Cozinha',
+      taxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: taxonomyKey,
+        label: _fixtureTaxonomyLabel(1),
         terms: <DiscoveryFilterTaxonomyTermOption>[
           DiscoveryFilterTaxonomyTermOption(
-            value: 'japanese',
-            label: 'Japonesa',
+            value: taxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(1),
           ),
         ],
       ),
     },
   );
+}
+
+DiscoveryFilterCatalog
+    _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups() {
+  final filterKey = _fixtureFilterKey(1);
+  final firstTaxonomyKey = _fixtureTaxonomyKey(1);
+  final secondTaxonomyKey = _fixtureTaxonomyKey(2);
+  final firstTaxonomyTermValue = _fixtureTaxonomyTermValue(1);
+  final secondTaxonomyTermValue = _fixtureTaxonomyTermValue(2);
+  return DiscoveryFilterCatalog(
+    surface: 'discovery.account_profiles',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: filterKey,
+        label: _fixtureFilterLabel(1),
+        target: 'account_profile',
+        entities: <String>{'account_profile'},
+        typesByEntity: <String, Set<String>>{
+          'account_profile': <String>{'venue'},
+        },
+        taxonomyKeys: <String>{firstTaxonomyKey, secondTaxonomyKey},
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      firstTaxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: firstTaxonomyKey,
+        label: _fixtureTaxonomyLabel(1),
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: firstTaxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(1),
+          ),
+        ],
+      ),
+      secondTaxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: secondTaxonomyKey,
+        label: _fixtureTaxonomyLabel(2),
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: secondTaxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(2),
+          ),
+        ],
+      ),
+    },
+  );
+}
+
+String _fixtureFilterKey(int index) => 'fixture_filter_$index';
+
+String _fixtureFilterLabel(int index) => 'Fixture Filter $index';
+
+String _fixtureTaxonomyKey(int index) => 'fixture_taxonomy_$index';
+
+String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
+
+String _fixtureTaxonomyTermValue(int index) => 'fixture_taxonomy_term_$index';
+
+String _fixtureTaxonomyTermLabel(int index) => 'Fixture Taxonomy Term $index';
+
+String _encodedTaxonomyFilter(
+  DiscoveryFilterTaxonomyGroupOption group,
+  DiscoveryFilterTaxonomyTermOption term,
+) {
+  return '${group.key}:${term.value}';
+}
+
+ValueKey<String> _primaryFilterKey(DiscoveryFilterCatalogItem filter) {
+  return ValueKey<String>('discoveryFilterPrimary_${filter.key}');
+}
+
+ValueKey<String> _selectedPrimaryFilterKey(DiscoveryFilterCatalogItem filter) {
+  return ValueKey<String>('discoveryFilterSelectedPrimary_${filter.key}');
+}
+
+ValueKey<String> _taxonomyChipKey(
+  DiscoveryFilterTaxonomyGroupOption group,
+  DiscoveryFilterTaxonomyTermOption term,
+) {
+  return ValueKey<String>(
+      'discoveryFilterTaxonomyChip_${group.key}_${term.value}');
 }
 
 DiscoveryScreenController _buildDiscoveryController({

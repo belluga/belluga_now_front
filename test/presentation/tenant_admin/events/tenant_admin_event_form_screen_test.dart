@@ -52,7 +52,7 @@ void main() {
         slugValue: tenantAdminRequiredText('feira'),
         descriptionValue: tenantAdminOptionalText('Tipo default do teste'),
         allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-          const ['music_genre'],
+          [_fixtureTaxonomySlug(1)],
         ),
       ),
     ];
@@ -68,12 +68,12 @@ void main() {
 
     await _fillRequiredFields(tester, controller: controller);
     await tester.scrollUntilVisible(
-      find.text('Rock'),
+      find.text(_fixtureTermLabel(1)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rock'));
+    await tester.tap(find.text(_fixtureTermLabel(1)));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Criar evento'),
@@ -88,7 +88,9 @@ void main() {
     expect(draft, isNotNull);
     expect(
       draft!.taxonomyTerms.any(
-        (term) => term.type == 'music_genre' && term.value == 'rock',
+        (term) =>
+            term.type == _fixtureTaxonomySlug(1) &&
+            term.value == _fixtureTermSlug(1),
       ),
       isTrue,
     );
@@ -97,6 +99,100 @@ void main() {
     expect(taxonomiesRepository.batchFetchTaxonomyIds, [
       ['tax-1'],
     ]);
+  });
+
+  testWidgets(
+      'single occurrence edit exposes occurrence taxonomy without programming items',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    final eventType = TenantAdminEventType.withAllowedTaxonomies(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439041'),
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+      allowedTaxonomiesValue: tenantAdminTrimmedStringList(
+        [_fixtureTaxonomySlug(1)],
+      ),
+    );
+    eventsRepository.eventTypes = [eventType];
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-single-occurrence-taxonomy'),
+      slugValue: tenantAdminRequiredText('evt-single-occurrence-taxonomy'),
+      titleValue: tenantAdminRequiredText('Evento sem programacao'),
+      contentValue: tenantAdminOptionalText('<p>Conteudo</p>'),
+      type: eventType,
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 20, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('online'),
+        online: TenantAdminEventOnlineLocation(
+          urlValue: tenantAdminRequiredText('https://example.com/live'),
+        ),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+    );
+    await tester.pumpAndSettle();
+
+    final occurrenceTaxonomyChip = find.byKey(
+      _occurrenceTaxonomyChipKey(_fixtureTaxonomySlug(1), _fixtureTermSlug(1)),
+    );
+    expect(find.text('Taxonomias da ocorrência'), findsOneWidget);
+    expect(occurrenceTaxonomyChip, findsOneWidget);
+
+    await tester.tap(occurrenceTaxonomyChip);
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Salvar alterações'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    final occurrenceTerms =
+        eventsRepository.lastUpdateDraft?.occurrences.first.taxonomyTerms;
+    expect(
+      occurrenceTerms?.any(
+        (term) =>
+            term.type == _fixtureTaxonomySlug(1) &&
+            term.value == _fixtureTermSlug(1),
+      ),
+      isTrue,
+    );
   });
 
   testWidgets(
@@ -114,7 +210,7 @@ void main() {
       nameValue: tenantAdminRequiredText('Feira'),
       slugValue: tenantAdminRequiredText('feira'),
       allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-        const ['music_genre'],
+        [_fixtureTaxonomySlug(1)],
       ),
     );
 
@@ -142,8 +238,14 @@ void main() {
         ),
       ),
       taxonomyTerms: _tenantAdminTaxonomyTerms([
-        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
-        tenantAdminTaxonomyTermFromRaw(type: 'cuisine', value: 'italian'),
+        tenantAdminTaxonomyTermFromRaw(
+          type: _fixtureTaxonomySlug(1),
+          value: _fixtureTermSlug(1),
+        ),
+        tenantAdminTaxonomyTermFromRaw(
+          type: _fixtureTaxonomySlug(2),
+          value: _fixtureTermSlug(2),
+        ),
       ]),
     );
 
@@ -157,16 +259,16 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Rock'),
+      find.text(_fixtureTermLabel(1)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Music Genre'), findsOneWidget);
-    expect(find.text('Rock'), findsOneWidget);
-    expect(find.text('Cuisine'), findsNothing);
-    expect(find.text('Italian'), findsNothing);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTermLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(2)), findsNothing);
+    expect(find.text(_fixtureTermLabel(2)), findsNothing);
 
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Salvar alterações'),
@@ -180,7 +282,10 @@ void main() {
     final submittedTerms = eventsRepository.lastUpdateDraft?.taxonomyTerms
         .map((term) => '${term.type}:${term.value}')
         .toList(growable: false);
-    expect(submittedTerms, ['music_genre:rock']);
+    expect(
+      submittedTerms,
+      [_encodedAdminTaxonomyTerm(_fixtureTaxonomySlug(1), _fixtureTermSlug(1))],
+    );
     expect(taxonomiesRepository.fetchTermsCalls, 0);
     expect(taxonomiesRepository.batchFetchTaxonomyIds, [
       ['tax-1'],
@@ -215,7 +320,7 @@ void main() {
         nameValue: tenantAdminRequiredText('Feira'),
         slugValue: tenantAdminRequiredText('feira'),
         allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-          const ['music_genre'],
+          [_fixtureTaxonomySlug(1)],
         ),
       ),
       occurrences: <TenantAdminEventOccurrence>[
@@ -246,14 +351,14 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Rock'),
+      find.text(_fixtureTermLabel(1)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Music Genre'), findsOneWidget);
-    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTermLabel(1)), findsOneWidget);
     expect(taxonomiesRepository.fetchTermsCalls, 0);
     expect(taxonomiesRepository.batchFetchTaxonomyIds, [
       ['tax-1'],
@@ -274,7 +379,7 @@ void main() {
       nameValue: tenantAdminRequiredText('Feira'),
       slugValue: tenantAdminRequiredText('feira'),
       allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-        const ['music_genre'],
+        [_fixtureTaxonomySlug(1)],
       ),
     );
     final restauranteType = TenantAdminEventType.withAllowedTaxonomies(
@@ -282,7 +387,7 @@ void main() {
       nameValue: tenantAdminRequiredText('Restaurante'),
       slugValue: tenantAdminRequiredText('restaurante'),
       allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-        const ['cuisine'],
+        [_fixtureTaxonomySlug(2)],
       ),
     );
 
@@ -310,7 +415,10 @@ void main() {
         ),
       ),
       taxonomyTerms: _tenantAdminTaxonomyTerms([
-        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
+        tenantAdminTaxonomyTermFromRaw(
+          type: _fixtureTaxonomySlug(1),
+          value: _fixtureTermSlug(1),
+        ),
       ]),
     );
 
@@ -324,16 +432,16 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Rock'),
+      find.text(_fixtureTermLabel(1)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Music Genre'), findsOneWidget);
-    expect(find.text('Rock'), findsOneWidget);
-    expect(find.text('Cuisine'), findsNothing);
-    expect(find.text('Italian'), findsNothing);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTermLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(2)), findsNothing);
+    expect(find.text(_fixtureTermLabel(2)), findsNothing);
 
     await tester.scrollUntilVisible(
       find.byType(DropdownButtonFormField<String>).first,
@@ -347,16 +455,16 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Italian'),
+      find.text(_fixtureTermLabel(2)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Music Genre'), findsNothing);
-    expect(find.text('Rock'), findsNothing);
-    expect(find.text('Cuisine'), findsOneWidget);
-    expect(find.text('Italian'), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsNothing);
+    expect(find.text(_fixtureTermLabel(1)), findsNothing);
+    expect(find.text(_fixtureTaxonomyLabel(2)), findsOneWidget);
+    expect(find.text(_fixtureTermLabel(2)), findsOneWidget);
     expect(taxonomiesRepository.fetchTermsCalls, 0);
     expect(taxonomiesRepository.batchFetchTaxonomyIds, [
       ['tax-1'],
@@ -404,8 +512,14 @@ void main() {
         ),
       ),
       taxonomyTerms: _tenantAdminTaxonomyTerms([
-        tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
-        tenantAdminTaxonomyTermFromRaw(type: 'cuisine', value: 'italian'),
+        tenantAdminTaxonomyTermFromRaw(
+          type: _fixtureTaxonomySlug(1),
+          value: _fixtureTermSlug(1),
+        ),
+        tenantAdminTaxonomyTermFromRaw(
+          type: _fixtureTaxonomySlug(2),
+          value: _fixtureTermSlug(2),
+        ),
       ]),
     );
 
@@ -419,10 +533,10 @@ void main() {
     );
 
     expect(find.text('Taxonomias'), findsNothing);
-    expect(find.text('Music Genre'), findsNothing);
-    expect(find.text('Rock'), findsNothing);
-    expect(find.text('Cuisine'), findsNothing);
-    expect(find.text('Italian'), findsNothing);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsNothing);
+    expect(find.text(_fixtureTermLabel(1)), findsNothing);
+    expect(find.text(_fixtureTaxonomyLabel(2)), findsNothing);
+    expect(find.text(_fixtureTermLabel(2)), findsNothing);
 
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Salvar alterações'),
@@ -452,7 +566,7 @@ void main() {
       nameValue: tenantAdminRequiredText('Feira'),
       slugValue: tenantAdminRequiredText('feira'),
       allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-        const ['music_genre', 'empty_topic'],
+        [_fixtureTaxonomySlug(1), _fixtureTaxonomySlug(3)],
       ),
     );
 
@@ -491,24 +605,26 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Rock'),
+      find.text(_fixtureTermLabel(1)),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Taxonomias'), findsOneWidget);
-    expect(find.text('Music Genre'), findsOneWidget);
-    expect(find.text('Rock'), findsOneWidget);
-    expect(find.text('Empty Topic'), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTermLabel(1)), findsOneWidget);
+    expect(find.text(_fixtureTaxonomyLabel(3)), findsOneWidget);
     expect(
       find.text('Nenhum termo cadastrado para esta taxonomia.'),
       findsOneWidget,
     );
     expect(taxonomiesRepository.fetchTermsCalls, 0);
-    expect(taxonomiesRepository.batchFetchTaxonomyIds, [
-      ['tax-empty', 'tax-1'],
-    ]);
+    expect(taxonomiesRepository.batchFetchTaxonomyIds, hasLength(1));
+    expect(
+      taxonomiesRepository.batchFetchTaxonomyIds.single,
+      unorderedEquals(['tax-1', 'tax-empty']),
+    );
   });
 
   testWidgets('guards against duplicate create submit taps', (tester) async {
@@ -740,7 +856,7 @@ void main() {
         nameValue: tenantAdminRequiredText('Feira'),
         slugValue: tenantAdminRequiredText('feira'),
         allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-          const ['music_genre'],
+          [_fixtureTaxonomySlug(1)],
         ),
       ),
     ];
@@ -760,14 +876,15 @@ void main() {
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
 
-    const rockKey = Key('tenantAdminOccurrenceTaxonomy_music_genre_rock');
+    final selectedTaxonomyChipKey = _occurrenceTaxonomyChipKey(
+        _fixtureTaxonomySlug(1), _fixtureTermSlug(1));
     await tester.scrollUntilVisible(
-      find.byKey(rockKey),
+      find.byKey(selectedTaxonomyChipKey),
       250,
       scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(rockKey));
+    await tester.tap(find.byKey(selectedTaxonomyChipKey));
     await tester.pumpAndSettle();
     await _closeOccurrenceSheet(tester);
 
@@ -784,7 +901,9 @@ void main() {
         .lastCreateDraft?.occurrences[1].taxonomyTerms
         .map((term) => '${term.type}:${term.value}')
         .toList(growable: false);
-    expect(occurrenceTerms, ['music_genre:rock']);
+    expect(occurrenceTerms, [
+      _encodedAdminTaxonomyTerm(_fixtureTaxonomySlug(1), _fixtureTermSlug(1))
+    ]);
   });
 
   testWidgets(
@@ -3689,6 +3808,22 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   }
 }
 
+String _fixtureTaxonomySlug(int index) => 'fixture_taxonomy_$index';
+
+String _fixtureTermSlug(int index) => 'fixture_term_$index';
+
+String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
+
+String _fixtureTermLabel(int index) => 'Fixture Term $index';
+
+String _encodedAdminTaxonomyTerm(String taxonomySlug, String termSlug) {
+  return '$taxonomySlug:$termSlug';
+}
+
+Key _occurrenceTaxonomyChipKey(String taxonomySlug, String termSlug) {
+  return Key('tenantAdminOccurrenceTaxonomy_${taxonomySlug}_$termSlug');
+}
+
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements
@@ -3735,24 +3870,24 @@ class _FakeTaxonomiesRepository
     return [
       tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-1',
-        slug: 'music_genre',
-        name: 'Music Genre',
+        slug: _fixtureTaxonomySlug(1),
+        name: _fixtureTaxonomyLabel(1),
         appliesTo: ['event'],
         icon: null,
         color: null,
       ),
       tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-2',
-        slug: 'cuisine',
-        name: 'Cuisine',
+        slug: _fixtureTaxonomySlug(2),
+        name: _fixtureTaxonomyLabel(2),
         appliesTo: ['event'],
         icon: null,
         color: null,
       ),
       tenantAdminTaxonomyDefinitionFromRaw(
         id: 'tax-empty',
-        slug: 'empty_topic',
-        name: 'Empty Topic',
+        slug: _fixtureTaxonomySlug(3),
+        name: _fixtureTaxonomyLabel(3),
         appliesTo: ['event'],
         icon: null,
         color: null,
@@ -3813,8 +3948,8 @@ class _FakeTaxonomiesRepository
         tenantAdminTaxonomyTermDefinitionFromRaw(
           id: 'term-2',
           taxonomyId: 'tax-2',
-          slug: 'italian',
-          name: 'Italian',
+          slug: _fixtureTermSlug(2),
+          name: _fixtureTermLabel(2),
         ),
       ];
     }
@@ -3822,8 +3957,8 @@ class _FakeTaxonomiesRepository
       tenantAdminTaxonomyTermDefinitionFromRaw(
         id: 'term-1',
         taxonomyId: 'tax-1',
-        slug: 'rock',
-        name: 'Rock',
+        slug: _fixtureTermSlug(1),
+        name: _fixtureTermLabel(1),
       ),
     ];
   }

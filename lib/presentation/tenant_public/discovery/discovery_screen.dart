@@ -28,6 +28,8 @@ class DiscoveryScreen extends StatefulWidget {
 }
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
+  static const double _headerCollapsedExtent = 72;
+
   final DiscoveryScreenController _controller =
       GetIt.I.get<DiscoveryScreenController>();
 
@@ -207,14 +209,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 delegate:
                                                     DiscoveryFilterHeaderDelegate(
                                                   extent:
-                                                      _discoveryHeaderExtent(
-                                                    hasCanonicalFilters:
-                                                        hasCanonicalFilters,
-                                                    showFilterPanel:
-                                                        showFilterPanel,
-                                                    catalog: catalog,
-                                                    selection: filterSelection,
-                                                  ),
+                                                      _headerCollapsedExtent,
                                                   title: 'Descubra',
                                                   action: Row(
                                                     mainAxisSize:
@@ -223,6 +218,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                       if (hasCanonicalFilters)
                                                         _buildFilterAction(
                                                           filterSelection,
+                                                          showFilterPanel,
                                                         ),
                                                       IconButton(
                                                         icon: const Icon(
@@ -232,18 +228,21 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                  filterBuilder: () {
-                                                    if (!showFilterPanel) {
-                                                      return const SizedBox
-                                                          .shrink();
-                                                    }
-                                                    return _buildCanonicalDiscoveryFilters(
-                                                      context,
-                                                      catalog: catalog,
-                                                      selection:
-                                                          filterSelection,
-                                                    );
-                                                  },
+                                                ),
+                                              ),
+                                            if (showDiscoveryHeader &&
+                                                showFilterPanel)
+                                              SliverToBoxAdapter(
+                                                child:
+                                                    _DiscoveryFilterPanelReveal(
+                                                  onRevealFinished: _controller
+                                                      .completeDiscoveryFilterPanelReveal,
+                                                  child:
+                                                      _buildCanonicalDiscoveryFilters(
+                                                    context,
+                                                    catalog: catalog,
+                                                    selection: filterSelection,
+                                                  ),
                                                 ),
                                               ),
                                             SliverToBoxAdapter(
@@ -481,13 +480,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
-  Widget _buildFilterAction(DiscoveryFilterSelection selection) {
+  Widget _buildFilterAction(
+    DiscoveryFilterSelection selection,
+    bool isFilterPanelVisible,
+  ) {
     final activeCount = selection.activeCount;
     final isActive = activeCount > 0;
     return IconButton(
       key: const ValueKey<String>('discovery-filter-button'),
       tooltip: isActive ? 'Filtros ativos' : 'Filtrar perfis',
-      onPressed: _controller.toggleDiscoveryFilterPanel,
+      onPressed: () {
+        if (isFilterPanelVisible) {
+          _controller.closeDiscoveryFilterPanel();
+          return;
+        }
+        _controller.openDiscoveryFilterPanelForReveal();
+      },
       icon: Builder(
         builder: (context) {
           final colorScheme = Theme.of(context).colorScheme;
@@ -513,26 +521,49 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       ),
     );
   }
+}
 
-  double _discoveryHeaderExtent({
-    required bool hasCanonicalFilters,
-    required bool showFilterPanel,
-    required DiscoveryFilterCatalog catalog,
-    required DiscoveryFilterSelection selection,
-  }) {
-    if (!hasCanonicalFilters || !showFilterPanel) {
-      return 72;
-    }
-    return _hasVisibleTaxonomyGroups(catalog, selection) ? 236 : 136;
+class _DiscoveryFilterPanelReveal extends StatefulWidget {
+  const _DiscoveryFilterPanelReveal({
+    required this.child,
+    required this.onRevealFinished,
+  });
+
+  final Widget child;
+  final VoidCallback onRevealFinished;
+
+  @override
+  State<_DiscoveryFilterPanelReveal> createState() =>
+      _DiscoveryFilterPanelRevealState();
+}
+
+class _DiscoveryFilterPanelRevealState
+    extends State<_DiscoveryFilterPanelReveal> {
+  final GlobalKey _panelKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final panelContext = _panelKey.currentContext;
+      if (panelContext == null) {
+        widget.onRevealFinished();
+        return;
+      }
+      Scrollable.ensureVisible(
+        panelContext,
+        alignment: 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ).whenComplete(widget.onRevealFinished);
+    });
   }
 
-  bool _hasVisibleTaxonomyGroups(
-    DiscoveryFilterCatalog catalog,
-    DiscoveryFilterSelection selection,
-  ) {
-    return hasVisibleDiscoveryFilterTaxonomyGroups(
-      catalog: catalog,
-      selection: selection,
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _panelKey,
+      child: widget.child,
     );
   }
 }
