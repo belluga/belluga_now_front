@@ -266,7 +266,7 @@ class _AccountProfileDetailScreenState
           Text(
             key: const Key('immersiveCollapsedTitle'),
             accountProfile.name,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: colorScheme.onSurface,
