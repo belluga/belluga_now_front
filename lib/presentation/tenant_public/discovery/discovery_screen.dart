@@ -218,6 +218,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                       if (hasCanonicalFilters)
                                                         _buildFilterAction(
                                                           filterSelection,
+                                                          showFilterPanel,
                                                         ),
                                                       IconButton(
                                                         icon: const Icon(
@@ -233,10 +234,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 showFilterPanel)
                                               SliverToBoxAdapter(
                                                 child:
-                                                    _buildCanonicalDiscoveryFilters(
-                                                  context,
-                                                  catalog: catalog,
-                                                  selection: filterSelection,
+                                                    _DiscoveryFilterPanelReveal(
+                                                  onRevealFinished: _controller
+                                                      .completeDiscoveryFilterPanelReveal,
+                                                  child:
+                                                      _buildCanonicalDiscoveryFilters(
+                                                    context,
+                                                    catalog: catalog,
+                                                    selection: filterSelection,
+                                                  ),
                                                 ),
                                               ),
                                             SliverToBoxAdapter(
@@ -474,13 +480,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
-  Widget _buildFilterAction(DiscoveryFilterSelection selection) {
+  Widget _buildFilterAction(
+    DiscoveryFilterSelection selection,
+    bool isFilterPanelVisible,
+  ) {
     final activeCount = selection.activeCount;
     final isActive = activeCount > 0;
     return IconButton(
       key: const ValueKey<String>('discovery-filter-button'),
       tooltip: isActive ? 'Filtros ativos' : 'Filtrar perfis',
-      onPressed: _controller.toggleDiscoveryFilterPanel,
+      onPressed: () {
+        if (isFilterPanelVisible) {
+          _controller.closeDiscoveryFilterPanel();
+          return;
+        }
+        _controller.openDiscoveryFilterPanelForReveal();
+      },
       icon: Builder(
         builder: (context) {
           final colorScheme = Theme.of(context).colorScheme;
@@ -504,6 +519,51 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _DiscoveryFilterPanelReveal extends StatefulWidget {
+  const _DiscoveryFilterPanelReveal({
+    required this.child,
+    required this.onRevealFinished,
+  });
+
+  final Widget child;
+  final VoidCallback onRevealFinished;
+
+  @override
+  State<_DiscoveryFilterPanelReveal> createState() =>
+      _DiscoveryFilterPanelRevealState();
+}
+
+class _DiscoveryFilterPanelRevealState
+    extends State<_DiscoveryFilterPanelReveal> {
+  final GlobalKey _panelKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final panelContext = _panelKey.currentContext;
+      if (panelContext == null) {
+        widget.onRevealFinished();
+        return;
+      }
+      Scrollable.ensureVisible(
+        panelContext,
+        alignment: 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ).whenComplete(widget.onRevealFinished);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _panelKey,
+      child: widget.child,
     );
   }
 }

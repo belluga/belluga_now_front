@@ -849,6 +849,15 @@ void main() {
       findsOneWidget,
     );
 
+    await tester
+        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+      findsOneWidget,
+    );
+
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
