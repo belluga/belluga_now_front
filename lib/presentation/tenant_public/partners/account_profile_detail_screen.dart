@@ -127,9 +127,6 @@ class _AccountProfileDetailScreenState
                                       resolvedAccountProfile,
                                     ),
                                     title: resolvedAccountProfile.name,
-                                    collapsedTitle: _buildCollapsedTitle(
-                                      resolvedAccountProfile,
-                                    ),
                                     collapsedToolbarHeight: 72,
                                     centerCollapsedTitle: false,
                                     appBarActionsBuilder:
@@ -234,94 +231,6 @@ class _AccountProfileDetailScreenState
         ),
       ],
     );
-  }
-
-  Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final taxonomyLabels = _taxonomyLabels(accountProfile).take(3).toList();
-    if (taxonomyLabels.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          key: const Key('immersiveCollapsedTitle'),
-          accountProfile.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-      );
-    }
-
-    return Semantics(
-      key: const Key('accountProfileCollapsedTaxonomySummary'),
-      container: true,
-      label: '${accountProfile.name}. ${taxonomyLabels.join(', ')}',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            key: const Key('immersiveCollapsedTitle'),
-            accountProfile.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var index = 0; index < taxonomyLabels.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      taxonomyLabels[index],
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<String> _taxonomyLabels(AccountProfileModel accountProfile) {
-    final seen = <String>{};
-    final labels = <String>[];
-    for (final tag in accountProfile.tags) {
-      final label = tag.value.trim();
-      if (label.isEmpty) {
-        continue;
-      }
-      final normalized = label.toLowerCase();
-      if (seen.add(normalized)) {
-        labels.add(label);
-      }
-    }
-    return labels;
   }
 
   List<Widget> _buildAppBarActions(
