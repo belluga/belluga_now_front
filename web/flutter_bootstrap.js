@@ -10,6 +10,27 @@ var appDataJS = {
 const __progressUpdate = window.__appProgressUpdate || function () { };
 const __progressLabel = window.__appProgressLabel || function () { };
 
+const __bellugaBuildSha = typeof window.__WEB_BUILD_SHA__ === 'string'
+  ? window.__WEB_BUILD_SHA__.trim()
+  : '';
+
+if (
+  __bellugaBuildSha.length > 0
+  && _flutter.buildConfig
+  && Array.isArray(_flutter.buildConfig.builds)
+) {
+  for (const build of _flutter.buildConfig.builds) {
+    if (!build || typeof build !== 'object') continue;
+    const mainJsPath =
+      typeof build.mainJsPath === 'string' && build.mainJsPath.length > 0
+        ? build.mainJsPath
+        : 'main.dart.js';
+    const separator = mainJsPath.includes('?') ? '&' : '?';
+    build.mainJsPath =
+      `${mainJsPath}${separator}v=${encodeURIComponent(__bellugaBuildSha)}`;
+  }
+}
+
 __progressLabel('Carregando aplicação...');
 __progressUpdate(10);
 
