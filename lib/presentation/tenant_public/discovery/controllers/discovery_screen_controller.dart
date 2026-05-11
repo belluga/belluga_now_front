@@ -80,6 +80,7 @@ class DiscoveryScreenController extends Object
   bool _hasPendingLiveNowReload = false;
   bool _scrollListenerAttached = false;
   bool _isProgrammaticSearchTextChange = false;
+  bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
 
   final ScrollController scrollController = ScrollController();
@@ -215,10 +216,12 @@ class DiscoveryScreenController extends Object
       if (!scrollController.hasClients) {
         return;
       }
-      updateDiscoveryFilterPanelVisibilityFromScroll(
-        scrollController.position.pixels,
-        epsilon: _filterPanelScrollHideEpsilon,
-      );
+      if (!_isRevealingDiscoveryFilterPanel) {
+        updateDiscoveryFilterPanelVisibilityFromScroll(
+          scrollController.position.pixels,
+          epsilon: _filterPanelScrollHideEpsilon,
+        );
+      }
       if (_isFetchingPage ||
           isLoadingStreamValue.value ||
           isRefreshingStreamValue.value ||
@@ -231,6 +234,20 @@ class DiscoveryScreenController extends Object
         unawaited(loadNextPage());
       }
     });
+  }
+
+  void openDiscoveryFilterPanelForReveal() {
+    _isRevealingDiscoveryFilterPanel = true;
+    setDiscoveryFilterPanelVisible(true);
+  }
+
+  void closeDiscoveryFilterPanel() {
+    _isRevealingDiscoveryFilterPanel = false;
+    setDiscoveryFilterPanelVisible(false);
+  }
+
+  void completeDiscoveryFilterPanelReveal() {
+    _isRevealingDiscoveryFilterPanel = false;
   }
 
   void _attachCanonicalOriginListeners() {
@@ -541,8 +558,7 @@ class DiscoveryScreenController extends Object
   }
 
   String? _originSignature(LocationOriginResolution? resolution) {
-    final coordinate =
-        resolution?.effectiveCoordinate ??
+    final coordinate = resolution?.effectiveCoordinate ??
         _locationOriginService.resolveCached().effectiveCoordinate;
     if (coordinate == null) {
       return null;

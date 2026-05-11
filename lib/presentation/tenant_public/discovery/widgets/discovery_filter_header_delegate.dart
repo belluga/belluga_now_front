@@ -5,13 +5,11 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
   DiscoveryFilterHeaderDelegate({
     required this.extent,
     required this.title,
-    required this.filterBuilder,
     this.action,
   });
 
   final double extent;
   final String title;
-  final Widget Function() filterBuilder;
   final Widget? action;
 
   @override
@@ -52,7 +50,6 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ],
               ),
             ),
-            filterBuilder(),
           ],
         ),
       ),
