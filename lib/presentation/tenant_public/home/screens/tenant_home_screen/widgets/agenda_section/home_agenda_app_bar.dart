@@ -9,9 +9,11 @@ class HomeAgendaAppBar extends StatelessWidget {
   const HomeAgendaAppBar({
     super.key,
     required this.controller,
+    this.onFilterPressed,
   });
 
   final TenantHomeAgendaController controller;
+  final VoidCallback? onFilterPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +34,10 @@ class HomeAgendaAppBar extends StatelessWidget {
       actions: AgendaAppBarActions(
         showSearch: false,
         leadingActions: [
-          _HomeAgendaFilterAction(controller: controller),
+          _HomeAgendaFilterAction(
+            controller: controller,
+            onPressed: onFilterPressed,
+          ),
         ],
         showRadius: true,
         showInviteFilter: controller.shouldShowInviteFilterAction,
@@ -52,9 +57,11 @@ class HomeAgendaAppBar extends StatelessWidget {
 class _HomeAgendaFilterAction extends StatelessWidget {
   const _HomeAgendaFilterAction({
     required this.controller,
+    this.onPressed,
   });
 
   final TenantHomeAgendaController controller;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +81,7 @@ class _HomeAgendaFilterAction extends StatelessWidget {
             return IconButton(
               key: const ValueKey<String>('home-agenda-filter-button'),
               tooltip: isActive ? 'Filtros ativos' : 'Filtrar eventos',
-              onPressed: controller.toggleDiscoveryFilterPanel,
+              onPressed: onPressed ?? controller.toggleDiscoveryFilterPanel,
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [

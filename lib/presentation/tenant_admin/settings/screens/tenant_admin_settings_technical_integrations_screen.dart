@@ -168,8 +168,10 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
         KeyedSubtree(
           key: _pushSectionKey,
           child: TenantAdminSettingsSection(
+            key: TenantAdminSettingsKeys.technicalIntegrationsPushSection,
             title: 'Push',
-            description: 'TTL e limites de envio por janela.',
+            description:
+                'TTL, limites, status operacional e credenciais FCM.',
             icon: Icons.notifications_active_outlined,
             child: TenantAdminSettingsPushSection(
               controller: _controller,

@@ -2,10 +2,10 @@ import 'package:flutter/widgets.dart';
 
 class HomeAgendaSectionSlots {
   HomeAgendaSectionSlots({
-    required this.header,
+    required this.headerSlivers,
     required this.body,
   });
 
-  final Widget header;
+  final List<Widget> headerSlivers;
   final Widget body;
 }

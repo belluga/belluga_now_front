@@ -97,7 +97,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             ),
           ),
         ),
-        slots.header,
+        ...slots.headerSlivers,
       ],
       body: slots.body,
     );

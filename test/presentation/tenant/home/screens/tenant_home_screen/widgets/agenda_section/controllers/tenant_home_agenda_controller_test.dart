@@ -625,7 +625,8 @@ void main() {
       controller.onDispose();
     });
 
-    test('reuses cached agenda stream on subsequent init calls', () async {
+    test('restores cached agenda stream then revalidates subsequent init',
+        () async {
       final appData = _buildAppData(
         minKm: 1,
         defaultKm: 5,
@@ -645,18 +646,24 @@ void main() {
       expect(scheduleRepository.getEventsPageCallCount, 1);
       expect(_displayedEvents(controller), isNotNull);
 
+      final pendingRevalidation = Completer<void>();
+      scheduleRepository.nextFetchGate = pendingRevalidation;
       await controller.init();
+      await Future<void>.delayed(Duration.zero);
       expect(
         scheduleRepository.getEventsPageCallCount,
-        1,
-        reason: 'Second init must reuse cached StreamValue state.',
+        2,
+        reason:
+            'Second init restores cached StreamValue state but must revalidate.',
       );
+      pendingRevalidation.complete();
+      await Future<void>.delayed(Duration.zero);
 
       controller.onDispose();
     });
 
     test(
-      'reuses repository StreamValue cache across controller instances',
+      'restores repository StreamValue cache across controller instances then revalidates',
       () async {
         final appData = _buildAppData(
           minKm: 1,
@@ -684,14 +691,78 @@ void main() {
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: appDataRepository,
         );
+        final pendingRevalidation = Completer<void>();
+        sharedScheduleRepository.nextFetchGate = pendingRevalidation;
         await secondController.init();
+        expect(_displayedEvents(secondController), isNotNull);
+        await Future<void>.delayed(Duration.zero);
         expect(
           sharedScheduleRepository.getEventsPageCallCount,
-          1,
+          2,
           reason:
-              'Second controller must hydrate from repository StreamValue cache.',
+              'Second controller must hydrate from repository StreamValue cache and revalidate.',
         );
+        pendingRevalidation.complete();
+        await Future<void>.delayed(Duration.zero);
         secondController.onDispose();
+      },
+    );
+
+    test(
+      'revalidation after cache restore removes stale deleted agenda entries',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final staleEvent = _buildHomeAgendaEvent(
+          occurrenceId: '507f1f77bcf86cd799439912',
+          title: 'Evento removido',
+          slug: 'evento-removido',
+        );
+        final scheduleRepository = _FakeScheduleRepository()
+          ..writeHomeAgendaCache(
+            events: [staleEvent],
+            hasMore: false,
+            originLat: -20.671339,
+            originLng: -40.495395,
+            maxDistanceMeters: 5000,
+          );
+        final pendingRevalidation = Completer<void>();
+        scheduleRepository.nextFetchGate = pendingRevalidation;
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+
+        await controller.init();
+        expect(
+          _displayedEvents(controller)?.map((event) => event.slug).toList(),
+          ['evento-removido'],
+          reason: 'Cache restore should keep the screen responsive.',
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+
+        pendingRevalidation.complete();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+
+        expect(_displayedEvents(controller), isEmpty);
+        controller.onDispose();
       },
     );
 
@@ -909,9 +980,13 @@ void main() {
     test(
       'home agenda canonical filter selection sends categories and taxonomy to backend',
       () async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
+        final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+        final taxonomyTerm = taxonomyGroup.terms.single;
         final scheduleRepository = _FakeScheduleRepository();
         final filtersRepository = _FakeDiscoveryFiltersRepository(
-          catalog: _homeEventsFilterCatalog(),
+          catalog: catalog,
         );
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
@@ -930,18 +1005,20 @@ void main() {
 
         await controller.init();
         controller.setDiscoveryFilterSelection(
-          const DiscoveryFilterSelection(
-            primaryKeys: <String>{'shows'},
+          DiscoveryFilterSelection(
+            primaryKeys: <String>{primaryFilter.key},
             taxonomyTermKeys: <String, Set<String>>{
-              'music_styles': <String>{'rock'},
+              taxonomyGroup.key: <String>{taxonomyTerm.value},
             },
           ),
         );
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
         expect(filtersRepository.requestedSurfaces, ['home.events']);
-        expect(scheduleRepository.lastCategories, ['show']);
-        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+        expect(scheduleRepository.lastCategories,
+            primaryFilter.typesByEntity['event']!.toList());
+        expect(scheduleRepository.lastTaxonomy,
+            [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
 
         controller.onDispose();
       },
@@ -950,13 +1027,18 @@ void main() {
     test(
       'home agenda canonical filter keeps one primary type and drops taxonomy-only selection without a primary',
       () async {
+        final catalog = _homeEventsFilterCatalogWithMultipleTypes();
+        final primaryFilter = catalog.filters.first;
+        final secondaryFilter = catalog.filters.last;
+        final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+        final taxonomyTerm = taxonomyGroup.terms.single;
         final scheduleRepository = _FakeScheduleRepository();
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: _homeEventsFilterCatalogWithMultipleTypes(),
+            catalog: catalog,
           ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
@@ -971,10 +1053,10 @@ void main() {
         await controller.init();
 
         controller.setDiscoveryFilterSelection(
-          const DiscoveryFilterSelection(
-            primaryKeys: <String>{'shows', 'fairs'},
+          DiscoveryFilterSelection(
+            primaryKeys: <String>{primaryFilter.key, secondaryFilter.key},
             taxonomyTermKeys: <String, Set<String>>{
-              'music_styles': <String>{'rock'},
+              taxonomyGroup.key: <String>{taxonomyTerm.value},
             },
           ),
         );
@@ -983,14 +1065,15 @@ void main() {
         expect(controller.discoveryFilterPolicy.primarySelectionMode,
             DiscoveryFilterSelectionMode.single);
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-            <String>{'shows'});
-        expect(scheduleRepository.lastCategories, ['show']);
+            <String>{primaryFilter.key});
+        expect(scheduleRepository.lastCategories,
+            primaryFilter.typesByEntity['event']!.toList());
         expect(scheduleRepository.lastTaxonomy, isNull);
 
         controller.setDiscoveryFilterSelection(
-          const DiscoveryFilterSelection(
+          DiscoveryFilterSelection(
             taxonomyTermKeys: <String, Set<String>>{
-              'music_styles': <String>{'rock'},
+              taxonomyGroup.key: <String>{taxonomyTerm.value},
             },
           ),
         );
@@ -1008,12 +1091,14 @@ void main() {
     test(
       'home agenda hides expanded filter panel on scroll without clearing selection',
       () async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: _homeEventsFilterCatalog(),
+            catalog: catalog,
           ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
@@ -1028,7 +1113,7 @@ void main() {
         await controller.init();
         controller.setDiscoveryFilterPanelVisible(true);
         controller.setDiscoveryFilterSelection(
-          const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+          DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
         );
 
         controller.updateRadiusActionCompactStateFromScroll(24);
@@ -1036,7 +1121,7 @@ void main() {
         expect(
             controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-            <String>{'shows'});
+            <String>{primaryFilter.key});
 
         controller.onDispose();
       },
@@ -1045,6 +1130,10 @@ void main() {
     test(
       'home agenda restores persisted canonical filter selection before first fetch',
       () async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
+        final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+        final taxonomyTerm = taxonomyGroup.terms.single;
         final scheduleRepository = _FakeScheduleRepository();
         final appDataRepository = _FakeAppDataRepository(
           _buildAppData(
@@ -1055,10 +1144,10 @@ void main() {
           discoveryFilterSelections: <String,
               AppDataDiscoveryFilterSelectionSnapshot>{
             'home.events': _appDataSelectionSnapshot(
-              const DiscoveryFilterSelection(
-                primaryKeys: <String>{'shows'},
+              DiscoveryFilterSelection(
+                primaryKeys: <String>{primaryFilter.key},
                 taxonomyTermKeys: <String, Set<String>>{
-                  'music_styles': <String>{'rock'},
+                  taxonomyGroup.key: <String>{taxonomyTerm.value},
                 },
               ),
             ),
@@ -1069,7 +1158,7 @@ void main() {
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: _homeEventsFilterCatalog(),
+            catalog: catalog,
           ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: appDataRepository,
@@ -1078,9 +1167,11 @@ void main() {
         await controller.init();
 
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-            <String>{'shows'});
-        expect(scheduleRepository.lastCategories, ['show']);
-        expect(scheduleRepository.lastTaxonomy, ['music_styles:rock']);
+            <String>{primaryFilter.key});
+        expect(scheduleRepository.lastCategories,
+            primaryFilter.typesByEntity['event']!.toList());
+        expect(scheduleRepository.lastTaxonomy,
+            [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
 
         controller.onDispose();
       },
@@ -1089,12 +1180,14 @@ void main() {
     testWidgets(
       'home agenda app bar exposes filter action and active hint before radius',
       (tester) async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: _homeEventsFilterCatalog(),
+            catalog: catalog,
           ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
@@ -1143,7 +1236,7 @@ void main() {
         );
 
         controller.setDiscoveryFilterSelection(
-          const DiscoveryFilterSelection(primaryKeys: <String>{'shows'}),
+          DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
         );
         await tester.pump();
 
@@ -2258,20 +2351,14 @@ void main() {
         await controller.loadNextPage();
         await controller.loadNextPage();
 
-        final festaOccurrences = _displayedEvents(controller)!
-            .where((event) => event.slug == 'festa-da-imigracao-italiana')
+        final multiOccurrenceEventOccurrences = _displayedEvents(controller)!
+            .where((event) => event.slug == backend.multiOccurrenceEventSlug)
             .map((event) => event.selectedOccurrenceId)
             .toList(growable: false);
 
         expect(backend.requestedPages, <int>[1, 2, 3, 4]);
-        expect(
-          festaOccurrences,
-          <String>[
-            '69dd8398d698348015047b62',
-            '69ee1dafb70a4bcfef05e979',
-            '69ee1f37b861740a340d94d0',
-          ],
-        );
+        expect(multiOccurrenceEventOccurrences,
+            backend.multiOccurrenceOccurrenceIds);
         expect(controller.hasMoreStreamValue.value, isTrue);
 
         controller.onDispose();
@@ -2671,7 +2758,7 @@ void main() {
                       const SliverToBoxAdapter(
                         child: SizedBox(height: 240),
                       ),
-                      slots.header as SliverPersistentHeader,
+                      ...slots.headerSlivers,
                     ],
                     body: slots.body,
                   );
@@ -2714,6 +2801,86 @@ void main() {
     );
 
     testWidgets(
+      'home filter action reveals panel when shell is already scrolled',
+      (tester) async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: catalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final shellScrollController = ScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(shellScrollController.dispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: shellScrollController,
+                builder: (context, slots) {
+                  return NestedScrollView(
+                    controller: shellScrollController,
+                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 280),
+                      ),
+                      ...slots.headerSlivers,
+                    ],
+                    body: slots.body,
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.drag(find.byType(ListView), const Offset(0, -380));
+        await tester.pumpAndSettle();
+
+        expect(shellScrollController.offset, greaterThan(kToolbarHeight));
+        expect(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+          findsNothing,
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+        );
+        await tester.pumpAndSettle();
+
+        final filterTopLeft = tester.getTopLeft(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+        );
+        expect(filterTopLeft.dy, greaterThanOrEqualTo(0));
+        expect(filterTopLeft.dy, lessThan(320));
+        expect(
+          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
       'home nested inner agenda scroll keeps radius action compact and restores at top',
       (tester) async {
         final controller = _buildAgendaController(
@@ -2748,7 +2915,7 @@ void main() {
                   return NestedScrollView(
                     controller: shellScrollController,
                     headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                      slots.header as SliverPersistentHeader,
+                      ...slots.headerSlivers,
                     ],
                     body: slots.body,
                   );
@@ -2790,6 +2957,74 @@ void main() {
         expect(
           controller.isRadiusActionCompactStreamValue.value,
           isFalse,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda filter panel sizes multiple taxonomy groups in empty/loading state',
+      (tester) async {
+        final catalog = _homeEventsFilterCatalogWithTwoTaxonomyGroups();
+        final primaryFilter = catalog.filters.single;
+        final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
+        final firstTaxonomyGroup = taxonomyGroups.first;
+        final secondTaxonomyGroup = taxonomyGroups.last;
+        final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
+        final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: catalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+        controller.setDiscoveryFilterPanelVisible(true);
+        controller.setDiscoveryFilterSelection(
+          DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text(firstTaxonomyGroup.label), findsOneWidget);
+        expect(find.text(secondTaxonomyGroup.label), findsOneWidget);
+        expect(
+          find.byKey(_taxonomyChipKey(firstTaxonomyGroup, firstTaxonomyTerm)),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
+          findsOneWidget,
         );
       },
     );
@@ -3122,28 +3357,76 @@ AppData _buildAppData({
 }
 
 DiscoveryFilterCatalog _homeEventsFilterCatalog() {
-  return const DiscoveryFilterCatalog(
+  final primaryFilterKey = _fixtureFilterKey(1);
+  final taxonomyKey = _fixtureTaxonomyKey(1);
+  final taxonomyTermValue = _fixtureTaxonomyTermValue(1);
+  return DiscoveryFilterCatalog(
     surface: 'home.events',
     filters: <DiscoveryFilterCatalogItem>[
       DiscoveryFilterCatalogItem(
-        key: 'shows',
-        label: 'Shows',
+        key: primaryFilterKey,
+        label: _fixtureFilterLabel(1),
         target: 'event_occurrence',
         entities: <String>{'event'},
         typesByEntity: <String, Set<String>>{
           'event': <String>{'show'},
         },
-        taxonomyKeys: <String>{'music_styles'},
+        taxonomyKeys: <String>{taxonomyKey},
       ),
     ],
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-      'music_styles': DiscoveryFilterTaxonomyGroupOption(
-        key: 'music_styles',
-        label: 'Estilos',
+      taxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: taxonomyKey,
+        label: _fixtureTaxonomyLabel(1),
         terms: <DiscoveryFilterTaxonomyTermOption>[
           DiscoveryFilterTaxonomyTermOption(
-            value: 'rock',
-            label: 'Rock',
+            value: taxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(1),
+          ),
+        ],
+      ),
+    },
+  );
+}
+
+DiscoveryFilterCatalog _homeEventsFilterCatalogWithTwoTaxonomyGroups() {
+  final primaryFilterKey = _fixtureFilterKey(1);
+  final firstTaxonomyKey = _fixtureTaxonomyKey(1);
+  final secondTaxonomyKey = _fixtureTaxonomyKey(2);
+  final firstTaxonomyTermValue = _fixtureTaxonomyTermValue(1);
+  final secondTaxonomyTermValue = _fixtureTaxonomyTermValue(2);
+  return DiscoveryFilterCatalog(
+    surface: 'home.events',
+    filters: <DiscoveryFilterCatalogItem>[
+      DiscoveryFilterCatalogItem(
+        key: primaryFilterKey,
+        label: _fixtureFilterLabel(1),
+        target: 'event_occurrence',
+        entities: <String>{'event'},
+        typesByEntity: <String, Set<String>>{
+          'event': <String>{'show'},
+        },
+        taxonomyKeys: <String>{firstTaxonomyKey, secondTaxonomyKey},
+      ),
+    ],
+    taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+      firstTaxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: firstTaxonomyKey,
+        label: _fixtureTaxonomyLabel(1),
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: firstTaxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(1),
+          ),
+        ],
+      ),
+      secondTaxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: secondTaxonomyKey,
+        label: _fixtureTaxonomyLabel(2),
+        terms: <DiscoveryFilterTaxonomyTermOption>[
+          DiscoveryFilterTaxonomyTermOption(
+            value: secondTaxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(2),
           ),
         ],
       ),
@@ -3152,12 +3435,16 @@ DiscoveryFilterCatalog _homeEventsFilterCatalog() {
 }
 
 DiscoveryFilterCatalog _homeEventsFilterCatalogWithMultipleTypes() {
-  return const DiscoveryFilterCatalog(
+  final primaryFilterKey = _fixtureFilterKey(1);
+  final secondaryFilterKey = _fixtureFilterKey(2);
+  final taxonomyKey = _fixtureTaxonomyKey(1);
+  final taxonomyTermValue = _fixtureTaxonomyTermValue(1);
+  return DiscoveryFilterCatalog(
     surface: 'home.events',
     filters: <DiscoveryFilterCatalogItem>[
       DiscoveryFilterCatalogItem(
-        key: 'shows',
-        label: 'Shows',
+        key: primaryFilterKey,
+        label: _fixtureFilterLabel(1),
         target: 'event_occurrence',
         entities: <String>{'event'},
         typesByEntity: <String, Set<String>>{
@@ -3165,8 +3452,8 @@ DiscoveryFilterCatalog _homeEventsFilterCatalogWithMultipleTypes() {
         },
       ),
       DiscoveryFilterCatalogItem(
-        key: 'fairs',
-        label: 'Feiras',
+        key: secondaryFilterKey,
+        label: _fixtureFilterLabel(2),
         target: 'event_occurrence',
         entities: <String>{'event'},
         typesByEntity: <String, Set<String>>{
@@ -3175,18 +3462,49 @@ DiscoveryFilterCatalog _homeEventsFilterCatalogWithMultipleTypes() {
       ),
     ],
     taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-      'music_styles': DiscoveryFilterTaxonomyGroupOption(
-        key: 'music_styles',
-        label: 'Estilos',
+      taxonomyKey: DiscoveryFilterTaxonomyGroupOption(
+        key: taxonomyKey,
+        label: _fixtureTaxonomyLabel(1),
         terms: <DiscoveryFilterTaxonomyTermOption>[
           DiscoveryFilterTaxonomyTermOption(
-            value: 'rock',
-            label: 'Rock',
+            value: taxonomyTermValue,
+            label: _fixtureTaxonomyTermLabel(1),
           ),
         ],
       ),
     },
   );
+}
+
+String _fixtureFilterKey(int index) => 'fixture_filter_$index';
+
+String _fixtureFilterLabel(int index) => 'Fixture Filter $index';
+
+String _fixtureTaxonomyKey(int index) => 'fixture_taxonomy_$index';
+
+String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
+
+String _fixtureTaxonomyTermValue(int index) => 'fixture_taxonomy_term_$index';
+
+String _fixtureTaxonomyTermLabel(int index) => 'Fixture Taxonomy Term $index';
+
+String _encodedTaxonomyFilter(
+  DiscoveryFilterTaxonomyGroupOption group,
+  DiscoveryFilterTaxonomyTermOption term,
+) {
+  return '${group.key}:${term.value}';
+}
+
+ValueKey<String> _taxonomyChipKey(
+  DiscoveryFilterTaxonomyGroupOption group,
+  DiscoveryFilterTaxonomyTermOption term,
+) {
+  return ValueKey<String>(
+      'discoveryFilterTaxonomyChip_${group.key}_${term.value}');
+}
+
+ValueKey<String> _primaryFilterKey(DiscoveryFilterCatalogItem filter) {
+  return ValueKey<String>('discoveryFilterPrimary_${filter.key}');
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -3929,20 +4247,22 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
-      'linked_account_profiles': const [
+      'linked_account_profiles': [
         {
           'id': '507f1f77bcf86cd799439013',
           'display_name': 'Main Artist',
           'slug': 'main-artist',
           'profile_type': 'artist',
           'avatar_url': null,
-          'genres': ['rock'],
+          'genres': [_fixtureProfileGenre(1)],
         },
       ],
       'tags': const ['music'],
     });
   }
 }
+
+String _fixtureProfileGenre(int index) => 'fixture_profile_genre_$index';
 
 class _AutoPageRegressionBackend implements ScheduleBackendContract {
   final List<int> requestedPages = <int>[];
@@ -4056,7 +4376,24 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
 }
 
 class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
+  static const String _multiOccurrenceEventId = '507f1f77bcf86cd799439301';
+  static const String _firstOccurrenceId = '507f1f77bcf86cd799439302';
+  static const String _secondOccurrenceId = '507f1f77bcf86cd799439303';
+  static const String _thirdOccurrenceId = '507f1f77bcf86cd799439304';
+  static const String _multiOccurrenceEventSlug =
+      'fixture-multi-occurrence-event';
+  static const String _multiOccurrenceEventTitle =
+      'Fixture Multi Occurrence Event';
+
   final List<int> requestedPages = <int>[];
+
+  String get multiOccurrenceEventSlug => _multiOccurrenceEventSlug;
+
+  List<String> get multiOccurrenceOccurrenceIds => const <String>[
+        _firstOccurrenceId,
+        _secondOccurrenceId,
+        _thirdOccurrenceId,
+      ];
 
   @override
   Future<EventDTO?> fetchEventDetail({
@@ -4064,10 +4401,10 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     String? occurrenceId,
   }) async =>
       _eventDto(
-        eventId: '69dd8398d698348015047b61',
-        occurrenceId: occurrenceId ?? '69dd8398d698348015047b62',
-        slug: 'festa-da-imigracao-italiana',
-        title: '5 ª Festa da Imigração Italiana',
+        eventId: _multiOccurrenceEventId,
+        occurrenceId: occurrenceId ?? _firstOccurrenceId,
+        slug: _multiOccurrenceEventSlug,
+        title: _multiOccurrenceEventTitle,
         dateTimeStart: '2026-05-15T21:30:00+00:00',
         dateTimeEnd: '2026-05-16T04:00:00+00:00',
         linkedCount: 3,
@@ -4118,19 +4455,19 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
       3 => EventPageDTO(
           events: [
             _eventDto(
-              eventId: '69dd8398d698348015047b61',
-              occurrenceId: '69dd8398d698348015047b62',
-              slug: 'festa-da-imigracao-italiana',
-              title: '5 ª Festa da Imigração Italiana',
+              eventId: _multiOccurrenceEventId,
+              occurrenceId: _firstOccurrenceId,
+              slug: _multiOccurrenceEventSlug,
+              title: _multiOccurrenceEventTitle,
               dateTimeStart: '2026-05-15T21:30:00+00:00',
               dateTimeEnd: '2026-05-16T04:00:00+00:00',
               linkedCount: 3,
             ),
             _eventDto(
-              eventId: '69dd8398d698348015047b61',
-              occurrenceId: '69ee1dafb70a4bcfef05e979',
-              slug: 'festa-da-imigracao-italiana',
-              title: '5 ª Festa da Imigração Italiana',
+              eventId: _multiOccurrenceEventId,
+              occurrenceId: _secondOccurrenceId,
+              slug: _multiOccurrenceEventSlug,
+              title: _multiOccurrenceEventTitle,
               dateTimeStart: '2026-05-16T14:00:00+00:00',
               dateTimeEnd: '2026-05-17T04:00:00+00:00',
               linkedCount: 4,
@@ -4141,10 +4478,10 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
       4 => EventPageDTO(
           events: [
             _eventDto(
-              eventId: '69dd8398d698348015047b61',
-              occurrenceId: '69ee1f37b861740a340d94d0',
-              slug: 'festa-da-imigracao-italiana',
-              title: '5 ª Festa da Imigração Italiana',
+              eventId: _multiOccurrenceEventId,
+              occurrenceId: _thirdOccurrenceId,
+              slug: _multiOccurrenceEventSlug,
+              title: _multiOccurrenceEventTitle,
               dateTimeStart: '2026-05-17T13:00:00+00:00',
               dateTimeEnd: '2026-05-17T22:00:00+00:00',
               linkedCount: 4,
@@ -4152,8 +4489,8 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
             _eventDto(
               eventId: '507f1f77bcf86cd799439401',
               occurrenceId: '507f1f77bcf86cd799439402',
-              slug: 'rock-da-tarde',
-              title: 'Rock da Tarde',
+              slug: 'fixture-extra-event',
+              title: 'Fixture Extra Event',
               dateTimeStart: '2026-05-17T17:00:00+00:00',
             ),
           ],
