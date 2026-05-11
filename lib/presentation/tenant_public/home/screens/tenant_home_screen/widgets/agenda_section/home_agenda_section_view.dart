@@ -130,16 +130,22 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
                             height: kToolbarHeight,
                             child: HomeAgendaAppBar(
                               controller: widget.controller,
+                              onFilterPressed: () =>
+                                  _handleFilterPressed(isPanelVisible),
                             ),
                           ),
                         ),
                       ),
                       if (showFilterPanel)
                         SliverToBoxAdapter(
-                          child: _HomeAgendaFilterPanel(
-                            controller: widget.controller,
-                            catalog: catalog,
-                            selection: selection,
+                          child: _HomeAgendaFilterPanelReveal(
+                            onRevealFinished: widget
+                                .controller.completeDiscoveryFilterPanelReveal,
+                            child: _HomeAgendaFilterPanel(
+                              controller: widget.controller,
+                              catalog: catalog,
+                              selection: selection,
+                            ),
                           ),
                         ),
                     ],
@@ -151,6 +157,59 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
           },
         );
       },
+    );
+  }
+
+  void _handleFilterPressed(bool isPanelVisible) {
+    if (isPanelVisible) {
+      widget.controller.closeDiscoveryFilterPanel();
+      return;
+    }
+    widget.controller.openDiscoveryFilterPanelForReveal();
+  }
+}
+
+class _HomeAgendaFilterPanelReveal extends StatefulWidget {
+  const _HomeAgendaFilterPanelReveal({
+    required this.child,
+    required this.onRevealFinished,
+  });
+
+  final Widget child;
+  final VoidCallback onRevealFinished;
+
+  @override
+  State<_HomeAgendaFilterPanelReveal> createState() =>
+      _HomeAgendaFilterPanelRevealState();
+}
+
+class _HomeAgendaFilterPanelRevealState
+    extends State<_HomeAgendaFilterPanelReveal> {
+  final GlobalKey _panelKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final panelContext = _panelKey.currentContext;
+      if (panelContext == null) {
+        widget.onRevealFinished();
+        return;
+      }
+      Scrollable.ensureVisible(
+        panelContext,
+        alignment: 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ).whenComplete(widget.onRevealFinished);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _panelKey,
+      child: widget.child,
     );
   }
 }

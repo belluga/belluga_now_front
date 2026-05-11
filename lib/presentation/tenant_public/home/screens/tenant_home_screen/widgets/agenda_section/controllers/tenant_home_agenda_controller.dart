@@ -193,6 +193,7 @@ class TenantHomeAgendaController extends Object
   bool _isDisposed = false;
   bool _hasQueuedRefresh = false;
   bool _queuedRefreshPreserveCurrentResults = true;
+  bool _isRevealingDiscoveryFilterPanel = false;
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
@@ -272,10 +273,27 @@ class TenantHomeAgendaController extends Object
   }
 
   void _hideDiscoveryFilterPanelWhenScrolled(double pixels) {
+    if (_isRevealingDiscoveryFilterPanel) {
+      return;
+    }
     updateDiscoveryFilterPanelVisibilityFromScroll(
       pixels,
       epsilon: _radiusCompactScrollEpsilon,
     );
+  }
+
+  void openDiscoveryFilterPanelForReveal() {
+    _isRevealingDiscoveryFilterPanel = true;
+    setDiscoveryFilterPanelVisible(true);
+  }
+
+  void closeDiscoveryFilterPanel() {
+    _isRevealingDiscoveryFilterPanel = false;
+    setDiscoveryFilterPanelVisible(false);
+  }
+
+  void completeDiscoveryFilterPanelReveal() {
+    _isRevealingDiscoveryFilterPanel = false;
   }
 
   bool _resolveRadiusActionCompactHint({
