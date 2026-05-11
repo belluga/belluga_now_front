@@ -2801,6 +2801,86 @@ void main() {
     );
 
     testWidgets(
+      'home filter action reveals panel when shell is already scrolled',
+      (tester) async {
+        final catalog = _homeEventsFilterCatalog();
+        final primaryFilter = catalog.filters.single;
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: catalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final shellScrollController = ScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(shellScrollController.dispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: shellScrollController,
+                builder: (context, slots) {
+                  return NestedScrollView(
+                    controller: shellScrollController,
+                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 280),
+                      ),
+                      ...slots.headerSlivers,
+                    ],
+                    body: slots.body,
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.drag(find.byType(ListView), const Offset(0, -380));
+        await tester.pumpAndSettle();
+
+        expect(shellScrollController.offset, greaterThan(kToolbarHeight));
+        expect(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+          findsNothing,
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+        );
+        await tester.pumpAndSettle();
+
+        final filterTopLeft = tester.getTopLeft(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+        );
+        expect(filterTopLeft.dy, greaterThanOrEqualTo(0));
+        expect(filterTopLeft.dy, lessThan(320));
+        expect(
+          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
       'home nested inner agenda scroll keeps radius action compact and restores at top',
       (tester) async {
         final controller = _buildAgendaController(
@@ -3421,6 +3501,10 @@ ValueKey<String> _taxonomyChipKey(
 ) {
   return ValueKey<String>(
       'discoveryFilterTaxonomyChip_${group.key}_${term.value}');
+}
+
+ValueKey<String> _primaryFilterKey(DiscoveryFilterCatalogItem filter) {
+  return ValueKey<String>('discoveryFilterPrimary_${filter.key}');
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
