@@ -26,4 +26,13 @@ void main() {
     );
     expect(html, isNot(contains('href="favicon.png"')));
   });
+
+  test('web bootstrap cache-busts the main dart bundle with build sha', () {
+    final bootstrap = File('web/flutter_bootstrap.js').readAsStringSync();
+
+    expect(bootstrap, contains('window.__WEB_BUILD_SHA__'));
+    expect(bootstrap, contains('build.mainJsPath'));
+    expect(bootstrap, contains('main.dart.js'));
+    expect(bootstrap, contains('encodeURIComponent(__bellugaBuildSha)'));
+  });
 }

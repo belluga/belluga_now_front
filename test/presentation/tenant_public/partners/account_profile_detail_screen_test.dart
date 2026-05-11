@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -491,8 +492,8 @@ void main() {
       find.byKey(const Key('immersiveCollapsedTitle')),
     );
     final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
-    final collapsedTitleCenter = tester.getCenter(
-      find.byKey(const Key('immersiveCollapsedTitle')),
+    final collapsedHeaderCenter = tester.getCenter(
+      find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
     );
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
@@ -504,11 +505,85 @@ void main() {
         findsNothing);
     expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
     expect(find.text('Cafe de la Musique'), findsWidgets);
-    expect(collapsedTitle.maxLines, 2);
+    expect(collapsedTitle.maxLines, 1);
     expect(collapsedTitle.overflow, TextOverflow.ellipsis);
     expect(sliverAppBar.toolbarHeight, 72);
+    expect((collapsedHeaderCenter.dy - toolbarCenterY).abs(),
+        lessThanOrEqualTo(8));
+  });
+
+  testWidgets(
+      'collapsed header keeps taxonomy labels readable after hero scroll',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfileWithManyTaxonomies().copyWith(
+            nameValue: TitleValue()
+              ..parse('Pop Rock Nacional e Internacional na Orla'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
+    final collapsedTitle = tester.widget<Text>(
+      find.byKey(const Key('immersiveCollapsedTitle')),
+    );
+    final collapsedTaxonomy = find.byKey(
+      const Key('accountProfileCollapsedTaxonomySummary'),
+    );
+    final collapsedTaxonomyRect = tester.getRect(collapsedTaxonomy);
+    final navigationToolbarRect =
+        tester.getRect(find.byType(NavigationToolbar));
+
+    expect(collapsedTitle.maxLines, 1);
+    expect(collapsedTaxonomy, findsOneWidget);
     expect(
-        (collapsedTitleCenter.dy - toolbarCenterY).abs(), lessThanOrEqualTo(8));
+      collapsedTaxonomyRect.top,
+      greaterThanOrEqualTo(navigationToolbarRect.top - 0.5),
+    );
+    expect(
+      collapsedTaxonomyRect.bottom,
+      lessThanOrEqualTo(navigationToolbarRect.bottom + 0.5),
+    );
+    expect(
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Sunset Premium'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Teatro Experimental'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: collapsedTaxonomy,
+        matching: find.text('Gastronomia Autoral'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('live agenda highlight navigates to the highlighted event',
@@ -1574,6 +1649,25 @@ AccountProfileModel _buildArtistProfile() {
     slug: 'cafe-de-la-musique',
     type: 'artist',
     tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: _buildArtistAgendaEvents(),
+    isVerified: true,
+    acceptedInvites: 87,
+  );
+}
+
+AccountProfileModel _buildArtistProfileWithManyTaxonomies() {
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const [
+      'Sunset Premium',
+      'Praia',
+      'Guarapari',
+      'Teatro Experimental',
+      'Gastronomia Autoral',
+    ],
     agendaEvents: _buildArtistAgendaEvents(),
     isVerified: true,
     acceptedInvites: 87,
