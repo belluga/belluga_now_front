@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -374,6 +375,12 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+
+    final shareAction = tester.widget<IconButton>(
+      find.byKey(const Key('immersiveShareAction')),
+    );
+    final shareIcon = shareAction.icon as Icon;
+    expect(shareIcon.icon, BooraIcons.inviteOutlined);
 
     await tester.tap(find.byKey(const Key('immersiveShareAction')));
     await tester.pumpAndSettle();
