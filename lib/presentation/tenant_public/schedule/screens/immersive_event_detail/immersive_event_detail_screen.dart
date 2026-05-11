@@ -277,6 +277,7 @@ class _ImmersiveEventDetailScreenState
                                     onSharePressed: () => unawaited(
                                       _shareSelectedEvent(resolvedEvent),
                                     ),
+                                    shareIcon: BooraIcons.inviteOutlined,
                                     isShareLoading: isShareLoading,
                                   );
                                 },

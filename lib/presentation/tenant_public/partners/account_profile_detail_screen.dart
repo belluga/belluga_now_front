@@ -238,7 +238,7 @@ class _AccountProfileDetailScreenState
 
   Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
-    final taxonomyLabels = _taxonomyLabels(accountProfile).take(3).toList();
+    final taxonomyLabels = _taxonomyLabels(accountProfile);
     if (taxonomyLabels.isEmpty) {
       return Align(
         alignment: Alignment.centerLeft,
