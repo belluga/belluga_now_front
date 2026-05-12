@@ -297,6 +297,12 @@ abstract class ApplicationContract extends ModularAppContract {
       if (message.data.isEmpty) {
         return;
       }
+      final dataKeys = message.data.keys.map((key) => key.toString()).toList()
+        ..sort();
+      debugPrint(
+        '[Push] Invite payload received; '
+        'message_id=${message.messageId ?? ''} keys=${dataKeys.join(',')}',
+      );
       if (!GetIt.I.isRegistered<InvitesRepositoryContract>()) {
         return;
       }
