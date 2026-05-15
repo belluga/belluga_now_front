@@ -54,7 +54,7 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       );
     }
 
-    final attempted = await _storage.read(key: _captureAttemptedKey);
+    final attempted = await _readStorageBestEffort(_captureAttemptedKey);
     if (attempted == '1') {
       return DeferredLinkCaptureResult(
         status: DeferredLinkCaptureStatus.skipped,
@@ -62,7 +62,7 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       );
     }
 
-    await _storage.write(key: _captureAttemptedKey, value: '1');
+    await _writeStorageBestEffort(_captureAttemptedKey, '1');
 
     final payload = await _nativeSource.readInstallReferrerPayload();
     final installReferrer = _normalizeText(payload?.installReferrer);
@@ -91,7 +91,9 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
     if (status == 'captured' && targetPath != null) {
       if (installReferrer != null) {
         final hash = sha256.convert(utf8.encode(installReferrer)).toString();
-        final consumedHash = await _storage.read(key: _consumedReferrerHashKey);
+        final consumedHash = await _readStorageBestEffort(
+          _consumedReferrerHashKey,
+        );
         if (consumedHash == hash) {
           return DeferredLinkCaptureResult(
             status: DeferredLinkCaptureStatus.notCaptured,
@@ -103,7 +105,7 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
           );
         }
 
-        await _storage.write(key: _consumedReferrerHashKey, value: hash);
+        await _writeStorageBestEffort(_consumedReferrerHashKey, hash);
       }
 
       return DeferredLinkCaptureResult(
@@ -124,6 +126,30 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
         failureReason ?? 'resolver_not_captured',
       ),
     );
+  }
+
+  Future<String?> _readStorageBestEffort(String key) async {
+    String? value;
+    try {
+      value = await _storage.read(key: key);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'DeferredLinkRepository storage read failed for $key: '
+        '$error\n$stackTrace',
+      );
+    }
+    return value;
+  }
+
+  Future<void> _writeStorageBestEffort(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'DeferredLinkRepository storage write failed for $key: '
+        '$error\n$stackTrace',
+      );
+    }
   }
 
   Future<DeferredLinkResolutionDto> _resolveWithBackend({

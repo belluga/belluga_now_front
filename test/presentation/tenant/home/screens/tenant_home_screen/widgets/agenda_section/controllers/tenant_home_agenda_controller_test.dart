@@ -1693,7 +1693,7 @@ void main() {
     });
 
     test(
-        'fetches without geo when neither user location nor tenant default exists',
+        'does not fetch agenda when neither user location nor tenant default exists',
         () async {
       final appData = _buildAppData(
         minKm: 1,
@@ -1716,7 +1716,7 @@ void main() {
 
       await controller.init();
 
-      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.getEventsPageCallCount, 0);
       expect(scheduleRepository.lastOriginLat, isNull);
       expect(scheduleRepository.lastOriginLng, isNull);
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
@@ -1756,6 +1756,57 @@ void main() {
 
       controller.onDispose();
     });
+
+    test(
+      'waits for asynchronously published live location before first agenda request when no tenant default exists',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+          includeDefaultOrigin: false,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository();
+        final liveCoordinate = CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.671339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        );
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = false
+          ..resolvedCoordinateAfterPermission = liveCoordinate
+          ..resolvedCoordinateEmitDelay = const Duration(milliseconds: 20);
+
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          locationWarmUpTimeout: const Duration(milliseconds: 20),
+          locationPermissionTimeout: const Duration(milliseconds: 100),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+
+        expect(locationRepository.resolveUserLocationCallCount, 1);
+        expect(scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(
+          scheduleRepository.requestOriginHistory,
+          isNotEmpty,
+        );
+        expect(
+          scheduleRepository.requestOriginHistory
+              .every((sample) => sample.lat != null && sample.lng != null),
+          isTrue,
+          reason:
+              'The first agenda request must wait for the asynchronously published live coordinate instead of issuing a null-origin request.',
+        );
+
+        controller.onDispose();
+      },
+    );
 
     test(
         'does not request location permission when user coordinate already exists',
@@ -3165,6 +3216,73 @@ void main() {
         expect(
           controller.isRadiusActionCompactStreamValue.value,
           isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda section does not crash when the coordinated controller is attached to multiple scroll views',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(
+            backend: _ScrollableAgendaBackend(),
+          ),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final shellScrollController = ScrollController();
+
+        addTearDown(controller.onDispose);
+        addTearDown(shellScrollController.dispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                scrollController: shellScrollController,
+                builder: (context, slots) {
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView(
+                          controller: shellScrollController,
+                          children: const [
+                            SizedBox(height: 320),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          controller: shellScrollController,
+                          children: const [
+                            SizedBox(height: 320),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(
+          controller.isRadiusActionCompactStreamValue.value,
+          isFalse,
         );
       },
     );
@@ -5599,6 +5717,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   bool warmUpResult = false;
   bool neverCompleteWarmUp = false;
   int resolveUserLocationCallCount = 0;
+  CityCoordinate? resolvedCoordinateAfterPermission;
+  Duration resolvedCoordinateEmitDelay = Duration.zero;
 
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
@@ -5655,6 +5775,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<String?> resolveUserLocation() async {
     resolveUserLocationCallCount += 1;
+    final resolvedCoordinate = resolvedCoordinateAfterPermission;
+    if (resolvedCoordinate != null) {
+      Future<void>.delayed(resolvedCoordinateEmitDelay, () {
+        userLocationStreamValue.addValue(resolvedCoordinate);
+        lastKnownLocationStreamValue.addValue(resolvedCoordinate);
+        lastKnownCapturedAtStreamValue.addValue(DateTime.now());
+      });
+    }
     return null;
   }
 

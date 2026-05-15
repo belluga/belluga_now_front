@@ -14,9 +14,24 @@ class InvitesBannerBuilderController {
   final InvitesRepositoryContract _invitesRepository;
   final isPendingInvitesDisplayReadyStreamValue =
       StreamValue<bool>(defaultValue: false);
+  StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
+  List<String> _initialInviteIds = const <String>[];
 
   void init() {
     isPendingInvitesDisplayReadyStreamValue.addValue(false);
+    _initialInviteIds = _inviteIds(_invitesRepository.pendingInvitesStreamValue.value);
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription =
+        _invitesRepository.pendingInvitesStreamValue.stream.listen(
+      (invites) {
+        if (isPendingInvitesDisplayReadyStreamValue.value) {
+          return;
+        }
+        if (_didInviteStateChangeFromInitial(invites)) {
+          isPendingInvitesDisplayReadyStreamValue.addValue(true);
+        }
+      },
+    );
     unawaited(_revalidatePendingInvitesForDisplay());
   }
 
@@ -36,7 +51,26 @@ class InvitesBannerBuilderController {
     }
   }
 
+  bool _didInviteStateChangeFromInitial(List<InviteModel> invites) {
+    final nextIds = _inviteIds(invites);
+    if (nextIds.length != _initialInviteIds.length) {
+      return true;
+    }
+    for (var index = 0; index < nextIds.length; index++) {
+      if (nextIds[index] != _initialInviteIds[index]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<String> _inviteIds(List<InviteModel> invites) {
+    return invites.map((invite) => invite.id).toList(growable: false);
+  }
+
   void onDispose() {
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription = null;
     isPendingInvitesDisplayReadyStreamValue.dispose();
   }
 }
