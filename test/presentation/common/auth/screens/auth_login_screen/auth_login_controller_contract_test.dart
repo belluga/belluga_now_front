@@ -266,6 +266,41 @@ void main() {
   );
 
   testWidgets(
+    'verifyPhoneOtpChallenge maps raw merge conflicts to a global retry message',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository()
+        ..verifyFailure = Exception(
+          'Failed to verify OTP [409] '
+          '(/v1/auth/otp/verify?tenant_id=tenant-1): '
+          '{"message":"A concurrency conflict occurred. Please try again."}',
+        );
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.phoneNumberController.value = phoneNumber;
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      await controller.requestPhoneOtpChallenge();
+      controller.otpCodeController.text = '123456';
+      await controller.verifyPhoneOtpChallenge();
+      await tester.pump();
+
+      expect(controller.loginResultStreamValue.value, isFalse);
+      expect(
+        controller.phoneOtpValidationController.errorsForGlobal(),
+        <String>[
+          'Seu acesso está sendo consolidado. Tente novamente em instantes.',
+        ],
+      );
+      expect(
+        controller.phoneOtpValidationController.errorForField(
+          AuthLoginControllerContract.phoneOtpValidationTargetCode,
+        ),
+        isNull,
+      );
+    },
+  );
+
+  testWidgets(
     'resendPhoneOtpChallenge shows a production-safe request error',
     (tester) async {
       final repository = _PhoneOtpAuthRepository()
@@ -773,6 +808,30 @@ void main() {
       expect(repository.verifiedCodes, ['123456']);
 
       await tester.tap(find.text('Confirmar código'));
+      await tester.pumpAndSettle();
+
+      expect(repository.verifiedCodes, ['123456', '654321']);
+    },
+  );
+
+  testWidgets(
+    'requesting a new otp resets automatic verification for the next code',
+    (tester) async {
+      final repository = _PhoneOtpAuthRepository();
+      final controller = AuthLoginController(authRepository: repository);
+      controller.beginPhoneOtpPageSession();
+      controller.phoneController.text = '+5527999990000';
+
+      await controller.requestPhoneOtpChallenge();
+      controller.otpCodeController.text = '123456';
+      await controller.verifyPhoneOtpChallengeOnceOnCodeComplete();
+      await tester.pumpAndSettle();
+
+      expect(repository.verifiedCodes, ['123456']);
+
+      await controller.resendPhoneOtpChallenge();
+      controller.otpCodeController.text = '654321';
+      await controller.verifyPhoneOtpChallengeOnceOnCodeComplete();
       await tester.pumpAndSettle();
 
       expect(repository.verifiedCodes, ['123456', '654321']);

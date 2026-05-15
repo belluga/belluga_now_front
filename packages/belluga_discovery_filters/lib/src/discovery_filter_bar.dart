@@ -131,9 +131,6 @@ class DiscoveryFilterBar extends StatelessWidget {
   }
 
   void _togglePrimary(DiscoveryFilterCatalogItem item) {
-    if (isLoading) {
-      return;
-    }
     onSelectionChanged(
       selection.togglePrimary(item.key, mode: policy.primarySelectionMode),
     );

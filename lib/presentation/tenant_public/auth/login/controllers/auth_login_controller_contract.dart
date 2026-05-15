@@ -346,6 +346,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         _authTextValue(phone),
         deliveryChannel: _authTextValue(normalizedDeliveryChannel),
       );
+      _phoneOtpAutoVerificationAttempted = false;
       currentPhoneOtpChallengeStreamValue.addValue(challenge);
       phoneController.text = challenge.phone;
       _syncPhoneNumberController(challenge.phone);
@@ -434,6 +435,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   void editPhoneNumber() {
+    _phoneOtpAutoVerificationAttempted = false;
     otpCodeController.clear();
     phoneOtpValidationController.clearAll();
     currentPhoneOtpChallengeStreamValue.addValue(null);
@@ -646,6 +648,11 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   void _applyPhoneOtpVerificationFailure(Object error) {
+    final globalError = _resolveOtpVerificationGlobalError(error);
+    if (globalError != null) {
+      _applyPhoneOtpGlobalError(globalError);
+      return;
+    }
     if (_isOtpCodeVerificationError(error)) {
       _applyPhoneOtpCodeError(_resolveOtpCodeError(error));
       return;
@@ -675,6 +682,11 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     if (normalized.contains('expir')) {
       return 'Código expirado. Solicite um novo código para continuar.';
     }
+    if (normalized.contains('no longer active') ||
+        normalized.contains('inactive') ||
+        normalized.contains('challenge could not be verified')) {
+      return 'Esse código não está mais válido. Solicite um novo código para continuar.';
+    }
     if (normalized.contains('attempt') ||
         normalized.contains('tentativa') ||
         normalized.contains('too many')) {
@@ -683,8 +695,34 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     return 'Código incorreto';
   }
 
+  String? _resolveOtpVerificationGlobalError(Object error) {
+    final normalized = error.toString().toLowerCase();
+
+    if (normalized.contains('[409]') ||
+        normalized.contains('statuscode: 409') ||
+        normalized.contains('concurrency conflict')) {
+      return 'Seu acesso está sendo consolidado. Tente novamente em instantes.';
+    }
+
+    if (normalized.contains('cannot be used to authenticate') ||
+        normalized.contains('"phone"') ||
+        normalized.contains("'phone'")) {
+      return 'Esse telefone não pode autenticar agora.';
+    }
+
+    if (normalized.contains('challenge_id') ||
+        normalized.contains('challenge could not be verified')) {
+      return 'Esse código não está mais válido. Solicite um novo código para continuar.';
+    }
+
+    return null;
+  }
+
   bool _isOtpCodeVerificationError(Object error) {
     if (error is FormValidationFailure) {
+      if (error.fieldErrors.keys.any(_isPhoneOtpGlobalValidationKey)) {
+        return false;
+      }
       if (error.statusCode == 422) {
         return true;
       }
@@ -701,6 +739,15 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         normalized.contains("'code'") ||
         normalized.contains('codigo') ||
         normalized.contains('código');
+  }
+
+  bool _isPhoneOtpGlobalValidationKey(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    return normalized == 'global' ||
+        normalized == 'phone' ||
+        normalized == 'delivery_channel' ||
+        normalized == 'challenge' ||
+        normalized == 'challenge_id';
   }
 
   bool _isOtpCodeValidationKey(String raw) {

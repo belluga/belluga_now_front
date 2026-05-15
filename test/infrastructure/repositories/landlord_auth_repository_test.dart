@@ -99,6 +99,39 @@ void main() {
     expect(repository.hasValidSession, isFalse);
   });
 
+  test('init defaults to logged-out when storage read fails', () async {
+    final repository = LandlordAuthRepository(
+      dio: Dio(BaseOptions(baseUrl: 'https://admin.test/admin/api')),
+      storage: const _ThrowingReadStorage(),
+    );
+
+    await repository.init();
+
+    expect(repository.hasValidSession, isFalse);
+  });
+
+  test('init clears stale in-memory session even when storage delete fails',
+      () async {
+    final dio = Dio(
+      BaseOptions(baseUrl: 'https://admin.test/admin/api'),
+    );
+    final adapter = QueueHttpClientAdapter();
+    dio.httpClientAdapter = adapter;
+    final repository = LandlordAuthRepository(
+      dio: dio,
+      storage: const _ReadOnlyTokenStorage(),
+    );
+
+    adapter.enqueueGet(
+      path: '/v1/auth/token_validate',
+      throwError: true,
+    );
+
+    await repository.init();
+
+    expect(repository.hasValidSession, isFalse);
+  });
+
   test(
       'login uses runtime admin origin when repository resolves internal dio client',
       () async {
@@ -220,4 +253,57 @@ class _RequestStub {
   final String path;
   final Map<String, dynamic> response;
   final bool throwError;
+}
+
+class _ThrowingReadStorage extends FlutterSecureStorage {
+  const _ThrowingReadStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage read failed');
+  }
+}
+
+class _ReadOnlyTokenStorage extends FlutterSecureStorage {
+  const _ReadOnlyTokenStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) async {
+    if (key == 'landlord_token') {
+      return 'stale-token';
+    }
+    if (key == 'landlord_user_id') {
+      return '507f1f77bcf86cd799439012';
+    }
+    return null;
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage delete failed');
+  }
 }

@@ -59,6 +59,36 @@ void main() {
 
     controller.onDispose();
   });
+
+  test(
+      'home banner becomes display-ready when pending invite stream changes after initial revalidation failure',
+      () async {
+    final repository = _FakeInvitesRepository();
+    final invite = _buildInvite('fresh-after-failure');
+    repository.fetchInvitesError = StateError('backend not ready yet');
+    final controller = InvitesBannerBuilderController(
+      invitesRepository: repository,
+    );
+
+    controller.init();
+
+    expect(controller.isPendingInvitesDisplayReadyStreamValue.value, isFalse);
+    expect(controller.hasPendingInvites, isFalse);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.fetchInvitesCalls, 1);
+    expect(controller.isPendingInvitesDisplayReadyStreamValue.value, isFalse);
+    expect(controller.hasPendingInvites, isFalse);
+
+    repository.pendingInvitesStreamValue.addValue([invite]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isPendingInvitesDisplayReadyStreamValue.value, isTrue);
+    expect(controller.pendingInvitesStreamValue.value, [invite]);
+    expect(controller.hasPendingInvites, isTrue);
+
+    controller.onDispose();
+  });
 }
 
 InviteModel _buildInvite(String id) {
@@ -80,6 +110,7 @@ InviteModel _buildInvite(String id) {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int fetchInvitesCalls = 0;
   List<InviteModel> fetchInvitesResult = const <InviteModel>[];
+  Object? fetchInvitesError;
 
   @override
   Future<InviteAcceptResult> acceptInvite(
@@ -117,6 +148,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimInt? pageSize,
   }) async {
     fetchInvitesCalls += 1;
+    final error = fetchInvitesError;
+    if (error != null) {
+      throw error;
+    }
     return fetchInvitesResult;
   }
 
