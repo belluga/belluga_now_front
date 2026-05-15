@@ -121,9 +121,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       };
     } else if (pluralLabel != null) {
       final normalizedPlural = pluralLabel.trim();
-      payload['labels'] = {
-        'plural': normalizedPlural,
-      };
+      payload['labels'] = {'plural': normalizedPlural};
     }
     if (allowedTaxonomies != null) {
       payload['allowed_taxonomies'] = allowedTaxonomies;
@@ -145,6 +143,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     TenantAdminProfileTypeCapabilities capabilities,
   ) {
     return {
+      'is_publicly_discoverable': capabilities.isPubliclyDiscoverable,
       'is_favoritable': capabilities.isFavoritable,
       'is_poi_enabled': capabilities.isPoiEnabled,
       'is_reference_location_enabled': capabilities.isReferenceLocationEnabled,

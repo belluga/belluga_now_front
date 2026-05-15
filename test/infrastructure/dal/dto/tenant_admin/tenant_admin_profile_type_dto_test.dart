@@ -124,5 +124,34 @@ void main() {
         isTrue,
       );
     });
+
+    test('normalizes favoritable capability behind public discoverability', () {
+      final disabledDto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_publicly_discoverable': false,
+          'is_favoritable': true,
+        },
+      });
+      final enabledDto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_publicly_discoverable': true,
+          'is_favoritable': true,
+        },
+      });
+
+      expect(
+        disabledDto.toDomain().capabilities.isPubliclyDiscoverable,
+        isFalse,
+      );
+      expect(disabledDto.toDomain().capabilities.isFavoritable, isFalse);
+      expect(enabledDto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
+      expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
+    });
   });
 }
