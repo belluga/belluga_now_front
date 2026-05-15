@@ -27,7 +27,9 @@ import 'package:stream_value/main.dart';
 import 'package:uuid/uuid.dart';
 
 final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
-  AuthRepository() {
+  AuthRepository({
+    FlutterSecureStorage? storage,
+  }) : _storage = storage ?? const FlutterSecureStorage() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
 
@@ -36,11 +38,13 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   static const String _userIdStorageKey = 'user_id';
   static const Uuid _uuid = Uuid();
   @visibleForTesting
-  static const int anonymousIdentityMaxAttempts = 3;
+  static const int anonymousIdentityMaxAttempts = 5;
   @visibleForTesting
   static const List<Duration> anonymousIdentityRetryDelays = [
     Duration(milliseconds: 200),
     Duration(milliseconds: 800),
+    Duration(milliseconds: 1500),
+    Duration(milliseconds: 2000),
   ];
 
   @override
@@ -51,8 +55,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
   final StreamValue<String?> _userIdStreamValue = StreamValue<String?>();
+  final FlutterSecureStorage _storage;
 
-  static FlutterSecureStorage get storage => FlutterSecureStorage();
+  static FlutterSecureStorage get storage => const FlutterSecureStorage();
 
   @override
   void setUserToken(AuthRepositoryContractTextValue? token) =>
@@ -93,7 +98,16 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> autoLogin() async {
-    final token = await storage.read(key: _userTokenStorageKey);
+    String? token;
+    try {
+      token = await _storage.read(key: _userTokenStorageKey);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'autoLogin.readUserToken',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
 
     if (token == null) {
       return;
@@ -270,28 +284,45 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _onUpdateUserTokenOnLocalStorage(String? token) async {
-    if (token == null) {
-      await _deleteUserTokenOnLocalStorage();
-      return;
-    }
+    try {
+      if (token == null) {
+        await _deleteUserTokenOnLocalStorage();
+        return;
+      }
 
-    _saveUserTokenOnLocalStorage(token);
+      await _saveUserTokenOnLocalStorage(token);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'onUpdateUserToken',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _deleteUserTokenOnLocalStorage() async {
-    await AuthRepository.storage.delete(key: _userTokenStorageKey);
+    await _storage.delete(key: _userTokenStorageKey);
   }
 
   Future<void> _saveUserTokenOnLocalStorage(String token) async {
-    await AuthRepository.storage.write(
+    await _storage.write(
       key: _userTokenStorageKey,
       value: token,
     );
   }
 
   Future<void> _getUserTokenFromLocalStorage() async {
-    final token = await AuthRepository.storage.read(key: _userTokenStorageKey);
-    _userTokenStreamValue.addValue(token);
+    try {
+      final token = await _storage.read(key: _userTokenStorageKey);
+      _userTokenStreamValue.addValue(token);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'getUserTokenFromLocalStorage',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _userTokenStreamValue.addValue(null);
+    }
   }
 
   @override
@@ -300,33 +331,57 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (current != null && current.isNotEmpty) {
       return current;
     }
-    final stored = await AuthRepository.storage.read(key: _userIdStorageKey);
-    if (stored != null && stored.isNotEmpty) {
-      _userIdStreamValue.addValue(stored);
-      return stored;
+    try {
+      final stored = await _storage.read(key: _userIdStorageKey);
+      if (stored != null && stored.isNotEmpty) {
+        _userIdStreamValue.addValue(stored);
+        return stored;
+      }
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'getUserId',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
     return null;
   }
 
   Future<void> _getUserIdFromLocalStorage() async {
-    final stored = await AuthRepository.storage.read(key: _userIdStorageKey);
-    if (stored != null && stored.isNotEmpty) {
-      _userIdStreamValue.addValue(stored);
-      return;
+    try {
+      final stored = await _storage.read(key: _userIdStorageKey);
+      if (stored != null && stored.isNotEmpty) {
+        _userIdStreamValue.addValue(stored);
+        return;
+      }
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'getUserIdFromLocalStorage',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
     _userIdStreamValue.addValue(null);
   }
 
   Future<void> _setUserId(String? userId) async {
     _userIdStreamValue.addValue(userId);
-    if (userId == null || userId.isEmpty) {
-      await AuthRepository.storage.delete(key: _userIdStorageKey);
-      return;
+    try {
+      if (userId == null || userId.isEmpty) {
+        await _storage.delete(key: _userIdStorageKey);
+        return;
+      }
+      await _storage.write(
+        key: _userIdStorageKey,
+        value: userId,
+      );
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'setUserId',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
-    await AuthRepository.storage.write(
-      key: _userIdStorageKey,
-      value: userId,
-    );
   }
 
   Future<void> _resetStaleIdentity(Object error) async {
@@ -525,17 +580,41 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<String> getDeviceId() async => _ensureDeviceId();
+  Future<String> getDeviceId() async => _ensureDeviceIdWithStorage(_storage);
 
-  static Future<String> _ensureDeviceId() async {
-    final stored = await storage.read(key: _deviceIdStorageKey);
-    if (stored != null && stored.isNotEmpty) {
-      return stored;
+  static Future<String> _ensureDeviceIdWithStorage(
+    FlutterSecureStorage storage,
+  ) async {
+    try {
+      final stored = await storage.read(key: _deviceIdStorageKey);
+      if (stored != null && stored.isNotEmpty) {
+        return stored;
+      }
+    } catch (_) {
+      // Fall back to an ephemeral device id for the current runtime.
     }
+
     final generated = _uuid.v4();
-    await storage.write(key: _deviceIdStorageKey, value: generated);
+    try {
+      await storage.write(key: _deviceIdStorageKey, value: generated);
+    } catch (_) {
+      // Startup must not fail because secure storage is temporarily unavailable.
+    }
     return generated;
   }
+
+  void _logStorageFailure({
+    required String operation,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    debugPrint(
+      'AuthRepository.$operation failed: $error\n$stackTrace',
+    );
+  }
+
+  static Future<String> _ensureDeviceId() async =>
+      _ensureDeviceIdWithStorage(storage);
 
   static Future<String> ensureDeviceId() async => _ensureDeviceId();
 

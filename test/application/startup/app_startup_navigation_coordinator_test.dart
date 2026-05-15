@@ -104,6 +104,62 @@ void main() {
       expect(router.currentUrl, '/invite?code=ABCD1234');
     },
   );
+
+  testWidgets(
+    'startup coordinator retries transient plan loader failures before applying override',
+    (tester) async {
+      var attempts = 0;
+      final router = _buildRouter();
+      final coordinator = AppStartupNavigationCoordinator(
+        retryDelays: const [Duration.zero, Duration.zero, Duration.zero],
+        planLoader: () async {
+          attempts += 1;
+          if (attempts < 3) {
+            throw StateError('transient startup failure');
+          }
+          return AppStartupNavigationPlan.routes(
+            const <PageRouteInfo<dynamic>>[
+              TenantHomeRoute(),
+              InviteFlowRoute(),
+            ],
+          );
+        },
+      );
+
+      await coordinator.initialize();
+      final delegate = router.delegate(
+        deepLinkBuilder: coordinator.resolvePlatformDeepLink,
+      );
+      await delegate.setInitialRoutePath(await _parseRoute(router, '/'));
+
+      expect(attempts, 3);
+      expect(router.currentPath, '/invite');
+    },
+  );
+
+  testWidgets(
+    'startup coordinator fails open when plan loader keeps failing',
+    (tester) async {
+      var attempts = 0;
+      final router = _buildRouter();
+      final coordinator = AppStartupNavigationCoordinator(
+        retryDelays: const [Duration.zero, Duration.zero],
+        planLoader: () async {
+          attempts += 1;
+          throw StateError('startup unavailable');
+        },
+      );
+
+      await coordinator.initialize();
+      final delegate = router.delegate(
+        deepLinkBuilder: coordinator.resolvePlatformDeepLink,
+      );
+      await delegate.setInitialRoutePath(await _parseRoute(router, '/'));
+
+      expect(attempts, 3);
+      expect(router.currentPath, '/');
+    },
+  );
 }
 
 RootStackRouter _buildRouter() {

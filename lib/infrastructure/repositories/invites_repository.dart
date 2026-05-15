@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -47,6 +48,7 @@ import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
@@ -58,7 +60,6 @@ class InvitesRepository extends InvitesRepositoryContract
   static const int _maxContactImportItemsPerRequest = 500;
   static const Duration _contactImportCacheTtl = Duration(hours: 12);
   static const String _tenantIdStorageKey = 'tenant_id';
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const Duration _inviteRealtimeReconnectDelay = Duration(seconds: 3);
 
   InvitesRepository({
@@ -66,6 +67,7 @@ class InvitesRepository extends InvitesRepositoryContract
     FriendsRepositoryContract? friendsRepository,
     InviteContactImportCacheContract? contactImportCache,
     AuthRepositoryContract? authRepository,
+    FlutterSecureStorage? storage,
     DateTime Function()? now,
     Future<void> Function(Duration duration)? wait,
     Future<String?> Function()? currentUserIdProvider,
@@ -75,6 +77,7 @@ class InvitesRepository extends InvitesRepositoryContract
   })  : _backend = backend ?? LaravelInvitesBackend(),
         _contactImportCache = contactImportCache ?? InviteContactImportCache(),
         _authRepository = authRepository,
+        _storage = storage ?? const FlutterSecureStorage(),
         _now = now ?? DateTime.now,
         _wait = wait ?? Future<void>.delayed,
         _currentUserIdProvider = currentUserIdProvider,
@@ -85,6 +88,7 @@ class InvitesRepository extends InvitesRepositoryContract
   final InvitesBackendContract _backend;
   final InviteContactImportCacheContract _contactImportCache;
   AuthRepositoryContract? _authRepository;
+  final FlutterSecureStorage _storage;
   final DateTime Function() _now;
   final Future<void> Function(Duration duration) _wait;
   final Future<String?> Function()? _currentUserIdProvider;
@@ -132,9 +136,24 @@ class InvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<void> init() async {
+    await _seedInviteRealtimeCursorForAuthorizedSession();
     await super.init();
     _bindInviteRealtimeAuthLifecycle();
     await _syncInviteRealtimeLifecycle();
+  }
+
+  Future<void> _seedInviteRealtimeCursorForAuthorizedSession() async {
+    final authRepository = _resolvedAuthRepository;
+    if (authRepository?.isAuthorized != true) {
+      return;
+    }
+
+    final currentUserId = _normalizeNullable(await _currentUserId());
+    if (currentUserId == null || _inviteRealtimeLastEventId != null) {
+      return;
+    }
+
+    _inviteRealtimeLastEventId = _buildInviteRealtimeCursorSeed();
   }
 
   Future<void> dispose() async {
@@ -220,6 +239,8 @@ class InvitesRepository extends InvitesRepositoryContract
     final isAuthorized = authRepository?.isAuthorized ?? false;
     final nextUserId = isAuthorized ? await _currentUserId() : null;
     final normalizedUserId = _normalizeNullable(nextUserId);
+    final previousBoundUserId = _inviteRealtimeBoundUserId;
+    final userChanged = normalizedUserId != previousBoundUserId;
 
     if (normalizedUserId == _inviteRealtimeBoundUserId &&
         _inviteRealtimeLoopFuture != null) {
@@ -227,7 +248,14 @@ class InvitesRepository extends InvitesRepositoryContract
     }
 
     _inviteRealtimeBoundUserId = normalizedUserId;
-    _inviteRealtimeLastEventId = null;
+    if (userChanged) {
+      if (normalizedUserId == null) {
+        _inviteRealtimeLastEventId = null;
+      } else if (previousBoundUserId != null ||
+          _inviteRealtimeLastEventId == null) {
+        _inviteRealtimeLastEventId = _buildInviteRealtimeCursorSeed();
+      }
+    }
     _inviteRealtimeGeneration += 1;
     final generation = _inviteRealtimeGeneration;
     _signalInviteRealtimeStop();
@@ -255,9 +283,11 @@ class InvitesRepository extends InvitesRepositoryContract
         _inviteRealtimeBoundUserId != null) {
       try {
         final streamDone = Completer<void>();
-        final subscription = _backend.watchInvitesStream(
+        final subscription = _backend
+            .watchInvitesStream(
           lastEventId: _inviteRealtimeLastEventId,
-        ).listen(
+        )
+            .listen(
           _applyInviteRealtimeDelta,
           onError: (Object error, StackTrace stackTrace) {
             if (!streamDone.isCompleted) {
@@ -308,6 +338,10 @@ class InvitesRepository extends InvitesRepositoryContract
       return;
     }
     stopCompleter.complete();
+  }
+
+  String _buildInviteRealtimeCursorSeed() {
+    return TimezoneConverter.localToUtc(_now()).toIso8601String();
   }
 
   void _applyInviteRealtimeDelta(InviteRealtimeDeltaDto delta) {
@@ -828,6 +862,12 @@ class InvitesRepository extends InvitesRepositoryContract
       persistedTenantId = null;
     } on PlatformException {
       persistedTenantId = null;
+    } catch (error, stackTrace) {
+      persistedTenantId = null;
+      debugPrint(
+        'InvitesRepository._tenantCacheScope storage read failed: '
+        '$error\n$stackTrace',
+      );
     }
 
     return _normalizeNullable(persistedTenantId);

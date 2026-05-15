@@ -126,6 +126,26 @@ void main() {
     expect(authBackend.issueCount, 0);
   });
 
+  test('init tolerates secure storage failures and still bootstraps identity',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-storage-failure',
+      userIdToReturn: 'user-storage-failure',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository(
+      storage: const _ThrowingSecureStorage(),
+    );
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-storage-failure');
+  });
+
   test('init syncs proximity preferences in user mode when available',
       () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
@@ -263,7 +283,7 @@ void main() {
 
   test('init retries issuing identity token on transient failures', () async {
     final authBackend = _FlakyAuthBackend(
-      failuresBeforeSuccess: 2,
+      failuresBeforeSuccess: 4,
       tokenToReturn: 'identity-token-3',
       userIdToReturn: 'user-3',
     );
@@ -274,7 +294,7 @@ void main() {
     final repository = AuthRepository();
     await repository.init();
 
-    expect(authBackend.issueCount, 3);
+    expect(authBackend.issueCount, 5);
     expect(repository.userToken, 'identity-token-3');
   });
 
@@ -682,4 +702,48 @@ AppData _buildLandlordAppData() {
       'device': 'test-device',
     },
   );
+}
+
+class _ThrowingSecureStorage extends FlutterSecureStorage {
+  const _ThrowingSecureStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage read failed');
+  }
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage write failed');
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage delete failed');
+  }
 }

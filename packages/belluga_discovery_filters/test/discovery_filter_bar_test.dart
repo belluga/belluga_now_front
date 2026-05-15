@@ -224,8 +224,10 @@ void main() {
     );
   });
 
-  testWidgets('selected primary shows loading affordance while disabled',
+  testWidgets('selected primary shows loading affordance while inactive options stay actionable',
       (tester) async {
+    DiscoveryFilterSelection? changedSelection;
+
     await tester.pumpWidget(
       _Harness(
         child: DiscoveryFilterBar(
@@ -235,7 +237,9 @@ void main() {
           ),
           policy: const DiscoveryFilterPolicy(),
           isLoading: true,
-          onSelectionChanged: (_) {},
+          onSelectionChanged: (selection) {
+            changedSelection = selection;
+          },
         ),
       ),
     );
@@ -249,6 +253,13 @@ void main() {
       find.byKey(const ValueKey<String>('discoveryFilterPrimaryClear_events')),
       findsNothing,
     );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_profiles')),
+    );
+    await tester.pump();
+
+    expect(changedSelection?.primaryKeys, <String>{'profiles'});
   });
 
   testWidgets('primary chips expose semantic wrappers and selected state',

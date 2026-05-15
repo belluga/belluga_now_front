@@ -10,6 +10,8 @@ import 'package:integration_test/integration_test.dart';
 
 import 'support/integration_test_bootstrap.dart';
 
+const _disablePush = bool.fromEnvironment('DISABLE_PUSH', defaultValue: false);
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
@@ -17,10 +19,8 @@ void main() {
   testWidgets(
     'foreground app reflects a real direct invite received by FCM',
     (tester) async {
-      const disablePush =
-          bool.fromEnvironment('DISABLE_PUSH', defaultValue: false);
       expect(
-        disablePush,
+        _disablePush,
         isFalse,
         reason:
             'This E2E must run with FLUTTER_INTEGRATION_DISABLE_PUSH=false.',
@@ -74,6 +74,7 @@ void main() {
         'pending_after=${invitesRepository.pendingInvitesStreamValue.value.length}',
       );
     },
+    skip: _disablePush,
   );
 }
 

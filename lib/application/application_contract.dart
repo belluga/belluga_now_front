@@ -380,6 +380,11 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
 
+    if (Firebase.apps.isNotEmpty) {
+      debugPrint('[Push] Firebase already initialized; skipping runtime init.');
+      return;
+    }
+
     debugPrint('[Push] Firebase init for project ${settings.projectId}.');
     await Firebase.initializeApp(
       options: FirebaseOptions(
