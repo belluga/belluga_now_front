@@ -10,10 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapLayers extends StatelessWidget {
-  const MapLayers({
-    super.key,
-    required MapScreenController controller,
-  })  : _controller = controller,
+  const MapLayers({super.key, required MapScreenController controller})
+      : _controller = controller,
         _markerBuilder = const PoiMarkerBuilder();
 
   static const double _minZoom = 14.5;
@@ -121,6 +119,20 @@ class MapLayers extends StatelessWidget {
   }
 
   @visibleForTesting
+  static CityCoordinate? resolveBootstrapInitialCenter({
+    required CityCoordinate? tenantDefaultOrigin,
+  }) {
+    return tenantDefaultOrigin;
+  }
+
+  @visibleForTesting
+  static bool shouldRenderViewport({
+    required CityCoordinate? bootstrapInitialCenter,
+  }) {
+    return bootstrapInitialCenter != null;
+  }
+
+  @visibleForTesting
   static List<CityPoiModel> orderPoisForRendering({
     required List<CityPoiModel> pois,
     CityPoiModel? selectedPoi,
@@ -188,6 +200,15 @@ class _MapViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bootstrapInitialCenter = MapLayers.resolveBootstrapInitialCenter(
+      tenantDefaultOrigin: controller.initialMapCenter,
+    );
+    if (!MapLayers.shouldRenderViewport(
+      bootstrapInitialCenter: bootstrapInitialCenter,
+    )) {
+      return const SizedBox.expand();
+    }
+
     final currentZoom = zoom;
     final poiSize = MapLayers._scaledSize(
       currentZoom,
@@ -210,30 +231,27 @@ class _MapViewport extends StatelessWidget {
       rememberedPoiId: rememberedPoiId,
     );
 
-    final poiMarkers = orderedPois.map(
-      (poi) {
-        final isSelected = _isPoiSelected(
-          selectedPoi: selectedPoi,
-          markerPoi: poi,
-          selectedPoiLoadingId: selectedPoiLoadingId,
-        );
-        final isLoading = selectedPoiLoadingId == poi.id;
-        final displayPoi = _displayPoiForMarker(
-          markerPoi: poi,
-          selectedPoi: selectedPoi,
-          selectedPoiLoadingId: selectedPoiLoadingId,
-        );
-        return markerBuilder.build(
-          poi: displayPoi,
-          isSelected: isSelected,
-          isLoading: isLoading,
-          onTap: () => controller.handleMarkerTap(poi),
-          size: poi.isDynamic ? eventSize : poiSize,
-          overrideVisual:
-              (isSelected || isLoading) ? null : markerOverrideVisual,
-        );
-      },
-    );
+    final poiMarkers = orderedPois.map((poi) {
+      final isSelected = _isPoiSelected(
+        selectedPoi: selectedPoi,
+        markerPoi: poi,
+        selectedPoiLoadingId: selectedPoiLoadingId,
+      );
+      final isLoading = selectedPoiLoadingId == poi.id;
+      final displayPoi = _displayPoiForMarker(
+        markerPoi: poi,
+        selectedPoi: selectedPoi,
+        selectedPoiLoadingId: selectedPoiLoadingId,
+      );
+      return markerBuilder.build(
+        poi: displayPoi,
+        isSelected: isSelected,
+        isLoading: isLoading,
+        onTap: () => controller.handleMarkerTap(poi),
+        size: poi.isDynamic ? eventSize : poiSize,
+        overrideVisual: (isSelected || isLoading) ? null : markerOverrideVisual,
+      );
+    });
 
     final markers = <BellugaMapAnnotation>[
       if (userCoordinate != null) _buildUserMarker(userCoordinate!, userSize),
@@ -245,7 +263,7 @@ class _MapViewport extends StatelessWidget {
       children: [
         BellugaMapSurface(
           handle: controller.mapHandle,
-          initialCenter: controller.defaultCenter,
+          initialCenter: bootstrapInitialCenter!,
           initialZoom: 16,
           minZoom: MapLayers._minZoom,
           maxZoom: MapLayers._maxZoom,
@@ -279,11 +297,7 @@ class _MapViewport extends StatelessWidget {
           border: Border.all(color: Colors.black54),
         ),
         child: const Center(
-          child: Icon(
-            Icons.my_location,
-            size: 20,
-            color: Colors.blueAccent,
-          ),
+          child: Icon(Icons.my_location, size: 20, color: Colors.blueAccent),
         ),
       ),
     );
@@ -331,9 +345,7 @@ class _MapViewport extends StatelessWidget {
       final selectedStackKey = selectedPoi.stackKey.trim();
       if (selectedStackKey.isNotEmpty &&
           selectedStackKey == markerPoi.stackKey) {
-        return markerPoi.copyWith(
-          visual: selectedPoi.visual,
-        );
+        return markerPoi.copyWith(visual: selectedPoi.visual);
       }
       return markerPoi;
     }
@@ -343,14 +355,10 @@ class _MapViewport extends StatelessWidget {
       return markerPoi;
     }
     if (memory.poiId == markerPoi.id) {
-      return markerPoi.copyWith(
-        visual: memory.visual,
-      );
+      return markerPoi.copyWith(visual: memory.visual);
     }
     if (memory.stackKey.isNotEmpty && memory.stackKey == markerPoi.stackKey) {
-      return markerPoi.copyWith(
-        visual: memory.visual,
-      );
+      return markerPoi.copyWith(visual: memory.visual);
     }
     return markerPoi;
   }
