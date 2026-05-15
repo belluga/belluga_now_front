@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -33,6 +34,35 @@ void main() {
       contains('com.tenant.app'),
     );
   });
+
+  test('init tolerates tenant id persistence failures', () async {
+    final repository = TenantRepository(
+      storage: const _ThrowingSecureStorage(),
+    );
+
+    await repository.init();
+
+    final tenant = await repository.fetchTenant();
+    expect(tenant.name.value, 'Tenant Test');
+  });
+}
+
+class _ThrowingSecureStorage extends FlutterSecureStorage {
+  const _ThrowingSecureStorage();
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage write failed');
+  }
 }
 
 AppData _buildAppData() {

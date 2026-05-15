@@ -39,4 +39,32 @@ void main() {
     expect(rehydrated.mode, AdminMode.landlord);
     expect(rehydrated.isLandlordMode, isTrue);
   });
+
+  test('defaults to user mode when storage read fails', () async {
+    final repository = AdminModeRepository(
+      storage: const _ThrowingSecureStorage(),
+    );
+
+    await repository.init();
+
+    expect(repository.mode, AdminMode.user);
+    expect(repository.isLandlordMode, isFalse);
+  });
+}
+
+class _ThrowingSecureStorage extends FlutterSecureStorage {
+  const _ThrowingSecureStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage read failed');
+  }
 }

@@ -103,6 +103,8 @@ class TenantHomeAgendaController extends Object
   static const double _radiusCompactScrollEpsilon = 0.5;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
+  static const Duration _initialCanonicalOriginSettleTimeout =
+      Duration(milliseconds: 350);
   static const Duration _preservedFirstPageEmptyRetryDelay =
       Duration(milliseconds: 250);
   static const String _homeEventsFilterSurface = 'home.events';
@@ -391,6 +393,7 @@ class TenantHomeAgendaController extends Object
     }
 
     await _resolveEffectiveOrigin(warmUpIfPossible: true);
+    await _awaitPendingInitialEffectiveOriginIfNeeded();
     _ifAlive(
       () => initialLoadingLabelStreamValue.addValue(_loadingNearbyEventsLabel),
     );
@@ -401,6 +404,32 @@ class TenantHomeAgendaController extends Object
     }
     await _refresh(resolveOrigin: false);
     _listenForCanonicalOriginChanges();
+  }
+
+  Future<void> _awaitPendingInitialEffectiveOriginIfNeeded() async {
+    if (_effectiveOriginLat != null && _effectiveOriginLng != null) {
+      return;
+    }
+    if (!_locationPermissionRequested) {
+      return;
+    }
+
+    final cachedResolution = _locationOriginService.effectiveOriginStreamValue.value;
+    if (cachedResolution?.effectiveCoordinate != null) {
+      _applyResolvedEffectiveOrigin(cachedResolution!);
+      return;
+    }
+
+    try {
+      final resolution = await _locationOriginService.effectiveOriginStreamValue.stream
+          .firstWhere((value) => value?.effectiveCoordinate != null)
+          .timeout(_initialCanonicalOriginSettleTimeout);
+      if (resolution != null) {
+        _applyResolvedEffectiveOrigin(resolution);
+      }
+    } on Object {
+      // Best-effort settle window for async stream publication after permission.
+    }
   }
 
   Future<void> _refresh({
@@ -445,6 +474,13 @@ class TenantHomeAgendaController extends Object
           warmUpIfPossible: shouldShowInitialLoading,
         );
         locationElapsed = stopwatch.elapsedMilliseconds;
+      }
+
+      if (!_hasEffectiveOriginForAgendaQuery) {
+        _publishUnavailableOriginState(
+          preserveCurrentResults: preserveCurrentResults,
+        );
+        return;
       }
 
       if (shouldShowInitialLoading) {
@@ -502,6 +538,9 @@ class TenantHomeAgendaController extends Object
 
     try {
       await _resolveEffectiveOrigin(warmUpIfPossible: false);
+      if (!_hasEffectiveOriginForAgendaQuery) {
+        return false;
+      }
       _ifAlive(
         () =>
             initialLoadingLabelStreamValue.addValue(_loadingNearbyEventsLabel),
@@ -520,6 +559,27 @@ class TenantHomeAgendaController extends Object
     _hasMore = false;
     _ifAlive(() => hasMoreStreamValue.addValue(false));
     if (displayStateStreamValue.value != null) {
+      return;
+    }
+    _ifAlive(
+      () => displayStateStreamValue.addValue(
+        TenantHomeAgendaDisplayState(events: const <EventModel>[]),
+      ),
+    );
+  }
+
+  bool get _hasEffectiveOriginForAgendaQuery =>
+      _effectiveOriginLat != null && _effectiveOriginLng != null;
+
+  void _publishUnavailableOriginState({
+    required bool preserveCurrentResults,
+  }) {
+    if (_isDisposed) {
+      return;
+    }
+    _hasMore = false;
+    _ifAlive(() => hasMoreStreamValue.addValue(false));
+    if (preserveCurrentResults && displayStateStreamValue.value != null) {
       return;
     }
     _ifAlive(

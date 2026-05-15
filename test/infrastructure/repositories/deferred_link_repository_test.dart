@@ -166,6 +166,37 @@ void main() {
     expect(result.failureReason, 'already_attempted');
     expect(backend.callCount, 0);
   });
+
+  test('continues capture when storage markers are unavailable', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      return <String, dynamic>{
+        'install_referrer': 'code=ABCD1234&store_channel=play',
+      };
+    });
+
+    final backend = _FakeDeferredLinkBackend(
+      response: const DeferredLinkResolutionDto(
+        status: 'captured',
+        code: 'ABCD1234',
+        targetPath: '/invite?code=ABCD1234',
+        storeChannel: 'play',
+      ),
+    );
+
+    final repository = DeferredLinkRepository(
+      channel: channel,
+      isAndroid: () => true,
+      backend: backend,
+      storage: const _ThrowingSecureStorage(),
+    );
+
+    final result = await repository.captureFirstOpenInviteCode();
+
+    expect(result.status, DeferredLinkCaptureStatus.captured);
+    expect(result.targetPath, '/invite?code=ABCD1234');
+    expect(backend.callCount, 1);
+  });
 }
 
 class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
@@ -198,5 +229,36 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
     }
 
     return response;
+  }
+}
+
+class _ThrowingSecureStorage extends FlutterSecureStorage {
+  const _ThrowingSecureStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage read failed');
+  }
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage write failed');
   }
 }

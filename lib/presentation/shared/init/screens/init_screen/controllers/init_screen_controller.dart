@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 
 final class InitScreenController extends BellugaInitScreenControllerContract {
   InitScreenController({
@@ -25,6 +26,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     AuthRepositoryContract? authRepository,
     DeferredLinkRepositoryContract? deferredLinkRepository,
     TelemetryRepositoryContract? telemetryRepository,
+    List<Duration>? startupRetryDelays,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _appDataRepository =
@@ -40,13 +42,28 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
         _telemetryRepository = telemetryRepository ??
             (GetIt.I.isRegistered<TelemetryRepositoryContract>()
                 ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null);
+                : null),
+        _startupRetryDelays = List<Duration>.unmodifiable(
+          startupRetryDelays ?? _defaultStartupRetryDelays,
+        );
 
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
   final DeferredLinkRepositoryContract? _deferredLinkRepository;
   final TelemetryRepositoryContract? _telemetryRepository;
+  final List<Duration> _startupRetryDelays;
+  static const List<Duration> _defaultStartupRetryDelays = <Duration>[
+    Duration(milliseconds: 250),
+    Duration(milliseconds: 500),
+    Duration(milliseconds: 750),
+    Duration(milliseconds: 1000),
+    Duration(milliseconds: 1250),
+    Duration(milliseconds: 1500),
+    Duration(milliseconds: 1750),
+    Duration(milliseconds: 2000),
+    Duration(milliseconds: 2500),
+  ];
 
   @override
   final loadingStatusStreamValue = StreamValue<String>(
@@ -109,6 +126,39 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
   @override
   Future<void> initialize() async {
+    await _runStartupSequenceWithRetry();
+  }
+
+  Future<void> _runStartupSequenceWithRetry() async {
+    Object? lastError;
+    StackTrace? lastStackTrace;
+    final attempts = 1 + _startupRetryDelays.length;
+
+    for (var attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        await _runStartupSequence();
+        return;
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+        if (attempt >= _startupRetryDelays.length) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        final delay = _startupRetryDelays[attempt];
+        if (delay > Duration.zero) {
+          await Future<void>.delayed(delay);
+        }
+      }
+    }
+
+    final error = lastError ?? StateError('Init startup bootstrap failed.');
+    final stackTrace = lastStackTrace ?? StackTrace.current;
+    Error.throwWithStackTrace(error, stackTrace);
+  }
+
+  Future<void> _runStartupSequence() async {
+    _determinedRoute = null;
+    _initialRoutePath = null;
     final authRepository = _authRepository;
     if (authRepository != null) {
       await authRepository.init();
@@ -133,11 +183,20 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       return;
     }
 
-    final result = await deferred.captureFirstOpenInviteCode();
+    DeferredLinkCaptureResult result;
+    try {
+      result = await deferred.captureFirstOpenInviteCode();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'InitScreenController deferred invite capture failed; '
+        'continuing without deferred override: $error\n$stackTrace',
+      );
+      return;
+    }
     if (result.isCaptured) {
       final storeChannel = result.storeChannel ?? 'unknown';
       _initialRoutePath = result.targetPath;
-      await _telemetryRepository?.logEvent(
+      await _logStartupTelemetryBestEffort(
         EventTrackerEvents.buttonClick,
         eventName: telemetryRepoString('app_deferred_deep_link_captured'),
         properties: telemetryRepoMap(<String, dynamic>{
@@ -155,7 +214,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     }
 
     final storeChannel = result.storeChannel ?? 'unknown';
-    await _telemetryRepository?.logEvent(
+    await _logStartupTelemetryBestEffort(
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
@@ -164,6 +223,25 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
         'store_channel': storeChannel,
       }),
     );
+  }
+
+  Future<void> _logStartupTelemetryBestEffort(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    try {
+      await _telemetryRepository?.logEvent(
+        event,
+        eventName: eventName,
+        properties: properties,
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'InitScreenController startup telemetry failed; '
+        'continuing bootstrap: $error\n$stackTrace',
+      );
+    }
   }
 
   PageRouteInfo _resolveInitialRoute() {

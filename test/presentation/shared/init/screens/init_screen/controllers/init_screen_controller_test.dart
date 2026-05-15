@@ -109,6 +109,75 @@ void main() {
     expect(invitesRepository.initCallCount, 1);
   });
 
+  test('initialize retries transient startup failures before resolving route',
+      () async {
+    final authRepository = _FakeAuthRepository();
+    final invitesRepository = _FlakyInvitesRepository(
+      hasPendingInvites: true,
+      failuresBeforeSuccess: 2,
+    );
+    final controller = InitScreenController(
+      authRepository: authRepository,
+      invitesRepository: invitesRepository,
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      startupRetryDelays: const [
+        Duration.zero,
+        Duration.zero,
+        Duration.zero,
+      ],
+    );
+
+    await controller.initialize();
+
+    expect(authRepository.initCallCount, 3);
+    expect(invitesRepository.initCallCount, 3);
+    expect(controller.initialRoute, isA<InviteFlowRoute>());
+    expect(
+      controller.initialRouteStack.map((route) => route.routeName).toList(),
+      [
+        TenantHomeRoute.name,
+        InviteFlowRoute.name,
+      ],
+    );
+  });
+
+  test('initialize rethrows after exhausting startup retries', () async {
+    final authRepository = _FakeAuthRepository();
+    final invitesRepository = _FlakyInvitesRepository(
+      hasPendingInvites: false,
+      failuresBeforeSuccess: 4,
+      errorMessage: 'invites bootstrap unavailable',
+    );
+    final controller = InitScreenController(
+      authRepository: authRepository,
+      invitesRepository: invitesRepository,
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      startupRetryDelays: const [
+        Duration.zero,
+        Duration.zero,
+        Duration.zero,
+      ],
+    );
+
+    await expectLater(
+      controller.initialize(),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('invites bootstrap unavailable'),
+        ),
+      ),
+    );
+
+    expect(authRepository.initCallCount, 4);
+    expect(invitesRepository.initCallCount, 4);
+  });
+
   test('captured deferred share code overrides first route path to invite',
       () async {
     final telemetry = _FakeTelemetryRepository();
@@ -236,6 +305,46 @@ void main() {
     );
     expect(
         telemetry.loggedEvents.single.properties?['store_channel'], 'unknown');
+  });
+
+  test('initialize ignores deferred capture failures and keeps bootstrap alive',
+      () async {
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: const _ThrowingDeferredLinkRepository(),
+    );
+
+    await controller.initialize();
+
+    expect(controller.initialRoute, isA<TenantHomeRoute>());
+    expect(controller.initialRoutePath, isNull);
+  });
+
+  test('initialize ignores startup telemetry failures after deferred capture',
+      () async {
+    final controller = InitScreenController(
+      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+      deferredLinkRepository: _FakeDeferredLinkRepository(
+        DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          targetPathValue: DeferredLinkTargetPathValue(
+            defaultValue: '/invite?code=ABCD1234',
+          ),
+        ),
+      ),
+      telemetryRepository: _ThrowingTelemetryRepository(),
+    );
+
+    await controller.initialize();
+
+    expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+    expect(controller.startupNavigationPlan.hasOverride, isTrue);
   });
 }
 
@@ -434,6 +543,29 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> updateUser(UserCustomData data) async {}
 }
 
+class _FlakyInvitesRepository extends _FakeInvitesRepository {
+  _FlakyInvitesRepository({
+    required super.hasPendingInvites,
+    required int failuresBeforeSuccess,
+    this.errorMessage = 'transient invites startup failure',
+  }) : _remainingFailures = failuresBeforeSuccess;
+
+  final String errorMessage;
+  int _remainingFailures;
+
+  @override
+  Future<void> init() async {
+    initCallCount += 1;
+    if (_remainingFailures > 0) {
+      _remainingFailures -= 1;
+      throw Exception(errorMessage);
+    }
+    pendingInvitesStreamValue.addValue(
+      _hasPendingInvites ? [_buildInvite()] : const [],
+    );
+  }
+}
+
 class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
   const _FakeDeferredLinkRepository(this.result);
 
@@ -442,6 +574,15 @@ class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
   @override
   Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
       result;
+}
+
+class _ThrowingDeferredLinkRepository implements DeferredLinkRepositoryContract {
+  const _ThrowingDeferredLinkRepository();
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async {
+    throw StateError('deferred link storage failed');
+  }
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
@@ -476,6 +617,47 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
       ),
     );
     return telemetryRepoBool(true);
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async =>
+      telemetryRepoBool(true);
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async =>
+      null;
+}
+
+class _ThrowingTelemetryRepository implements TelemetryRepositoryContract {
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async =>
+      telemetryRepoBool(true);
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
+      telemetryRepoBool(true);
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    throw StateError('startup telemetry failed');
   }
 
   @override

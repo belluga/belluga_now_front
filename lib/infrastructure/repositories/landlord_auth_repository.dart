@@ -14,8 +14,10 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
   LandlordAuthRepository({
     Dio? dio,
     Dio Function(String baseUrl)? dioFactory,
+    FlutterSecureStorage? storage,
   })  : _dio = dio,
-        _dioFactory = dioFactory;
+        _dioFactory = dioFactory,
+        _storage = storage ?? const FlutterSecureStorage();
 
   static const String _tokenStorageKey = 'landlord_token';
   static const String _userIdStorageKey = 'landlord_user_id';
@@ -26,8 +28,9 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       const LandlordAuthResponseDecoder();
   Dio? _dio;
   final Dio Function(String baseUrl)? _dioFactory;
+  final FlutterSecureStorage _storage;
 
-  static FlutterSecureStorage get storage => FlutterSecureStorage();
+  static FlutterSecureStorage get storage => const FlutterSecureStorage();
 
   @override
   bool get hasValidSession => token.isNotEmpty;
@@ -86,10 +89,18 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
         throw Exception('Landlord token missing.');
       }
       _tokenStreamValue.addValue(token);
-      await storage.write(key: _tokenStorageKey, value: token);
+      await _writeSessionValueBestEffort(
+        key: _tokenStorageKey,
+        value: token,
+        operation: 'login.storeToken',
+      );
       if (userId != null && userId.isNotEmpty) {
         _userIdStreamValue.addValue(userId);
-        await storage.write(key: _userIdStorageKey, value: userId);
+        await _writeSessionValueBestEffort(
+          key: _userIdStorageKey,
+          value: userId,
+          operation: 'login.storeUserId',
+        );
       }
       await _tokenValidate();
       await _fetchProfile();
@@ -139,22 +150,44 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     final userId = _responseDecoder.decodeProfileUserId(response.data);
     if (userId != null && userId.isNotEmpty) {
       _userIdStreamValue.addValue(userId);
-      await storage.write(key: _userIdStorageKey, value: userId);
+      await _writeSessionValueBestEffort(
+        key: _userIdStorageKey,
+        value: userId,
+        operation: 'fetchProfile.storeUserId',
+      );
     }
   }
 
   Future<void> _loadFromStorage() async {
-    final storedToken = await storage.read(key: _tokenStorageKey);
-    final storedUserId = await storage.read(key: _userIdStorageKey);
-    _tokenStreamValue.addValue(storedToken);
-    _userIdStreamValue.addValue(storedUserId);
+    try {
+      final storedToken = await _storage.read(key: _tokenStorageKey);
+      final storedUserId = await _storage.read(key: _userIdStorageKey);
+      _tokenStreamValue.addValue(storedToken);
+      _userIdStreamValue.addValue(storedUserId);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'loadFromStorage',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _tokenStreamValue.addValue(null);
+      _userIdStreamValue.addValue(null);
+    }
   }
 
   Future<void> _clearSession() async {
     _tokenStreamValue.addValue(null);
     _userIdStreamValue.addValue(null);
-    await storage.delete(key: _tokenStorageKey);
-    await storage.delete(key: _userIdStorageKey);
+    try {
+      await _storage.delete(key: _tokenStorageKey);
+      await _storage.delete(key: _userIdStorageKey);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: 'clearSession',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<String> _resolveDeviceName() async {
@@ -241,6 +274,32 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     return normalized.endsWith('/')
         ? normalized.substring(0, normalized.length - 1)
         : normalized;
+  }
+
+  Future<void> _writeSessionValueBestEffort({
+    required String key,
+    required String value,
+    required String operation,
+  }) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (error, stackTrace) {
+      _logStorageFailure(
+        operation: operation,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _logStorageFailure({
+    required String operation,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    debugPrint(
+      'LandlordAuthRepository.$operation failed: $error\n$stackTrace',
+    );
   }
 }
 

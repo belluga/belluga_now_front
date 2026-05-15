@@ -85,7 +85,7 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
       _syncCoordinatedScrollState();
       // External controllers can attach or restore offset a few frames after
       // the widget subscribes, without emitting a scroll delta.
-      if (!controller.hasClients || controller.offset == 0.0) {
+      if (_coordinatedScrollPixels(controller) == 0.0) {
         WidgetsBinding.instance.scheduleFrame();
         _scheduleCoordinatedScrollStateSync(
           controller,
@@ -96,10 +96,26 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
   }
 
   void _syncCoordinatedScrollState() {
-    final controller = _attachedScrollController;
-    final pixels =
-        controller != null && controller.hasClients ? controller.offset : 0.0;
+    final pixels = _coordinatedScrollPixels(_attachedScrollController);
     widget.controller.updateRadiusActionCompactStateFromOuterScroll(pixels);
+  }
+
+  double _coordinatedScrollPixels(ScrollController? controller) {
+    if (controller == null || !controller.hasClients) {
+      return 0.0;
+    }
+
+    if (controller.positions.isEmpty) {
+      return controller.offset;
+    }
+
+    var resolvedPixels = 0.0;
+    for (final position in controller.positions) {
+      if (position.pixels > resolvedPixels) {
+        resolvedPixels = position.pixels;
+      }
+    }
+    return resolvedPixels;
   }
 
   @override

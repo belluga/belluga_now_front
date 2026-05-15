@@ -24,15 +24,34 @@ class AppDataRepository implements AppDataRepositoryContract {
     AppDataBackendContract? backend,
     BackendContract? backendContract,
     required AppDataLocalInfoSource localInfoSource,
+    List<Duration>? bootstrapRetryDelays,
+    FlutterSecureStorage? storage,
   })  : _backend = backend ??
             (backendContract ?? GetIt.I.get<BackendContract>()).appData,
-        _localInfoSource = localInfoSource;
+        _localInfoSource = localInfoSource,
+        _storage = storage ?? const FlutterSecureStorage(),
+        _bootstrapRetryDelays = List<Duration>.unmodifiable(
+          bootstrapRetryDelays ?? _defaultBootstrapRetryDelays,
+        );
 
   @override
   late AppData appData;
 
   final AppDataBackendContract _backend;
   final AppDataLocalInfoSource _localInfoSource;
+  final FlutterSecureStorage _storage;
+  final List<Duration> _bootstrapRetryDelays;
+  static const List<Duration> _defaultBootstrapRetryDelays = <Duration>[
+    Duration(milliseconds: 250),
+    Duration(milliseconds: 500),
+    Duration(milliseconds: 750),
+    Duration(milliseconds: 1000),
+    Duration(milliseconds: 1250),
+    Duration(milliseconds: 1500),
+    Duration(milliseconds: 1750),
+    Duration(milliseconds: 2000),
+    Duration(milliseconds: 2500),
+  ];
   @override
   final StreamValue<ThemeMode?> themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
@@ -60,7 +79,6 @@ class AppDataRepository implements AppDataRepositoryContract {
   static const String _locationOriginFixedReferenceLngStorageKey =
       'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const AppDataDiscoveryFilterSelectionCodec
       _discoveryFilterSelectionCodec = AppDataDiscoveryFilterSelectionCodec();
   bool _hasPersistedMaxRadiusPreference = false;
@@ -82,8 +100,21 @@ class AppDataRepository implements AppDataRepositoryContract {
   @override
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
-    final remoteData = await _backend.fetch();
-    appData = remoteData.toDomain(localInfo: localInfo);
+    final attempts = 1 + _bootstrapRetryDelays.length;
+
+    for (var attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        final remoteData = await _backend.fetch();
+        appData = remoteData.toDomain(localInfo: localInfo);
+        break;
+      } catch (error, stackTrace) {
+        if (attempt >= _bootstrapRetryDelays.length) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        await Future<void>.delayed(_bootstrapRetryDelays[attempt]);
+      }
+    }
+
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
     maxRadiusMetersStreamValue.addValue(
@@ -92,7 +123,7 @@ class AppDataRepository implements AppDataRepositoryContract {
         defaultValue: appData.mapRadiusMaxMeters,
       ),
     );
-    final storedRadius = await _loadMaxRadiusMeters();
+    final storedRadius = await _tryLoadMaxRadiusMeters();
     if (storedRadius != null) {
       final clamped = storedRadius.clamp(
         appData.mapRadiusMinMeters,
@@ -108,7 +139,7 @@ class AppDataRepository implements AppDataRepositoryContract {
     } else {
       _hasPersistedMaxRadiusPreference = false;
     }
-    final storedLocationOriginSettings = await _loadLocationOriginSettings();
+    final storedLocationOriginSettings = await _tryLoadLocationOriginSettings();
     if (storedLocationOriginSettings != null) {
       locationOriginSettingsStreamValue.addValue(storedLocationOriginSettings);
       _hasPersistedLocationOriginPreference = true;
@@ -116,7 +147,7 @@ class AppDataRepository implements AppDataRepositoryContract {
       _hasPersistedLocationOriginPreference = false;
     }
     await _precacheLogos();
-    await _persistRuntimeMetadata();
+    await _persistRuntimeMetadataBestEffort();
 
     if (GetIt.I.isRegistered<AppData>()) {
       GetIt.I.unregister<AppData>();
@@ -241,6 +272,19 @@ class AppDataRepository implements AppDataRepositoryContract {
     return parsed;
   }
 
+  Future<double?> _tryLoadMaxRadiusMeters() async {
+    double? storedRadius;
+    try {
+      storedRadius = await _loadMaxRadiusMeters();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppDataRepository._loadMaxRadiusMeters failed: '
+        '$error\n$stackTrace',
+      );
+    }
+    return storedRadius;
+  }
+
   String _discoveryFilterSelectionStorageKey(
     AppDataDiscoveryFilterTokenValue surface,
   ) {
@@ -313,6 +357,19 @@ class AppDataRepository implements AppDataRepositoryContract {
     );
   }
 
+  Future<LocationOriginSettings?> _tryLoadLocationOriginSettings() async {
+    LocationOriginSettings? settings;
+    try {
+      settings = await _loadLocationOriginSettings();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppDataRepository._loadLocationOriginSettings failed: '
+        '$error\n$stackTrace',
+      );
+    }
+    return settings;
+  }
+
   ThemeMode _resolveInitialThemeMode() =>
       appData.themeDataSettings.brightnessDefault == Brightness.dark
           ? ThemeMode.dark
@@ -371,5 +428,16 @@ class AppDataRepository implements AppDataRepositoryContract {
       key: _apiBaseUrlStorageKey,
       value: apiBaseUrl,
     );
+  }
+
+  Future<void> _persistRuntimeMetadataBestEffort() async {
+    try {
+      await _persistRuntimeMetadata();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppDataRepository._persistRuntimeMetadata failed: '
+        '$error\n$stackTrace',
+      );
+    }
   }
 }

@@ -23,11 +23,13 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  final fixedRealtimeCursor = DateTime.utc(2026, 05, 14, 14, 12, 00);
 
   test('init binds realtime stream and upserts invite deltas', () async {
     final firstStream = StreamController<InviteRealtimeDeltaDto>();
@@ -42,6 +44,7 @@ void main() {
     final repository = InvitesRepository(
       backend: backend,
       authRepository: authRepository,
+      now: () => fixedRealtimeCursor,
       wait: (duration) {
         final completer = Completer<void>();
         waitCompleters.add(completer);
@@ -52,7 +55,10 @@ void main() {
 
     await repository.init();
 
-    expect(backend.watchInvitesLastEventIds, [null]);
+    expect(
+      backend.watchInvitesLastEventIds,
+      [fixedRealtimeCursor.toIso8601String()],
+    );
 
     firstStream.add(
       InviteRealtimeDeltaDto(
@@ -64,12 +70,41 @@ void main() {
     await pumpEventQueue();
 
     expect(repository.pendingInvitesStreamValue.value, hasLength(1));
-    expect(repository.pendingInvitesStreamValue.value.single.id, 'invite-live-1');
+    expect(
+        repository.pendingInvitesStreamValue.value.single.id, 'invite-live-1');
 
     await firstStream.close();
     await pumpEventQueue();
 
     expect(waitCompleters, hasLength(1));
+  });
+
+  test('init tolerates persisted tenant scope storage failures', () async {
+    final firstStream = StreamController<InviteRealtimeDeltaDto>();
+    final backend = _FakeInvitesBackend(
+      inviteRealtimeStreams: [firstStream.stream],
+    );
+    final authRepository = _FakeInvitesAuthRepository(
+      userId: 'user-1',
+      authorized: true,
+    );
+    final repository = InvitesRepository(
+      backend: backend,
+      authRepository: authRepository,
+      storage: const _ThrowingSecureStorage(),
+      now: () => fixedRealtimeCursor,
+      wait: (_) => Future<void>.value(),
+    );
+    addTearDown(repository.dispose);
+
+    await repository.init();
+
+    expect(
+      backend.watchInvitesLastEventIds,
+      [fixedRealtimeCursor.toIso8601String()],
+    );
+
+    await firstStream.close();
   });
 
   test('realtime delete delta removes matching pending invite group', () async {
@@ -92,6 +127,7 @@ void main() {
         userId: 'user-1',
         authorized: true,
       ),
+      now: () => fixedRealtimeCursor,
       wait: (_) => Future<void>.value(),
     );
     addTearDown(repository.dispose);
@@ -125,6 +161,7 @@ void main() {
         userId: 'user-1',
         authorized: true,
       ),
+      now: () => fixedRealtimeCursor,
       wait: (duration) {
         final completer = Completer<void>();
         waitCompleters.add(completer);
@@ -151,7 +188,10 @@ void main() {
     waitCompleters.single.complete();
     await pumpEventQueue();
 
-    expect(backend.watchInvitesLastEventIds, [null, 'cursor-1']);
+    expect(
+      backend.watchInvitesLastEventIds,
+      [fixedRealtimeCursor.toIso8601String(), 'cursor-1'],
+    );
 
     await secondStream.close();
   });
@@ -169,6 +209,7 @@ void main() {
     final repository = InvitesRepository(
       backend: backend,
       authRepository: authRepository,
+      now: () => fixedRealtimeCursor,
       wait: (_) => Future<void>.value(),
     );
     addTearDown(repository.dispose);
@@ -179,7 +220,10 @@ void main() {
     authRepository.setAuthorized(userId: 'user-1');
     await pumpEventQueue();
 
-    expect(backend.watchInvitesLastEventIds, [null]);
+    expect(
+      backend.watchInvitesLastEventIds,
+      [fixedRealtimeCursor.toIso8601String()],
+    );
     await firstStream.close();
   });
 
@@ -1307,6 +1351,23 @@ class _FakeUser extends UserContract {
   });
 }
 
+class _ThrowingSecureStorage extends FlutterSecureStorage {
+  const _ThrowingSecureStorage();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) {
+    throw StateError('secure storage read failed');
+  }
+}
+
 _FakeUser _buildUser(String id) {
   final normalizedId = _mongoIdSeed(id);
   return _FakeUser(
@@ -1315,7 +1376,8 @@ _FakeUser _buildUser(String id) {
   );
 }
 
-InviteDto _inviteDto(Map<String, dynamic> payload) => InviteDto.fromJson(payload);
+InviteDto _inviteDto(Map<String, dynamic> payload) =>
+    InviteDto.fromJson(payload);
 
 String _sha256(String raw) => sha256.convert(utf8.encode(raw)).toString();
 
