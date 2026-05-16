@@ -34,8 +34,8 @@ class TenantAdminProfileTypeFormScreen extends StatefulWidget {
 
 class _TenantAdminProfileTypeFormScreenState
     extends State<TenantAdminProfileTypeFormScreen> {
-  final TenantAdminProfileTypesController _controller =
-      GetIt.I.get<TenantAdminProfileTypesController>();
+  final TenantAdminProfileTypesController _controller = GetIt.I
+      .get<TenantAdminProfileTypesController>();
 
   bool get _isEdit => widget.definition != null;
 
@@ -70,12 +70,12 @@ class _TenantAdminProfileTypeFormScreenState
     if (_controller.typeController.text == generated) {
       return;
     }
-    _controller.typeController.value =
-        _controller.typeController.value.copyWith(
-      text: generated,
-      selection: TextSelection.collapsed(offset: generated.length),
-      composing: TextRange.empty,
-    );
+    _controller.typeController.value = _controller.typeController.value
+        .copyWith(
+          text: generated,
+          selection: TextSelection.collapsed(offset: generated.length),
+          composing: TextRange.empty,
+        );
   }
 
   Future<void> _save() async {
@@ -99,10 +99,12 @@ class _TenantAdminProfileTypeFormScreenState
       return;
     }
 
-    final requiresTypeAsset = visual.mode == TenantAdminPoiVisualMode.image &&
+    final requiresTypeAsset =
+        visual.mode == TenantAdminPoiVisualMode.image &&
         visual.imageSource == TenantAdminPoiVisualImageSource.typeAsset;
-    final typeAssetUpload =
-        requiresTypeAsset ? await _controller.buildTypeAssetUpload() : null;
+    final typeAssetUpload = requiresTypeAsset
+        ? await _controller.buildTypeAssetUpload()
+        : null;
     if (requiresTypeAsset &&
         typeAssetUpload == null &&
         _controller.currentTypeAssetUrl == null) {
@@ -273,18 +275,40 @@ class _TenantAdminProfileTypeFormScreenState
                         title: 'Capacidades',
                         description:
                             'Ative os recursos que o perfil deve disponibilizar.',
-                        child: StreamValueBuilder<
-                            TenantAdminProfileTypeCapabilities>(
+                        child: StreamValueBuilder<TenantAdminProfileTypeCapabilities>(
                           streamValue: _controller.capabilitiesStreamValue,
                           builder: (context, capabilities) {
                             return Column(
                               children: [
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Descoberta publica habilitada',
+                                  ),
+                                  subtitle: const Text(
+                                    'Permite exibir perfis deste tipo nas superficies publicas do tenant.',
+                                  ),
+                                  value: capabilities.isPubliclyDiscoverable,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                        isPubliclyDiscoverable: value,
+                                      ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
                                   title: const Text('Favoritavel'),
+                                  subtitle: Text(
+                                    capabilities.isPubliclyDiscoverable
+                                        ? 'Permite que perfis deste tipo sejam adicionados aos favoritos.'
+                                        : 'Requer descoberta publica habilitada.',
+                                  ),
                                   value: capabilities.isFavoritable,
-                                  onChanged: (value) => _controller
-                                      .updateCapabilities(isFavoritable: value),
+                                  onChanged: capabilities.isPubliclyDiscoverable
+                                      ? (value) =>
+                                            _controller.updateCapabilities(
+                                              isFavoritable: value,
+                                            )
+                                      : null,
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -310,9 +334,9 @@ class _TenantAdminProfileTypeFormScreenState
                                       capabilities.isReferenceLocationEnabled,
                                   onChanged: capabilities.isPoiEnabled
                                       ? (value) =>
-                                          _controller.updateCapabilities(
-                                            isReferenceLocationEnabled: value,
-                                          )
+                                            _controller.updateCapabilities(
+                                              isReferenceLocationEnabled: value,
+                                            )
                                       : null,
                                 ),
                                 const SizedBox(height: 12),
@@ -519,35 +543,38 @@ class _TenantAdminProfileTypeFormScreenState
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: availableTaxonomies.map((taxonomy) {
-                              final label =
-                                  '${taxonomy.name} (${taxonomy.slug})';
-                              final isSelected =
-                                  selectedSet.contains(taxonomy.slug);
-                              return Semantics(
-                                key: ValueKey<String>(
-                                  'tenantAdminProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
-                                ),
-                                container: true,
-                                label: label,
-                                button: true,
-                                focusable: true,
-                                toggled: isSelected,
-                                selected: isSelected,
-                                onTap: () => _controller
-                                    .toggleAllowedTaxonomy(taxonomy.slug),
-                                child: ExcludeSemantics(
-                                  child: FilterChip(
-                                    label: Text(label),
-                                    selected: isSelected,
-                                    onSelected: (_) =>
-                                        _controller.toggleAllowedTaxonomy(
-                                      taxonomy.slug,
+                            children: availableTaxonomies
+                                .map((taxonomy) {
+                                  final label =
+                                      '${taxonomy.name} (${taxonomy.slug})';
+                                  final isSelected = selectedSet.contains(
+                                    taxonomy.slug,
+                                  );
+                                  return Semantics(
+                                    key: ValueKey<String>(
+                                      'tenantAdminProfileTypeAllowedTaxonomySemantics_${taxonomy.slug}',
                                     ),
-                                  ),
-                                ),
-                              );
-                            }).toList(growable: false),
+                                    container: true,
+                                    label: label,
+                                    button: true,
+                                    focusable: true,
+                                    toggled: isSelected,
+                                    selected: isSelected,
+                                    onTap: () => _controller
+                                        .toggleAllowedTaxonomy(taxonomy.slug),
+                                    child: ExcludeSemantics(
+                                      child: FilterChip(
+                                        label: Text(label),
+                                        selected: isSelected,
+                                        onSelected: (_) =>
+                                            _controller.toggleAllowedTaxonomy(
+                                              taxonomy.slug,
+                                            ),
+                                      ),
+                                    ),
+                                  );
+                                })
+                                .toList(growable: false),
                           ),
                       ],
                     );
@@ -576,10 +603,12 @@ class _TenantAdminProfileTypeFormScreenState
                 final hasExistingUrl =
                     !isMarkedForRemoval && trimmedUrl.isNotEmpty;
                 final normalizedUrl = hasExistingUrl ? trimmedUrl : null;
-                final canRemove = selectedFile != null ||
+                final canRemove =
+                    selectedFile != null ||
                     hasExistingUrl ||
                     isMarkedForRemoval;
-                final selectedLabel = selectedFile?.name ??
+                final selectedLabel =
+                    selectedFile?.name ??
                     (isMarkedForRemoval
                         ? 'Imagem canônica será removida ao salvar.'
                         : normalizedUrl ?? 'Nenhuma imagem selecionada');
@@ -596,8 +625,9 @@ class _TenantAdminProfileTypeFormScreenState
                   addLabel: 'Enviar imagem canônica',
                   sourceSheetTitle: 'Adicionar imagem canônica do tipo',
                   urlPromptTitle: 'URL da imagem canônica do tipo',
-                  removeLabel:
-                      isMarkedForRemoval ? 'Desfazer remoção' : 'Remover',
+                  removeLabel: isMarkedForRemoval
+                      ? 'Desfazer remoção'
+                      : 'Remover',
                   busy: false,
                   canRemove: canRemove,
                   onRemove: _controller.clearTypeAssetSelection,
