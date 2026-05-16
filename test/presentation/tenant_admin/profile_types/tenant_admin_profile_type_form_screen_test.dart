@@ -134,6 +134,84 @@ void main() {
     expect(find.text('Requer POI habilitado.'), findsOneWidget);
   });
 
+  testWidgets(
+    'disables favoritable behind public discovery and keeps it off when re-enabled',
+    (tester) async {
+      final controller = _TestProfileTypesController(impactCount: 0);
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isPubliclyDiscoverable: TenantAdminFlagValue(false),
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
+          ),
+        ),
+      );
+
+      var favoritableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Favoritavel'),
+      );
+
+      expect(favoritableToggle.value, isFalse);
+      expect(favoritableToggle.onChanged, isNull);
+      expect(
+        find.text('Requer descoberta publica habilitada.'),
+        findsOneWidget,
+      );
+
+      final publicToggle = find.widgetWithText(
+        SwitchListTile,
+        'Descoberta publica habilitada',
+      );
+      await tester.ensureVisible(publicToggle);
+      await tester.tap(publicToggle);
+      await tester.pumpAndSettle();
+
+      favoritableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Favoritavel'),
+      );
+      expect(favoritableToggle.value, isFalse);
+      expect(favoritableToggle.onChanged, isNotNull);
+
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Favoritavel'));
+      await tester.pumpAndSettle();
+
+      favoritableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Favoritavel'),
+      );
+      expect(favoritableToggle.value, isTrue);
+
+      await tester.tap(publicToggle);
+      await tester.pumpAndSettle();
+
+      favoritableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Favoritavel'),
+      );
+      expect(favoritableToggle.value, isFalse);
+      expect(favoritableToggle.onChanged, isNull);
+
+      await tester.tap(publicToggle);
+      await tester.pumpAndSettle();
+
+      favoritableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Favoritavel'),
+      );
+      expect(favoritableToggle.value, isFalse);
+      expect(favoritableToggle.onChanged, isNotNull);
+    },
+  );
+
   testWidgets('renders shared marker icon picker in POI visual editor', (
     tester,
   ) async {
@@ -297,20 +375,18 @@ Future<void> _pumpFormScreen(
   GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
   await tester.pumpWidget(
-    MaterialApp(
-      home: TenantAdminProfileTypeFormScreen(definition: definition),
-    ),
+    MaterialApp(home: TenantAdminProfileTypeFormScreen(definition: definition)),
   );
   await tester.pumpAndSettle();
 }
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
   _TestProfileTypesController({required int impactCount})
-      : _impactCount = impactCount,
-        super(
-          repository: _FakeAccountProfilesRepository(),
-          taxonomiesRepository: _FakeTaxonomiesRepository(),
-        );
+    : _impactCount = impactCount,
+      super(
+        repository: _FakeAccountProfilesRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+      );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -417,7 +493,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -473,7 +549,8 @@ class _FakeAccountProfilesRepository
       label: label ?? type,
       pluralLabel: pluralLabel ?? label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -527,7 +604,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -546,7 +623,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
