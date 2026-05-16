@@ -58,11 +58,12 @@ class TenantAdminProfileTypeDTO {
     bool hasCover = false;
     bool hasEvents = false;
     if (capabilities is Map<String, dynamic>) {
-      isPubliclyDiscoverable = _parseBool(
-        capabilities['is_publicly_discoverable'],
-      );
-      isFavoritable =
-          isPubliclyDiscoverable && _parseBool(capabilities['is_favoritable']);
+      final parsedFavoritable = _parseBool(capabilities['is_favoritable']);
+      isPubliclyDiscoverable =
+          capabilities.containsKey('is_publicly_discoverable')
+          ? _parseBool(capabilities['is_publicly_discoverable'])
+          : parsedFavoritable;
+      isFavoritable = isPubliclyDiscoverable && parsedFavoritable;
       isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
       isReferenceLocationEnabled =
           isPoiEnabled &&

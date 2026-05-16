@@ -153,5 +153,19 @@ void main() {
       expect(enabledDto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
       expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
     });
+
+    test('defaults public discoverability to favoritable when flag is absent', () {
+      final dto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_favoritable': true,
+        },
+      });
+
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
+      expect(dto.toDomain().capabilities.isFavoritable, isTrue);
+    });
   });
 }
