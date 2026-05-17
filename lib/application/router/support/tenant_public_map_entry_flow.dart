@@ -44,8 +44,19 @@ Future<void> _openTenantPublicMapEntryFlow(
     return;
   }
 
+  // When the permission screen resolves into router.replace(CityMapRoute()),
+  // AutoRoute can keep the original push future pending. The entry mutex must
+  // be released from the permission decision itself so a later home -> map tap
+  // can start a new flow.
+  final resolutionCompleter = Completer<void>();
+  void completeResolution() {
+    if (!resolutionCompleter.isCompleted) {
+      resolutionCompleter.complete();
+    }
+  }
+
   var didResolvePermissionRoute = false;
-  await router.push<void>(
+  final permissionPushFuture = router.push<void>(
     LocationPermissionRoute(
       initialState: blocker,
       allowContinueWithoutLocation: true,
@@ -59,16 +70,26 @@ Future<void> _openTenantPublicMapEntryFlow(
         switch (result) {
           case LocationPermissionGateResult.granted:
             unawaited(router.replace(CityMapRoute()));
+            completeResolution();
             return;
           case LocationPermissionGateResult.continueWithoutLocation:
             LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
             unawaited(router.replace(CityMapRoute()));
+            completeResolution();
             return;
           case LocationPermissionGateResult.cancelled:
             unawaited(router.maybePop());
+            completeResolution();
             return;
         }
       },
     ),
   );
+  final permissionCompletion = permissionPushFuture.then<void>((_) {
+    completeResolution();
+  });
+  await Future.any<void>(<Future<void>>[
+    resolutionCompleter.future,
+    permissionCompletion,
+  ]);
 }
