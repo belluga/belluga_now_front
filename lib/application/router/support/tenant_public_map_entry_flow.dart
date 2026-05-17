@@ -85,10 +85,11 @@ Future<void> _openTenantPublicMapEntryFlow(
       },
     ),
   );
-  unawaited(
-    permissionPushFuture
-        .catchError((Object _, StackTrace __) {})
-        .whenComplete(completeResolution),
-  );
-  await resolutionCompleter.future;
+  final permissionCompletion = permissionPushFuture.then<void>((_) {
+    completeResolution();
+  });
+  await Future.any<void>(<Future<void>>[
+    resolutionCompleter.future,
+    permissionCompletion,
+  ]);
 }

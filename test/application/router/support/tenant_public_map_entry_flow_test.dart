@@ -195,18 +195,60 @@ void main() {
 
     router.completePendingPermissionPushes();
   });
+
+  test('permission push failures propagate and release the entry mutex',
+      () async {
+    final router = _RecordingStackRouter(
+      permissionPushError: StateError('permission push failed'),
+    );
+
+    await expectLater(
+      openTenantPublicMapEntryFlow(
+        router,
+        blockerLoader: () async => LocationPermissionState.denied,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'permission push failed',
+        ),
+      ),
+    );
+
+    await expectLater(
+      openTenantPublicMapEntryFlow(
+        router,
+        blockerLoader: () async => LocationPermissionState.denied,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'permission push failed',
+        ),
+      ),
+    );
+
+    expect(router.pushCalls.map((route) => route.routeName).toList(), [
+      LocationPermissionRoute.name,
+      LocationPermissionRoute.name,
+    ]);
+  });
 }
 
 class _RecordingStackRouter extends Mock implements RootStackRouter {
   _RecordingStackRouter({
     this.permissionResult,
     this.permissionFutureFactory,
+    this.permissionPushError,
     this.keepPermissionFuturePendingAfterResult = false,
   });
 
   final LocationPermissionGateResult? permissionResult;
   final Future<LocationPermissionGateResult?> Function()?
       permissionFutureFactory;
+  final Object? permissionPushError;
   final bool keepPermissionFuturePendingAfterResult;
   final List<PageRouteInfo<dynamic>> pushCalls = <PageRouteInfo<dynamic>>[];
   final List<PageRouteInfo<dynamic>> replaceCalls = <PageRouteInfo<dynamic>>[];
@@ -224,6 +266,10 @@ class _RecordingStackRouter extends Mock implements RootStackRouter {
   }) async {
     pushCalls.add(route);
     if (route case final LocationPermissionRoute permissionRoute) {
+      final pushError = permissionPushError;
+      if (pushError != null) {
+        throw pushError;
+      }
       if (permissionFutureFactory != null) {
         return await permissionFutureFactory!() as T?;
       }
