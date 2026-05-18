@@ -386,7 +386,10 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
           ],
           selected: {selectedPane},
           onSelectionChanged: (selection) {
-            unawaited(_controller.selectPane(selection.single));
+            if (selection.isEmpty) {
+              return;
+            }
+            unawaited(_controller.selectPane(selection.first));
           },
         ),
         const SizedBox(height: 10),
