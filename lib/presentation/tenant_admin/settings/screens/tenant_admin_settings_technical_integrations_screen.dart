@@ -34,6 +34,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
     extends State<TenantAdminSettingsTechnicalIntegrationsScreen> {
   final TenantAdminSettingsController _controller =
       GetIt.I.get<TenantAdminSettingsController>();
+  bool _initialTechnicalIntegrationsLoaded = false;
 
   final GlobalKey _firebaseSectionKey = GlobalKey();
   final GlobalKey _resendSectionKey = GlobalKey();
@@ -47,9 +48,19 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
   void initState() {
     super.initState();
     _controller.init();
-    unawaited(_controller.loadTechnicalIntegrationsSettings());
+    unawaited(_loadInitialTechnicalIntegrationsSettings());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusInitialSection();
+    });
+  }
+
+  Future<void> _loadInitialTechnicalIntegrationsSettings() async {
+    await _controller.loadTechnicalIntegrationsSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _initialTechnicalIntegrationsLoaded = true;
     });
   }
 
@@ -99,97 +110,107 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
           onReload: _controller.loadTechnicalIntegrationsSettings,
         ),
         const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _resendSectionKey,
-          child: TenantAdminSettingsSection(
-            key: TenantAdminSettingsKeys.technicalIntegrationsResendSection,
-            title: 'Resend',
-            description:
-                'Envelope de disparo de e-mail transacional por tenant.',
-            icon: Icons.mark_email_read_outlined,
-            child: TenantAdminSettingsResendEmailSection(
-              controller: _controller,
+        if (!_initialTechnicalIntegrationsLoaded)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else ...[
+          KeyedSubtree(
+            key: _resendSectionKey,
+            child: TenantAdminSettingsSection(
+              key: TenantAdminSettingsKeys.technicalIntegrationsResendSection,
+              title: 'Resend',
+              description:
+                  'Envelope de disparo de e-mail transacional por tenant.',
+              icon: Icons.mark_email_read_outlined,
+              child: TenantAdminSettingsResendEmailSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _outboundSectionKey,
-          child: TenantAdminSettingsSection(
-            key: TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
-            title: 'Webhooks de saída',
-            description: 'URLs de envio por fila para WhatsApp e OTP.',
-            icon: Icons.webhook_outlined,
-            child: TenantAdminSettingsOutboundIntegrationsSection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _outboundSectionKey,
+            child: TenantAdminSettingsSection(
+              key: TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+              title: 'Webhooks de saída',
+              description: 'URLs de envio por fila para WhatsApp e OTP.',
+              icon: Icons.webhook_outlined,
+              child: TenantAdminSettingsOutboundIntegrationsSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _phoneOtpReviewAccessSectionKey,
-          child: TenantAdminSettingsSection(
-            key: TenantAdminSettingsKeys
-                .technicalIntegrationsPhoneOtpReviewAccessSection,
-            title: 'Acesso de revisão OTP',
-            description: 'Telefone dedicado e hash do código de revisão.',
-            icon: Icons.lock_open_outlined,
-            child: TenantAdminSettingsPhoneOtpReviewAccessSection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _phoneOtpReviewAccessSectionKey,
+            child: TenantAdminSettingsSection(
+              key: TenantAdminSettingsKeys
+                  .technicalIntegrationsPhoneOtpReviewAccessSection,
+              title: 'Acesso de revisão OTP',
+              description: 'Telefone dedicado e hash do código de revisão.',
+              icon: Icons.lock_open_outlined,
+              child: TenantAdminSettingsPhoneOtpReviewAccessSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _appLinksSectionKey,
-          child: TenantAdminSettingsSection(
-            key: TenantAdminSettingsKeys.technicalIntegrationsAppLinksSection,
-            title: 'App Links',
-            description: 'Android App Links e iOS Universal Links por tenant.',
-            icon: Icons.link_outlined,
-            child: TenantAdminSettingsAppLinksSection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _appLinksSectionKey,
+            child: TenantAdminSettingsSection(
+              key: TenantAdminSettingsKeys.technicalIntegrationsAppLinksSection,
+              title: 'App Links',
+              description:
+                  'Android App Links e iOS Universal Links por tenant.',
+              icon: Icons.link_outlined,
+              child: TenantAdminSettingsAppLinksSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _firebaseSectionKey,
-          child: TenantAdminSettingsSection(
-            title: 'Firebase',
-            description: 'Banco de dados e autenticação.',
-            icon: Icons.local_fire_department_outlined,
-            child: TenantAdminSettingsFirebaseSection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _firebaseSectionKey,
+            child: TenantAdminSettingsSection(
+              title: 'Firebase',
+              description: 'Banco de dados e autenticação.',
+              icon: Icons.local_fire_department_outlined,
+              child: TenantAdminSettingsFirebaseSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _pushSectionKey,
-          child: TenantAdminSettingsSection(
-            key: TenantAdminSettingsKeys.technicalIntegrationsPushSection,
-            title: 'Push',
-            description:
-                'TTL, limites, status operacional e credenciais FCM.',
-            icon: Icons.notifications_active_outlined,
-            child: TenantAdminSettingsPushSection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _pushSectionKey,
+            child: TenantAdminSettingsSection(
+              key: TenantAdminSettingsKeys.technicalIntegrationsPushSection,
+              title: 'Push',
+              description:
+                  'TTL, limites, status operacional e credenciais FCM.',
+              icon: Icons.notifications_active_outlined,
+              child: TenantAdminSettingsPushSection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        KeyedSubtree(
-          key: _telemetrySectionKey,
-          child: TenantAdminSettingsSection(
-            title: 'Telemetry',
-            description: 'Trackers de métricas por integração.',
-            icon: Icons.insights_outlined,
-            child: TenantAdminSettingsTelemetrySection(
-              controller: _controller,
+          const SizedBox(height: 12),
+          KeyedSubtree(
+            key: _telemetrySectionKey,
+            child: TenantAdminSettingsSection(
+              title: 'Telemetry',
+              description: 'Trackers de métricas por integração.',
+              icon: Icons.insights_outlined,
+              child: TenantAdminSettingsTelemetrySection(
+                controller: _controller,
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
