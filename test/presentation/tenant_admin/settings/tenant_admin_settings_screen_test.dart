@@ -2252,6 +2252,70 @@ void main() {
     expect(find.text('URL SMS'), findsOneWidget);
   });
 
+  testWidgets(
+      'waits for remote technical integrations load before exposing outbound edits',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository()
+      ..outboundIntegrationsFetchBlocker = Completer<void>();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    const child = Scaffold(
+      body: TenantAdminSettingsTechnicalIntegrationsScreen(
+        initialSection: TenantAdminSettingsIntegrationSection.outbound,
+      ),
+    );
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: _settingsTestRouteNameForChild(child),
+          path: '/',
+          meta: _settingsTestMetaForChild(child),
+          builder: (_, __) => child,
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+        skipOffstage: false,
+      ),
+      findsNothing,
+    );
+
+    settingsRepository.outboundIntegrationsFetchBlocker?.complete();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('https://integrations.example/whatsapp'), findsOneWidget);
+  });
+
   testWidgets('saves and deletes telemetry integrations via remote repository',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -3555,6 +3619,7 @@ class _FakeTenantAdminSettingsRepository
   TenantAdminResendEmailSettings? updatedResendEmailSettings;
   TenantAdminOutboundIntegrationsSettings? updatedOutboundIntegrationsSettings;
   TenantAdminPhoneOtpReviewAccessSettings? updatedPhoneOtpReviewAccessSettings;
+  Completer<void>? outboundIntegrationsFetchBlocker;
   String? generatedPhoneOtpReviewAccessCode;
   int enablePushCallCount = 0;
   int disablePushCallCount = 0;
@@ -3853,6 +3918,9 @@ class _FakeTenantAdminSettingsRepository
   @override
   Future<TenantAdminOutboundIntegrationsSettings>
       fetchOutboundIntegrationsSettings() async {
+    if (outboundIntegrationsFetchBlocker != null) {
+      await outboundIntegrationsFetchBlocker!.future;
+    }
     return _outboundIntegrationsSettings;
   }
 
