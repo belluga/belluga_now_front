@@ -131,6 +131,54 @@ void main() {
     expect(find.text('Caio Amigo'), findsOneWidget);
   });
 
+  testWidgets(
+    'pane segmented button ignores empty and multi-selection payloads',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = InviteShareScreenController(
+        invitesRepository: _FakeInvitesRepository(),
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      final segmentedButton = tester.widget<SegmentedButton<InviteSharePane>>(
+        find.byWidgetPredicate(
+          (widget) => widget is SegmentedButton<InviteSharePane>,
+        ),
+      );
+
+      expect(
+        () => segmentedButton.onSelectionChanged?.call(
+          <InviteSharePane>{},
+        ),
+        returnsNormally,
+      );
+      expect(
+        () => segmentedButton.onSelectionChanged?.call(
+          <InviteSharePane>{
+            InviteSharePane.app,
+            InviteSharePane.phone,
+          },
+        ),
+        returnsNormally,
+      );
+
+      await tester.pump();
+
+      expect(find.text('Ana Contato'), findsOneWidget);
+      expect(find.text('Atualizar agenda'), findsNothing);
+    },
+  );
+
   testWidgets('app pane shows loading before empty state resolves', (
     tester,
   ) async {

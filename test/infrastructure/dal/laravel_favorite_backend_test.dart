@@ -58,6 +58,18 @@ void main() {
       adapter.requests.first.headers['Authorization'],
       'Bearer test-token',
     );
+    expect(
+      adapter.requests.first.connectTimeout,
+      const Duration(seconds: 5),
+    );
+    expect(
+      adapter.requests.first.sendTimeout,
+      const Duration(seconds: 12),
+    );
+    expect(
+      adapter.requests.first.receiveTimeout,
+      const Duration(seconds: 12),
+    );
   });
 
   test('fetchFavorites bootstraps token when initially missing', () async {
@@ -149,6 +161,9 @@ class _RecordedRequest {
     required this.queryParameters,
     required this.headers,
     required this.data,
+    required this.connectTimeout,
+    required this.sendTimeout,
+    required this.receiveTimeout,
   });
 
   final String method;
@@ -156,6 +171,9 @@ class _RecordedRequest {
   final Map<String, dynamic> queryParameters;
   final Map<String, dynamic> headers;
   final Object? data;
+  final Duration? connectTimeout;
+  final Duration? sendTimeout;
+  final Duration? receiveTimeout;
 }
 
 class _FavoritesApiAdapter implements HttpClientAdapter {
@@ -177,6 +195,9 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
         queryParameters: Map<String, dynamic>.from(options.queryParameters),
         headers: Map<String, dynamic>.from(options.headers),
         data: options.data,
+        connectTimeout: options.connectTimeout,
+        sendTimeout: options.sendTimeout,
+        receiveTimeout: options.receiveTimeout,
       ),
     );
 

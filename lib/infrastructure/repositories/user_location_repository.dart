@@ -114,7 +114,7 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       return hasAnyCoordinate;
     }
 
-    Position? position = await Geolocator.getLastKnownPosition();
+    Position? position = await _getLastKnownPositionIfSupported();
 
     // If we have a very recent (within 5 min) position, use it.
     // Otherwise, request a new one with medium accuracy (faster).
@@ -147,6 +147,19 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     );
     return userLocationStreamValue.value != null ||
         lastKnownLocationStreamValue.value != null;
+  }
+
+  Future<Position?> _getLastKnownPositionIfSupported() async {
+    Position? position;
+    try {
+      position = await Geolocator.getLastKnownPosition();
+    } on UnsupportedError catch (error) {
+      debugPrint(
+        'UserLocationRepository.refreshIfPermitted.lastKnownUnsupported: '
+        '$error',
+      );
+    }
+    return position;
   }
 
   @override
