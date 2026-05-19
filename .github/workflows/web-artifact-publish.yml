@@ -23,6 +23,9 @@ concurrency:
   group: flutter-web-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   lane_policy:
     name: Lane Promotion Policy
@@ -31,7 +34,7 @@ jobs:
     steps:
       - name: Checkout flutter-app
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Enforce branch promotion lanes
         if: github.event_name == 'pull_request'
@@ -116,7 +119,7 @@ jobs:
 
     steps:
       - name: Checkout flutter-app
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -303,7 +306,7 @@ jobs:
           fi
 
       - name: Upload web artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: ${{ runner.temp }}/web-build
@@ -348,7 +351,7 @@ jobs:
 
       - name: Download web artifact
         if: steps.gate.outputs.enabled == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: web-build
           path: ${{ runner.temp }}/web-build
