@@ -37,18 +37,24 @@ class InviteShareScreenController with Disposable {
     AppData? appData,
     bool? isWebRuntime,
     String? contactRegionCode,
+    Set<String> Function(ContactModel contact, {String? regionCode})?
+        localContactHashResolver,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _contactsRepository =
             contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
         _appData = appData ?? GetIt.I.get<AppData>(),
         _isWebRuntime = isWebRuntime ?? kIsWeb,
-        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode);
+        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode),
+        _localContactHashResolver =
+            localContactHashResolver ?? InviteContactImportHashes.contactHashes;
 
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
   final AppData _appData;
   final bool _isWebRuntime;
+  final Set<String> Function(ContactModel contact, {String? regionCode})
+      _localContactHashResolver;
   InviteContactRegionCodeValue? _contactRegionCodeValue;
 
   InviteModel? _currentInvite;
@@ -109,13 +115,31 @@ class InviteShareScreenController with Disposable {
     selectedInviteableReasonStreamValue.addValue(null);
     selectedPaneStreamValue.addValue(InviteSharePane.app);
     _hydrateInviteTargetsFromRepositoryCache();
-    await _loadCachedContactsForDisplay();
-    _hydrateInviteTargetsFromRepositoryCache();
-    _publishPhonePaneFromRepositoryCacheIfAvailable();
+    unawaited(_primeCachedContactsForDisplay());
     await Future.wait([
       _loadInviteTargetsWithStatusSafe(),
       _loadShareCodeSafe(),
     ]);
+  }
+
+  Future<void> _primeCachedContactsForDisplay() async {
+    await _loadCachedContactsForDisplay();
+    if (_isDisposed) {
+      return;
+    }
+    _hydrateInviteTargetsFromRepositoryCache();
+    _publishPhonePaneFromRepositoryCacheIfAvailable();
+    if (_availableContactsFromRepository().isEmpty) {
+      return;
+    }
+    await _refreshImportedContactMatchesOpportunistically(
+      suppressFailures: true,
+    );
+    if (_isDisposed) {
+      return;
+    }
+    _hydrateInviteTargetsFromRepositoryCache();
+    _publishPhonePaneFromRepositoryCacheIfAvailable();
   }
 
   Future<void> loadContacts({bool forceDeviceReload = false}) async {
@@ -231,33 +255,47 @@ class InviteShareScreenController with Disposable {
     final invite = _currentInvite;
     if (invite == null) return;
 
-    var allowExternalTargets =
-        _invitesRepository.importedContactMatchesStreamValue.value != null;
+    final publishPhonePane = loadPhoneContacts ||
+        selectedPaneStreamValue.value == InviteSharePane.phone;
+    Future<void>? backgroundImportedMatchesRefresh;
+
     if (loadPhoneContacts) {
       await loadContacts(forceDeviceReload: forceReloadContacts);
       if (_isDisposed) return;
       await _refreshImportedContactMatchesOpportunistically(
         suppressFailures: !forceReloadContacts,
       );
-      allowExternalTargets =
-          _invitesRepository.importedContactMatchesStreamValue.value != null;
     } else if (_availableContactsFromRepository().isNotEmpty) {
-      await _refreshImportedContactMatchesOpportunistically(
+      backgroundImportedMatchesRefresh =
+          _refreshImportedContactMatchesOpportunistically(
         suppressFailures: true,
       );
-      if (_isDisposed) return;
-      allowExternalTargets =
-          _invitesRepository.importedContactMatchesStreamValue.value != null;
     }
+
     await _invitesRepository.refreshInviteableRecipients();
     if (_isDisposed) return;
 
+    final allowExternalTargets =
+        _invitesRepository.importedContactMatchesStreamValue.value != null;
     await _applyInviteTargetsFromRepositoriesWithStatus(
       allowExternalTargets: allowExternalTargets,
-      publishPhonePane:
-          loadPhoneContacts ||
-          selectedPaneStreamValue.value == InviteSharePane.phone,
+      publishPhonePane: publishPhonePane,
     );
+
+    if (backgroundImportedMatchesRefresh != null) {
+      unawaited(
+        backgroundImportedMatchesRefresh.then((_) {
+          if (_isDisposed) return;
+          _applyInviteTargetsFromRepositories(
+            sentInvites: sentInvitesStreamValue.value,
+            allowExternalTargets:
+                _invitesRepository.importedContactMatchesStreamValue.value !=
+                    null,
+            publishPhonePane: publishPhonePane,
+          );
+        }),
+      );
+    }
   }
 
   Future<void> _loadInviteTargetsWithStatusSafe({
@@ -625,10 +663,15 @@ class InviteShareScreenController with Disposable {
       return;
     }
 
+    final localContactHashes = backendRecipients
+        .map((recipient) => recipient.contactHash.trim())
+        .where((hash) => hash.isNotEmpty)
+        .toSet();
     final localContactDisplaysByHash = backendRecipients.isEmpty
         ? const <String, _LocalContactDisplay>{}
         : _localContactDisplaysByHash(
             availableContacts,
+            localContactHashes,
           );
     final recipients = _mergeInviteableRecipients(
       backendRecipients: backendRecipients
@@ -651,7 +694,12 @@ class InviteShareScreenController with Disposable {
 
   Map<String, _LocalContactDisplay> _localContactDisplaysByHash(
     List<ContactModel> availableContacts,
+    Set<String> targetHashes,
   ) {
+    if (targetHashes.isEmpty) {
+      return const <String, _LocalContactDisplay>{};
+    }
+
     final displaysByHash = <String, _LocalContactDisplay>{};
 
     for (final contact in availableContacts) {
@@ -664,13 +712,20 @@ class InviteShareScreenController with Disposable {
         continue;
       }
 
-      final hashes = InviteContactImportHashes.contactHashes(
+      final hashes = _localContactHashResolver(
         contact,
         regionCode: _contactRegionCodeValue?.value,
       );
 
       for (final hash in hashes) {
+        if (!targetHashes.contains(hash)) {
+          continue;
+        }
         displaysByHash.putIfAbsent(hash, () => display);
+      }
+
+      if (displaysByHash.length == targetHashes.length) {
+        break;
       }
     }
 
