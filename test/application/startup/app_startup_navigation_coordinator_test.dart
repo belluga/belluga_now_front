@@ -106,6 +106,37 @@ void main() {
   );
 
   testWidgets(
+    'startup coordinator lets invite push override the initial root path after initialization',
+    (tester) async {
+      final router = _buildRouter();
+      final coordinator = AppStartupNavigationCoordinator(
+        planLoader: () async => AppStartupNavigationPlan.routes(
+          const <PageRouteInfo<dynamic>>[
+            TenantHomeRoute(),
+          ],
+        ),
+      );
+      await coordinator.initialize();
+      coordinator.overrideInitialPath('/invite?code=ABCD1234');
+      final delegate = router.delegate(
+        deepLinkBuilder: coordinator.resolvePlatformDeepLink,
+      );
+
+      await delegate.setInitialRoutePath(await _parseRoute(router, '/'));
+
+      expect(
+        router.currentHierarchy().map((segment) => segment.name).toList(),
+        <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ],
+      );
+      expect(router.currentPath, '/invite');
+      expect(router.currentUrl, '/invite?code=ABCD1234');
+    },
+  );
+
+  testWidgets(
     'startup coordinator retries transient plan loader failures before applying override',
     (tester) async {
       var attempts = 0;
