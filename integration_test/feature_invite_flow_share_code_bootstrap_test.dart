@@ -355,17 +355,18 @@ void main() {
   testWidgets(
       'invite fallback replaces stale invite with event route when event resolves',
       (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _RecordingInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final scheduleRepository = _FakeScheduleRepository(
       eventsBySlug: <String, EventModel?>{
         'event-live': _buildResolvedEvent('event-live'),
       },
     );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final router = _RecordingStackRouter(canPopValue: false);
 
     await tester.pumpWidget(
@@ -381,7 +382,6 @@ void main() {
               requiresAuthentication: false,
               isInitialized: true,
               fallbackPath: '/agenda/evento/event-live?occurrence=occ-live',
-              scheduleRepository: scheduleRepository,
             ),
           ),
         ),
@@ -400,12 +400,6 @@ void main() {
   testWidgets(
       'invite fallback keeps event route even when the resolved event is already ended',
       (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _RecordingInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final scheduleRepository = _FakeScheduleRepository(
       eventsBySlug: <String, EventModel?>{
         'event-ended': _buildResolvedEvent(
@@ -415,6 +409,13 @@ void main() {
         ),
       },
     );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final router = _RecordingStackRouter(canPopValue: false);
 
     await tester.pumpWidget(
@@ -430,7 +431,6 @@ void main() {
               requiresAuthentication: false,
               isInitialized: true,
               fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
-              scheduleRepository: scheduleRepository,
             ),
           ),
         ),
@@ -449,17 +449,18 @@ void main() {
   testWidgets(
       'invite fallback routes home when the fallback event no longer resolves',
       (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _RecordingInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final scheduleRepository = _FakeScheduleRepository(
       eventsBySlug: const <String, EventModel?>{
         'event-missing': null,
       },
     );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final router = _RecordingStackRouter(canPopValue: false);
 
     await tester.pumpWidget(
@@ -475,7 +476,6 @@ void main() {
               requiresAuthentication: false,
               isInitialized: true,
               fallbackPath: '/agenda/evento/event-missing?occurrence=occ-missing',
-              scheduleRepository: scheduleRepository,
             ),
           ),
         ),

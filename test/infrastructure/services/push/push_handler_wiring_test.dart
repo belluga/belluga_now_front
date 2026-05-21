@@ -1,8 +1,11 @@
 // ignore_for_file: must_be_immutable
 
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/application_contract.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
+import 'package:belluga_now/application/push/invite_push_runtime_coordinator.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/platform_type.dart';
@@ -32,6 +35,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
+import 'package:belluga_now/infrastructure/services/push/invite_push_tap_source.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -189,6 +193,55 @@ void main() {
     expect(sentryCaptures.single.throwable, isA<StateError>());
     expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
   });
+
+  testWidgets(
+    'ApplicationContract seeds startup override from initial invite push tap',
+    (tester) async {
+      final authRepository =
+          _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      final runtimeCoordinator = _FakeInvitePushRuntimeCoordinator(
+        preparedPath: '/invite?code=ABCD1234',
+      );
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _FakeInvitePushTapSource(
+          initialMessage: RemoteMessage.fromMap(
+            const <String, dynamic>{
+              'messageId': 'push-message-1',
+              'data': <String, dynamic>{
+                'push_type': 'invite_received',
+                'invite_id': '507f1f77bcf86cd799439011',
+              },
+            },
+          ),
+        ),
+        invitePushRuntimeCoordinatorOverride: runtimeCoordinator,
+      );
+
+      await tester.pump();
+
+      final router = _buildStartupTestRouter();
+      final delegate = router.delegate(
+        deepLinkBuilder:
+            app.startupNavigationCoordinatorForTesting.resolvePlatformDeepLink,
+      );
+      await delegate.setInitialRoutePath(
+        await _parseStartupTestRoute(router, '/'),
+      );
+
+      expect(runtimeCoordinator.prepareNotificationTapPathCalls, 1);
+      expect(runtimeCoordinator.refreshNotificationTapDataCalls, 1);
+      expect(router.currentPath, '/invite');
+      expect(router.currentUrl, '/invite?code=ABCD1234');
+    },
+  );
 }
 
 class _TestApplication extends ApplicationContract {
@@ -196,6 +249,44 @@ class _TestApplication extends ApplicationContract {
 
   @override
   Future<void> initialSettingsPlatform() async {}
+}
+
+class _FakeInvitePushTapSource extends InvitePushTapSource {
+  const _FakeInvitePushTapSource({
+    this.initialMessage,
+  });
+
+  final RemoteMessage? initialMessage;
+
+  @override
+  Future<RemoteMessage?> getInitialMessage() async => initialMessage;
+
+  @override
+  Stream<RemoteMessage> get onMessageOpenedApp =>
+      const Stream<RemoteMessage>.empty();
+}
+
+class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
+  _FakeInvitePushRuntimeCoordinator({
+    required this.preparedPath,
+  }) : super(
+          navigatePath: (_) async {},
+        );
+
+  final String preparedPath;
+  int prepareNotificationTapPathCalls = 0;
+  int refreshNotificationTapDataCalls = 0;
+
+  @override
+  String? prepareNotificationTapPath(RemoteMessage message) {
+    prepareNotificationTapPathCalls += 1;
+    return preparedPath;
+  }
+
+  @override
+  Future<void> refreshNotificationTapData(RemoteMessage message) async {
+    refreshNotificationTapDataCalls += 1;
+  }
 }
 
 class _RepositoryCapture {
@@ -249,6 +340,34 @@ class _RepositoryCapture {
       },
     );
   }
+}
+
+RootStackRouter _buildStartupTestRouter() {
+  return RootStackRouter.build(
+    routes: <AutoRoute>[
+      AutoRoute(
+        path: '/',
+        page: TenantHomeRoute.page,
+      ),
+      AutoRoute(
+        path: '/invite',
+        page: InviteFlowRoute.page,
+      ),
+    ],
+  );
+}
+
+Future<UrlState> _parseStartupTestRoute(
+  RootStackRouter router,
+  String path,
+) {
+  return router
+      .defaultRouteParser(
+        includePrefixMatches: false,
+      )
+      .parseRouteInformation(
+        RouteInformation(uri: Uri.parse(path)),
+      );
 }
 
 class _SentryCapture {

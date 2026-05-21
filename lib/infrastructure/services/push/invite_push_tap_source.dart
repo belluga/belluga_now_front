@@ -8,8 +8,12 @@ abstract class InvitePushTapSource {
   Stream<RemoteMessage> get onMessageOpenedApp;
 }
 
-class FirebaseInvitePushTapSource implements InvitePushTapSource {
-  const FirebaseInvitePushTapSource();
+const InvitePushTapSource kFirebaseInvitePushTapSource =
+    _FirebaseInvitePushTapSource();
+const InvitePushTapSource kNoopInvitePushTapSource = _NoopInvitePushTapSource();
+
+class _FirebaseInvitePushTapSource implements InvitePushTapSource {
+  const _FirebaseInvitePushTapSource();
 
   @override
   Future<RemoteMessage?> getInitialMessage() {
@@ -21,8 +25,8 @@ class FirebaseInvitePushTapSource implements InvitePushTapSource {
       FirebaseMessaging.onMessageOpenedApp;
 }
 
-class NoopInvitePushTapSource implements InvitePushTapSource {
-  const NoopInvitePushTapSource();
+class _NoopInvitePushTapSource implements InvitePushTapSource {
+  const _NoopInvitePushTapSource();
 
   @override
   Future<RemoteMessage?> getInitialMessage() async => null;

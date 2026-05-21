@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
@@ -31,6 +33,45 @@ class InvitePushRuntimeCoordinator {
       return;
     }
 
+    _applyInvitePayload(payload);
+    await _refreshPendingInvitesIfNeeded(payload);
+  }
+
+  String? prepareNotificationTapPath(RemoteMessage message) {
+    final payload = _normalizePayload(message.data);
+    if (!_isInvitePush(payload)) {
+      return null;
+    }
+
+    final tapKey = _resolveTapKey(message: message, payload: payload);
+    if (tapKey != null && !_claimTapKey(tapKey)) {
+      return null;
+    }
+
+    _applyInvitePayload(payload);
+    return _resolveNavigationPath(payload);
+  }
+
+  Future<void> refreshNotificationTapData(RemoteMessage message) async {
+    final payload = _normalizePayload(message.data);
+    if (!_isInvitePush(payload)) {
+      return;
+    }
+
+    await _refreshPendingInvitesIfNeeded(payload);
+  }
+
+  Future<void> handleNotificationTap(RemoteMessage message) async {
+    final path = prepareNotificationTapPath(message);
+    if (path == null) {
+      return;
+    }
+
+    unawaited(refreshNotificationTapData(message));
+    await _navigateIfNeeded(path);
+  }
+
+  void _applyInvitePayload(Map<String, dynamic> payload) {
     final invitesRepository = _invitesRepository;
     if (invitesRepository == null) {
       return;
@@ -39,6 +80,15 @@ class InvitePushRuntimeCoordinator {
     if (invitesRepository is PushInvitePayloadAware) {
       (invitesRepository as PushInvitePayloadAware)
           .applyInvitePushPayload(payload);
+    }
+  }
+
+  Future<void> _refreshPendingInvitesIfNeeded(
+    Map<String, dynamic> payload,
+  ) async {
+    final invitesRepository = _invitesRepository;
+    if (invitesRepository == null) {
+      return;
     }
 
     if (_payloadDecoder.decodeInviteDtos(payload).isNotEmpty) {
@@ -52,37 +102,23 @@ class InvitePushRuntimeCoordinator {
     }
   }
 
-  Future<void> handleNotificationTap(RemoteMessage message) async {
-    final payload = _normalizePayload(message.data);
-    if (!_isInvitePush(payload)) {
-      return;
-    }
-
-    final tapKey = _resolveTapKey(message: message, payload: payload);
-    if (tapKey != null && !_claimTapKey(tapKey)) {
-      return;
-    }
-
-    await handleIncomingMessage(message);
-
+  String? _resolveNavigationPath(
+    Map<String, dynamic> payload,
+  ) {
     final inviteId = _normalizeString(payload['invite_id']);
     final fallbackPath = _resolveEventFallbackPath(payload) ?? '/';
     if (inviteId != null && inviteId.isNotEmpty) {
-      await _navigateIfNeeded(
-        _buildInvitePath(
-          inviteId,
-          fallbackPath: fallbackPath,
-        ),
+      return _buildInvitePath(
+        inviteId,
+        fallbackPath: fallbackPath,
       );
-      return;
     }
 
     if (fallbackPath != '/') {
-      await _navigateIfNeeded(fallbackPath);
-      return;
+      return fallbackPath;
     }
 
-    await _navigateIfNeeded('/');
+    return '/';
   }
 
   Map<String, dynamic> _normalizePayload(Map<String, dynamic> data) {

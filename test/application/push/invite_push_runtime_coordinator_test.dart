@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:belluga_now/application/push/invite_push_runtime_coordinator.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
-import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -114,6 +115,44 @@ void main() {
     );
   });
 
+  test('navigates immediately on tap without waiting for invite refresh',
+      () async {
+    final refreshCompleter = Completer<void>();
+    final invitesRepository = _FakeInvitesRepository(
+      refreshPendingInvitesCompleter: refreshCompleter,
+    );
+    final navigatedPaths = <String>[];
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: invitesRepository,
+      navigatePath: (path) async => navigatedPaths.add(path),
+      currentPathProvider: () => '/agenda',
+    );
+
+    await coordinator.handleNotificationTap(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_received',
+          'invite_id': '507f1f77bcf86cd799439011',
+          'event_id': '507f1f77bcf86cd799439012',
+          'occurrence_id': '507f1f77bcf86cd799439013',
+          'push_message_id': 'push-4',
+          'message_instance_id': 'instance-4',
+        },
+      ),
+    );
+
+    expect(invitesRepository.refreshPendingInvitesCalls, 1);
+    expect(
+      navigatedPaths,
+      <String>[
+        '/convites?invite=507f1f77bcf86cd799439011&fallback=%2Fagenda%2Fevento%2F507f1f77bcf86cd799439012%3Foccurrence%3D507f1f77bcf86cd799439013',
+      ],
+    );
+
+    refreshCompleter.complete();
+    await Future<void>.delayed(Duration.zero);
+  });
+
   test('falls back to home when no invite or event context is available',
       () async {
     final navigatedPaths = <String>[];
@@ -149,10 +188,12 @@ RemoteMessage _buildRemoteMessage({
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
     List<InviteModel> pendingInvites = const <InviteModel>[],
+    this.refreshPendingInvitesCompleter,
   }) {
     pendingInvitesStreamValue.addValue(pendingInvites);
   }
 
+  final Completer<void>? refreshPendingInvitesCompleter;
   int refreshPendingInvitesCalls = 0;
 
   @override
@@ -168,6 +209,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimInt? pageSize,
   }) async {
     refreshPendingInvitesCalls += 1;
+    await refreshPendingInvitesCompleter?.future;
   }
 
   @override

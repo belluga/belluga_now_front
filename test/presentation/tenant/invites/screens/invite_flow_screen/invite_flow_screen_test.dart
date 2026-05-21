@@ -559,17 +559,18 @@ void main() {
   testWidgets(
       'Invite flow falls back to event when invite is empty and event still resolves',
       (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final scheduleRepository = _FakeScheduleRepository(
       eventsBySlug: <String, EventModel?>{
         'event-1': _buildResolvedEvent('event-1'),
       },
     );
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
     final router = _RecordingStackRouter(canPopValue: false);
 
@@ -586,7 +587,6 @@ void main() {
               requiresAuthentication: false,
               isInitialized: true,
               fallbackPath: '/agenda/evento/event-1?occurrence=occ-1',
-              scheduleRepository: scheduleRepository,
             ),
           ),
         ),
@@ -602,17 +602,18 @@ void main() {
   testWidgets(
       'Invite flow falls back home when invite is empty and event no longer resolves',
       (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
     final scheduleRepository = _FakeScheduleRepository(
       eventsBySlug: const <String, EventModel?>{
         'event-ended': null,
       },
     );
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
     final router = _RecordingStackRouter(canPopValue: false);
 
@@ -629,7 +630,6 @@ void main() {
               requiresAuthentication: false,
               isInitialized: true,
               fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
-              scheduleRepository: scheduleRepository,
             ),
           ),
         ),

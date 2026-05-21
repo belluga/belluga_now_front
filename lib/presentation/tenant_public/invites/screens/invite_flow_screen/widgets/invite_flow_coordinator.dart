@@ -8,7 +8,6 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
@@ -28,7 +27,6 @@ class InviteFlowCoordinator extends StatefulWidget {
     required this.requiresAuthentication,
     required this.isInitialized,
     this.fallbackPath,
-    this.scheduleRepository,
   });
 
   final List<InviteModel> invites;
@@ -36,7 +34,6 @@ class InviteFlowCoordinator extends StatefulWidget {
   final bool requiresAuthentication;
   final bool isInitialized;
   final String? fallbackPath;
-  final ScheduleRepositoryContract? scheduleRepository;
 
   @override
   State<InviteFlowCoordinator> createState() => _InviteFlowCoordinatorState();
@@ -305,66 +302,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   Future<String?> _resolveFallbackNavigationPath() async {
-    final fallbackPath = widget.fallbackPath?.trim();
-    if (fallbackPath == null || fallbackPath.isEmpty) {
-      return null;
-    }
-
-    final eventFallback = _parseEventFallbackPath(fallbackPath);
-    if (eventFallback == null) {
-      return fallbackPath;
-    }
-
-    final scheduleRepository = widget.scheduleRepository ??
-        (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-            ? GetIt.I.get<ScheduleRepositoryContract>()
-            : null);
-    if (scheduleRepository == null) {
-      return '/';
-    }
-
-    try {
-      final event = await scheduleRepository.getEventBySlug(
-        ScheduleRepoString.fromRaw(
-          eventFallback.slug,
-          defaultValue: eventFallback.slug,
-          isRequired: true,
-        ),
-        occurrenceId: eventFallback.occurrenceId == null
-            ? null
-            : ScheduleRepoString.fromRaw(
-                eventFallback.occurrenceId!,
-                defaultValue: eventFallback.occurrenceId!,
-                isRequired: true,
-              ),
-      );
-      return event == null ? '/' : fallbackPath;
-    } catch (_) {
-      return '/';
-    }
-  }
-
-  _EventFallbackPath? _parseEventFallbackPath(String path) {
-    final uri = Uri.tryParse(path);
-    if (uri == null) {
-      return null;
-    }
-    final segments = uri.pathSegments;
-    if (segments.length < 3 ||
-        segments[0] != 'agenda' ||
-        segments[1] != 'evento') {
-      return null;
-    }
-    final slug = segments[2].trim();
-    if (slug.isEmpty) {
-      return null;
-    }
-    final occurrenceId = uri.queryParameters['occurrence']?.trim();
-    return _EventFallbackPath(
-      slug: slug,
-      occurrenceId:
-          occurrenceId == null || occurrenceId.isEmpty ? null : occurrenceId,
-    );
+    return _controller.resolveFallbackNavigationPath(widget.fallbackPath);
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {
@@ -459,14 +397,4 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           : <String, String>{'occurrence': occurrenceId},
     ).toString();
   }
-}
-
-class _EventFallbackPath {
-  const _EventFallbackPath({
-    required this.slug,
-    required this.occurrenceId,
-  });
-
-  final String slug;
-  final String? occurrenceId;
 }

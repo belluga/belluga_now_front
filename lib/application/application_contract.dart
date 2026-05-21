@@ -87,6 +87,10 @@ abstract class ApplicationContract extends ModularAppContract {
   @override
   ModuleSettings get moduleSettings => _moduleSettings;
 
+  @visibleForTesting
+  AppStartupNavigationCoordinator get startupNavigationCoordinatorForTesting =>
+      _startupNavigationCoordinator;
+
   Future<void> initialSettings() async {
     WidgetsFlutterBinding.ensureInitialized();
     await initializeDateFormatting('pt_BR');
@@ -139,7 +143,7 @@ abstract class ApplicationContract extends ModularAppContract {
       repositoryFactory: repositoryFactory,
       authRepositoryOverride: authRepositoryOverride,
       invitePushTapSourceOverride:
-          invitePushTapSourceOverride ?? const NoopInvitePushTapSource(),
+          invitePushTapSourceOverride ?? kNoopInvitePushTapSource,
       invitePushRuntimeCoordinatorOverride:
           invitePushRuntimeCoordinatorOverride,
     );
@@ -288,8 +292,8 @@ abstract class ApplicationContract extends ModularAppContract {
       isWeb: isWeb,
       tapSource: invitePushTapSourceOverride ??
           (isWeb
-              ? const NoopInvitePushTapSource()
-              : const FirebaseInvitePushTapSource()),
+              ? kNoopInvitePushTapSource
+              : kFirebaseInvitePushTapSource),
       coordinator: invitePushRuntimeCoordinator,
     );
   }
@@ -362,9 +366,11 @@ abstract class ApplicationContract extends ModularAppContract {
 
     final initialMessage = await tapSource.getInitialMessage();
     if (initialMessage != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(coordinator.handleNotificationTap(initialMessage));
-      });
+      final initialPath = coordinator.prepareNotificationTapPath(initialMessage);
+      if (initialPath != null) {
+        _startupNavigationCoordinator.overrideInitialPath(initialPath);
+        unawaited(coordinator.refreshNotificationTapData(initialMessage));
+      }
     }
 
     _pushTapSubscription = tapSource.onMessageOpenedApp.listen((message) {
