@@ -1,0 +1,175 @@
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
+import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+
+class InvitePushRuntimeCoordinator {
+  InvitePushRuntimeCoordinator({
+    required Future<void> Function(String path) navigatePath,
+    String Function()? currentPathProvider,
+    InvitesRepositoryContract? invitesRepository,
+    DateTime Function()? now,
+  })  : _navigatePath = navigatePath,
+        _currentPathProvider = currentPathProvider ?? (() => ''),
+        _invitesRepository = invitesRepository,
+        _now = now ?? DateTime.now;
+
+  static const Duration _tapDedupeWindow = Duration(minutes: 2);
+
+  final Future<void> Function(String path) _navigatePath;
+  final String Function() _currentPathProvider;
+  final InvitesRepositoryContract? _invitesRepository;
+  final DateTime Function() _now;
+  final InvitePushPayloadDecoder _payloadDecoder =
+      const InvitePushPayloadDecoder();
+  final Map<String, DateTime> _handledTapKeys = <String, DateTime>{};
+
+  Future<void> handleIncomingMessage(RemoteMessage message) async {
+    final payload = _normalizePayload(message.data);
+    if (!_isInvitePush(payload)) {
+      return;
+    }
+
+    final invitesRepository = _invitesRepository;
+    if (invitesRepository == null) {
+      return;
+    }
+
+    if (invitesRepository is PushInvitePayloadAware) {
+      (invitesRepository as PushInvitePayloadAware)
+          .applyInvitePushPayload(payload);
+    }
+
+    if (_payloadDecoder.decodeInviteDtos(payload).isNotEmpty) {
+      return;
+    }
+
+    try {
+      await invitesRepository.refreshPendingInvites();
+    } catch (error) {
+      debugPrint('[Push] Invite refresh failed after receipt: $error');
+    }
+  }
+
+  Future<void> handleNotificationTap(RemoteMessage message) async {
+    final payload = _normalizePayload(message.data);
+    if (!_isInvitePush(payload)) {
+      return;
+    }
+
+    final tapKey = _resolveTapKey(message: message, payload: payload);
+    if (tapKey != null && !_claimTapKey(tapKey)) {
+      return;
+    }
+
+    await handleIncomingMessage(message);
+
+    final inviteId = _normalizeString(payload['invite_id']);
+    final fallbackPath = _resolveEventFallbackPath(payload) ?? '/';
+    if (inviteId != null && inviteId.isNotEmpty) {
+      await _navigateIfNeeded(
+        _buildInvitePath(
+          inviteId,
+          fallbackPath: fallbackPath,
+        ),
+      );
+      return;
+    }
+
+    if (fallbackPath != '/') {
+      await _navigateIfNeeded(fallbackPath);
+      return;
+    }
+
+    await _navigateIfNeeded('/');
+  }
+
+  Map<String, dynamic> _normalizePayload(Map<String, dynamic> data) {
+    return Map<String, dynamic>.from(data);
+  }
+
+  bool _isInvitePush(Map<String, dynamic> payload) {
+    final type = _normalizeString(payload['push_type']) ??
+        _normalizeString(payload['event']);
+    return type == 'invite_received' || type == 'invite_accepted';
+  }
+
+  String? _resolveEventFallbackPath(
+    Map<String, dynamic> payload,
+  ) {
+    final eventId = _normalizeString(payload['event_id']);
+    if (eventId == null || eventId.isEmpty) {
+      return null;
+    }
+
+    final occurrenceId = _normalizeString(payload['occurrence_id']);
+
+    return Uri(
+      path: '/agenda/evento/$eventId',
+      queryParameters: occurrenceId == null || occurrenceId.isEmpty
+          ? null
+          : <String, String>{'occurrence': occurrenceId},
+    ).toString();
+  }
+
+  String _buildInvitePath(
+    String inviteId, {
+    String? fallbackPath,
+  }) {
+    final normalizedFallback = fallbackPath?.trim();
+    return Uri(
+      path: '/convites',
+      queryParameters: <String, String>{
+        'invite': inviteId,
+        if (normalizedFallback != null &&
+            normalizedFallback.isNotEmpty &&
+            normalizedFallback != '/')
+          'fallback': normalizedFallback,
+      },
+    ).toString();
+  }
+
+  Future<void> _navigateIfNeeded(String path) async {
+    final normalizedPath = path.trim();
+    if (normalizedPath.isEmpty) {
+      return;
+    }
+    if (_currentPathProvider().trim() == normalizedPath) {
+      return;
+    }
+    await _navigatePath(normalizedPath);
+  }
+
+  String? _resolveTapKey({
+    required RemoteMessage message,
+    required Map<String, dynamic> payload,
+  }) {
+    final pushMessageId = _normalizeString(payload['push_message_id']);
+    final messageInstanceId =
+        _normalizeString(payload['message_instance_id']) ?? message.messageId;
+    if (pushMessageId != null && pushMessageId.isNotEmpty) {
+      return messageInstanceId == null || messageInstanceId.isEmpty
+          ? pushMessageId
+          : '$pushMessageId::$messageInstanceId';
+    }
+    return _normalizeString(payload['invite_id']) ?? messageInstanceId;
+  }
+
+  bool _claimTapKey(String key) {
+    final now = _now();
+    _handledTapKeys.removeWhere((_, handledAt) {
+      return now.difference(handledAt) > _tapDedupeWindow;
+    });
+    if (_handledTapKeys.containsKey(key)) {
+      return false;
+    }
+    _handledTapKeys[key] = now;
+    return true;
+  }
+
+  String? _normalizeString(Object? value) {
+    final normalized = value?.toString().trim() ?? '';
+    return normalized.isEmpty ? null : normalized;
+  }
+}

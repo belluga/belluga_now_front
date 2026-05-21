@@ -1,0 +1,242 @@
+import 'package:belluga_now/application/push/invite_push_runtime_coordinator.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
+import 'package:belluga_now/domain/invites/invite_contact_group.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test(
+      'refreshes pending invites on passive invite push without embedded invite',
+      () async {
+    final invitesRepository = _FakeInvitesRepository();
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: invitesRepository,
+      navigatePath: (_) async {},
+    );
+
+    await coordinator.handleIncomingMessage(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_received',
+          'invite_id': '507f1f77bcf86cd799439011',
+        },
+      ),
+    );
+
+    expect(invitesRepository.refreshPendingInvitesCalls, 1);
+  });
+
+  test('opens invite flow when tapped invite is still pending', () async {
+    final invitesRepository = _FakeInvitesRepository(
+      pendingInvites: <InviteModel>[
+        buildInviteModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          eventId: '507f1f77bcf86cd799439012',
+          eventName: 'Evento',
+          eventDateTime: DateTime(2026, 5, 20, 20),
+          eventImageUrl: 'https://example.com/event.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Teste',
+          tags: const <String>['show'],
+          occurrenceId: '507f1f77bcf86cd799439013',
+          inviterName: 'Sender User',
+        ),
+      ],
+    );
+    final navigatedPaths = <String>[];
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: invitesRepository,
+      navigatePath: (path) async => navigatedPaths.add(path),
+      currentPathProvider: () => '/agenda',
+    );
+
+    await coordinator.handleNotificationTap(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_received',
+          'invite_id': '507f1f77bcf86cd799439011',
+          'event_id': '507f1f77bcf86cd799439012',
+          'occurrence_id': '507f1f77bcf86cd799439013',
+          'push_message_id': 'push-1',
+          'message_instance_id': 'instance-1',
+        },
+      ),
+    );
+
+    expect(invitesRepository.refreshPendingInvitesCalls, 1);
+    expect(
+      navigatedPaths,
+      <String>[
+        '/convites?invite=507f1f77bcf86cd799439011&fallback=%2Fagenda%2Fevento%2F507f1f77bcf86cd799439012%3Foccurrence%3D507f1f77bcf86cd799439013',
+      ],
+    );
+  });
+
+  test('includes explicit event fallback when invite is no longer renderable',
+      () async {
+    final navigatedPaths = <String>[];
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: _FakeInvitesRepository(),
+      navigatePath: (path) async => navigatedPaths.add(path),
+      currentPathProvider: () => '/agenda',
+    );
+
+    await coordinator.handleNotificationTap(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_received',
+          'invite_id': '507f1f77bcf86cd799439011',
+          'event_id': '507f1f77bcf86cd799439012',
+          'occurrence_id': '507f1f77bcf86cd799439013',
+          'push_message_id': 'push-2',
+          'message_instance_id': 'instance-2',
+        },
+      ),
+    );
+
+    expect(
+      navigatedPaths,
+      <String>[
+        '/convites?invite=507f1f77bcf86cd799439011&fallback=%2Fagenda%2Fevento%2F507f1f77bcf86cd799439012%3Foccurrence%3D507f1f77bcf86cd799439013',
+      ],
+    );
+  });
+
+  test('falls back to home when no invite or event context is available',
+      () async {
+    final navigatedPaths = <String>[];
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: _FakeInvitesRepository(),
+      navigatePath: (path) async => navigatedPaths.add(path),
+      currentPathProvider: () => '/agenda',
+    );
+
+    await coordinator.handleNotificationTap(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_received',
+          'push_message_id': 'push-3',
+          'message_instance_id': 'instance-3',
+        },
+      ),
+    );
+
+    expect(navigatedPaths, <String>['/']);
+  });
+}
+
+RemoteMessage _buildRemoteMessage({
+  required Map<String, dynamic> data,
+}) {
+  return RemoteMessage.fromMap(<String, dynamic>{
+    'messageId': data['message_instance_id'] ?? 'message-id',
+    'data': data,
+  });
+}
+
+class _FakeInvitesRepository extends InvitesRepositoryContract {
+  _FakeInvitesRepository({
+    List<InviteModel> pendingInvites = const <InviteModel>[],
+  }) {
+    pendingInvitesStreamValue.addValue(pendingInvites);
+  }
+
+  int refreshPendingInvitesCalls = 0;
+
+  @override
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async =>
+      pendingInvitesStreamValue.value;
+
+  @override
+  Future<void> refreshPendingInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    refreshPendingInvitesCalls += 1;
+  }
+
+  @override
+  Future<InviteRuntimeSettings> fetchSettings() async =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(
+    InvitesRepositoryContractPrimString inviteId,
+  ) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteDeclineResult> declineInvite(
+    InvitesRepositoryContractPrimString inviteId,
+  ) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteAcceptResult> acceptInviteByCode(
+    InvitesRepositoryContractPrimString code,
+  ) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteMaterializeResult> materializeShareCode(
+    InvitesRepositoryContractPrimString code,
+  ) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<InviteModel?> previewShareCode(
+    InvitesRepositoryContractPrimString code,
+  ) async =>
+      null;
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+    InviteContacts contacts,
+  ) async =>
+      const <InviteContactMatch>[];
+
+  @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
+      const <InviteableRecipient>[];
+
+  @override
+  Future<List<InviteContactGroup>> fetchContactGroups() async =>
+      const <InviteContactGroup>[];
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required InvitesRepositoryContractPrimString eventId,
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> sendInvites(
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
+
+  @override
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) async =>
+      const <SentInviteStatus>[];
+}
