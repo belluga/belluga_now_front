@@ -21,6 +21,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   final InviteFlowScreenController _controller =
       GetIt.I.get<InviteFlowScreenController>();
   bool _trackedWebLanding = false;
+  String? _fallbackPath;
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         buildRedirectPathFromRouteMatch(context.routeData.route);
     final inviteId = context.routeData.queryParams.get('invite');
     final shareCode = context.routeData.queryParams.get('code');
+    _fallbackPath = context.routeData.queryParams.get('fallback');
     _controller.init(
       prioritizeInviteId: inviteId,
       shareCode: shareCode,
@@ -57,6 +59,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                       decisionResult: decisionResult,
                       requiresAuthentication: requiresAuthentication,
                       isInitialized: isInitialized,
+                      fallbackPath: _fallbackPath,
                     );
                   },
                 );

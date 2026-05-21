@@ -47,6 +47,7 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   int loadCachedContactsCalls = 0;
   int refreshCachedContactsCalls = 0;
   int refreshContactsCalls = 0;
+  Completer<void>? loadCachedContactsGate;
   @override
   final contactsStreamValue =
       StreamValue<List<ContactModel>?>(defaultValue: null);
@@ -75,6 +76,7 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   @override
   Future<void> loadCachedContacts() async {
     loadCachedContactsCalls += 1;
+    await loadCachedContactsGate?.future;
     contactsStreamValue.addValue(contacts);
   }
 
@@ -105,7 +107,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   int hydrateImportedContactMatchesFromCacheCalls = 0;
   int fetchInviteableRecipientsCalls = 0;
   int createShareCodeCalls = 0;
+  Completer<void>? importContactsGate;
   Completer<void>? fetchInviteableRecipientsGate;
+  Completer<void>? hydrateImportedContactMatchesFromCacheGate;
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -158,6 +162,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteContactMatch>> importContacts(
       InviteContacts contacts) async {
     importContactsCalls += 1;
+    await importContactsGate?.future;
     if (throwOnImportContacts) {
       throw Exception('import contacts failed');
     }
@@ -198,6 +203,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InviteContacts contacts,
   ) async {
     hydrateImportedContactMatchesFromCacheCalls += 1;
+    await hydrateImportedContactMatchesFromCacheGate?.future;
     final cachedMatches = cachedImportContactMatches;
     if (cachedMatches == null) {
       return null;
@@ -700,6 +706,96 @@ void main() {
   );
 
   test(
+    'init starts backend inviteables refresh without waiting for cached contacts load',
+    () async {
+      final loadGate = Completer<void>();
+      final fetchGate = Completer<void>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      )..loadCachedContactsGate = loadGate;
+      final invitesRepository = _FakeInvitesRepository()
+        ..fetchInviteableRecipientsGate = fetchGate
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(contactsRepository.loadCachedContactsCalls, 1);
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+
+      loadGate.complete();
+      fetchGate.complete();
+      await initFuture;
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'init starts backend inviteables refresh without waiting for imported-match cache hydration',
+    () async {
+      final hydrateGate = Completer<void>();
+      final fetchGate = Completer<void>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..hydrateImportedContactMatchesFromCacheGate = hydrateGate
+        ..fetchInviteableRecipientsGate = fetchGate
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        invitesRepository.hydrateImportedContactMatchesFromCacheCalls,
+        1,
+      );
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+
+      hydrateGate.complete();
+      fetchGate.complete();
+      await initFuture;
+      await controller.onDispose();
+    },
+  );
+
+  test(
     'cold controller init hydrates persisted contact matches before inviteables refresh resolves',
     () async {
       final matchedContact = buildContactModel(
@@ -715,6 +811,7 @@ void main() {
         contacts: <ContactModel>[matchedContact],
       );
       final refreshGate = Completer<void>();
+      final importGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
         ..cachedImportContactMatches = <InviteContactMatch>[
           InviteContactMatch(
@@ -732,6 +829,7 @@ void main() {
             isInviteableValue: DomainBooleanValue()..parse('true'),
           ),
         ]
+        ..importContactsGate = importGate
         ..fetchInviteableRecipientsGate = refreshGate;
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
@@ -753,6 +851,7 @@ void main() {
         'Bruna',
       );
 
+      importGate.complete();
       refreshGate.complete();
       await initFuture;
       await controller.onDispose();
@@ -772,8 +871,10 @@ void main() {
         ],
       );
       final refreshGate = Completer<void>();
+      final importGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
         ..cachedImportContactMatches = const <InviteContactMatch>[]
+        ..importContactsGate = importGate
         ..inviteableRecipients = <InviteableRecipient>[
           buildInviteableRecipient(
             userId: 'user-1',
@@ -800,6 +901,7 @@ void main() {
         hasLength(1),
       );
 
+      importGate.complete();
       refreshGate.complete();
       await initFuture;
 
@@ -807,6 +909,103 @@ void main() {
         controller.friendsSuggestionsStreamValue.value?.single.friend.name,
         'Ana Contato',
       );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'app pane starts backend inviteables refresh without waiting for contact import refresh',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final importGate = Completer<void>();
+      final fetchGate = Completer<void>();
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactsGate = importGate
+        ..fetchInviteableRecipientsGate = fetchGate
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      final initFuture = controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+      expect(controller.friendsSuggestionsStreamValue.value, isNull);
+
+      fetchGate.complete();
+      await initFuture;
+
+      importGate.complete();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(invitesRepository.importContactsCalls, 1);
+      expect(
+        controller.friendsSuggestionsStreamValue.value?.single.friend.name,
+        'Ana Contato',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'app pane skips local contact hash resolution when backend inviteables have no contact hash',
+    () async {
+      var localContactHashResolverCalls = 0;
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Cache',
+            phones: <String>['+55 27 99999-9999'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        localContactHashResolver: (contact, {regionCode}) {
+          localContactHashResolverCalls += 1;
+          return InviteContactImportHashes.contactHashes(
+            contact,
+            regionCode: regionCode,
+          );
+        },
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(localContactHashResolverCalls, 0);
+      expect(_friendSuggestions(controller).single.friend.name, 'Ana Contato');
 
       await controller.onDispose();
     },
@@ -846,6 +1045,7 @@ void main() {
       );
 
       await controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
 
       expect(contactsRepository.loadCachedContactsCalls, 1);
       expect(contactsRepository.refreshCachedContactsCalls, 0);
@@ -989,6 +1189,7 @@ void main() {
       );
 
       await controller.init(_buildInvite());
+      await Future<void>.delayed(Duration.zero);
       await controller.selectPane(InviteSharePane.phone);
 
       expect(

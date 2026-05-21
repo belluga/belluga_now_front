@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -24,12 +26,14 @@ class InviteFlowCoordinator extends StatefulWidget {
     required this.decisionResult,
     required this.requiresAuthentication,
     required this.isInitialized,
+    this.fallbackPath,
   });
 
   final List<InviteModel> invites;
   final InviteDecisionResult? decisionResult;
   final bool requiresAuthentication;
   final bool isInitialized;
+  final String? fallbackPath;
 
   @override
   State<InviteFlowCoordinator> createState() => _InviteFlowCoordinatorState();
@@ -129,7 +133,9 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     }
     if (_exitHandled) return;
     _exitHandled = true;
-    _scheduleEffect(_exitInviteFlow);
+    _scheduleEffect(() {
+      unawaited(_exitInviteFlowOrFallback());
+    });
   }
 
   void _handleDecisionResult(InviteDecisionResult? result) {
@@ -281,6 +287,22 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _exitInviteFlow() {
     _buildBackPolicy(context).handleBack();
+  }
+
+  Future<void> _exitInviteFlowOrFallback() async {
+    final fallbackPath = await _resolveFallbackNavigationPath();
+    if (!mounted) {
+      return;
+    }
+    if (fallbackPath != null && fallbackPath.isNotEmpty) {
+      context.router.replacePath(fallbackPath);
+      return;
+    }
+    _exitInviteFlow();
+  }
+
+  Future<String?> _resolveFallbackNavigationPath() async {
+    return _controller.resolveFallbackNavigationPath(widget.fallbackPath);
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {

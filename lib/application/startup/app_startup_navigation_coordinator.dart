@@ -41,6 +41,14 @@ final class AppStartupNavigationCoordinator {
     _pendingInitialDeepLink = plan.toDeepLink();
   }
 
+  void overrideInitialPath(String path) {
+    final normalizedPath = path.trim();
+    if (normalizedPath.isEmpty) {
+      return;
+    }
+    _pendingInitialDeepLink = DeepLink.path(normalizedPath);
+  }
+
   Future<AppStartupNavigationPlan> _loadPlanWithRetry() async {
     Object? lastError;
     StackTrace? lastStackTrace;
