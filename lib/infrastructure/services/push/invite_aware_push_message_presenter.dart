@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:push_handler/push_handler.dart';
 
 class InviteAwarePushMessagePresenter extends PushMessagePresenter {
@@ -17,7 +18,7 @@ class InviteAwarePushMessagePresenter extends PushMessagePresenter {
     required PushActionReporter reportAction,
     String? deviceId,
   }) async {
-    if (_shouldSkipGenericPresentation(messageData)) {
+    if (shouldSkipGenericPresentation(messageData)) {
       return;
     }
 
@@ -28,7 +29,18 @@ class InviteAwarePushMessagePresenter extends PushMessagePresenter {
     );
   }
 
-  bool _shouldSkipGenericPresentation(MessageData messageData) {
-    return messageData.steps.isEmpty && messageData.buttons.isEmpty;
+  @visibleForTesting
+  bool shouldSkipGenericPresentation(MessageData messageData) {
+    if (messageData.steps.isNotEmpty || messageData.buttons.isNotEmpty) {
+      return false;
+    }
+
+    // Until push_handler surfaces the raw push payload to the presenter, the
+    // invite copy contract is the narrowest discriminator available here.
+    final title = messageData.title.value.trim().toLowerCase();
+
+    return title == 'seu convite foi aceito' ||
+        title == 'voce recebeu um convite' ||
+        title.startsWith('convite para ');
   }
 }

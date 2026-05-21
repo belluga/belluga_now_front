@@ -1,5 +1,7 @@
 // ignore_for_file: must_be_immutable
 
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -197,8 +199,8 @@ void main() {
   testWidgets(
     'ApplicationContract seeds startup override from initial invite push tap',
     (tester) async {
-      final authRepository =
-          _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
+      final authRepository = _FakeAuthRepository(
+          userTokenValue: 'token-123', deviceId: 'device-1');
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
       final app = _TestApplication();
@@ -240,6 +242,62 @@ void main() {
       expect(runtimeCoordinator.refreshNotificationTapDataCalls, 1);
       expect(router.currentPath, '/invite');
       expect(router.currentUrl, '/invite?code=ABCD1234');
+    },
+  );
+
+  testWidgets(
+    'ApplicationContract seeds startup override before push repository init completes',
+    (tester) async {
+      final authRepository = _FakeAuthRepository(
+          userTokenValue: 'token-123', deviceId: 'device-1');
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final initCompleter = Completer<void>();
+      final capture = _RepositoryCapture(initCompleter: initCompleter);
+      final runtimeCoordinator = _FakeInvitePushRuntimeCoordinator(
+        preparedPath: '/invite?code=ABCD1234',
+      );
+
+      final initialization = app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _FakeInvitePushTapSource(
+          initialMessage: RemoteMessage.fromMap(
+            const <String, dynamic>{
+              'messageId': 'push-message-1',
+              'data': <String, dynamic>{
+                'push_type': 'invite_received',
+                'invite_id': '507f1f77bcf86cd799439011',
+              },
+            },
+          ),
+        ),
+        invitePushRuntimeCoordinatorOverride: runtimeCoordinator,
+      );
+
+      await tester.pump();
+
+      expect(capture.initCalled, isTrue);
+      expect(runtimeCoordinator.prepareNotificationTapPathCalls, 1);
+      expect(runtimeCoordinator.refreshNotificationTapDataCalls, 1);
+
+      final router = _buildStartupTestRouter();
+      final delegate = router.delegate(
+        deepLinkBuilder:
+            app.startupNavigationCoordinatorForTesting.resolvePlatformDeepLink,
+      );
+      await delegate.setInitialRoutePath(
+        await _parseStartupTestRoute(router, '/'),
+      );
+
+      expect(router.currentPath, '/invite');
+      expect(router.currentUrl, '/invite?code=ABCD1234');
+
+      initCompleter.complete();
+      await initialization;
     },
   );
 }
@@ -290,9 +348,13 @@ class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
 }
 
 class _RepositoryCapture {
-  _RepositoryCapture({this.throwOnInit = false});
+  _RepositoryCapture({
+    this.throwOnInit = false,
+    this.initCompleter,
+  });
 
   final bool throwOnInit;
+  final Completer<void>? initCompleter;
   bool factoryCalled = false;
   bool initCalled = false;
   PushTransportConfig? transportConfig;
@@ -338,6 +400,7 @@ class _RepositoryCapture {
           throw StateError('push init failed');
         }
       },
+      initCompleter: initCompleter,
     );
   }
 }
@@ -399,13 +462,16 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
     required super.authChangeStream,
     required super.platformResolver,
     required this.onInit,
+    this.initCompleter,
   });
 
   final VoidCallback onInit;
+  final Completer<void>? initCompleter;
 
   @override
   Future<void> init() async {
     onInit();
+    await initCompleter?.future;
   }
 }
 
