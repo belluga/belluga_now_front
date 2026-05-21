@@ -13,9 +13,19 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
@@ -276,6 +286,115 @@ void main() {
     },
   );
 
+  testWidgets(
+    'app pane does not flash empty state while imported contact matches are still resolving',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = const <InviteableRecipient>[]
+        ..importContactsCompleter = Completer<List<InviteContactMatch>>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Match',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+      expect(find.text('Contato Match'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+      invitesRepository.importContactsCompleter!.complete(
+        <InviteContactMatch>[
+          _buildInviteContactMatch(
+            userId: 'user-match-1',
+            accountProfileId: 'profile-match-1',
+            displayName: 'Contato Match',
+            contactHash: 'hash-match-1',
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Contato Match'), findsOneWidget);
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'app pane still renders backend inviteables immediately while imported matches refresh in background',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ]
+        ..importContactsCompleter = Completer<List<InviteContactMatch>>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'contact-1',
+            displayName: 'Contato Match',
+            phones: <String>['(27) 99999-9999'],
+          ),
+        ],
+      );
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      expect(find.text('Ana Contato'), findsOneWidget);
+      expect(
+        find.text('Nenhum contato convidável para este filtro.'),
+        findsNothing,
+      );
+
+      invitesRepository.importContactsCompleter!.complete(
+        const <InviteContactMatch>[],
+      );
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('agenda pane shows loading before empty state resolves', (
     tester,
   ) async {
@@ -347,6 +466,66 @@ void main() {
 
       await tester.tap(find.text('Agenda'));
       await tester.pump();
+
+      expect(find.text('Mae'), findsOneWidget);
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'agenda pane keeps loading when permission-granted first load briefly publishes empty targets',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final invitesRepository = _FakeInvitesRepository();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      )
+        ..skipCachedContactsLoad = true
+        ..requestPermissionCompleter = Completer<bool>();
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+      GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+      addTearDown(controller.onDispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Agenda'));
+      await tester.pump();
+
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
+      expect(
+        controller.isPhonePaneInitialLoadingStreamValue.value,
+        isTrue,
+      );
+
+      controller.externalContactShareTargetsStreamValue
+          .addValue(const <InviteExternalContactShareTarget>[]);
+      await tester.pump();
+
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(
+        controller.isPhonePaneInitialLoadingStreamValue.value,
+        isTrue,
+      );
+
+      contactsRepository.requestPermissionCompleter!.complete(true);
+      await tester.pumpAndSettle();
 
       expect(find.text('Mae'), findsOneWidget);
       expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
@@ -840,6 +1019,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({this.contacts = const <ContactModel>[]});
 
   final List<ContactModel> contacts;
+  bool permissionGranted = true;
+  bool skipCachedContactsLoad = false;
+  Completer<bool>? requestPermissionCompleter;
 
   @override
   final contactsStreamValue =
@@ -853,6 +1035,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
   @override
   Future<void> loadCachedContacts() async {
+    if (skipCachedContactsLoad) {
+      return;
+    }
     if (contacts.isNotEmpty) {
       contactsStreamValue.addValue(contacts);
     }
@@ -869,7 +1054,13 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 
   @override
-  Future<bool> requestPermission() async => true;
+  Future<bool> requestPermission() async {
+    final completer = requestPermissionCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+    return permissionGranted;
+  }
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -895,6 +1086,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   String? lastShareCodeOccurrenceId;
   List<InviteableRecipient> inviteableRecipients;
   List<InviteContactMatch>? cachedImportContactMatches;
+  Completer<List<InviteContactMatch>>? importContactsCompleter;
+  List<InviteContactMatch> importContactMatches = const <InviteContactMatch>[];
   Completer<List<InviteableRecipient>>? fetchInviteableRecipientsCompleter;
 
   @override
@@ -909,8 +1102,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const <InviteContactMatch>[];
+  ) async {
+    if (importContactsCompleter != null) {
+      return importContactsCompleter!.future;
+    }
+    return importContactMatches;
+  }
 
   @override
   Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
@@ -1048,5 +1245,27 @@ AppData _buildAppData() {
   return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
+  );
+}
+
+InviteContactMatch _buildInviteContactMatch({
+  required String userId,
+  required String accountProfileId,
+  required String displayName,
+  required String contactHash,
+}) {
+  return InviteContactMatch(
+    contactHashValue: InviteContactHashValue()..parse(contactHash),
+    typeValue: InviteContactTypeValue()..parse('phone'),
+    userIdValue: UserIdValue()..parse(userId),
+    receiverAccountProfileIdValue: InviteAccountProfileIdValue()
+      ..parse(accountProfileId),
+    displayNameValue: InviteInviterNameValue()..parse(displayName),
+    profileExposureLevelValue: InviteProfileExposureLevelValue()
+      ..parse('capped_profile'),
+    inviteableReasons: InviteableReasons([
+      InviteableReasonValue()..parse('contact_match'),
+    ]),
+    isInviteableValue: DomainBooleanValue()..parse('true'),
   );
 }

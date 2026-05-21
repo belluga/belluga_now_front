@@ -74,6 +74,9 @@ class InviteShareScreenController with Disposable {
   final isPhoneContactsRefreshingStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
+  final isPhonePaneInitialLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final phoneContactsRefreshFailedStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
@@ -87,6 +90,7 @@ class InviteShareScreenController with Disposable {
       StreamValue<List<InviteExternalContactShareTarget>?>(defaultValue: null);
   bool _isShareCodeLoading = false;
   bool _isPhoneContactsRefreshing = false;
+  bool _isPrimingCachedContactsForDisplay = false;
 
   bool get _hasLoadedPhoneContacts =>
       _contactsRepository.contactsStreamValue.value != null;
@@ -123,23 +127,39 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> _primeCachedContactsForDisplay() async {
-    await _loadCachedContactsForDisplay();
-    if (_isDisposed) {
-      return;
+    _isPrimingCachedContactsForDisplay = true;
+    try {
+      await _loadCachedContactsForDisplay();
+      if (_isDisposed) {
+        return;
+      }
+      _hydrateInviteTargetsFromRepositoryCache();
+      _publishPhonePaneFromRepositoryCacheIfAvailable();
+      if (_availableContactsFromRepository().isNotEmpty) {
+        await _refreshImportedContactMatchesOpportunistically(
+          suppressFailures: true,
+        );
+        if (_isDisposed) {
+          return;
+        }
+        _hydrateInviteTargetsFromRepositoryCache();
+        _publishPhonePaneFromRepositoryCacheIfAvailable();
+      }
+    } finally {
+      _isPrimingCachedContactsForDisplay = false;
+      final shouldFinalizeDeferredAppPaneHydration =
+          !_isDisposed &&
+          friendsSuggestionsStreamValue.value == null &&
+          _invitesRepository.inviteableRecipientsStreamValue.value != null;
+      if (shouldFinalizeDeferredAppPaneHydration) {
+        _applyInviteTargetsFromRepositories(
+          sentInvites: sentInvitesStreamValue.value,
+          publishPhonePane:
+              selectedPaneStreamValue.value == InviteSharePane.phone &&
+                  _hasLoadedPhoneContacts,
+        );
+      }
     }
-    _hydrateInviteTargetsFromRepositoryCache();
-    _publishPhonePaneFromRepositoryCacheIfAvailable();
-    if (_availableContactsFromRepository().isEmpty) {
-      return;
-    }
-    await _refreshImportedContactMatchesOpportunistically(
-      suppressFailures: true,
-    );
-    if (_isDisposed) {
-      return;
-    }
-    _hydrateInviteTargetsFromRepositoryCache();
-    _publishPhonePaneFromRepositoryCacheIfAvailable();
   }
 
   Future<void> loadContacts({bool forceDeviceReload = false}) async {
@@ -201,7 +221,14 @@ class InviteShareScreenController with Disposable {
       _publishPhonePaneFromRepositoryCacheIfAvailable();
     }
     if (pane == InviteSharePane.phone && !_hasLoadedPhoneContacts) {
-      await _loadInviteTargetsWithStatusSafe(loadPhoneContacts: true);
+      isPhonePaneInitialLoadingStreamValue.addValue(true);
+      try {
+        await _loadInviteTargetsWithStatusSafe(loadPhoneContacts: true);
+      } finally {
+        if (!_isDisposed) {
+          isPhonePaneInitialLoadingStreamValue.addValue(false);
+        }
+      }
     }
   }
 
@@ -258,6 +285,7 @@ class InviteShareScreenController with Disposable {
     final publishPhonePane = loadPhoneContacts ||
         selectedPaneStreamValue.value == InviteSharePane.phone;
     Future<void>? backgroundImportedMatchesRefresh;
+    var backgroundImportedMatchesRefreshCompleted = false;
 
     if (loadPhoneContacts) {
       await loadContacts(forceDeviceReload: forceReloadContacts);
@@ -269,16 +297,24 @@ class InviteShareScreenController with Disposable {
       backgroundImportedMatchesRefresh =
           _refreshImportedContactMatchesOpportunistically(
         suppressFailures: true,
-      );
+      ).whenComplete(() {
+        backgroundImportedMatchesRefreshCompleted = true;
+      });
     }
 
     await _invitesRepository.refreshInviteableRecipients();
     if (_isDisposed) return;
 
-    final allowExternalTargets =
-        _invitesRepository.importedContactMatchesStreamValue.value != null;
+    final inviteableRecipients =
+        _invitesRepository.inviteableRecipientsStreamValue.value;
+    final shouldDeferInitialAppPanePublication =
+        ((backgroundImportedMatchesRefresh != null &&
+                    !backgroundImportedMatchesRefreshCompleted) ||
+                _isPrimingCachedContactsForDisplay) &&
+            !(inviteableRecipients?.isNotEmpty ?? false) &&
+            friendsSuggestionsStreamValue.value == null;
     await _applyInviteTargetsFromRepositoriesWithStatus(
-      allowExternalTargets: allowExternalTargets,
+      publishAppPane: !shouldDeferInitialAppPanePublication,
       publishPhonePane: publishPhonePane,
     );
 
@@ -288,9 +324,6 @@ class InviteShareScreenController with Disposable {
           if (_isDisposed) return;
           _applyInviteTargetsFromRepositories(
             sentInvites: sentInvitesStreamValue.value,
-            allowExternalTargets:
-                _invitesRepository.importedContactMatchesStreamValue.value !=
-                    null,
             publishPhonePane: publishPhonePane,
           );
         }),
@@ -324,17 +357,9 @@ class InviteShareScreenController with Disposable {
       if (_isDisposed) return;
       if (exposeRefreshState) {
         phoneContactsRefreshFailedStreamValue.addValue(true);
-        if (externalContactShareTargetsStreamValue.value == null) {
-          externalContactShareTargetsStreamValue.addValue(
-            const <InviteExternalContactShareTarget>[],
-          );
-        }
+        _publishPhonePaneFallbackTargetsAfterImportFailure();
       } else if (loadPhoneContacts) {
-        if (externalContactShareTargetsStreamValue.value == null) {
-          externalContactShareTargetsStreamValue.addValue(
-            const <InviteExternalContactShareTarget>[],
-          );
-        }
+        _publishPhonePaneFallbackTargetsAfterImportFailure();
         return;
       } else {
         sentInvitesStreamValue.addValue(const []);
@@ -381,8 +406,6 @@ class InviteShareScreenController with Disposable {
 
   Future<void> _syncSentInvites() async {
     await _applyInviteTargetsFromRepositoriesWithStatus(
-      allowExternalTargets:
-          _invitesRepository.importedContactMatchesStreamValue.value != null,
     );
   }
 
@@ -577,13 +600,20 @@ class InviteShareScreenController with Disposable {
       return;
     }
 
+    final shouldSuppressEmptyHydrationWhilePriming =
+        _isPrimingCachedContactsForDisplay &&
+            friendsSuggestionsStreamValue.value == null &&
+            !(inviteableRecipients?.isNotEmpty ?? false) &&
+            (importedMatches == null || importedMatches.isEmpty);
+
     _applyInviteTargetsFromRepositories(
       sentInvites: sentInvitesStreamValue.value,
-      allowExternalTargets: importedMatches != null,
-      publishAppPane: _canHydrateAppPaneFromRepositoryCache(
-        inviteableRecipients: inviteableRecipients,
-        importedMatches: importedMatches,
-      ),
+      publishAppPane:
+          !shouldSuppressEmptyHydrationWhilePriming &&
+              _canHydrateAppPaneFromRepositoryCache(
+                inviteableRecipients: inviteableRecipients,
+                importedMatches: importedMatches,
+              ),
       publishPhonePane:
           selectedPaneStreamValue.value == InviteSharePane.phone &&
               _hasLoadedPhoneContacts,
@@ -610,8 +640,21 @@ class InviteShareScreenController with Disposable {
     );
   }
 
+  void _publishPhonePaneFallbackTargetsAfterImportFailure() {
+    if (_hasLoadedPhoneContacts) {
+      _publishPhonePaneFromRepositoryCacheIfAvailable();
+      return;
+    }
+    if (externalContactShareTargetsStreamValue.value != null) {
+      return;
+    }
+    externalContactShareTargetsStreamValue.addValue(
+      const <InviteExternalContactShareTarget>[],
+    );
+  }
+
   Future<void> _applyInviteTargetsFromRepositoriesWithStatus({
-    required bool allowExternalTargets,
+    bool publishAppPane = true,
     bool publishPhonePane = false,
   }) async {
     final sentInvites = await _resolveSentInvites();
@@ -619,7 +662,7 @@ class InviteShareScreenController with Disposable {
     sentInvitesStreamValue.addValue(sentInvites);
     _applyInviteTargetsFromRepositories(
       sentInvites: sentInvites,
-      allowExternalTargets: allowExternalTargets,
+      publishAppPane: publishAppPane,
       publishPhonePane: publishPhonePane,
     );
   }
@@ -635,7 +678,6 @@ class InviteShareScreenController with Disposable {
 
   void _applyInviteTargetsFromRepositories({
     required List<SentInviteStatus> sentInvites,
-    required bool allowExternalTargets,
     bool publishAppPane = true,
     bool publishPhonePane = true,
   }) {
@@ -649,13 +691,11 @@ class InviteShareScreenController with Disposable {
 
     if (publishPhonePane && _hasLoadedPhoneContacts) {
       externalContactShareTargetsStreamValue.addValue(
-        allowExternalTargets
-            ? _buildExternalShareTargets(
-                importedMatches: importedMatches,
-                backendRecipients: backendRecipients,
-                availableContacts: availableContacts,
-              )
-            : const <InviteExternalContactShareTarget>[],
+        _buildExternalShareTargets(
+          importedMatches: importedMatches,
+          backendRecipients: backendRecipients,
+          availableContacts: availableContacts,
+        ),
       );
     }
 
@@ -921,6 +961,7 @@ class InviteShareScreenController with Disposable {
     shareCodeStreamValue.dispose();
     isShareCodeLoadingStreamValue.dispose();
     isPhoneContactsRefreshingStreamValue.dispose();
+    isPhonePaneInitialLoadingStreamValue.dispose();
     phoneContactsRefreshFailedStreamValue.dispose();
     selectedInviteableReasonStreamValue.dispose();
     selectedPaneStreamValue.dispose();
