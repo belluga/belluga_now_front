@@ -7,7 +7,13 @@ class IntegrationTestBootstrap {
   static bool _vmGoldenComparatorStreamSeeded = false;
 
   static void ensureNonProductionLandlordDomain() {
-    _ensureVmGoldenComparatorStream();
+    const seedVmGoldenStream = bool.fromEnvironment(
+      'INTEGRATION_TEST_SEED_VM_GOLDEN_STREAM',
+      defaultValue: true,
+    );
+    if (seedVmGoldenStream) {
+      _ensureVmGoldenComparatorStream();
+    }
 
     const allowProduction =
         bool.fromEnvironment('ALLOW_PROD_LANDLORD', defaultValue: false);

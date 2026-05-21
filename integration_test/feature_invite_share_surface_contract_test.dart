@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/repositories/contacts_repository_contract.dar
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
@@ -46,9 +47,20 @@ void main() {
     (tester) async {
       final invitesRepository = _FakeInvitesRepository()
         ..fetchInviteableRecipientsGate = Completer<void>();
+      final contactsRepository = _FakeContactsRepository(
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'phone-contact',
+            displayName: 'Mae',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      )
+        ..skipCachedContactsLoad = true
+        ..requestPermissionCompleter = Completer<bool>();
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
-        contactsRepository: _FakeContactsRepository(),
+        contactsRepository: contactsRepository,
         appData: _buildAppData(),
         isWebRuntime: false,
       );
@@ -81,15 +93,28 @@ void main() {
         findsNothing,
       );
 
+      controller.externalContactShareTargetsStreamValue
+          .addValue(const <InviteExternalContactShareTarget>[]);
+      await tester.pump();
+
+      expect(find.text('Carregando agenda...'), findsOneWidget);
+      expect(
+        find.text('Nenhum contato do telefone disponível.'),
+        findsNothing,
+      );
+
+      contactsRepository.requestPermissionCompleter!.complete(true);
+      await _pumpForRuntimeResolution(tester);
+
       invitesRepository.fetchInviteableRecipientsGate!.complete();
-      await tester.pumpAndSettle();
+      await _pumpForRuntimeResolution(tester);
 
       expect(
         find.text('Nenhum contato convidável para este filtro.'),
         findsNothing,
       );
-      expect(
-          find.text('Nenhum contato do telefone disponível.'), findsOneWidget);
+      expect(find.text('Mae'), findsOneWidget);
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
     },
   );
 
@@ -142,7 +167,7 @@ void main() {
       );
 
       invitesRepository.fetchInviteableRecipientsGate!.complete();
-      await tester.pumpAndSettle();
+      await _pumpForRuntimeResolution(tester);
 
       expect(find.text('Fresh Friend'), findsOneWidget);
       expect(find.text('Cached Friend'), findsNothing);
@@ -194,7 +219,7 @@ void main() {
       );
 
       invitesRepository.fetchInviteableRecipientsGate!.complete();
-      await tester.pumpAndSettle();
+      await _pumpForRuntimeResolution(tester);
 
       expect(find.text('Fresh Friend'), findsOneWidget);
     },
@@ -207,13 +232,22 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   });
 
   final List<ContactModel> contacts;
+  bool permissionGranted = true;
+  bool skipCachedContactsLoad = false;
+  Completer<bool>? requestPermissionCompleter;
 
   @override
   final contactsStreamValue =
       StreamValue<List<ContactModel>?>(defaultValue: null);
 
   @override
-  Future<bool> requestPermission() async => true;
+  Future<bool> requestPermission() async {
+    final completer = requestPermissionCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+    return permissionGranted;
+  }
 
   @override
   Future<List<ContactModel>> getContacts() async => contacts;
@@ -225,6 +259,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 
   @override
   Future<void> loadCachedContacts() async {
+    if (skipCachedContactsLoad) {
+      return;
+    }
     contactsStreamValue.addValue(contacts);
   }
 
@@ -236,6 +273,12 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   @override
   Future<void> refreshContacts() async {
     contactsStreamValue.addValue(contacts);
+  }
+}
+
+Future<void> _pumpForRuntimeResolution(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
