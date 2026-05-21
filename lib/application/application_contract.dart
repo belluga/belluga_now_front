@@ -270,6 +270,14 @@ abstract class ApplicationContract extends ModularAppContract {
         unawaited(telemetryForwarder.forward(event));
       },
     );
+    final invitePushRuntimeCoordinator = invitePushRuntimeCoordinatorOverride ??
+        _buildInvitePushRuntimeCoordinator();
+    await _initializeInvitePushTapHandling(
+      isWeb: isWeb,
+      tapSource: invitePushTapSourceOverride ??
+          (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource),
+      coordinator: invitePushRuntimeCoordinator,
+    );
     try {
       await repository.init();
     } catch (error, stackTrace) {
@@ -282,19 +290,9 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
     _pushRepository = repository;
-    final invitePushRuntimeCoordinator = invitePushRuntimeCoordinatorOverride ??
-        _buildInvitePushRuntimeCoordinator();
     _listenForInvitePushUpdates(
       repository,
       invitePushRuntimeCoordinator,
-    );
-    await _initializeInvitePushTapHandling(
-      isWeb: isWeb,
-      tapSource: invitePushTapSourceOverride ??
-          (isWeb
-              ? kNoopInvitePushTapSource
-              : kFirebaseInvitePushTapSource),
-      coordinator: invitePushRuntimeCoordinator,
     );
   }
 
@@ -366,7 +364,8 @@ abstract class ApplicationContract extends ModularAppContract {
 
     final initialMessage = await tapSource.getInitialMessage();
     if (initialMessage != null) {
-      final initialPath = coordinator.prepareNotificationTapPath(initialMessage);
+      final initialPath =
+          coordinator.prepareNotificationTapPath(initialMessage);
       if (initialPath != null) {
         _startupNavigationCoordinator.overrideInitialPath(initialPath);
         unawaited(coordinator.refreshNotificationTapData(initialMessage));
