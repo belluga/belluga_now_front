@@ -26,8 +26,11 @@ void main() {
       selectedPoi: selected,
     );
 
-    expect(
-        ordered.map((poi) => poi.id).toList(), ['first', 'third', 'selected']);
+    expect(ordered.map((poi) => poi.id).toList(), [
+      'first',
+      'third',
+      'selected',
+    ]);
   });
 
   test('remembered poi renders last when no active selection exists', () {
@@ -40,9 +43,34 @@ void main() {
       rememberedPoiId: 'remembered',
     );
 
+    expect(ordered.map((poi) => poi.id).toList(), [
+      'first',
+      'third',
+      'remembered',
+    ]);
+  });
+
+  test(
+    'bootstrap initial center resolves directly from tenant default origin',
+    () {
+      final tenantDefaultOrigin = CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.611111'),
+        longitudeValue: LongitudeValue()..parse('-40.422222'),
+      );
+
+      final resolved = MapLayers.resolveBootstrapInitialCenter(
+        tenantDefaultOrigin: tenantDefaultOrigin,
+      );
+
+      expect(resolved?.latitude, tenantDefaultOrigin.latitude);
+      expect(resolved?.longitude, tenantDefaultOrigin.longitude);
+    },
+  );
+
+  test('map viewport is suppressed when tenant default origin is missing', () {
     expect(
-      ordered.map((poi) => poi.id).toList(),
-      ['first', 'third', 'remembered'],
+      MapLayers.shouldRenderViewport(bootstrapInitialCenter: null),
+      isFalse,
     );
   });
 }

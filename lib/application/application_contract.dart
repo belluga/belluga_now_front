@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/auth/post_auth_identity_hydration_coordinator.dart';
+import 'package:belluga_now/application/push/invite_push_runtime_coordinator.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
@@ -18,7 +19,6 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
-import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -29,6 +29,8 @@ import 'package:belluga_now/infrastructure/services/push/push_gatekeeper.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
+import 'package:belluga_now/infrastructure/services/push/invite_push_tap_source.dart';
+import 'package:belluga_now/infrastructure/services/push/invite_aware_push_message_presenter.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
@@ -53,6 +55,7 @@ typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   Future<void> Function()? presentationGate,
   required Stream<dynamic>? authChangeStream,
   required String Function() platformResolver,
+  PushMessagePresenter? presenterOverride,
   Future<bool> Function(StepData step)? gatekeeper,
   Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
   Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
@@ -72,6 +75,7 @@ abstract class ApplicationContract extends ModularAppContract {
   );
   static const Locale appLocale = Locale('pt', 'BR');
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
+  StreamSubscription<RemoteMessage>? _pushTapSubscription;
   StreamSubscription<dynamic>? _telemetryIdentitySubscription;
   PushHandlerRepositoryContract? _pushRepository;
 
@@ -82,6 +86,10 @@ abstract class ApplicationContract extends ModularAppContract {
 
   @override
   ModuleSettings get moduleSettings => _moduleSettings;
+
+  @visibleForTesting
+  AppStartupNavigationCoordinator get startupNavigationCoordinatorForTesting =>
+      _startupNavigationCoordinator;
 
   Future<void> initialSettings() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -127,11 +135,17 @@ abstract class ApplicationContract extends ModularAppContract {
     bool? isWebOverride,
     PushHandlerRepositoryFactory? repositoryFactory,
     AuthRepositoryContract? authRepositoryOverride,
+    InvitePushTapSource? invitePushTapSourceOverride,
+    InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
   }) async {
     await _initializePushHandlerInternal(
       isWebOverride: isWebOverride,
       repositoryFactory: repositoryFactory,
       authRepositoryOverride: authRepositoryOverride,
+      invitePushTapSourceOverride:
+          invitePushTapSourceOverride ?? kNoopInvitePushTapSource,
+      invitePushRuntimeCoordinatorOverride:
+          invitePushRuntimeCoordinatorOverride,
     );
   }
 
@@ -139,6 +153,8 @@ abstract class ApplicationContract extends ModularAppContract {
     bool? isWebOverride,
     PushHandlerRepositoryFactory? repositoryFactory,
     AuthRepositoryContract? authRepositoryOverride,
+    InvitePushTapSource? invitePushTapSourceOverride,
+    InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
   }) async {
     const disablePush =
         bool.fromEnvironment('DISABLE_PUSH', defaultValue: false);
@@ -185,6 +201,7 @@ abstract class ApplicationContract extends ModularAppContract {
           Future<void> Function()? presentationGate,
           required Stream<dynamic>? authChangeStream,
           required String Function() platformResolver,
+          PushMessagePresenter? presenterOverride,
           Future<bool> Function(StepData step)? gatekeeper,
           Future<List<OptionItem>> Function(OptionSource source)?
               optionsBuilder,
@@ -203,6 +220,7 @@ abstract class ApplicationContract extends ModularAppContract {
             presentationGate: presentationGate,
             authChangeStream: authChangeStream,
             platformResolver: platformResolver,
+            presenterOverride: presenterOverride,
             gatekeeper: gatekeeper,
             optionsBuilder: optionsBuilder,
             onStepSubmit: onStepSubmit,
@@ -228,6 +246,18 @@ abstract class ApplicationContract extends ModularAppContract {
       },
       authChangeStream: authRepository.userStreamValue.stream,
       platformResolver: () => BellugaConstants.settings.platform,
+      presenterOverride: InviteAwarePushMessagePresenter(
+        contextProvider: () => appRouter.navigatorKey.currentContext,
+        navigationResolver: navigationResolver,
+        gatekeeper: gatekeeper.check,
+        optionsBuilder: optionsResolver.resolve,
+        onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
+        stepValidator: stepValidator.validate,
+        onCustomAction: (button, step) => actionDispatcher.dispatch(
+          button: button,
+          step: step,
+        ),
+      ),
       gatekeeper: gatekeeper.check,
       optionsBuilder: optionsResolver.resolve,
       onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
@@ -239,6 +269,14 @@ abstract class ApplicationContract extends ModularAppContract {
       onPushEvent: (event) {
         unawaited(telemetryForwarder.forward(event));
       },
+    );
+    final invitePushRuntimeCoordinator = invitePushRuntimeCoordinatorOverride ??
+        _buildInvitePushRuntimeCoordinator();
+    await _initializeInvitePushTapHandling(
+      isWeb: isWeb,
+      tapSource: invitePushTapSourceOverride ??
+          (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource),
+      coordinator: invitePushRuntimeCoordinator,
     );
     try {
       await repository.init();
@@ -252,7 +290,10 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
     _pushRepository = repository;
-    _listenForInvitePushUpdates(repository);
+    _listenForInvitePushUpdates(
+      repository,
+      invitePushRuntimeCoordinator,
+    );
   }
 
   Future<List<dynamic>?> _openPushOptionSelector(
@@ -291,7 +332,55 @@ abstract class ApplicationContract extends ModularAppContract {
     );
   }
 
-  void _listenForInvitePushUpdates(PushHandlerRepositoryContract repository) {
+  InvitePushRuntimeCoordinator _buildInvitePushRuntimeCoordinator() {
+    return InvitePushRuntimeCoordinator(
+      invitesRepository: GetIt.I.isRegistered<InvitesRepositoryContract>()
+          ? GetIt.I.get<InvitesRepositoryContract>()
+          : null,
+      navigatePath: _navigatePushPath,
+      currentPathProvider: () => appRouter.currentPath,
+    );
+  }
+
+  Future<void> _navigatePushPath(String path) async {
+    final normalized = path.trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+    await appRouter.pushPath(normalized);
+  }
+
+  Future<void> _initializeInvitePushTapHandling({
+    required bool isWeb,
+    required InvitePushTapSource tapSource,
+    required InvitePushRuntimeCoordinator coordinator,
+  }) async {
+    await _pushTapSubscription?.cancel();
+    _pushTapSubscription = null;
+
+    if (isWeb) {
+      return;
+    }
+
+    final initialMessage = await tapSource.getInitialMessage();
+    if (initialMessage != null) {
+      final initialPath =
+          coordinator.prepareNotificationTapPath(initialMessage);
+      if (initialPath != null) {
+        _startupNavigationCoordinator.overrideInitialPath(initialPath);
+        unawaited(coordinator.refreshNotificationTapData(initialMessage));
+      }
+    }
+
+    _pushTapSubscription = tapSource.onMessageOpenedApp.listen((message) {
+      unawaited(coordinator.handleNotificationTap(message));
+    });
+  }
+
+  void _listenForInvitePushUpdates(
+    PushHandlerRepositoryContract repository,
+    InvitePushRuntimeCoordinator coordinator,
+  ) {
     _pushMessageSubscription?.cancel();
     _pushMessageSubscription = repository.messageStream.listen((message) async {
       if (message.data.isEmpty) {
@@ -303,14 +392,7 @@ abstract class ApplicationContract extends ModularAppContract {
         '[Push] Invite payload received; '
         'message_id=${message.messageId ?? ''} keys=${dataKeys.join(',')}',
       );
-      if (!GetIt.I.isRegistered<InvitesRepositoryContract>()) {
-        return;
-      }
-      final invitesRepository = GetIt.I.get<InvitesRepositoryContract>();
-      if (invitesRepository is PushInvitePayloadAware) {
-        (invitesRepository as PushInvitePayloadAware)
-            .applyInvitePushPayload(message.data);
-      }
+      await coordinator.handleIncomingMessage(message);
     });
   }
 

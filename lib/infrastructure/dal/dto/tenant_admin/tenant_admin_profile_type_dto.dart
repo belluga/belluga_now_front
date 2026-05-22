@@ -8,6 +8,7 @@ class TenantAdminProfileTypeDTO {
     required this.pluralLabel,
     required this.allowedTaxonomies,
     this.visual,
+    required this.isPubliclyDiscoverable,
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.isReferenceLocationEnabled,
@@ -24,6 +25,7 @@ class TenantAdminProfileTypeDTO {
   final String pluralLabel;
   final List<String> allowedTaxonomies;
   final TenantAdminPoiVisual? visual;
+  final bool isPubliclyDiscoverable;
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool isReferenceLocationEnabled;
@@ -45,6 +47,7 @@ class TenantAdminProfileTypeDTO {
       }
     }
     final capabilities = json['capabilities'];
+    bool isPubliclyDiscoverable = false;
     bool isFavoritable = false;
     bool isPoiEnabled = false;
     bool isReferenceLocationEnabled = false;
@@ -55,9 +58,15 @@ class TenantAdminProfileTypeDTO {
     bool hasCover = false;
     bool hasEvents = false;
     if (capabilities is Map<String, dynamic>) {
-      isFavoritable = _parseBool(capabilities['is_favoritable']);
+      final parsedFavoritable = _parseBool(capabilities['is_favoritable']);
+      isPubliclyDiscoverable =
+          capabilities.containsKey('is_publicly_discoverable')
+          ? _parseBool(capabilities['is_publicly_discoverable'])
+          : parsedFavoritable;
+      isFavoritable = isPubliclyDiscoverable && parsedFavoritable;
       isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
-      isReferenceLocationEnabled = isPoiEnabled &&
+      isReferenceLocationEnabled =
+          isPoiEnabled &&
           _parseBool(capabilities['is_reference_location_enabled']);
       hasBio = _parseBool(capabilities['has_bio']);
       hasContent = _parseBool(capabilities['has_content']);
@@ -84,10 +93,11 @@ class TenantAdminProfileTypeDTO {
       pluralLabel: pluralLabel != null && pluralLabel.isNotEmpty
           ? pluralLabel
           : singularLabel != null && singularLabel.isNotEmpty
-              ? singularLabel
-              : json['label']?.toString() ?? '',
+          ? singularLabel
+          : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
+      isPubliclyDiscoverable: isPubliclyDiscoverable,
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
       isReferenceLocationEnabled: isReferenceLocationEnabled,
@@ -146,6 +156,7 @@ class TenantAdminProfileTypeDTO {
       allowedTaxonomies: allowedTaxonomies,
       visual: visual,
       capabilities: TenantAdminProfileTypeCapabilities(
+        isPubliclyDiscoverable: TenantAdminFlagValue(isPubliclyDiscoverable),
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
         isReferenceLocationEnabled: TenantAdminFlagValue(

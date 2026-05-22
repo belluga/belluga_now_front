@@ -153,19 +153,107 @@ void main() {
     completer.complete(LocationPermissionGateResult.cancelled);
     await first;
   });
+
+  test(
+      'granted warm flow resolves the entry mutex even when permission push stays pending after replace',
+      () async {
+    final router = _RecordingStackRouter(
+      permissionResult: LocationPermissionGateResult.granted,
+      keepPermissionFuturePendingAfterResult: true,
+    );
+    addTearDown(() async {
+      router.completePendingPermissionPushes();
+      await Future<void>.microtask(() {});
+    });
+
+    final first = openTenantPublicMapEntryFlow(
+      router,
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    await expectLater(
+      first.timeout(const Duration(milliseconds: 200)),
+      completes,
+    );
+
+    final second = openTenantPublicMapEntryFlow(
+      router,
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    await expectLater(
+      second.timeout(const Duration(milliseconds: 200)),
+      completes,
+    );
+
+    expect(router.pushCalls.map((route) => route.routeName).toList(), [
+      LocationPermissionRoute.name,
+      LocationPermissionRoute.name,
+    ]);
+    expect(router.replaceCalls.map((route) => route.routeName).toList(), [
+      CityMapRoute.name,
+      CityMapRoute.name,
+    ]);
+
+    router.completePendingPermissionPushes();
+  });
+
+  test('permission push failures propagate and release the entry mutex',
+      () async {
+    final router = _RecordingStackRouter(
+      permissionPushError: StateError('permission push failed'),
+    );
+
+    await expectLater(
+      openTenantPublicMapEntryFlow(
+        router,
+        blockerLoader: () async => LocationPermissionState.denied,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'permission push failed',
+        ),
+      ),
+    );
+
+    await expectLater(
+      openTenantPublicMapEntryFlow(
+        router,
+        blockerLoader: () async => LocationPermissionState.denied,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'permission push failed',
+        ),
+      ),
+    );
+
+    expect(router.pushCalls.map((route) => route.routeName).toList(), [
+      LocationPermissionRoute.name,
+      LocationPermissionRoute.name,
+    ]);
+  });
 }
 
 class _RecordingStackRouter extends Mock implements RootStackRouter {
   _RecordingStackRouter({
     this.permissionResult,
     this.permissionFutureFactory,
+    this.permissionPushError,
+    this.keepPermissionFuturePendingAfterResult = false,
   });
 
   final LocationPermissionGateResult? permissionResult;
   final Future<LocationPermissionGateResult?> Function()?
       permissionFutureFactory;
+  final Object? permissionPushError;
+  final bool keepPermissionFuturePendingAfterResult;
   final List<PageRouteInfo<dynamic>> pushCalls = <PageRouteInfo<dynamic>>[];
   final List<PageRouteInfo<dynamic>> replaceCalls = <PageRouteInfo<dynamic>>[];
+  final List<Completer<LocationPermissionGateResult?>> _pendingPermissionPushes =
+      <Completer<LocationPermissionGateResult?>>[];
   int maybePopCalls = 0;
 
   @override
@@ -178,12 +266,21 @@ class _RecordingStackRouter extends Mock implements RootStackRouter {
   }) async {
     pushCalls.add(route);
     if (route case final LocationPermissionRoute permissionRoute) {
+      final pushError = permissionPushError;
+      if (pushError != null) {
+        throw pushError;
+      }
       if (permissionFutureFactory != null) {
         return await permissionFutureFactory!() as T?;
       }
       final result = permissionResult;
       if (result != null) {
         permissionRoute.args?.onResult?.call(result);
+        if (keepPermissionFuturePendingAfterResult) {
+          final completer = Completer<LocationPermissionGateResult?>();
+          _pendingPermissionPushes.add(completer);
+          return await completer.future as T?;
+        }
       }
     }
     return null;
@@ -202,5 +299,14 @@ class _RecordingStackRouter extends Mock implements RootStackRouter {
   Future<bool> maybePop<T extends Object?>([T? result]) async {
     maybePopCalls += 1;
     return true;
+  }
+
+  void completePendingPermissionPushes() {
+    for (final completer in _pendingPermissionPushes) {
+      if (!completer.isCompleted) {
+        completer.complete(null);
+      }
+    }
+    _pendingPermissionPushes.clear();
   }
 }

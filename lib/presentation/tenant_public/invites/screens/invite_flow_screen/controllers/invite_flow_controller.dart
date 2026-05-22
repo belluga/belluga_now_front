@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -26,6 +27,7 @@ class InviteFlowScreenController with Disposable {
     TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
     AuthRepositoryContract? authRepository,
+    ScheduleRepositoryContract? scheduleRepository,
   })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
@@ -33,12 +35,17 @@ class InviteFlowScreenController with Disposable {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _scheduleRepository = scheduleRepository ??
+            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
+                ? GetIt.I.get<ScheduleRepositoryContract>()
+                : null),
         swiperController =
             cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
   final TelemetryRepositoryContract _telemetryRepository;
   final AuthRepositoryContract? _authRepository;
+  final ScheduleRepositoryContract? _scheduleRepository;
 
   final CardStackSwiperController swiperController;
 
@@ -247,12 +254,75 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  Future<String?> resolveFallbackNavigationPath(String? rawFallbackPath) async {
+    final fallbackPath = rawFallbackPath?.trim();
+    if (fallbackPath == null || fallbackPath.isEmpty) {
+      return null;
+    }
+
+    final eventFallback = _parseEventFallbackPath(fallbackPath);
+    if (eventFallback == null) {
+      return fallbackPath;
+    }
+
+    final scheduleRepository = _scheduleRepository;
+    if (scheduleRepository == null) {
+      return '/';
+    }
+
+    try {
+      final event = await scheduleRepository.getEventBySlug(
+        ScheduleRepoString.fromRaw(
+          eventFallback.slug,
+          defaultValue: eventFallback.slug,
+          isRequired: true,
+        ),
+        occurrenceId: eventFallback.occurrenceId == null
+            ? null
+            : ScheduleRepoString.fromRaw(
+                eventFallback.occurrenceId!,
+                defaultValue: eventFallback.occurrenceId!,
+                isRequired: true,
+              ),
+      );
+      return event == null ? '/' : fallbackPath;
+    } catch (_) {
+      return '/';
+    }
+  }
+
   void _syncDisplayInvitesWithPending() {
     if (authRequiredForDecisionStreamValue.value) {
       return;
     }
     _setDisplayInvites(
       List<InviteModel>.from(pendingInvitesStreamValue.value),
+    );
+  }
+
+  _InviteFlowFallbackPath? _parseEventFallbackPath(String path) {
+    final uri = Uri.tryParse(path);
+    if (uri == null) {
+      return null;
+    }
+    final segments = uri.pathSegments;
+    if (segments.length < 3 ||
+        segments[0] != 'agenda' ||
+        segments[1] != 'evento') {
+      return null;
+    }
+
+    final slug = segments[2].trim();
+    if (slug.isEmpty) {
+      return null;
+    }
+
+    final occurrenceId = uri.queryParameters['occurrence']?.trim();
+    return _InviteFlowFallbackPath(
+      slug: slug,
+      occurrenceId: occurrenceId == null || occurrenceId.isEmpty
+          ? null
+          : occurrenceId,
     );
   }
 
@@ -718,4 +788,14 @@ class InviteFlowScreenController with Disposable {
       }
     }));
   }
+}
+
+class _InviteFlowFallbackPath {
+  const _InviteFlowFallbackPath({
+    required this.slug,
+    required this.occurrenceId,
+  });
+
+  final String slug;
+  final String? occurrenceId;
 }

@@ -4,6 +4,7 @@ export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_
 
 class TenantAdminProfileTypeCapabilities {
   TenantAdminProfileTypeCapabilities({
+    TenantAdminFlagValue? isPubliclyDiscoverable,
     required TenantAdminFlagValue isFavoritable,
     required TenantAdminFlagValue isPoiEnabled,
     TenantAdminFlagValue? isReferenceLocationEnabled,
@@ -13,7 +14,9 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
     required TenantAdminFlagValue hasEvents,
-  }) : isFavoritableValue = isFavoritable,
+  }) : isPubliclyDiscoverableValue =
+           isPubliclyDiscoverable ?? TenantAdminFlagValue(isFavoritable.value),
+       isFavoritableValue = isFavoritable,
        isPoiEnabledValue = isPoiEnabled,
        isReferenceLocationEnabledValue =
            isReferenceLocationEnabled ?? TenantAdminFlagValue(false),
@@ -24,6 +27,7 @@ class TenantAdminProfileTypeCapabilities {
        hasCoverValue = hasCover,
        hasEventsValue = hasEvents;
 
+  final TenantAdminFlagValue isPubliclyDiscoverableValue;
   final TenantAdminFlagValue isFavoritableValue;
   final TenantAdminFlagValue isPoiEnabledValue;
   final TenantAdminFlagValue isReferenceLocationEnabledValue;
@@ -34,7 +38,8 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue hasCoverValue;
   final TenantAdminFlagValue hasEventsValue;
 
-  bool get isFavoritable => isFavoritableValue.value;
+  bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
+  bool get isFavoritable => isPubliclyDiscoverable && isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
   bool get isReferenceLocationEnabled =>
       isPoiEnabled && isReferenceLocationEnabledValue.value;

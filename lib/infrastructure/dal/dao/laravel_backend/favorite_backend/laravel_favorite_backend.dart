@@ -10,6 +10,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
   static const int _defaultPageSize = 30;
   static const int _maxPages = 5;
+  static const Duration _connectTimeout = Duration(seconds: 5);
+  static const Duration _sendTimeout = Duration(seconds: 12);
+  static const Duration _receiveTimeout = Duration(seconds: 12);
 
   final Dio _dio;
 
@@ -126,6 +129,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
           token: token,
           includeJsonAccept: true,
         ),
+        connectTimeout: _connectTimeout,
+        sendTimeout: _sendTimeout,
+        receiveTimeout: _receiveTimeout,
       );
       if (isFavorite) {
         await _dio.post(
@@ -167,6 +173,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
             token: token,
             includeJsonAccept: true,
           ),
+          connectTimeout: _connectTimeout,
+          sendTimeout: _sendTimeout,
+          receiveTimeout: _receiveTimeout,
         ),
       );
 

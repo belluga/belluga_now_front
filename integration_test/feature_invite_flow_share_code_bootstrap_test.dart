@@ -18,14 +18,25 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/value_objects/color_value.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +45,9 @@ import 'package:integration_test/integration_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
+import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 import 'support/integration_test_bootstrap.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
@@ -337,10 +351,150 @@ void main() {
       'event-preview',
     );
   });
+
+  testWidgets(
+      'invite fallback replaces stale invite with event route when event resolves',
+      (tester) async {
+    final scheduleRepository = _FakeScheduleRepository(
+      eventsBySlug: <String, EventModel?>{
+        'event-live': _buildResolvedEvent('event-live'),
+      },
+    );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    final router = _RecordingStackRouter(canPopValue: false);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: _buildRouteData(router, queryParams: const {}),
+            child: InviteFlowCoordinator(
+              invites: const [],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: true,
+              fallbackPath: '/agenda/evento/event-live?occurrence=occ-live',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      router.lastReplacedPath,
+      '/agenda/evento/event-live?occurrence=occ-live',
+    );
+  });
+
+  testWidgets(
+      'invite fallback keeps event route even when the resolved event is already ended',
+      (tester) async {
+    final scheduleRepository = _FakeScheduleRepository(
+      eventsBySlug: <String, EventModel?>{
+        'event-ended': _buildResolvedEvent(
+          'event-ended',
+          startAt: DateTime.utc(2026, 3, 15, 20),
+          endAt: DateTime.utc(2026, 3, 15, 22),
+        ),
+      },
+    );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    final router = _RecordingStackRouter(canPopValue: false);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: _buildRouteData(router, queryParams: const {}),
+            child: InviteFlowCoordinator(
+              invites: const [],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: true,
+              fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      router.lastReplacedPath,
+      '/agenda/evento/event-ended?occurrence=occ-ended',
+    );
+  });
+
+  testWidgets(
+      'invite fallback routes home when the fallback event no longer resolves',
+      (tester) async {
+    final scheduleRepository = _FakeScheduleRepository(
+      eventsBySlug: const <String, EventModel?>{
+        'event-missing': null,
+      },
+    );
+    final controller = InviteFlowScreenController(
+      repository: _RecordingInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      scheduleRepository: scheduleRepository,
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    final router = _RecordingStackRouter(canPopValue: false);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: _buildRouteData(router, queryParams: const {}),
+            child: InviteFlowCoordinator(
+              invites: const [],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: true,
+              fallbackPath: '/agenda/evento/event-missing?occurrence=occ-missing',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(router.lastReplacedPath, '/');
+  });
 }
 
 class _RecordingInvitesRepository extends InvitesRepositoryContract {
-  _RecordingInvitesRepository() : _invites = <InviteModel>[_materializedInvite];
+  _RecordingInvitesRepository({
+    List<InviteModel>? initialInvites,
+  }) : _invites = List<InviteModel>.from(
+          initialInvites ?? <InviteModel>[_materializedInvite],
+        );
 
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
@@ -593,11 +747,29 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
 
+class _FakeScheduleRepository extends Fake
+    implements ScheduleRepositoryContract {
+  _FakeScheduleRepository({
+    Map<String, EventModel?> eventsBySlug = const <String, EventModel?>{},
+  }) : _eventsBySlug = eventsBySlug;
+
+  final Map<String, EventModel?> _eventsBySlug;
+
+  @override
+  Future<EventModel?> getEventBySlug(
+    ScheduleRepoString slug, {
+    ScheduleRepoString? occurrenceId,
+  }) async {
+    return _eventsBySlug[slug.value];
+  }
+}
+
 class _RecordingStackRouter extends Mock implements StackRouter {
   _RecordingStackRouter({required this.canPopValue});
 
   final bool canPopValue;
   String? lastPushedPath;
+  String? lastReplacedPath;
   bool replaceAllCalled = false;
   List<PageRouteInfo>? lastReplaced;
 
@@ -617,6 +789,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastPushedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> replacePath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedPath = path;
     return null;
   }
 
@@ -652,6 +834,44 @@ RouteData _buildRouteData(
     stackKey: const ValueKey('stack'),
     pendingChildren: const [],
     type: const RouteType.material(),
+  );
+}
+
+EventModel _buildResolvedEvent(
+  String slug, {
+  DateTime? startAt,
+  DateTime? endAt,
+}) {
+  const normalizedId = '507f1f77bcf86cd799439011';
+  final resolvedStart = startAt ?? DateTime.utc(2026, 5, 24, 20);
+  final resolvedEnd = endAt ?? resolvedStart.add(const Duration(hours: 2));
+
+  return eventModelFromRaw(
+    id: MongoIDValue(defaultValue: normalizedId, isRequired: true)
+      ..parse(normalizedId),
+    slugValue: SlugValue()..parse(slug),
+    type: EventTypeModel(
+      id: EventTypeIdValue()..parse('show'),
+      name: TitleValue()..parse('Show tipo'),
+      slug: SlugValue()..parse('show'),
+      description: DescriptionValue()..parse('Descricao longa do tipo.'),
+      icon: SlugValue()..parse('music'),
+      color: ColorValue(defaultValue: const Color(0xFF3366FF))
+        ..parse('#3366FF'),
+    ),
+    title: TitleValue()..parse('Resolved Event $slug title'),
+    content: HTMLContentValue()
+      ..parse('<p>Descricao longa do evento para teste.</p>'),
+    location: DescriptionValue()..parse('Local muito legal para teste.'),
+    thumb: null,
+    dateTimeStart: DateTimeValue(isRequired: true)
+      ..parse(resolvedStart.toIso8601String()),
+    dateTimeEnd: DateTimeValue(isRequired: true)
+      ..parse(resolvedEnd.toIso8601String()),
+    coordinate: null,
+    tags: const <String>['show'],
+    isConfirmedValue: EventIsConfirmedValue()..parse('false'),
+    totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
   );
 }
 
