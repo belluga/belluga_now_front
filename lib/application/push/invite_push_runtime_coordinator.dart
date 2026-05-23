@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/push/invite_accepted_push_payload.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -34,7 +35,7 @@ class InvitePushRuntimeCoordinator {
     }
 
     _applyInvitePayload(payload);
-    await _refreshPendingInvitesIfNeeded(payload);
+    await _refreshInviteStateIfNeeded(payload);
   }
 
   String? prepareNotificationTapPath(RemoteMessage message) {
@@ -58,7 +59,7 @@ class InvitePushRuntimeCoordinator {
       return;
     }
 
-    await _refreshPendingInvitesIfNeeded(payload);
+    await _refreshInviteStateIfNeeded(payload);
   }
 
   Future<void> handleNotificationTap(RemoteMessage message) async {
@@ -102,11 +103,64 @@ class InvitePushRuntimeCoordinator {
     }
   }
 
+  Future<void> _refreshInviteStateIfNeeded(
+    Map<String, dynamic> payload,
+  ) async {
+    final acceptedPayload = _payloadDecoder.decodeAcceptedSentInvite(payload);
+    if (acceptedPayload != null) {
+      await _refreshAcceptedSentInviteStatusIfNeeded(acceptedPayload);
+      return;
+    }
+
+    await _refreshPendingInvitesIfNeeded(payload);
+  }
+
+  Future<void> _refreshAcceptedSentInviteStatusIfNeeded(
+    InviteAcceptedPushPayload payload,
+  ) async {
+    final invitesRepository = _invitesRepository;
+    if (invitesRepository == null) {
+      return;
+    }
+
+    try {
+      await invitesRepository.refreshSentInvitesForOccurrence(
+        occurrenceId: invitesRepoString(
+          payload.occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: payload.eventId == null
+            ? null
+            : invitesRepoString(
+                payload.eventId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+        recipientAccountProfileIds: payload.accountProfileId == null
+            ? const <InvitesRepositoryContractPrimString>[]
+            : [
+                invitesRepoString(
+                  payload.accountProfileId,
+                  defaultValue: '',
+                  isRequired: true,
+                ),
+              ],
+      );
+    } catch (error) {
+      debugPrint('[Push] Invite accepted status refresh failed: $error');
+    }
+  }
+
   String? _resolveNavigationPath(
     Map<String, dynamic> payload,
   ) {
-    final inviteId = _normalizeString(payload['invite_id']);
     final fallbackPath = _resolveEventFallbackPath(payload) ?? '/';
+    if (_payloadDecoder.decodeAcceptedSentInvite(payload) != null) {
+      return fallbackPath;
+    }
+
+    final inviteId = _normalizeString(payload['invite_id']);
     if (inviteId != null && inviteId.isNotEmpty) {
       return _buildInvitePath(
         inviteId,
@@ -126,9 +180,13 @@ class InvitePushRuntimeCoordinator {
   }
 
   bool _isInvitePush(Map<String, dynamic> payload) {
-    final type = _normalizeString(payload['push_type']) ??
-        _normalizeString(payload['event']);
+    final type = _pushType(payload);
     return type == 'invite_received' || type == 'invite_accepted';
+  }
+
+  String? _pushType(Map<String, dynamic> payload) {
+    return _normalizeString(payload['push_type']) ??
+        _normalizeString(payload['event']);
   }
 
   String? _resolveEventFallbackPath(

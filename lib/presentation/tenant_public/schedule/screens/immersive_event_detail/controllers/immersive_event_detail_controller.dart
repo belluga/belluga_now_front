@@ -79,8 +79,9 @@ class ImmersiveEventDetailController implements Disposable {
     final currentEvent = eventStreamValue.value;
     final hasSameSelectedTarget =
         _isSameSelectedEventTarget(currentEvent, resolvedEvent);
-    final effectiveEvent =
-        hasSameSelectedTarget && currentEvent != null ? currentEvent : resolvedEvent;
+    final effectiveEvent = hasSameSelectedTarget && currentEvent != null
+        ? currentEvent
+        : resolvedEvent;
     if (!hasSameSelectedTarget) {
       _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     }
@@ -212,9 +213,8 @@ class ImmersiveEventDetailController implements Disposable {
     _shareSessionContextSubscription = _invitesRepository
         .shareCodeSessionContextStreamValue.stream
         .listen((_) => _refreshReceivedInvitesFor(event));
-    _confirmedOccurrenceIdsSubscription = _userEventsRepository
-        .confirmedOccurrenceIdsStream.stream
-        .listen((_) {
+    _confirmedOccurrenceIdsSubscription =
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       final current = eventStreamValue.value;
       final currentOccurrenceId = current?.selectedOccurrenceId?.trim();
       if (current == null ||
@@ -227,6 +227,35 @@ class ImmersiveEventDetailController implements Disposable {
     });
 
     _refreshReceivedInvitesFor(event);
+    unawaited(_refreshSentInvitesFor(event));
+  }
+
+  Future<void> _refreshSentInvitesFor(EventModel event) async {
+    if (!_isAuthorized) {
+      return;
+    }
+    final eventId = event.id.value.trim();
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (eventId.isEmpty || occurrenceId == null || occurrenceId.isEmpty) {
+      return;
+    }
+
+    try {
+      await _invitesRepository.refreshSentInvitesForOccurrence(
+        occurrenceId: invitesRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+    } catch (_) {
+      // Sent-status hydration is opportunistic; the invite screen retries.
+    }
   }
 
   EventModel _eventWithSelectedOccurrence(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
@@ -105,6 +106,16 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     return _post(
       '$_apiBaseUrl/v1/invites',
       data: request.toJson(),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/invites/sent-statuses',
+      queryParameters: request.toQueryParameters(),
     );
   }
 
@@ -290,10 +301,9 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     }
 
     final payload = Map<String, dynamic>.from(decoded);
-    final resolvedType =
-        _stringOrNull(payload['type']) ??
-            fallbackType?.trim() ??
-            'invite.updated';
+    final resolvedType = _stringOrNull(payload['type']) ??
+        fallbackType?.trim() ??
+        'invite.updated';
 
     final invitePayload = payload['invite'];
     final inviteDto = invitePayload == null

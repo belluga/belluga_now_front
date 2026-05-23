@@ -93,6 +93,10 @@ class ProfileScreenController implements Disposable {
       StreamValue<int>(defaultValue: 0);
   final StreamValue<int> confirmedEventsCountStreamValue =
       StreamValue<int>(defaultValue: 0);
+  final StreamValue<int> invitesSentCountStreamValue =
+      StreamValue<int>(defaultValue: 0);
+  final StreamValue<int> invitesAcceptedCountStreamValue =
+      StreamValue<int>(defaultValue: 0);
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
   final StreamValue<bool> isUsingFixedOriginStreamValue =
@@ -132,8 +136,8 @@ class ProfileScreenController implements Disposable {
   Future<void> init() async {
     _didInit = true;
     await loadAvatarPath();
-    final hasCachedProfile = currentProfileStreamValue.value != null ||
-        _currentProfile != null;
+    final hasCachedProfile =
+        currentProfileStreamValue.value != null || _currentProfile != null;
     if (hasCachedProfile) {
       isProfileLoadingStreamValue.addValue(false);
       unawaited(refreshProfile(silent: true));
@@ -161,7 +165,8 @@ class ProfileScreenController implements Disposable {
 
   void _bindSelfProfileStream() {
     _selfProfileSubscription?.cancel();
-    _selfProfileSubscription = currentProfileStreamValue.stream.listen((profile) {
+    _selfProfileSubscription =
+        currentProfileStreamValue.stream.listen((profile) {
       if (profile == null) {
         return;
       }
@@ -434,6 +439,8 @@ class ProfileScreenController implements Disposable {
     phoneController.text = profile.phone;
     pendingInvitesCountStreamValue.addValue(profile.pendingInvitesCount);
     confirmedEventsCountStreamValue.addValue(profile.confirmedEventsCount);
+    invitesSentCountStreamValue.addValue(profile.invitesSentCount);
+    invitesAcceptedCountStreamValue.addValue(profile.invitesAcceptedCount);
     bumpFormVersion();
   }
 
@@ -662,6 +669,8 @@ class ProfileScreenController implements Disposable {
     matchedPeopleErrorStreamValue.dispose();
     pendingInvitesCountStreamValue.dispose();
     confirmedEventsCountStreamValue.dispose();
+    invitesSentCountStreamValue.dispose();
+    invitesAcceptedCountStreamValue.dispose();
     maxRadiusMetersStreamValue.dispose();
     isUsingFixedOriginStreamValue.dispose();
     activeOriginSummaryStreamValue.dispose();

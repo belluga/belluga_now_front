@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
@@ -59,10 +60,12 @@ void main() {
         reason: 'Device cold-cache validation requires contacts permission.',
       );
       await primingContactsRepository.refreshContacts();
-      final allContacts = (primingContactsRepository.contactsStreamValue.value ??
-              const <ContactModel>[])
-          .where((contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty)
-          .toList(growable: false);
+      final allContacts =
+          (primingContactsRepository.contactsStreamValue.value ??
+                  const <ContactModel>[])
+              .where((contact) =>
+                  contact.phones.isNotEmpty || contact.emails.isNotEmpty)
+              .toList(growable: false);
       expect(
         allContacts.length,
         greaterThanOrEqualTo(2),
@@ -131,9 +134,11 @@ void main() {
         reason:
             'Cold device validation requires at least one persisted device contact before the screen opens.',
       );
-      final coldShareableContacts = (coldCachedContacts ?? const <ContactModel>[])
-          .where((contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty)
-          .toList(growable: false);
+      final coldShareableContacts =
+          (coldCachedContacts ?? const <ContactModel>[])
+              .where((contact) =>
+                  contact.phones.isNotEmpty || contact.emails.isNotEmpty)
+              .toList(growable: false);
       expect(
         coldShareableContacts.length,
         allContacts.length,
@@ -244,9 +249,9 @@ void main() {
 
       await _pumpUntilCondition(
         tester,
-        () =>
-            (controller.externalContactShareTargetsStreamValue.value?.isNotEmpty ??
-                false),
+        () => (controller
+                .externalContactShareTargetsStreamValue.value?.isNotEmpty ??
+            false),
         forbiddenFinders: <Finder>[
           find.text('Nenhum contato do telefone disponível.'),
         ],
@@ -409,6 +414,12 @@ class _ColdCacheInvitesBackend implements InvitesBackendContract {
   @override
   Future<Map<String, dynamic>> sendInvites(InviteSendRequest request) async =>
       throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  ) async =>
+      const <String, dynamic>{'items': <Map<String, dynamic>>[]};
 
   @override
   Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>

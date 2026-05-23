@@ -258,4 +258,12 @@ abstract class InvitesRepositoryContract {
 
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString occurrenceId);
+
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async =>
+      getSentInvitesForOccurrence(occurrenceId);
 }

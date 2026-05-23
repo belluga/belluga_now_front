@@ -26,6 +26,8 @@ import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_accepted_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_sent_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
@@ -531,6 +533,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'profile social metrics render sender-side invites sent and accepted',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: _FakeSelfProfileRepository(
+          initialProfile: _buildSelfProfile(
+            userId: '507f1f77bcf86cd799439011',
+            accountProfileId: 'profile-self',
+            invitesSentCount: 12,
+            invitesAcceptedCount: 5,
+            pendingInvitesCount: 99,
+            confirmedEventsCount: 88,
+          ),
+        ),
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('12'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text('99'), findsNothing);
+      expect(find.text('88'), findsNothing);
+    },
+  );
+
   testWidgets('profile visible back falls back to home when no history exists',
       (tester) async {
     final controller = _buildController(
@@ -949,6 +983,8 @@ SelfProfile _buildSelfProfile({
   String? avatarUrl,
   int pendingInvitesCount = 0,
   int confirmedEventsCount = 0,
+  int invitesSentCount = 0,
+  int invitesAcceptedCount = 0,
   String? timezone,
 }) {
   final userIdValue = UserIdValue()..parse(userId);
@@ -974,6 +1010,10 @@ SelfProfile _buildSelfProfile({
     ..set(pendingInvitesCount);
   final confirmedEventsCountValue = SelfProfileConfirmedEventsCountValue()
     ..set(confirmedEventsCount);
+  final invitesSentCountValue = SelfProfileInvitesSentCountValue()
+    ..set(invitesSentCount);
+  final invitesAcceptedCountValue = SelfProfileInvitesAcceptedCountValue()
+    ..set(invitesAcceptedCount);
   final timezoneValue = UserTimezoneValue();
   if (timezone != null && timezone.isNotEmpty) {
     timezoneValue.parse(timezone);
@@ -987,6 +1027,8 @@ SelfProfile _buildSelfProfile({
     avatarValue: avatarValue,
     pendingInvitesCountValue: pendingInvitesCountValue,
     confirmedEventsCountValue: confirmedEventsCountValue,
+    invitesSentCountValue: invitesSentCountValue,
+    invitesAcceptedCountValue: invitesAcceptedCountValue,
     timezoneValue: timezoneValue,
   );
 }

@@ -22,13 +22,18 @@ import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_summary.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -40,6 +45,7 @@ import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 void main() {
   setUp(() async {
@@ -693,6 +699,105 @@ void main() {
     expect(find.text('Pessoa 79'), findsOneWidget);
   });
 
+  testWidgets(
+    'sent non-null invite status cards disable repeat invite CTA',
+    (tester) async {
+      var inviteTapCount = 0;
+      final pendingFriend = buildInviteableRecipient(
+        userId: 'user-pending',
+        accountProfileId: 'profile-pending',
+        displayName: 'Pessoa Pendente',
+      ).toFriendResume();
+      final acceptedFriend = buildInviteableRecipient(
+        userId: 'user-accepted',
+        accountProfileId: 'profile-accepted',
+        displayName: 'Pessoa Aceita',
+      ).toFriendResume();
+      final declinedFriend = buildInviteableRecipient(
+        userId: 'user-declined',
+        accountProfileId: 'profile-declined',
+        displayName: 'Pessoa Recusou',
+      ).toFriendResume();
+      final supersededFriend = buildInviteableRecipient(
+        userId: 'user-superseded',
+        accountProfileId: 'profile-superseded',
+        displayName: 'Pessoa Confirmada',
+      ).toFriendResume();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                InviteShareFriendCard(
+                  friend: pendingFriend,
+                  status: InviteStatus.pending,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                ),
+                InviteShareFriendCard(
+                  friend: acceptedFriend,
+                  status: InviteStatus.accepted,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                ),
+                InviteShareFriendCard(
+                  friend: declinedFriend,
+                  status: InviteStatus.declined,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                ),
+                InviteShareFriendCard(
+                  friend: supersededFriend,
+                  status: InviteStatus.superseded,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Convidado'), findsOneWidget);
+      expect(find.text('Convite Aceito!'), findsOneWidget);
+      expect(find.text('Convite recusado'), findsOneWidget);
+      expect(find.text('Confirmado'), findsOneWidget);
+      expect(find.text('Convidar'), findsNothing);
+
+      await tester.tap(find.text('Convidado'));
+      await tester.tap(find.text('Convite Aceito!'));
+      await tester.tap(find.text('Convite recusado'));
+      await tester.tap(find.text('Confirmado'));
+      await tester.pump();
+
+      expect(inviteTapCount, 0);
+    },
+  );
+
+  testWidgets(
+    'summary counts only visible pending and accepted sent statuses',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InviteShareSummary(
+              invites: <SentInviteStatus>[
+                _sentStatus('profile-pending', InviteStatus.pending),
+                _sentStatus('profile-accepted', InviteStatus.accepted),
+                _sentStatus('profile-declined', InviteStatus.declined),
+                _sentStatus('profile-superseded', InviteStatus.superseded),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('1 pendentes | 1 aceitos'), findsOneWidget);
+      expect(find.textContaining('3 pendentes'), findsNothing);
+    },
+  );
+
   testWidgets('share CTA leaves Gerando state after failure and can retry', (
     tester,
   ) async {
@@ -1267,5 +1372,19 @@ InviteContactMatch _buildInviteContactMatch({
       InviteableReasonValue()..parse('contact_match'),
     ]),
     isInviteableValue: DomainBooleanValue()..parse('true'),
+  );
+}
+
+SentInviteStatus _sentStatus(String accountProfileId, InviteStatus status) {
+  return SentInviteStatus(
+    friend: EventFriendResume(
+      idValue: UserIdValue()..parse('user-$accountProfileId'),
+      accountProfileIdValue: InviteAccountProfileIdValue()
+        ..parse(accountProfileId),
+      displayNameValue: UserDisplayNameValue()..parse(accountProfileId),
+      avatarUrlValue: UserAvatarValue(),
+    ),
+    status: status,
+    sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
   );
 }

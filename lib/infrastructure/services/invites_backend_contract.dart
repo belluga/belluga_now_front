@@ -1,4 +1,5 @@
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 
 abstract class InvitesBackendContract {
@@ -18,6 +19,10 @@ abstract class InvitesBackendContract {
   Future<Map<String, dynamic>> declineInvite(String inviteId);
 
   Future<Map<String, dynamic>> sendInvites(InviteSendRequest request);
+
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  );
 
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,

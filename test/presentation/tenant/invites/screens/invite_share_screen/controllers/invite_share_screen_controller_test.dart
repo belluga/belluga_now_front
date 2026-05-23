@@ -26,13 +26,18 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
@@ -102,7 +107,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       const <InviteableRecipient>[];
   List<InviteContactMatch>? importContactMatches;
   List<InviteContactMatch>? cachedImportContactMatches;
+  List<SentInviteStatus> sentStatuses = const <SentInviteStatus>[];
   final sentRecipientAccountProfileIds = <String>[];
+  final sentStatusRefreshes = <Map<String, Object?>>[];
   int importContactsCalls = 0;
   int hydrateImportedContactMatchesFromCacheCalls = 0;
   int fetchInviteableRecipientsCalls = 0;
@@ -253,6 +260,22 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString eventSlug,
   ) async =>
       const <SentInviteStatus>[];
+
+  @override
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async {
+    sentStatusRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'recipient_account_profile_ids':
+          recipientAccountProfileIds.map((value) => value.value).toList(),
+    });
+    return sentStatuses;
+  }
 }
 
 InviteModel _buildInvite() {
@@ -456,6 +479,121 @@ void main() {
       await controller.sendInviteToFriend(suggestion);
 
       expect(invitesRepository.sentRecipientAccountProfileIds, ['profile-1']);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'init hydrates occurrence sent statuses from backend and merges by account profile',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Matched Contact',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ]
+        ..sentStatuses = <SentInviteStatus>[
+          SentInviteStatus(
+            friend: EventFriendResume(
+              idValue: UserIdValue()..parse('user-1'),
+              accountProfileIdValue: InviteAccountProfileIdValue()
+                ..parse('profile-1'),
+              displayNameValue: UserDisplayNameValue()
+                ..parse('Matched Contact'),
+              avatarUrlValue: UserAvatarValue(),
+            ),
+            status: InviteStatus.accepted,
+            sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(invitesRepository.sentStatusRefreshes, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'recipient_account_profile_ids': ['profile-1'],
+        },
+      ]);
+      expect(_friendSuggestions(controller).single.inviteStatus,
+          InviteStatus.accepted);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'init preserves declined and superseded sent statuses instead of flattening to pending',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-declined',
+            accountProfileId: 'profile-declined',
+            displayName: 'Pessoa Recusou',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+          buildInviteableRecipient(
+            userId: 'user-superseded',
+            accountProfileId: 'profile-superseded',
+            displayName: 'Pessoa Confirmada',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+        ]
+        ..sentStatuses = <SentInviteStatus>[
+          SentInviteStatus(
+            friend: EventFriendResume(
+              idValue: UserIdValue()..parse('user-declined'),
+              accountProfileIdValue: InviteAccountProfileIdValue()
+                ..parse('profile-declined'),
+              displayNameValue: UserDisplayNameValue()..parse('Pessoa Recusou'),
+              avatarUrlValue: UserAvatarValue(),
+            ),
+            status: InviteStatus.declined,
+            sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+            respondedAtValue: DateTimeValue()..parse('2026-05-23T12:05:00Z'),
+          ),
+          SentInviteStatus(
+            friend: EventFriendResume(
+              idValue: UserIdValue()..parse('user-superseded'),
+              accountProfileIdValue: InviteAccountProfileIdValue()
+                ..parse('profile-superseded'),
+              displayNameValue: UserDisplayNameValue()
+                ..parse('Pessoa Confirmada'),
+              avatarUrlValue: UserAvatarValue(),
+            ),
+            status: InviteStatus.superseded,
+            sentAtValue: DateTimeValue()..parse('2026-05-23T12:01:00Z'),
+            respondedAtValue: DateTimeValue()..parse('2026-05-23T12:06:00Z'),
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      final statusesByName = <String, InviteStatus?>{
+        for (final suggestion in _friendSuggestions(controller))
+          suggestion.friend.name: suggestion.inviteStatus,
+      };
+      expect(statusesByName['Pessoa Recusou'], InviteStatus.declined);
+      expect(statusesByName['Pessoa Confirmada'], InviteStatus.superseded);
 
       await controller.onDispose();
     },

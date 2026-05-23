@@ -105,7 +105,15 @@ class InviteShareFriendCard extends StatelessWidget {
       case InviteStatus.pending:
       case InviteStatus.viewed:
         return ('Convidado', false);
-      default:
+      case InviteStatus.declined:
+        return ('Convite recusado', false);
+      case InviteStatus.expired:
+        return ('Convite expirado', false);
+      case InviteStatus.superseded:
+        return ('Confirmado', false);
+      case InviteStatus.suppressed:
+        return ('Indisponível', false);
+      case null:
         return ('Convidar', true);
     }
   }

@@ -13,14 +13,19 @@ class InviteShareSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pending =
-        invites.where((i) => i.status != InviteStatus.accepted).length;
-    final confirmed = invites.length - pending;
+    final visibleInvites =
+        invites.where((invite) => !invite.status.isHiddenSentStatus).toList();
+    final pending = visibleInvites
+        .where((invite) => invite.status.countsAsPendingSummary)
+        .length;
+    final confirmed = visibleInvites
+        .where((invite) => invite.status.countsAsAcceptedSummary)
+        .length;
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          InviteShareOverlappedAvatars(invites: invites),
+          InviteShareOverlappedAvatars(invites: visibleInvites),
           const SizedBox(width: 12),
           Text(
             '$pending pendentes | $confirmed aceitos',

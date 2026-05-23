@@ -147,8 +147,7 @@ class InviteShareScreenController with Disposable {
       }
     } finally {
       _isPrimingCachedContactsForDisplay = false;
-      final shouldFinalizeDeferredAppPaneHydration =
-          !_isDisposed &&
+      final shouldFinalizeDeferredAppPaneHydration = !_isDisposed &&
           friendsSuggestionsStreamValue.value == null &&
           _invitesRepository.inviteableRecipientsStreamValue.value != null;
       if (shouldFinalizeDeferredAppPaneHydration) {
@@ -405,8 +404,7 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> _syncSentInvites() async {
-    await _applyInviteTargetsFromRepositoriesWithStatus(
-    );
+    await _applyInviteTargetsFromRepositoriesWithStatus();
   }
 
   Future<void> _loadShareCode() async {
@@ -434,6 +432,15 @@ class InviteShareScreenController with Disposable {
     }
 
     return invitesRepoString(occurrenceId, defaultValue: '', isRequired: true);
+  }
+
+  InvitesRepositoryContractPrimString? _currentEventIdValue() {
+    final eventId = _currentInvite?.eventId.trim();
+    if (eventId == null || eventId.isEmpty) {
+      return null;
+    }
+
+    return invitesRepoString(eventId, defaultValue: '', isRequired: true);
   }
 
   Future<void> reloadShareCode() async {
@@ -477,14 +484,15 @@ class InviteShareScreenController with Disposable {
     List<SentInviteStatus> sentInvites,
   ) {
     final inviteStatusMap = <String, SentInviteStatus>{
-      for (final invite in sentInvites) invite.friend.id: invite,
+      for (final invite in sentInvites) _sentInviteIdentityKey(invite): invite,
     };
 
     return friends
         .map(
           (friend) => InviteFriendResumeWithStatus(
             friend: friend,
-            inviteStatus: inviteStatusMap[friend.id]?.status,
+            inviteStatus:
+                inviteStatusMap[_inviteableIdentityKey(friend)]?.status,
           ),
         )
         .toList(growable: false);
@@ -608,12 +616,11 @@ class InviteShareScreenController with Disposable {
 
     _applyInviteTargetsFromRepositories(
       sentInvites: sentInvitesStreamValue.value,
-      publishAppPane:
-          !shouldSuppressEmptyHydrationWhilePriming &&
-              _canHydrateAppPaneFromRepositoryCache(
-                inviteableRecipients: inviteableRecipients,
-                importedMatches: importedMatches,
-              ),
+      publishAppPane: !shouldSuppressEmptyHydrationWhilePriming &&
+          _canHydrateAppPaneFromRepositoryCache(
+            inviteableRecipients: inviteableRecipients,
+            importedMatches: importedMatches,
+          ),
       publishPhonePane:
           selectedPaneStreamValue.value == InviteSharePane.phone &&
               _hasLoadedPhoneContacts,
@@ -673,7 +680,11 @@ class InviteShareScreenController with Disposable {
       return const <SentInviteStatus>[];
     }
 
-    return _invitesRepository.getSentInvitesForOccurrence(occurrenceId);
+    return _invitesRepository.refreshSentInvitesForOccurrence(
+      occurrenceId: occurrenceId,
+      eventId: _currentEventIdValue(),
+      recipientAccountProfileIds: _visibleRecipientAccountProfileIds(),
+    );
   }
 
   void _applyInviteTargetsFromRepositories({
@@ -904,6 +915,33 @@ class InviteShareScreenController with Disposable {
     }
 
     return 'user:${friend.id}';
+  }
+
+  String _sentInviteIdentityKey(SentInviteStatus invite) {
+    final accountProfileId = invite.friend.accountProfileId.trim();
+    if (accountProfileId.isNotEmpty) {
+      return 'account_profile:$accountProfileId';
+    }
+
+    return 'user:${invite.friend.id}';
+  }
+
+  List<InvitesRepositoryContractPrimString>
+      _visibleRecipientAccountProfileIds() {
+    final ids = <String>{
+      ...(_invitesRepository.inviteableRecipientsStreamValue.value ??
+              const <InviteableRecipient>[])
+          .map((recipient) => recipient.receiverAccountProfileId.trim())
+          .where((id) => id.isNotEmpty),
+      ...(_invitesRepository.importedContactMatchesStreamValue.value ??
+              const <InviteContactMatch>[])
+          .map((match) => match.receiverAccountProfileId.trim())
+          .where((id) => id.isNotEmpty),
+    }.toList(growable: false);
+
+    return ids
+        .map((id) => invitesRepoString(id, defaultValue: '', isRequired: true))
+        .toList(growable: false);
   }
 
   EventFriendResume _toEventFriendResume(InviteFriendResume friend) {

@@ -20,6 +20,11 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_val
 import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
@@ -141,6 +146,26 @@ class InvitesResponseDecoder {
     }
 
     return dedupedByProfileId.values.toList(growable: false);
+  }
+
+  List<SentInviteStatus> decodeSentInviteStatuses(Object? rawItems) {
+    if (rawItems is! List) {
+      return const <SentInviteStatus>[];
+    }
+
+    final statuses = <SentInviteStatus>[];
+    for (final item in rawItems) {
+      if (item is! Map) {
+        continue;
+      }
+      final status = _mapSentInviteStatus(Map<String, dynamic>.from(item));
+      if (status == null) {
+        continue;
+      }
+      statuses.add(status);
+    }
+
+    return statuses;
   }
 
   List<InviteContactGroup> decodeContactGroups(Object? rawItems) {
@@ -354,6 +379,66 @@ class InvitesResponseDecoder {
         ),
       ),
     );
+  }
+
+  SentInviteStatus? _mapSentInviteStatus(Map<String, dynamic> map) {
+    final accountProfileId = _stringOrEmpty(
+      map['receiver_account_profile_id'],
+    ).trim();
+    final receiverUserId = _stringOrEmpty(map['receiver_user_id']).trim();
+    final identity =
+        receiverUserId.isNotEmpty ? receiverUserId : accountProfileId;
+    if (identity.isEmpty || accountProfileId.isEmpty) {
+      return null;
+    }
+
+    final accountProfileIdValue = InviteAccountProfileIdValue()
+      ..parse(accountProfileId);
+    final displayNameValue =
+        UserDisplayNameValue(isRequired: false, minLenght: null)
+          ..parse(_stringOrEmpty(map['display_name']).trim());
+    final avatarValue = UserAvatarValue();
+    final avatarRaw = _stringOrNull(map['avatar_url']);
+    if (avatarRaw != null) {
+      avatarValue.parse(avatarRaw);
+    }
+
+    final sentAtRaw = _stringOrNull(map['sent_at']) ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true).toIso8601String();
+    final respondedAtRaw = _stringOrNull(map['responded_at']);
+
+    return SentInviteStatus(
+      friend: EventFriendResume(
+        idValue: UserIdValue()..parse(identity),
+        accountProfileIdValue: accountProfileIdValue,
+        displayNameValue: displayNameValue,
+        avatarUrlValue: avatarValue,
+      ),
+      status: _parseInviteStatus(_stringOrNull(map['status'])),
+      sentAtValue: DateTimeValue()..parse(sentAtRaw),
+      respondedAtValue: respondedAtRaw == null
+          ? null
+          : (DateTimeValue()..parse(respondedAtRaw)),
+    );
+  }
+
+  InviteStatus _parseInviteStatus(String? rawStatus) {
+    switch (rawStatus?.toLowerCase()) {
+      case 'accepted':
+        return InviteStatus.accepted;
+      case 'declined':
+        return InviteStatus.declined;
+      case 'viewed':
+        return InviteStatus.viewed;
+      case 'expired':
+        return InviteStatus.expired;
+      case 'superseded':
+        return InviteStatus.superseded;
+      case 'suppressed':
+        return InviteStatus.suppressed;
+      default:
+        return InviteStatus.pending;
+    }
   }
 
   InviteAccountProfileIds _buildInviteAccountProfileIds(List<String> ids) {

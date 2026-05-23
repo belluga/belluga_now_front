@@ -155,6 +155,28 @@ void main() {
   });
 
   test(
+      'event detail init refreshes sent invite statuses for selected occurrence',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+    await pumpEventQueue();
+
+    expect(invitesRepository.sentStatusRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439012',
+        'event_id': '507f1f77bcf86cd799439011',
+      },
+    ]);
+  });
+
+  test(
       'event detail init does not refresh confirmed ids on entry and consumes repository cache',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -455,6 +477,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
   int fetchInvitesCalls = 0;
+  final sentStatusRefreshes = <Map<String, Object?>>[];
   final List<String> acceptedShareCodes = <String>[];
   List<InviteModel> fetchInvitesResult = const <InviteModel>[];
   _FakeUserEventsRepository? linkedUserEventsRepository;
@@ -542,6 +565,23 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventId) async {
+    return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async {
+    sentStatusRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      if (recipientAccountProfileIds.isNotEmpty)
+        'recipient_account_profile_ids':
+            recipientAccountProfileIds.map((value) => value.value).toList(),
+    });
     return const <SentInviteStatus>[];
   }
 
