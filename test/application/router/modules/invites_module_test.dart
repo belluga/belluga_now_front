@@ -19,15 +19,15 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('invite routes keep anonymous entry and auth-protected share flow', () {
+  test('invite routes keep anonymous entry and auth-protected groups flow', () {
     final module = InvitesModule();
     final routes = module.routes;
 
     final flowRoute = routes.firstWhere((route) => route.path == '/convites');
     final inviteAliasRoute =
         routes.firstWhere((route) => route.path == '/invite');
-    final shareRoute =
-        routes.firstWhere((route) => route.path == '/convites/compartilhar');
+    final groupsRoute =
+        routes.firstWhere((route) => route.path == '/convites/grupos');
 
     expect(
       flowRoute.guards.map((guard) => guard.runtimeType).toList(),
@@ -38,8 +38,12 @@ void main() {
       [TenantRouteGuard, WebAnonymousFallbackGuard],
     );
     expect(
-      shareRoute.guards.map((guard) => guard.runtimeType).toList(),
+      groupsRoute.guards.map((guard) => guard.runtimeType).toList(),
       [TenantRouteGuard, AuthRouteGuard],
+    );
+    expect(
+      routes.where((route) => route.path == '/convites/compartilhar'),
+      isEmpty,
     );
   });
 
@@ -150,6 +154,5 @@ class _FakeAuthRepository extends AuthRepositoryContract {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }

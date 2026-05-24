@@ -698,7 +698,7 @@ void main() {
       expect(invitesRepository.sendInvitesCalls, 1);
       expect(
         controller.sendingInviteRecipientKeysStreamValue.value,
-        contains('session:1|occurrence:occurrence-1|account_profile:profile-1'),
+        contains('occurrence:occurrence-1|account_profile:profile-1'),
       );
 
       sendGate.complete();
@@ -712,7 +712,7 @@ void main() {
   );
 
   test(
-    'init resets stale send failure and in-flight invite state on singleton reuse',
+    'init resets stale send failure and in-flight invite state on occurrence switch',
     () async {
       final sendGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
@@ -760,7 +760,7 @@ void main() {
   );
 
   test(
-    'stale in-flight send does not publish pending status after singleton reinit',
+    'stale in-flight send does not publish pending status after occurrence switch',
     () async {
       final sendGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
@@ -806,7 +806,7 @@ void main() {
   );
 
   test(
-    'stale post-send sync does not publish status after singleton reinit',
+    'stale post-send sync does not publish status after occurrence switch',
     () async {
       final syncGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
@@ -870,7 +870,7 @@ void main() {
   );
 
   test(
-    'stale init refresh does not publish old occurrence inviteables after singleton reinit',
+    'stale init refresh does not publish old occurrence inviteables after occurrence switch',
     () async {
       final occurrenceOneGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
@@ -937,7 +937,7 @@ void main() {
   );
 
   test(
-    'stale cache prime does not publish old occurrence inviteables after singleton reinit',
+    'stale cache prime does not publish old occurrence inviteables after occurrence switch',
     () async {
       final stalePrimeGate = Completer<void>();
       final contactsRepository = _FakeContactsRepository(
@@ -1018,7 +1018,7 @@ void main() {
   );
 
   test(
-    'stale load failure does not clear current occurrence sent state after singleton reinit',
+    'stale load failure does not clear current occurrence sent state after occurrence switch',
     () async {
       final oldOccurrenceGate = Completer<void>();
       final currentSentStatus = SentInviteStatus(

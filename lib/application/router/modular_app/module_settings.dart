@@ -6,6 +6,7 @@ import 'package:belluga_now/application/router/modular_app/modules/account_works
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/home_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/invite_share_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
@@ -128,6 +129,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(TenantAdminModule());
     await registerSubModule(ProfileModule());
     await registerSubModule(InvitesModule());
+    await registerSubModule(InviteShareModule());
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());

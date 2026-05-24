@@ -1,4 +1,4 @@
-import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/invite_share_module.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/routes/invite_share_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,8 +7,8 @@ import 'package:get_it/get_it.dart';
 void main() {
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerLazySingleton<InvitesModule>(
-      () => InvitesModule(),
+    GetIt.I.registerLazySingleton<InviteShareModule>(
+      () => InviteShareModule(),
     );
   });
 
