@@ -45,12 +45,14 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
     this.throwOnRequestPermission = false,
     this.contacts = const <ContactModel>[],
-  });
+    List<ContactModel>? cachedContacts,
+  }) : _cachedContacts = cachedContacts;
 
   bool permissionGranted = true;
   bool throwOnRequestPermission;
   bool throwOnGetContacts = false;
   List<ContactModel> contacts;
+  List<ContactModel>? _cachedContacts;
   int loadCachedContactsCalls = 0;
   int refreshCachedContactsCalls = 0;
   int refreshContactsCalls = 0;
@@ -84,20 +86,25 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   Future<void> loadCachedContacts() async {
     loadCachedContactsCalls += 1;
     await loadCachedContactsGate?.future;
-    contactsStreamValue.addValue(contacts);
+    contactsStreamValue.addValue(_cachedContacts ?? contacts);
   }
 
   @override
   Future<void> refreshCachedContacts() async {
     refreshCachedContactsCalls += 1;
-    final loadedContacts = await getContacts();
-    contactsStreamValue.addValue(loadedContacts);
+    await loadCachedContacts();
+    if (contactsStreamValue.value != null) {
+      return;
+    }
+
+    await refreshContacts();
   }
 
   @override
   Future<void> refreshContacts() async {
     refreshContactsCalls += 1;
     final loadedContacts = await getContacts();
+    _cachedContacts = loadedContacts;
     contactsStreamValue.addValue(loadedContacts);
   }
 }
@@ -111,6 +118,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   List<InviteContactMatch>? cachedImportContactMatches;
   List<SentInviteStatus> sentStatuses = const <SentInviteStatus>[];
   SentInviteSummary sentSummary = SentInviteSummary.empty();
+  bool throwOnSentSummary = false;
   final sentRecipientAccountProfileIds = <String>[];
   final sentStatusRefreshes = <Map<String, Object?>>[];
   final sentSummaryRefreshes = <Map<String, Object?>>[];
@@ -323,6 +331,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? eventId,
     InvitesRepositoryContractPrimInt? previewLimit,
   }) async {
+    if (throwOnSentSummary) {
+      throw Exception('sent summary failed');
+    }
     sentSummaryRefreshes.add({
       'occurrence_id': occurrenceId.value,
       'event_id': eventId?.value,
@@ -901,6 +912,58 @@ void main() {
   );
 
   test(
+    'reopening invite share keeps cached app pane when occurrence summary refresh fails',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipientsStreamValue.addValue(<InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ])
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ]
+        ..throwOnSentSummary = true;
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(
+        _friendSuggestions(controller).map((item) => item.friend.name).toList(),
+        ['Ana Contato', 'Bia Favorita'],
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
     'init starts backend inviteables refresh without waiting for cached contacts load',
     () async {
       final loadGate = Completer<void>();
@@ -1282,6 +1345,39 @@ void main() {
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
       expect(_externalTargets(controller), isNotEmpty);
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'selecting Telefone reads device contacts when the cached Agenda is empty',
+    () async {
+      final contactsRepository = _FakeContactsRepository(
+        cachedContacts: const <ContactModel>[],
+        contacts: <ContactModel>[
+          buildContactModel(
+            id: 'device-contact',
+            displayName: 'Contato Device',
+            phones: <String>['+55 27 98888-7777'],
+          ),
+        ],
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      await controller.init(_buildInvite());
+      await controller.selectPane(InviteSharePane.phone);
+
+      expect(contactsRepository.refreshContactsCalls, 1);
+      expect(_externalTargets(controller), hasLength(1));
+      expect(_externalTargets(controller).single.displayName, 'Contato Device');
 
       await controller.onDispose();
     },

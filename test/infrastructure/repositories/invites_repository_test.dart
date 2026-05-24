@@ -472,6 +472,42 @@ void main() {
   });
 
   test(
+    'fetchInviteableRecipientsForOccurrence accepts account-profile-only rows',
+    () async {
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(
+          inviteableContactsResponse: {
+            'items': [
+              {
+                'receiver_account_profile_id': 'profile-only-1',
+                'display_name': 'Venue Inviteable',
+                'avatar_url': null,
+                'profile_exposure_level': 'full_profile',
+                'inviteable_reasons': ['favorite_by_you'],
+                'is_inviteable': true,
+              },
+            ],
+          },
+        ),
+      );
+
+      final recipients =
+          await repository.fetchInviteableRecipientsForOccurrence(
+        occurrenceId: invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(recipients, hasLength(1));
+      expect(recipients.single.receiverAccountProfileId, 'profile-only-1');
+      expect(recipients.single.userId, 'profile-only-1');
+      expect(recipients.single.displayName, 'Venue Inviteable');
+    },
+  );
+
+  test(
     'fetchInviteableRecipientsForOccurrence decodes row sent status without broad sent-status fetch',
     () async {
       final backend = _FakeInvitesBackend(

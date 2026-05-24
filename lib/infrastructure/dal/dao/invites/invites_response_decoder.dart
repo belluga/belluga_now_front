@@ -339,8 +339,10 @@ class InvitesResponseDecoder {
   }
 
   InviteableRecipient? _mapInviteableRecipient(Map<String, dynamic> map) {
-    final userId = _stringOrEmpty(map['user_id']);
-    final accountProfileId = _stringOrEmpty(map['receiver_account_profile_id']);
+    final accountProfileId = _stringOrEmpty(
+      map['receiver_account_profile_id'] ?? map['account_profile_id'],
+    );
+    final userId = _stringOrEmpty(map['user_id'] ?? accountProfileId);
     final displayName = _stringOrEmpty(map['display_name']);
     if (userId.isEmpty || accountProfileId.isEmpty || displayName.isEmpty) {
       return null;
