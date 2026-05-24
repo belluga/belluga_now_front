@@ -59,6 +59,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesRepository extends InvitesRepositoryContract
@@ -110,6 +111,9 @@ class InvitesRepository extends InvitesRepositoryContract
       <String, Future<List<SentInviteStatus>>>{};
   final Map<String, Future<SentInviteSummary>> _activeSentSummaryRefreshes =
       <String, Future<SentInviteSummary>>{};
+  final Map<String, StreamValue<List<InviteableRecipient>?>>
+      _inviteableRecipientsByOccurrenceStreamValues =
+      <String, StreamValue<List<InviteableRecipient>?>>{};
   UserEventsRepositoryContract? _userEventsRepository;
   StreamSubscription<Object?>? _inviteRealtimeAuthSubscription;
   StreamSubscription<InviteRealtimeDeltaDto>? _inviteRealtimeStreamSubscription;
@@ -582,6 +586,22 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
+  StreamValue<List<InviteableRecipient>?>
+      inviteableRecipientsStreamValueForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) {
+    final normalizedOccurrenceId = occurrenceId.value.trim();
+    if (normalizedOccurrenceId.isEmpty) {
+      return inviteableRecipientsStreamValue;
+    }
+
+    return _inviteableRecipientsByOccurrenceStreamValues.putIfAbsent(
+      normalizedOccurrenceId,
+      () => StreamValue<List<InviteableRecipient>?>(defaultValue: null),
+    );
+  }
+
+  @override
   Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? eventId,
@@ -603,7 +623,10 @@ class InvitesRepository extends InvitesRepositoryContract
     );
     final recipients =
         _responseDecoder.decodeInviteableRecipients(response['items']);
-    inviteableRecipientsStreamValue.addValue(recipients);
+    setInviteableRecipientsForOccurrence(
+      occurrenceId: occurrenceId,
+      recipients: recipients,
+    );
     _storeSentInviteStatusesFromInviteables(
       occurrenceId: normalizedOccurrenceId,
       recipients: recipients,

@@ -491,19 +491,30 @@ void main() {
         ),
       );
 
+      final occurrenceId = invitesRepoString(
+        'occurrence-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+
       final recipients =
           await repository.fetchInviteableRecipientsForOccurrence(
-        occurrenceId: invitesRepoString(
-          'occurrence-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
+        occurrenceId: occurrenceId,
       );
 
       expect(recipients, hasLength(1));
       expect(recipients.single.receiverAccountProfileId, 'profile-only-1');
       expect(recipients.single.userId, 'profile-only-1');
       expect(recipients.single.displayName, 'Venue Inviteable');
+      expect(
+        repository
+            .inviteableRecipientsStreamValueForOccurrence(occurrenceId)
+            .value
+            ?.single
+            .receiverAccountProfileId,
+        'profile-only-1',
+      );
+      expect(repository.inviteableRecipientsStreamValue.value, isNull);
     },
   );
 
@@ -536,13 +547,14 @@ void main() {
       );
       final repository = InvitesRepository(backend: backend);
 
+      final occurrenceId = invitesRepoString(
+        'occurrence-1',
+        defaultValue: '',
+        isRequired: true,
+      );
       final recipients =
           await repository.fetchInviteableRecipientsForOccurrence(
-        occurrenceId: invitesRepoString(
-          'occurrence-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
+        occurrenceId: occurrenceId,
         eventId: invitesRepoString(
           'event-1',
           defaultValue: '',
@@ -562,6 +574,15 @@ void main() {
       expect(
         recipients.single.sentInviteStatus?.friend.accountProfileId,
         'profile-2',
+      );
+      expect(
+        repository
+            .inviteableRecipientsStreamValueForOccurrence(occurrenceId)
+            .value
+            ?.single
+            .sentInviteStatus
+            ?.status,
+        InviteStatus.accepted,
       );
       expect(backend.sentInviteStatusPayloads, isEmpty);
     },

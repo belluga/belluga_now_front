@@ -230,6 +230,28 @@ abstract class InvitesRepositoryContract {
     inviteableRecipientsStreamValue.addValue(recipients);
   }
 
+  StreamValue<List<InviteableRecipient>?>
+      inviteableRecipientsStreamValueForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) =>
+          throw UnimplementedError(
+            'Occurrence-scoped inviteables require repository slot storage.',
+          );
+
+  void setInviteableRecipientsForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    required List<InviteableRecipient> recipients,
+  }) {
+    inviteableRecipientsStreamValueForOccurrence(occurrenceId).addValue(
+      List<InviteableRecipient>.unmodifiable(recipients),
+    );
+  }
+
+  List<InviteableRecipient>? inviteableRecipientsForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) =>
+      inviteableRecipientsStreamValueForOccurrence(occurrenceId).value;
+
   Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? eventId,
@@ -250,7 +272,10 @@ abstract class InvitesRepositoryContract {
       page: page,
       pageSize: pageSize,
     );
-    inviteableRecipientsStreamValue.addValue(recipients);
+    setInviteableRecipientsForOccurrence(
+      occurrenceId: occurrenceId,
+      recipients: recipients,
+    );
   }
 
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
@@ -278,6 +303,12 @@ abstract class InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? accountProfileId,
   });
 
+  /// Sends direct invites for the occurrence.
+  ///
+  /// Implementations that receive created/already-invited acknowledgements must
+  /// publish those statuses to [sentInvitesByOccurrenceStreamValue] before this
+  /// future completes. Presentation controllers use that stream as the
+  /// synchronous acknowledgement source for optimistic UI.
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventId,
     InviteRecipients recipients, {
