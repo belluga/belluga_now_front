@@ -16,7 +16,6 @@ import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_sh
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_event_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_footer.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
-import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_relation_filter_chips.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -74,126 +73,90 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ],
       ),
       body: SafeArea(
-        child: StreamValueBuilder<String?>(
-          streamValue: _controller.selectedInviteableReasonStreamValue,
-          builder: (context, selectedReason) {
-            return StreamValueBuilder<List<SentInviteStatus>>(
-              streamValue: _controller.sentInvitesStreamValue,
-              builder: (context, sentInvites) {
-                return StreamValueBuilder<InviteSharePane>(
-                  streamValue: _controller.selectedPaneStreamValue,
-                  builder: (context, selectedPane) {
+        child: StreamValueBuilder<List<SentInviteStatus>>(
+          streamValue: _controller.sentInvitesStreamValue,
+          builder: (context, sentInvites) {
+            return StreamValueBuilder<InviteSharePane>(
+              streamValue: _controller.selectedPaneStreamValue,
+              builder: (context, selectedPane) {
+                return StreamValueBuilder<bool>(
+                  streamValue: _controller.isPhoneContactsRefreshingStreamValue,
+                  builder: (context, isRefreshing) {
                     return StreamValueBuilder<bool>(
-                      streamValue:
-                          _controller.isPhoneContactsRefreshingStreamValue,
-                      builder: (context, isRefreshing) {
+                      streamValue: _controller.inviteSendFailedStreamValue,
+                      builder: (context, hasInviteSendFailed) {
                         return StreamValueBuilder<bool>(
-                          streamValue: _controller.inviteSendFailedStreamValue,
-                          builder: (context, hasInviteSendFailed) {
+                          streamValue:
+                              _controller.phoneContactsRefreshFailedStreamValue,
+                          builder: (context, hasRefreshFailed) {
+                            if (selectedPane == InviteSharePane.app) {
+                              return StreamValueBuilder<
+                                  List<InviteFriendResumeWithStatus>?>(
+                                streamValue:
+                                    _controller.friendsSuggestionsStreamValue,
+                                onNullWidget: _buildScreenBody(
+                                  selectedPane: selectedPane,
+                                  phoneContactCount:
+                                      _cachedExternalTargets().length,
+                                  isRefreshing: isRefreshing,
+                                  hasRefreshFailed: hasRefreshFailed,
+                                  hasInviteSendFailed: hasInviteSendFailed,
+                                  filteredFriends: const <InviteFriendResumeWithStatus>[],
+                                  externalTargets: _cachedExternalTargets(),
+                                  isPaneLoading: true,
+                                ),
+                                builder: (context, friendsWithStatus) {
+                                  final resolvedFriendsWithStatus =
+                                      friendsWithStatus ??
+                                          const <InviteFriendResumeWithStatus>[];
+                                  return _buildScreenBody(
+                                    selectedPane: selectedPane,
+                                    phoneContactCount:
+                                        _cachedExternalTargets().length,
+                                    isRefreshing: isRefreshing,
+                                    hasRefreshFailed: hasRefreshFailed,
+                                    hasInviteSendFailed: hasInviteSendFailed,
+                                    filteredFriends: resolvedFriendsWithStatus,
+                                    externalTargets: _cachedExternalTargets(),
+                                    isPaneLoading: false,
+                                  );
+                                },
+                              );
+                            }
+
                             return StreamValueBuilder<bool>(
                               streamValue: _controller
-                                  .phoneContactsRefreshFailedStreamValue,
-                              builder: (context, hasRefreshFailed) {
-                                if (selectedPane == InviteSharePane.app) {
-                                  return StreamValueBuilder<
-                                      List<InviteFriendResumeWithStatus>?>(
-                                    streamValue: _controller
-                                        .friendsSuggestionsStreamValue,
-                                    onNullWidget: _buildScreenBody(
+                                  .isPhonePaneInitialLoadingStreamValue,
+                              builder: (context, isInitialPhonePaneLoading) {
+                                return StreamValueBuilder<
+                                    List<InviteExternalContactShareTarget>?>(
+                                  streamValue: _controller
+                                      .externalContactShareTargetsStreamValue,
+                                  onNullWidget: _buildScreenBody(
+                                    selectedPane: selectedPane,
+                                    phoneContactCount: 0,
+                                    isRefreshing: isRefreshing,
+                                    hasRefreshFailed: hasRefreshFailed,
+                                    hasInviteSendFailed: hasInviteSendFailed,
+                                    filteredFriends: _cachedFriendsWithStatus(),
+                                    externalTargets: const <InviteExternalContactShareTarget>[],
+                                    isPaneLoading: true,
+                                  ),
+                                  builder: (context, externalTargets) {
+                                    final resolvedExternalTargets =
+                                        externalTargets ??
+                                            const <InviteExternalContactShareTarget>[];
+                                    return _buildScreenBody(
                                       selectedPane: selectedPane,
                                       phoneContactCount:
-                                          _cachedExternalTargets().length,
+                                          resolvedExternalTargets.length,
                                       isRefreshing: isRefreshing,
                                       hasRefreshFailed: hasRefreshFailed,
                                       hasInviteSendFailed: hasInviteSendFailed,
-                                      availableReasons: const <String>[],
-                                      selectedReason: selectedReason,
-                                      filteredFriends: const <InviteFriendResumeWithStatus>[],
-                                      externalTargets: _cachedExternalTargets(),
-                                      isPaneLoading: true,
-                                    ),
-                                    builder: (context, friendsWithStatus) {
-                                      final resolvedFriendsWithStatus =
-                                          friendsWithStatus ??
-                                              const <InviteFriendResumeWithStatus>[];
-                                      return _buildScreenBody(
-                                        selectedPane: selectedPane,
-                                        phoneContactCount:
-                                            _cachedExternalTargets().length,
-                                        isRefreshing: isRefreshing,
-                                        hasRefreshFailed: hasRefreshFailed,
-                                        hasInviteSendFailed:
-                                            hasInviteSendFailed,
-                                        availableReasons: _availableReasons(
-                                          resolvedFriendsWithStatus,
-                                        ),
-                                        selectedReason: selectedReason,
-                                        filteredFriends: _filterFriends(
-                                          resolvedFriendsWithStatus,
-                                          selectedReason,
-                                        ),
-                                        externalTargets:
-                                            _cachedExternalTargets(),
-                                        isPaneLoading: false,
-                                      );
-                                    },
-                                  );
-                                }
-
-                                return StreamValueBuilder<bool>(
-                                  streamValue: _controller
-                                      .isPhonePaneInitialLoadingStreamValue,
-                                  builder:
-                                      (context, isInitialPhonePaneLoading) {
-                                    return StreamValueBuilder<
-                                        List<
-                                            InviteExternalContactShareTarget>?>(
-                                      streamValue: _controller
-                                          .externalContactShareTargetsStreamValue,
-                                      onNullWidget: _buildScreenBody(
-                                        selectedPane: selectedPane,
-                                        phoneContactCount: 0,
-                                        isRefreshing: isRefreshing,
-                                        hasRefreshFailed: hasRefreshFailed,
-                                        hasInviteSendFailed:
-                                            hasInviteSendFailed,
-                                        availableReasons: _availableReasons(
+                                      filteredFriends:
                                           _cachedFriendsWithStatus(),
-                                        ),
-                                        selectedReason: selectedReason,
-                                        filteredFriends: _filterFriends(
-                                          _cachedFriendsWithStatus(),
-                                          selectedReason,
-                                        ),
-                                        externalTargets: const <InviteExternalContactShareTarget>[],
-                                        isPaneLoading: true,
-                                      ),
-                                      builder: (context, externalTargets) {
-                                        final resolvedExternalTargets =
-                                            externalTargets ??
-                                                const <InviteExternalContactShareTarget>[];
-                                        return _buildScreenBody(
-                                          selectedPane: selectedPane,
-                                          phoneContactCount:
-                                              resolvedExternalTargets.length,
-                                          isRefreshing: isRefreshing,
-                                          hasRefreshFailed: hasRefreshFailed,
-                                          hasInviteSendFailed:
-                                              hasInviteSendFailed,
-                                          availableReasons: _availableReasons(
-                                            _cachedFriendsWithStatus(),
-                                          ),
-                                          selectedReason: selectedReason,
-                                          filteredFriends: _filterFriends(
-                                            _cachedFriendsWithStatus(),
-                                            selectedReason,
-                                          ),
-                                          externalTargets:
-                                              resolvedExternalTargets,
-                                          isPaneLoading:
-                                              isInitialPhonePaneLoading,
-                                        );
-                                      },
+                                      externalTargets: resolvedExternalTargets,
+                                      isPaneLoading: isInitialPhonePaneLoading,
                                     );
                                   },
                                 );
@@ -219,8 +182,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     required bool isRefreshing,
     required bool hasRefreshFailed,
     required bool hasInviteSendFailed,
-    required List<String> availableReasons,
-    required String? selectedReason,
     required List<InviteFriendResumeWithStatus> filteredFriends,
     required List<InviteExternalContactShareTarget> externalTargets,
     required bool isPaneLoading,
@@ -234,8 +195,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
             isRefreshing: isRefreshing,
             hasRefreshFailed: hasRefreshFailed,
             hasInviteSendFailed: hasInviteSendFailed,
-            availableReasons: availableReasons,
-            selectedReason: selectedReason,
             filteredFriends: filteredFriends,
             externalTargets: externalTargets,
             isPaneLoading: isPaneLoading,
@@ -278,8 +237,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     required bool isRefreshing,
     required bool hasRefreshFailed,
     required bool hasInviteSendFailed,
-    required List<String> availableReasons,
-    required String? selectedReason,
     required List<InviteFriendResumeWithStatus> filteredFriends,
     required List<InviteExternalContactShareTarget> externalTargets,
     required bool isPaneLoading,
@@ -288,7 +245,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: _contentItemCount(
         selectedPane: selectedPane,
-        availableReasons: availableReasons,
         filteredFriends: filteredFriends,
         externalTargets: externalTargets,
         isPaneLoading: isPaneLoading,
@@ -302,8 +258,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
           isRefreshing: isRefreshing,
           hasRefreshFailed: hasRefreshFailed,
           hasInviteSendFailed: hasInviteSendFailed,
-          availableReasons: availableReasons,
-          selectedReason: selectedReason,
           filteredFriends: filteredFriends,
           externalTargets: externalTargets,
           isPaneLoading: isPaneLoading,
@@ -314,7 +268,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
 
   int _contentItemCount({
     required InviteSharePane selectedPane,
-    required List<String> availableReasons,
     required List<InviteFriendResumeWithStatus> filteredFriends,
     required List<InviteExternalContactShareTarget> externalTargets,
     required bool isPaneLoading,
@@ -323,10 +276,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       return 7;
     }
     final paneCount = selectedPane == InviteSharePane.app
-        ? _appPaneItemCount(
-            availableReasons: availableReasons,
-            filteredFriends: filteredFriends,
-          )
+        ? _appPaneItemCount(filteredFriends)
         : _phonePaneItemCount(externalTargets);
     return 6 + paneCount;
   }
@@ -339,8 +289,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     required bool isRefreshing,
     required bool hasRefreshFailed,
     required bool hasInviteSendFailed,
-    required List<String> availableReasons,
-    required String? selectedReason,
     required List<InviteFriendResumeWithStatus> filteredFriends,
     required List<InviteExternalContactShareTarget> externalTargets,
     required bool isPaneLoading,
@@ -371,8 +319,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
           return _buildAppPaneItem(
             context: context,
             index: paneIndex,
-            availableReasons: availableReasons,
-            selectedReason: selectedReason,
             filteredFriends: filteredFriends,
             isLoading: isPaneLoading,
           );
@@ -488,19 +434,13 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  int _appPaneItemCount({
-    required List<String> availableReasons,
-    required List<InviteFriendResumeWithStatus> filteredFriends,
-  }) {
-    return (availableReasons.isNotEmpty ? 1 : 0) +
-        (filteredFriends.isEmpty ? 1 : filteredFriends.length);
+  int _appPaneItemCount(List<InviteFriendResumeWithStatus> filteredFriends) {
+    return filteredFriends.isEmpty ? 1 : filteredFriends.length;
   }
 
   Widget _buildAppPaneItem({
     required BuildContext context,
     required int index,
-    required List<String> availableReasons,
-    required String? selectedReason,
     required List<InviteFriendResumeWithStatus> filteredFriends,
     required bool isLoading,
   }) {
@@ -512,27 +452,15 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       );
     }
 
-    var itemIndex = index;
-    if (availableReasons.isNotEmpty) {
-      if (itemIndex == 0) {
-        return InviteShareRelationFilterChips(
-          selectedReason: selectedReason,
-          availableReasons: availableReasons,
-          onSelectReason: _controller.selectInviteableReason,
-        );
-      }
-      itemIndex -= 1;
-    }
-
     if (filteredFriends.isEmpty) {
       return _buildEmptyState(
         context: context,
         icon: Icons.person_search_outlined,
-        text: 'Nenhum contato convidável para este filtro.',
+        text: 'Nenhuma pessoa do app disponível para convite.',
       );
     }
 
-    final item = filteredFriends[itemIndex];
+    final item = filteredFriends[index];
     return StreamValueBuilder<Set<String>>(
       streamValue: _controller.sendingInviteRecipientKeysStreamValue,
       builder: (context, sendingInviteKeys) => InviteShareFriendCard(
@@ -666,32 +594,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ],
       ),
     );
-  }
-
-  List<InviteFriendResumeWithStatus> _filterFriends(
-    List<InviteFriendResumeWithStatus> friends,
-    String? selectedReason,
-  ) {
-    final reason = selectedReason?.trim();
-    if (reason == null || reason.isEmpty) {
-      return friends;
-    }
-    return friends
-        .where((item) => item.friend.inviteableReasons.contains(reason))
-        .toList(growable: false);
-  }
-
-  List<String> _availableReasons(List<InviteFriendResumeWithStatus> friends) {
-    const order = <String>[
-      'contact_match',
-      'favorite_by_you',
-      'favorited_you',
-      'friend',
-    ];
-    final available = <String>{
-      for (final item in friends) ...item.friend.inviteableReasons,
-    };
-    return order.where(available.contains).toList(growable: false);
   }
 
   void _openGroupManagement() {

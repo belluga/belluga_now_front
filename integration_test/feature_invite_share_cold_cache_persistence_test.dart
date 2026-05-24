@@ -12,6 +12,7 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/inviteables_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -40,7 +41,7 @@ void main() {
   });
 
   testWidgets(
-    'invite share cold relaunch rehydrates app and Agenda panes from chunked local cache on device',
+    'invite share cold relaunch keeps app pane on inviteables cache and Agenda on local contacts cache',
     (tester) async {
       final binding = TestWidgetsFlutterBinding.ensureInitialized();
       binding.platformDispatcher.localeTestValue = const Locale('pt', 'BR');
@@ -195,7 +196,11 @@ void main() {
         currentUserIdProvider: () async => viewerId,
         persistedTenantCacheScopeProvider: () async => tenantScope,
       );
+      final coldInviteablesRepository = InviteablesRepository(
+        backend: coldBackend,
+      );
       final controller = InviteShareScreenController(
+        inviteablesRepository: coldInviteablesRepository,
         invitesRepository: coldInvitesRepository,
         contactsRepository: coldContactsRepository,
         appData: _buildAppData(),
@@ -217,31 +222,36 @@ void main() {
       );
       await tester.pump();
 
-      final appPaneHydrated = await _waitUntilCondition(
+      final importedMatchCacheObservedWithoutAppHydration =
+          await _waitUntilCondition(
         tester,
-        () => (controller.friendsSuggestionsStreamValue.value?.isNotEmpty ??
-            false),
+        () =>
+            (coldInvitesRepository
+                    .importedContactMatchesStreamValue.value?.isNotEmpty ??
+                false) &&
+            !(controller.friendsSuggestionsStreamValue.value?.isNotEmpty ??
+                false) &&
+            !(coldInviteablesRepository
+                    .inviteableRecipientsStreamValue.value?.isNotEmpty ??
+                false),
         forbiddenFinders: <Finder>[
-          find.text('Nenhum contato convidável para este filtro.'),
+          find.text('Nenhuma pessoa do app disponível para convite.'),
         ],
       );
       expect(
-        appPaneHydrated,
+        importedMatchCacheObservedWithoutAppHydration,
         isTrue,
         reason: [
-          'cold app pane did not hydrate from cache',
+          'cold app pane must not hydrate from imported-match cache',
           'cachedContacts=${coldContactsRepository.contactsStreamValue.value?.length ?? 0}',
           'shareableContacts=${(coldContactsRepository.contactsStreamValue.value ?? const <ContactModel>[]).where((contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty).length}',
           'region=${controller.debugContactRegionCodeValue ?? 'null'}',
           'importedMatches=${coldInvitesRepository.importedContactMatchesStreamValue.value?.length ?? 0}',
-          'inviteables=${coldInvitesRepository.inviteableRecipientsStreamValue.value?.length ?? 0}',
+          'inviteables=${coldInviteablesRepository.inviteableRecipientsStreamValue.value?.length ?? 0}',
           'friends=${controller.friendsSuggestionsStreamValue.value?.length ?? 0}',
         ].join(' | '),
       );
-      await _scrollUntilVisible(
-        tester,
-        _nonPlaceholderAppCardFinder(),
-      );
+      expect(find.text('Carregando pessoas do app...'), findsOneWidget);
 
       await tester.tap(find.text('Agenda'));
       await tester.pump();
@@ -261,10 +271,20 @@ void main() {
       );
 
       refreshGate.complete();
-      await tester.pumpAndSettle();
-
       await tester.tap(find.text('Tenant Test'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await _pumpUntilCondition(
+        tester,
+        () => (controller.friendsSuggestionsStreamValue.value?.isNotEmpty ??
+            false),
+        forbiddenFinders: <Finder>[
+          find.text('Nenhuma pessoa do app disponível para convite.'),
+        ],
+      );
+      await _scrollUntilVisible(
+        tester,
+        _nonPlaceholderAppCardFinder(),
+      );
       expect(_nonPlaceholderAppCardFinder(), findsWidgets);
       await tester.tap(find.text('Agenda'));
       await tester.pumpAndSettle();
@@ -350,12 +370,16 @@ class _ColdCacheInvitesBackend implements InvitesBackendContract {
   final Completer<void>? fetchInviteableRecipientsGate;
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() async {
+  Future<Map<String, dynamic>> fetchInviteableContacts(
+    InviteableContactsRequest request,
+  ) async {
     final gate = fetchInviteableRecipientsGate;
     if (gate != null && !gate.isCompleted) {
       await gate.future;
     }
-    return const <String, dynamic>{'items': <Map<String, dynamic>>[]};
+    return <String, dynamic>{
+      'items': matchPayloadsByHash.values.toList(growable: false),
+    };
   }
 
   @override
@@ -435,12 +459,6 @@ class _ColdCacheInvitesBackend implements InvitesBackendContract {
         },
         'preview': <Map<String, dynamic>>[],
       };
-
-  @override
-  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
-    InviteableContactsRequest request,
-  ) async =>
-      fetchInviteableContacts();
 
   @override
   Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>

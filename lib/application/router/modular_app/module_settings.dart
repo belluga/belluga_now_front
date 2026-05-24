@@ -24,6 +24,7 @@ import 'package:belluga_now/domain/repositories/deferred_link_repository_contrac
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_public_instances_repository_contract.dart';
@@ -60,6 +61,7 @@ import 'package:belluga_now/infrastructure/repositories/deferred_link_repository
 import 'package:belluga_now/infrastructure/repositories/discovery_filters_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/inviteables_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_known_public_instances_repository.dart';
@@ -362,6 +364,9 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
     _registerIfAbsent<FriendsRepositoryContract>(
       () => FriendsRepository(),
+    );
+    _registerIfAbsent<InviteablesRepositoryContract>(
+      () => InviteablesRepository(),
     );
     _registerIfAbsent<InvitesRepositoryContract>(
       () => InvitesRepository(),

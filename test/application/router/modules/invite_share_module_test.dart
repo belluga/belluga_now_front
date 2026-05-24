@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/modular_app/modules/invite_share_
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,9 @@ void main() {
     );
     GetIt.I.registerSingleton<ContactsRepositoryContract>(
       _FakeContactsRepository(),
+    );
+    GetIt.I.registerSingleton<InviteablesRepositoryContract>(
+      _FakeInviteablesRepository(),
     );
     GetIt.I.registerSingleton<AppData>(_FakeAppData());
     GetIt.I.registerSingleton<AuthRepositoryContract>(
@@ -73,6 +77,9 @@ void main() {
 
 class _FakeInvitesRepository extends Fake
     implements InvitesRepositoryContract {}
+
+class _FakeInviteablesRepository extends Fake
+    implements InviteablesRepositoryContract {}
 
 class _FakeContactsRepository extends Fake
     implements ContactsRepositoryContract {}

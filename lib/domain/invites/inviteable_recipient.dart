@@ -84,7 +84,7 @@ class InviteableRecipient {
       return 'Favoritou você';
     }
     if (inviteableReasons.contains('contact_match')) {
-      return 'Contato no Belluga';
+      return 'Disponível para convidar';
     }
     return 'Disponível para convidar';
   }

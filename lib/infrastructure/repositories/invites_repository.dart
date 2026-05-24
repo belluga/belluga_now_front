@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
-import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -59,13 +58,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesRepository extends InvitesRepositoryContract
     with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
     implements PushInvitePayloadAware {
-  static const int _maxContactImportItemsPerRequest = 500;
   static const Duration _contactImportCacheTtl = Duration(hours: 12);
   static const String _tenantIdStorageKey = 'tenant_id';
   static const Duration _inviteRealtimeReconnectDelay = Duration(seconds: 3);
@@ -111,9 +108,6 @@ class InvitesRepository extends InvitesRepositoryContract
       <String, Future<List<SentInviteStatus>>>{};
   final Map<String, Future<SentInviteSummary>> _activeSentSummaryRefreshes =
       <String, Future<SentInviteSummary>>{};
-  final Map<String, StreamValue<List<InviteableRecipient>?>>
-      _inviteableRecipientsByOccurrenceStreamValues =
-      <String, StreamValue<List<InviteableRecipient>?>>{};
   UserEventsRepositoryContract? _userEventsRepository;
   StreamSubscription<Object?>? _inviteRealtimeAuthSubscription;
   StreamSubscription<InviteRealtimeDeltaDto>? _inviteRealtimeStreamSubscription;
@@ -545,19 +539,17 @@ class InvitesRepository extends InvitesRepositoryContract
       return snapshot.matches;
     }
 
+    final response = await _backend.importContacts(
+      InviteContactImportRequest(contacts: snapshot.importItems),
+    );
+    final decodedMatches =
+        _responseDecoder.decodeContactMatches(response['matches']);
     final matchesByProfileId = <String, InviteContactMatch>{};
-    for (final chunk in _chunkContactImportItems(snapshot.importItems)) {
-      final response = await _backend.importContacts(
-        InviteContactImportRequest(contacts: chunk),
+    for (final match in decodedMatches) {
+      matchesByProfileId.putIfAbsent(
+        match.receiverAccountProfileId,
+        () => match,
       );
-      final matches =
-          _responseDecoder.decodeContactMatches(response['matches']);
-      for (final match in matches) {
-        matchesByProfileId.putIfAbsent(
-          match.receiverAccountProfileId,
-          () => match,
-        );
-      }
     }
 
     await _contactImportCache.write(
@@ -574,64 +566,6 @@ class InvitesRepository extends InvitesRepositoryContract
     final matches = matchesByProfileId.values.toList(growable: false);
     importedContactMatchesStreamValue.addValue(matches);
     return matches;
-  }
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
-    final response = await _backend.fetchInviteableContacts();
-    final recipients =
-        _responseDecoder.decodeInviteableRecipients(response['items']);
-    inviteableRecipientsStreamValue.addValue(recipients);
-    return recipients;
-  }
-
-  @override
-  StreamValue<List<InviteableRecipient>?>
-      inviteableRecipientsStreamValueForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) {
-    final normalizedOccurrenceId = occurrenceId.value.trim();
-    if (normalizedOccurrenceId.isEmpty) {
-      return inviteableRecipientsStreamValue;
-    }
-
-    return _inviteableRecipientsByOccurrenceStreamValues.putIfAbsent(
-      normalizedOccurrenceId,
-      () => StreamValue<List<InviteableRecipient>?>(defaultValue: null),
-    );
-  }
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? eventId,
-    InvitesRepositoryContractPrimInt? page,
-    InvitesRepositoryContractPrimInt? pageSize,
-  }) async {
-    final normalizedOccurrenceId = occurrenceId.value.trim();
-    if (normalizedOccurrenceId.isEmpty) {
-      return fetchInviteableRecipients();
-    }
-
-    final response = await _backend.fetchInviteableContactsForOccurrence(
-      InviteableContactsRequest(
-        occurrenceId: normalizedOccurrenceId,
-        eventId: _normalizeNullable(eventId?.value),
-        page: page?.value ?? 1,
-        pageSize: pageSize?.value ?? 100,
-      ),
-    );
-    final recipients =
-        _responseDecoder.decodeInviteableRecipients(response['items']);
-    setInviteableRecipientsForOccurrence(
-      occurrenceId: occurrenceId,
-      recipients: recipients,
-    );
-    _storeSentInviteStatusesFromInviteables(
-      occurrenceId: normalizedOccurrenceId,
-      recipients: recipients,
-    );
-    return recipients;
   }
 
   @override
@@ -857,7 +791,7 @@ class InvitesRepository extends InvitesRepositoryContract
       ),
     );
     final statuses = _responseDecoder.decodeSentInviteStatuses(
-      response['items'],
+      _responseDecoder.itemsPayload(response),
     );
     final occurrenceKey = invitesRepoString(
       occurrenceId,
@@ -921,7 +855,9 @@ class InvitesRepository extends InvitesRepositoryContract
         previewLimit: previewLimit,
       ),
     );
-    final summary = _responseDecoder.decodeSentInviteSummary(response);
+    final summary = _responseDecoder.decodeSentInviteSummary(
+      _responseDecoder.dataPayload(response),
+    );
     final occurrenceKey = invitesRepoString(
       occurrenceId,
       defaultValue: '',
@@ -937,24 +873,6 @@ class InvitesRepository extends InvitesRepositoryContract
       merge: true,
     );
     return summary;
-  }
-
-  void _storeSentInviteStatusesFromInviteables({
-    required String occurrenceId,
-    required List<InviteableRecipient> recipients,
-  }) {
-    final statuses = recipients
-        .map((recipient) => recipient.sentInviteStatus)
-        .whereType<SentInviteStatus>()
-        .toList(growable: false);
-    if (statuses.isEmpty) {
-      return;
-    }
-    _storeSentInviteStatuses(
-      occurrenceId: occurrenceId,
-      statuses: statuses,
-      merge: true,
-    );
   }
 
   void _storeSentInviteStatuses({
@@ -1186,20 +1104,6 @@ class InvitesRepository extends InvitesRepositoryContract
     }
 
     return items;
-  }
-
-  List<List<InviteContactImportItemRequest>> _chunkContactImportItems(
-    List<InviteContactImportItemRequest> items,
-  ) {
-    final chunks = <List<InviteContactImportItemRequest>>[];
-    for (var start = 0; start < items.length;) {
-      final end = start + _maxContactImportItemsPerRequest > items.length
-          ? items.length
-          : start + _maxContactImportItemsPerRequest;
-      chunks.add(items.sublist(start, end));
-      start = end;
-    }
-    return chunks;
   }
 
   Future<String> _contactImportCacheKey({

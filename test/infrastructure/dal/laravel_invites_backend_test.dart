@@ -7,9 +7,9 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/inviteable_contacts_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_summary_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
-import 'package:belluga_now/infrastructure/dal/dao/invites/inviteable_contacts_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_message.dart';
@@ -142,34 +142,24 @@ void main() {
   });
 
   test(
-      'fetchInviteableContactsForOccurrence targets inviteables with occurrence context',
+      'fetchInviteableContacts targets bounded event-agnostic inviteables endpoint',
       () async {
     final adapter = _RecordingAdapter(
       response: const {
-        'data': {
-          'items': [],
-        },
+        'items': [],
       },
     );
     final backend = LaravelInvitesBackend(
       dio: Dio()..httpClientAdapter = adapter,
     );
 
-    await backend.fetchInviteableContactsForOccurrence(
-      const InviteableContactsRequest(
-        occurrenceId: 'occurrence-1',
-        eventId: 'event-1',
-        page: 1,
-        pageSize: 100,
-      ),
+    await backend.fetchInviteableContacts(
+      const InviteableContactsRequest(page: 1, pageSize: 50),
     );
 
     expect(adapter.lastRequest?.uri.path, '/api/v1/contacts/inviteables');
-    expect(adapter.lastRequest?.uri.queryParameters['occurrence_id'],
-        'occurrence-1');
-    expect(adapter.lastRequest?.uri.queryParameters['event_id'], 'event-1');
     expect(adapter.lastRequest?.uri.queryParameters['page'], '1');
-    expect(adapter.lastRequest?.uri.queryParameters['page_size'], '100');
+    expect(adapter.lastRequest?.uri.queryParameters['page_size'], '50');
   });
 
   test('watchInvitesStream decodes canonical upsert payload', () async {

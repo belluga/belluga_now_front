@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -33,6 +34,7 @@ enum InviteSharePane { app, phone }
 
 class InviteShareScreenController with Disposable {
   InviteShareScreenController({
+    InviteablesRepositoryContract? inviteablesRepository,
     InvitesRepositoryContract? invitesRepository,
     ContactsRepositoryContract? contactsRepository,
     AppData? appData,
@@ -40,7 +42,9 @@ class InviteShareScreenController with Disposable {
     String? contactRegionCode,
     Set<String> Function(ContactModel contact, {String? regionCode})?
         localContactHashResolver,
-  })  : _invitesRepository =
+  })  : _inviteablesRepository = inviteablesRepository ??
+            _resolveInviteablesRepository(invitesRepository),
+        _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _contactsRepository =
             contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
@@ -50,6 +54,7 @@ class InviteShareScreenController with Disposable {
         _localContactHashResolver =
             localContactHashResolver ?? InviteContactImportHashes.contactHashes;
 
+  final InviteablesRepositoryContract _inviteablesRepository;
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
   final AppData _appData;
@@ -113,6 +118,16 @@ class InviteShareScreenController with Disposable {
 
   String? get debugContactRegionCodeValue => _contactRegionCodeValue?.value;
 
+  static InviteablesRepositoryContract _resolveInviteablesRepository(
+    InvitesRepositoryContract? invitesRepository,
+  ) {
+    if (invitesRepository is InviteablesRepositoryContract) {
+      return invitesRepository as InviteablesRepositoryContract;
+    }
+
+    return GetIt.I.get<InviteablesRepositoryContract>();
+  }
+
   void setContactRegionCode(String? regionCode) {
     _contactRegionCodeValue = _buildRegionCodeValue(regionCode);
   }
@@ -167,18 +182,6 @@ class InviteShareScreenController with Disposable {
       }
       _hydrateInviteTargetsFromRepositoryCache();
       _publishPhonePaneFromRepositoryCacheIfAvailable();
-      if (_availableContactsFromRepository().isNotEmpty) {
-        await _refreshImportedContactMatchesOpportunistically(
-          suppressFailures: true,
-        );
-        if (!_isCurrentInviteShareContext(
-          occurrenceId: occurrenceId,
-        )) {
-          return;
-        }
-        _hydrateInviteTargetsFromRepositoryCache();
-        _publishPhonePaneFromRepositoryCacheIfAvailable();
-      }
     } finally {
       final isCurrentContext = _isCurrentInviteShareContext(
         occurrenceId: occurrenceId,
@@ -521,8 +524,6 @@ class InviteShareScreenController with Disposable {
 
     final publishPhonePane = loadPhoneContacts ||
         selectedPaneStreamValue.value == InviteSharePane.phone;
-    Future<void>? backgroundImportedMatchesRefresh;
-    var backgroundImportedMatchesRefreshCompleted = false;
 
     if (loadPhoneContacts) {
       await loadContacts(forceDeviceReload: forceReloadContacts);
@@ -539,13 +540,6 @@ class InviteShareScreenController with Disposable {
       )) {
         return;
       }
-    } else if (_availableContactsFromRepository().isNotEmpty) {
-      backgroundImportedMatchesRefresh =
-          _refreshImportedContactMatchesOpportunistically(
-        suppressFailures: true,
-      ).whenComplete(() {
-        backgroundImportedMatchesRefreshCompleted = true;
-      });
     }
 
     await _refreshInviteableRecipientsForCurrentOccurrence(
@@ -558,33 +552,15 @@ class InviteShareScreenController with Disposable {
       return;
     }
 
-    final inviteableRecipients = _currentInviteableRecipientsFromRepository();
     final shouldDeferInitialAppPanePublication =
-        ((backgroundImportedMatchesRefresh != null &&
-                    !backgroundImportedMatchesRefreshCompleted) ||
-                _isPrimingCachedContactsForDisplay) &&
-            !(inviteableRecipients?.isNotEmpty ?? false) &&
+        _isPrimingCachedContactsForDisplay &&
+            !(_currentInviteableRecipientsFromRepository()?.isNotEmpty ??
+                false) &&
             friendsSuggestionsStreamValue.value == null;
     await _applyInviteTargetsFromRepositoriesWithStatus(
       publishAppPane: !shouldDeferInitialAppPanePublication,
       publishPhonePane: publishPhonePane,
     );
-
-    if (backgroundImportedMatchesRefresh != null) {
-      unawaited(
-        backgroundImportedMatchesRefresh.then((_) {
-          if (!_isCurrentInviteShareContext(
-            occurrenceId: expectedOccurrenceId,
-          )) {
-            return;
-          }
-          _applyInviteTargetsFromRepositories(
-            sentInvites: sentInvitesStreamValue.value,
-            publishPhonePane: publishPhonePane,
-          );
-        }),
-      );
-    }
   }
 
   Future<void> _loadInviteTargetsWithStatusSafe({
@@ -801,23 +777,6 @@ class InviteShareScreenController with Disposable {
         .toList(growable: false);
   }
 
-  List<InviteFriendResume> _mergeInviteableRecipients({
-    required List<InviteFriendResume> backendRecipients,
-    required List<InviteFriendResume> importedMatches,
-  }) {
-    final merged = <String, InviteFriendResume>{};
-
-    for (final recipient in backendRecipients) {
-      merged[_inviteableIdentityKey(recipient)] = recipient;
-    }
-
-    for (final match in importedMatches) {
-      merged.putIfAbsent(_inviteableIdentityKey(match), () => match);
-    }
-
-    return merged.values.toList(growable: false);
-  }
-
   List<InviteExternalContactShareTarget> _buildExternalShareTargets({
     required List<InviteContactMatch> importedMatches,
     required List<InviteableRecipient> backendRecipients,
@@ -921,7 +880,6 @@ class InviteShareScreenController with Disposable {
       publishAppPane: !shouldSuppressEmptyHydrationWhilePriming &&
           _canHydrateAppPaneFromRepositoryCache(
             inviteableRecipients: inviteableRecipients,
-            importedMatches: importedMatches,
           ),
       publishPhonePane:
           selectedPaneStreamValue.value == InviteSharePane.phone &&
@@ -964,13 +922,10 @@ class InviteShareScreenController with Disposable {
   bool _publishCurrentInviteTargetsFromRepositoryCache() {
     final hasInviteables =
         _currentInviteableRecipientsFromRepository()?.isNotEmpty ?? false;
-    final hasImportedMatches = _invitesRepository
-            .importedContactMatchesStreamValue.value?.isNotEmpty ??
-        false;
     final hasCurrentSuggestions =
         friendsSuggestionsStreamValue.value?.isNotEmpty ?? false;
 
-    if (!hasInviteables && !hasImportedMatches) {
+    if (!hasInviteables) {
       return hasCurrentSuggestions;
     }
 
@@ -1001,8 +956,9 @@ class InviteShareScreenController with Disposable {
     required InvitesRepositoryContractPrimString? occurrenceId,
     required InvitesRepositoryContractPrimString? eventId,
   }) async {
+    await _inviteablesRepository.refreshInviteableRecipients();
+
     if (occurrenceId == null) {
-      await _invitesRepository.refreshInviteableRecipients();
       if (_isCurrentInviteShareContext(
         occurrenceId: null,
       )) {
@@ -1011,15 +967,36 @@ class InviteShareScreenController with Disposable {
       return;
     }
 
-    await _invitesRepository.refreshInviteableRecipientsForOccurrence(
+    if (!_isCurrentInviteShareContext(
+      occurrenceId: occurrenceId,
+    )) {
+      return;
+    }
+
+    final recipientAccountProfileIds =
+        (_currentInviteableRecipientsFromRepository() ??
+                const <InviteableRecipient>[])
+            .map((recipient) => recipient.receiverAccountProfileId.trim())
+            .where((profileId) => profileId.isNotEmpty)
+            .map(
+              (profileId) => invitesRepoString(
+                profileId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .toList(growable: false);
+    await _invitesRepository.refreshSentInvitesForOccurrence(
       occurrenceId: occurrenceId,
       eventId: eventId,
+      recipientAccountProfileIds: recipientAccountProfileIds,
     );
     if (!_isCurrentInviteShareContext(
       occurrenceId: occurrenceId,
     )) {
       return;
     }
+
     final summary =
         await _invitesRepository.refreshSentInviteSummaryForOccurrence(
       occurrenceId: occurrenceId,
@@ -1045,19 +1022,7 @@ class InviteShareScreenController with Disposable {
   }
 
   List<SentInviteStatus> _sentInvitesFromInviteableRecipients() {
-    final byKey = <String, SentInviteStatus>{
-      for (final sentInvite in _cachedSentInvitesForCurrentOccurrence())
-        _sentInviteIdentityKey(sentInvite): sentInvite,
-    };
-
-    for (final sentInvite in (_currentInviteableRecipientsFromRepository() ??
-            const <InviteableRecipient>[])
-        .map((recipient) => recipient.sentInviteStatus)
-        .whereType<SentInviteStatus>()) {
-      byKey[_sentInviteIdentityKey(sentInvite)] = sentInvite;
-    }
-
-    return byKey.values.toList(growable: false);
+    return _cachedSentInvitesForCurrentOccurrence();
   }
 
   String? _occurrenceKey(InvitesRepositoryContractPrimString? occurrenceId) {
@@ -1078,13 +1043,7 @@ class InviteShareScreenController with Disposable {
 
   StreamValue<List<InviteableRecipient>?>
       get _currentInviteableRecipientsStreamValue {
-    final occurrenceId = _currentOccurrenceIdValue();
-    if (occurrenceId == null) {
-      return _invitesRepository.inviteableRecipientsStreamValue;
-    }
-
-    return _invitesRepository
-        .inviteableRecipientsStreamValueForOccurrence(occurrenceId);
+    return _inviteablesRepository.inviteableRecipientsStreamValue;
   }
 
   SentInviteSummary _cachedSentInviteSummaryForCurrentOccurrence() {
@@ -1157,19 +1116,15 @@ class InviteShareScreenController with Disposable {
             availableContacts,
             localContactHashes,
           );
-    final recipients = _mergeInviteableRecipients(
-      backendRecipients: backendRecipients
-          .map(
-            (recipient) => _toInviteFriendResumeFromRecipient(
-              recipient,
-              localContactDisplaysByHash,
-            ),
-          )
-          .toList(growable: false),
-      importedMatches: importedMatches
-          .map((match) => _toInviteFriendResume(match))
-          .toList(growable: false),
-    )..sort((left, right) => left.name.compareTo(right.name));
+    final recipients = backendRecipients
+        .map(
+          (recipient) => _toInviteFriendResumeFromRecipient(
+            recipient,
+            localContactDisplaysByHash,
+          ),
+        )
+        .toList(growable: false)
+      ..sort((left, right) => left.name.compareTo(right.name));
 
     friendsSuggestionsStreamValue.addValue(
       _mergeFriendsWithStatus(recipients, sentInvites),
@@ -1218,13 +1173,8 @@ class InviteShareScreenController with Disposable {
 
   bool _canHydrateAppPaneFromRepositoryCache({
     required List<InviteableRecipient>? inviteableRecipients,
-    required List<InviteContactMatch>? importedMatches,
   }) {
-    if (inviteableRecipients != null) {
-      return true;
-    }
-
-    return importedMatches != null && importedMatches.isNotEmpty;
+    return inviteableRecipients != null;
   }
 
   Future<void> _hydrateImportedMatchesFromCache() async {
@@ -1373,32 +1323,6 @@ class InviteShareScreenController with Disposable {
           : (InviteAccountProfileIdValue()..parse(friend.accountProfileId)),
       displayNameValue: UserDisplayNameValue()..parse(friend.name),
       avatarUrlValue: avatarUrlValue,
-    );
-  }
-
-  InviteFriendResume _toInviteFriendResume(InviteContactMatch match) {
-    final avatarValue = FriendAvatarValue();
-    final avatarUrl = match.avatarUrl?.trim();
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      avatarValue.parse(avatarUrl);
-    }
-
-    return InviteFriendResume(
-      idValue: FriendIdValue()..parse(match.userId),
-      accountProfileIdValue: match.receiverAccountProfileId.isEmpty
-          ? null
-          : (InviteAccountProfileIdValue()
-            ..parse(match.receiverAccountProfileId)),
-      nameValue: TitleValue()..parse(match.displayName),
-      avatarValue: avatarValue,
-      matchLabelValue: FriendMatchLabelValue()
-        ..parse(
-          match.inviteableReasons.contains('friend')
-              ? 'Amigo no Belluga'
-              : 'Contato no Belluga',
-        ),
-      inviteableReasons: match.inviteableReasons,
-      profileExposureLevelValue: match.profileExposureLevelValue,
     );
   }
 

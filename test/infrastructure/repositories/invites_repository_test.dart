@@ -431,163 +431,6 @@ void main() {
     expect(matches.single.inviteableReasons, ['contact_match']);
   });
 
-  test('fetchInviteableRecipients reads backend-computed unified list',
-      () async {
-    final repository = InvitesRepository(
-      backend: _FakeInvitesBackend(
-        inviteableContactsResponse: {
-          'items': [
-            {
-              'user_id': 'user-1',
-              'receiver_account_profile_id': 'profile-1',
-              'display_name': 'Friend Contact',
-              'avatar_url': null,
-              'profile_exposure_level': 'full_profile',
-              'contact_hash': 'hash-1',
-              'contact_type': 'phone',
-              'inviteable_reasons': [
-                'contact_match',
-                'favorite_by_you',
-                'favorited_you',
-                'friend',
-              ],
-              'is_inviteable': true,
-            },
-          ],
-        },
-      ),
-    );
-
-    final recipients = await repository.fetchInviteableRecipients();
-
-    expect(recipients, hasLength(1));
-    expect(recipients.single.receiverAccountProfileId, 'profile-1');
-    expect(recipients.single.contactHash, 'hash-1');
-    expect(recipients.single.contactType, 'phone');
-    expect(recipients.single.isFriend, isTrue);
-    expect(
-      repository.inviteableRecipientsStreamValue.value?.single.userId,
-      'user-1',
-    );
-  });
-
-  test(
-    'fetchInviteableRecipientsForOccurrence accepts account-profile-only rows',
-    () async {
-      final repository = InvitesRepository(
-        backend: _FakeInvitesBackend(
-          inviteableContactsResponse: {
-            'items': [
-              {
-                'receiver_account_profile_id': 'profile-only-1',
-                'display_name': 'Venue Inviteable',
-                'avatar_url': null,
-                'profile_exposure_level': 'full_profile',
-                'inviteable_reasons': ['favorite_by_you'],
-                'is_inviteable': true,
-              },
-            ],
-          },
-        ),
-      );
-
-      final occurrenceId = invitesRepoString(
-        'occurrence-1',
-        defaultValue: '',
-        isRequired: true,
-      );
-
-      final recipients =
-          await repository.fetchInviteableRecipientsForOccurrence(
-        occurrenceId: occurrenceId,
-      );
-
-      expect(recipients, hasLength(1));
-      expect(recipients.single.receiverAccountProfileId, 'profile-only-1');
-      expect(recipients.single.userId, 'profile-only-1');
-      expect(recipients.single.displayName, 'Venue Inviteable');
-      expect(
-        repository
-            .inviteableRecipientsStreamValueForOccurrence(occurrenceId)
-            .value
-            ?.single
-            .receiverAccountProfileId,
-        'profile-only-1',
-      );
-      expect(repository.inviteableRecipientsStreamValue.value, isNull);
-    },
-  );
-
-  test(
-    'fetchInviteableRecipientsForOccurrence decodes row sent status without broad sent-status fetch',
-    () async {
-      final backend = _FakeInvitesBackend(
-        inviteableContactsResponse: {
-          'items': [
-            {
-              'user_id': 'user-2',
-              'receiver_account_profile_id': 'profile-2',
-              'display_name': 'Inviteable With Status',
-              'avatar_url': null,
-              'profile_exposure_level': 'full_profile',
-              'inviteable_reasons': ['contact_match'],
-              'is_inviteable': true,
-              'sent_invite_status': {
-                'invite_id': 'invite-2',
-                'receiver_account_profile_id': 'profile-2',
-                'receiver_user_id': 'user-2',
-                'display_name': 'Inviteable With Status',
-                'status': 'accepted',
-                'sent_at': '2026-05-23T12:00:00Z',
-                'responded_at': '2026-05-23T12:10:00Z',
-              },
-            },
-          ],
-        },
-      );
-      final repository = InvitesRepository(backend: backend);
-
-      final occurrenceId = invitesRepoString(
-        'occurrence-1',
-        defaultValue: '',
-        isRequired: true,
-      );
-      final recipients =
-          await repository.fetchInviteableRecipientsForOccurrence(
-        occurrenceId: occurrenceId,
-        eventId: invitesRepoString(
-          'event-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
-      );
-
-      expect(backend.inviteableContactsPayloads, [
-        {
-          'occurrence_id': 'occurrence-1',
-          'event_id': 'event-1',
-          'page': 1,
-          'page_size': 100,
-        },
-      ]);
-      expect(recipients.single.sentInviteStatus?.status, InviteStatus.accepted);
-      expect(
-        recipients.single.sentInviteStatus?.friend.accountProfileId,
-        'profile-2',
-      );
-      expect(
-        repository
-            .inviteableRecipientsStreamValueForOccurrence(occurrenceId)
-            .value
-            ?.single
-            .sentInviteStatus
-            ?.status,
-        InviteStatus.accepted,
-      );
-      expect(backend.sentInviteStatusPayloads, isEmpty);
-    },
-  );
-
   test('importContacts sends region-aware OTP-compatible phone hash variants',
       () async {
     final backend = _FakeInvitesBackend(
@@ -1287,8 +1130,7 @@ void main() {
     });
   });
 
-  test(
-      'importContacts chunks expanded payloads to backend cap and merges matches',
+  test('importContacts sends expanded payload once without request-loop fanout',
       () async {
     final expectedHash = _sha256('5527999990250');
     final backend = _FakeInvitesBackend(
@@ -1330,11 +1172,11 @@ void main() {
 
     final matches = await repository.importContacts(contacts);
 
-    expect(backend.importContactPayloads, hasLength(2));
+    expect(backend.importContactPayloads, hasLength(1));
     expect(
-      backend.importContactPayloads
-          .map((payload) => (payload['contacts'] as List<dynamic>).length),
-      [500, 2],
+      (backend.importContactPayloads.single['contacts'] as List<dynamic>)
+          .length,
+      502,
     );
     expect(matches.single.receiverAccountProfileId, 'profile-250');
   });
@@ -1570,8 +1412,6 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> sentInviteSummaryPayloads =
       <Map<String, dynamic>>[];
-  final List<Map<String, dynamic>> inviteableContactsPayloads =
-      <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> createdShareCodePayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> importContactPayloads =
@@ -1652,16 +1492,10 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() async =>
-      _inviteableContactsResponse;
-
-  @override
-  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+  Future<Map<String, dynamic>> fetchInviteableContacts(
     InviteableContactsRequest request,
-  ) async {
-    inviteableContactsPayloads.add(request.toJson());
-    return _inviteableContactsResponse;
-  }
+  ) async =>
+      _inviteableContactsResponse;
 
   @override
   Future<Map<String, dynamic>> fetchContactGroups() async =>

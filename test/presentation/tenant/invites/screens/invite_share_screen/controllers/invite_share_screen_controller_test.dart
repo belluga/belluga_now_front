@@ -25,6 +25,7 @@ import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
@@ -109,7 +110,8 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInvitesRepository extends InvitesRepositoryContract
+    implements InviteablesRepositoryContract {
   bool throwOnImportContacts = false;
   bool throwOnCreateShareCode = false;
   List<InviteableRecipient> inviteableRecipients =
@@ -118,12 +120,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   List<InviteContactMatch>? cachedImportContactMatches;
   List<SentInviteStatus> sentStatuses = const <SentInviteStatus>[];
   SentInviteSummary sentSummary = SentInviteSummary.empty();
-  final inviteableRecipientsByOccurrence =
-      <String, List<InviteableRecipient>>{};
   final sentSummariesByOccurrence = <String, SentInviteSummary>{};
-  final inviteableRecipientStreamsByOccurrence =
-      <String, StreamValue<List<InviteableRecipient>?>>{};
-  final fetchInviteableRecipientsFailuresByOccurrence = <String>{};
   final createShareCodeGatesByOccurrence = <String, Completer<void>>{};
   final shareCodesByOccurrence = <String, String>{};
   bool throwOnSentSummary = false;
@@ -140,9 +137,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Completer<void>? sendInvitesGate;
   Completer<void>? importContactsGate;
   Completer<void>? fetchInviteableRecipientsGate;
-  final fetchInviteableRecipientsGatesByOccurrence =
-      <String, Completer<void>>{};
   Completer<void>? hydrateImportedContactMatchesFromCacheGate;
+
+  @override
+  final inviteableRecipientsStreamValue =
+      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -201,6 +200,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     }
     final overriddenMatches = importContactMatches;
     if (overriddenMatches != null) {
+      _materializeInviteableRecipientsFromMatches(overriddenMatches);
       return overriddenMatches;
     }
 
@@ -213,7 +213,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       regionCode: contacts.regionCode,
     ).first;
 
-    return <InviteContactMatch>[
+    final matches = <InviteContactMatch>[
       InviteContactMatch(
         contactHashValue: InviteContactHashValue()..parse(contactHash),
         typeValue: InviteContactTypeValue()..parse('phone'),
@@ -229,6 +229,40 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         isInviteableValue: DomainBooleanValue()..parse('true'),
       ),
     ];
+    _materializeInviteableRecipientsFromMatches(matches);
+    return matches;
+  }
+
+  void _materializeInviteableRecipientsFromMatches(
+    List<InviteContactMatch> matches,
+  ) {
+    final byProfileId = <String, InviteableRecipient>{
+      for (final recipient in inviteableRecipients)
+        recipient.receiverAccountProfileId: recipient,
+    };
+
+    for (final match in matches) {
+      if (!match.isInviteable ||
+          match.receiverAccountProfileId.trim().isEmpty) {
+        continue;
+      }
+      byProfileId[match.receiverAccountProfileId] = InviteableRecipient(
+        userIdValue: UserIdValue()..parse(match.userId),
+        receiverAccountProfileIdValue: InviteAccountProfileIdValue()
+          ..parse(match.receiverAccountProfileId),
+        displayNameValue: InviteInviterNameValue()..parse(match.displayName),
+        avatarValue: match.avatarValue,
+        profileExposureLevelValue: InviteProfileExposureLevelValue()
+          ..parse(match.profileExposureLevel),
+        inviteableReasons: match.inviteableReasons,
+        isInviteableValue: DomainBooleanValue()..parse('true'),
+        contactHashValue: InviteContactHashValue()..parse(match.contactHash),
+        contactTypeValue: InviteContactTypeValue()..parse(match.type),
+      );
+    }
+
+    inviteableRecipients = byProfileId.values.toList(growable: false);
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
   }
 
   @override
@@ -249,71 +283,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     fetchInviteableRecipientsCalls += 1;
     await fetchInviteableRecipientsGate?.future;
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
     return inviteableRecipients;
   }
 
   @override
-  StreamValue<List<InviteableRecipient>?>
-      inviteableRecipientsStreamValueForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) {
-    final normalizedOccurrenceId = occurrenceId.value.trim();
-    if (normalizedOccurrenceId.isEmpty) {
-      return inviteableRecipientsStreamValue;
-    }
-
-    return inviteableRecipientStreamsByOccurrence.putIfAbsent(
-      normalizedOccurrenceId,
-      () => StreamValue<List<InviteableRecipient>?>(defaultValue: null),
-    );
-  }
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? eventId,
-    InvitesRepositoryContractPrimInt? page,
-    InvitesRepositoryContractPrimInt? pageSize,
-  }) async {
-    fetchInviteableRecipientsCalls += 1;
-    await fetchInviteableRecipientsGate?.future;
-    await fetchInviteableRecipientsGatesByOccurrence[occurrenceId.value]
-        ?.future;
-    if (fetchInviteableRecipientsFailuresByOccurrence
-        .contains(occurrenceId.value)) {
-      throw Exception('inviteables failed for ${occurrenceId.value}');
-    }
-    final sourceRecipients =
-        inviteableRecipientsByOccurrence[occurrenceId.value] ??
-            inviteableRecipients;
-    final statusesByProfileId = <String, SentInviteStatus>{
-      for (final status in sentStatuses)
-        status.friend.accountProfileId.trim(): status,
-    };
-    final enriched = sourceRecipients
-        .map(
-          (recipient) => InviteableRecipient(
-            userIdValue: recipient.userIdValue,
-            receiverAccountProfileIdValue:
-                recipient.receiverAccountProfileIdValue,
-            displayNameValue: recipient.displayNameValue,
-            avatarValue: recipient.avatarValue,
-            profileExposureLevelValue: recipient.profileExposureLevelValue,
-            inviteableReasons: recipient.inviteableReasons,
-            isInviteableValue: recipient.isInviteableValue,
-            contactHashValue: recipient.contactHashValue,
-            contactTypeValue: recipient.contactTypeValue,
-            sentInviteStatus: statusesByProfileId[
-                    recipient.receiverAccountProfileId.trim()] ??
-                recipient.sentInviteStatus,
-          ),
-        )
-        .toList(growable: false);
-    setInviteableRecipientsForOccurrence(
-      occurrenceId: occurrenceId,
-      recipients: enriched,
-    );
-    return enriched;
+  Future<void> refreshInviteableRecipients() async {
+    final recipients = await fetchInviteableRecipients();
+    inviteableRecipientsStreamValue.addValue(recipients);
   }
 
   @override
@@ -391,13 +368,56 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
         const <InvitesRepositoryContractPrimString>[],
   }) async {
+    final recipientFilter =
+        recipientAccountProfileIds.map((value) => value.value).toSet();
     sentStatusRefreshes.add({
       'occurrence_id': occurrenceId.value,
       'event_id': eventId?.value,
-      'recipient_account_profile_ids':
-          recipientAccountProfileIds.map((value) => value.value).toList(),
+      'recipient_account_profile_ids': recipientFilter.toList(),
     });
-    return sentStatuses;
+    final filteredStatuses = sentStatuses
+        .where(
+          (status) =>
+              recipientFilter.isEmpty ||
+              recipientFilter.contains(status.friend.accountProfileId),
+        )
+        .toList(growable: false);
+    final nextStatuses = recipientFilter.isEmpty
+        ? filteredStatuses
+        : _mergeSentStatuses(
+            getSentInvitesForOccurrenceSync(occurrenceId),
+            filteredStatuses,
+          );
+
+    sentInvitesByOccurrenceStreamValue.addValue({
+      ...sentInvitesByOccurrenceStreamValue.value,
+      occurrenceId: nextStatuses,
+    });
+    return nextStatuses;
+  }
+
+  List<SentInviteStatus> getSentInvitesForOccurrenceSync(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) {
+    for (final entry in sentInvitesByOccurrenceStreamValue.value.entries) {
+      if (entry.key.value.trim() == occurrenceId.value.trim()) {
+        return entry.value;
+      }
+    }
+    return const <SentInviteStatus>[];
+  }
+
+  List<SentInviteStatus> _mergeSentStatuses(
+    List<SentInviteStatus> current,
+    List<SentInviteStatus> updates,
+  ) {
+    final byRecipient = <String, SentInviteStatus>{
+      for (final status in current) status.friend.accountProfileId: status,
+    };
+    for (final status in updates) {
+      byRecipient[status.friend.accountProfileId] = status;
+    }
+    return byRecipient.values.toList(growable: false);
   }
 
   @override
@@ -870,233 +890,6 @@ void main() {
   );
 
   test(
-    'stale init refresh does not publish old occurrence inviteables after occurrence switch',
-    () async {
-      final occurrenceOneGate = Completer<void>();
-      final invitesRepository = _FakeInvitesRepository()
-        ..fetchInviteableRecipientsGatesByOccurrence['occurrence-1'] =
-            occurrenceOneGate
-        ..inviteableRecipientsByOccurrence['occurrence-1'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Old Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ]
-        ..inviteableRecipientsByOccurrence['occurrence-2'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-2',
-            accountProfileId: 'profile-2',
-            displayName: 'Current Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ];
-      final controller = InviteShareScreenController(
-        invitesRepository: invitesRepository,
-        contactsRepository: _FakeContactsRepository(),
-        appData: _buildAppData(),
-      );
-
-      final firstInit = controller.init(_buildInvite());
-      await Future<void>.delayed(Duration.zero);
-
-      await controller.init(
-        _buildInvite(eventId: 'event-2', occurrenceId: 'occurrence-2'),
-      );
-
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        contains('Current Occurrence Contact'),
-      );
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        isNot(contains('Old Occurrence Contact')),
-      );
-
-      occurrenceOneGate.complete();
-      await firstInit;
-
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        contains('Current Occurrence Contact'),
-      );
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        isNot(contains('Old Occurrence Contact')),
-      );
-      expect(controller.sentInvitesStreamValue.value, isEmpty);
-      expect(controller.sentInviteSummaryStreamValue.value.pending, 0);
-
-      await controller.onDispose();
-    },
-  );
-
-  test(
-    'stale cache prime does not publish old occurrence inviteables after occurrence switch',
-    () async {
-      final stalePrimeGate = Completer<void>();
-      final contactsRepository = _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'contact-1',
-            displayName: 'Contato Cache',
-            phones: <String>['+55 27 99999-9999'],
-          ),
-        ],
-      )..loadCachedContactsGate = stalePrimeGate;
-      final oldOccurrenceRecipients = <InviteableRecipient>[
-        buildInviteableRecipient(
-          userId: 'user-1',
-          accountProfileId: 'profile-1',
-          displayName: 'Old Occurrence Contact',
-          profileExposureLevel: 'full_profile',
-          inviteableReasons: const <String>['contact_match'],
-        ),
-      ];
-      final invitesRepository = _FakeInvitesRepository()
-        ..inviteableRecipientsByOccurrence['occurrence-1'] =
-            oldOccurrenceRecipients
-        ..inviteableRecipientsByOccurrence['occurrence-2'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-2',
-            accountProfileId: 'profile-2',
-            displayName: 'Current Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ];
-      final controller = InviteShareScreenController(
-        invitesRepository: invitesRepository,
-        contactsRepository: contactsRepository,
-        appData: _buildAppData(),
-      );
-
-      await controller.init(_buildInvite());
-      contactsRepository.loadCachedContactsGate = null;
-      await controller.init(
-        _buildInvite(eventId: 'event-2', occurrenceId: 'occurrence-2'),
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        contains('Current Occurrence Contact'),
-      );
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        isNot(contains('Old Occurrence Contact')),
-      );
-
-      invitesRepository.setInviteableRecipientsForOccurrence(
-        occurrenceId: invitesRepoString(
-          'occurrence-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
-        recipients: oldOccurrenceRecipients,
-      );
-      stalePrimeGate.complete();
-      await Future<void>.delayed(Duration.zero);
-
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        contains('Current Occurrence Contact'),
-      );
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        isNot(contains('Old Occurrence Contact')),
-      );
-
-      await controller.onDispose();
-    },
-  );
-
-  test(
-    'stale load failure does not clear current occurrence sent state after occurrence switch',
-    () async {
-      final oldOccurrenceGate = Completer<void>();
-      final currentSentStatus = SentInviteStatus(
-        friend: EventFriendResume(
-          idValue: UserIdValue()..parse('user-2'),
-          accountProfileIdValue: InviteAccountProfileIdValue()
-            ..parse('profile-2'),
-          displayNameValue: UserDisplayNameValue()
-            ..parse('Current Occurrence Contact'),
-          avatarUrlValue: UserAvatarValue(),
-        ),
-        status: InviteStatus.pending,
-        sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
-      );
-      final invitesRepository = _FakeInvitesRepository()
-        ..fetchInviteableRecipientsGatesByOccurrence['occurrence-1'] =
-            oldOccurrenceGate
-        ..fetchInviteableRecipientsFailuresByOccurrence.add('occurrence-1')
-        ..sentStatuses = <SentInviteStatus>[currentSentStatus]
-        ..inviteableRecipientsByOccurrence['occurrence-1'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Old Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ]
-        ..inviteableRecipientsByOccurrence['occurrence-2'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-2',
-            accountProfileId: 'profile-2',
-            displayName: 'Current Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ];
-      final controller = InviteShareScreenController(
-        invitesRepository: invitesRepository,
-        contactsRepository: _FakeContactsRepository(),
-        appData: _buildAppData(),
-      );
-
-      final firstInit = controller.init(_buildInvite());
-      await Future<void>.delayed(Duration.zero);
-
-      await controller.init(
-        _buildInvite(eventId: 'event-2', occurrenceId: 'occurrence-2'),
-      );
-
-      expect(
-        controller.sentInvitesStreamValue.value.single.friend.accountProfileId,
-        'profile-2',
-      );
-      expect(
-        _friendSuggestions(controller).single.inviteStatus,
-        InviteStatus.pending,
-      );
-
-      oldOccurrenceGate.complete();
-      await firstInit;
-
-      expect(
-        controller.sentInvitesStreamValue.value.single.friend.accountProfileId,
-        'profile-2',
-      );
-      expect(
-        _friendSuggestions(controller).single.inviteStatus,
-        InviteStatus.pending,
-      );
-
-      await controller.onDispose();
-    },
-  );
-
-  test(
     'sendInviteToFriend preserves pending state when post-send refresh succeeds stale',
     () async {
       final invitesRepository = _FakeInvitesRepository()
@@ -1208,7 +1001,13 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      expect(invitesRepository.sentStatusRefreshes, isEmpty);
+      expect(invitesRepository.sentStatusRefreshes, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'recipient_account_profile_ids': ['profile-1'],
+        },
+      ]);
       expect(invitesRepository.sentSummaryRefreshes, [
         {
           'occurrence_id': 'occurrence-1',
@@ -1537,45 +1336,26 @@ void main() {
   test(
     'reopening invite share keeps cached app pane when occurrence summary refresh fails',
     () async {
+      final cachedInviteables = <InviteableRecipient>[
+        buildInviteableRecipient(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Ana Contato',
+          inviteableReasons: const <String>['contact_match'],
+        ),
+        buildInviteableRecipient(
+          userId: 'user-2',
+          accountProfileId: 'profile-2',
+          displayName: 'Bia Favorita',
+          profileExposureLevel: 'full_profile',
+          inviteableReasons: const <String>['favorite_by_you'],
+        ),
+      ];
       final invitesRepository = _FakeInvitesRepository()
-        ..setInviteableRecipientsForOccurrence(
-          occurrenceId: invitesRepoString(
-            'occurrence-1',
-            defaultValue: '',
-            isRequired: true,
-          ),
-          recipients: <InviteableRecipient>[
-            buildInviteableRecipient(
-              userId: 'user-1',
-              accountProfileId: 'profile-1',
-              displayName: 'Ana Contato',
-              inviteableReasons: const <String>['contact_match'],
-            ),
-            buildInviteableRecipient(
-              userId: 'user-2',
-              accountProfileId: 'profile-2',
-              displayName: 'Bia Favorita',
-              profileExposureLevel: 'full_profile',
-              inviteableReasons: const <String>['favorite_by_you'],
-            ),
-          ],
-        )
-        ..inviteableRecipients = <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Ana Contato',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-          buildInviteableRecipient(
-            userId: 'user-2',
-            accountProfileId: 'profile-2',
-            displayName: 'Bia Favorita',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['favorite_by_you'],
-          ),
-        ]
+        ..inviteableRecipients = cachedInviteables
         ..throwOnSentSummary = true;
+      invitesRepository.inviteableRecipientsStreamValue
+          .addValue(cachedInviteables);
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: _FakeContactsRepository(),
@@ -1684,7 +1464,7 @@ void main() {
   );
 
   test(
-    'cold controller init hydrates persisted contact matches before inviteables refresh resolves',
+    'cold controller init does not hydrate app pane from persisted contact matches before inviteables refresh resolves',
     () async {
       final matchedContact = buildContactModel(
         id: 'matched-contact',
@@ -1734,14 +1514,12 @@ void main() {
         invitesRepository.hydrateImportedContactMatchesFromCacheCalls,
         1,
       );
-      expect(
-        _friendSuggestions(controller).single.friend.name,
-        'Bruna',
-      );
+      expect(controller.friendsSuggestionsStreamValue.value, isNull);
 
       importGate.complete();
       refreshGate.complete();
       await initFuture;
+      expect(controller.friendsSuggestionsStreamValue.value, isEmpty);
       await controller.onDispose();
     },
   );
@@ -1803,7 +1581,7 @@ void main() {
   );
 
   test(
-    'app pane starts backend inviteables refresh without waiting for contact import refresh',
+    'app pane starts inviteables refresh without route-critical contact import',
     () async {
       final contactsRepository = _FakeContactsRepository(
         contacts: <ContactModel>[
@@ -1814,10 +1592,8 @@ void main() {
           ),
         ],
       );
-      final importGate = Completer<void>();
       final fetchGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
-        ..importContactsGate = importGate
         ..fetchInviteableRecipientsGate = fetchGate
         ..inviteableRecipients = <InviteableRecipient>[
           buildInviteableRecipient(
@@ -1842,14 +1618,69 @@ void main() {
       fetchGate.complete();
       await initFuture;
 
-      importGate.complete();
       await Future<void>.delayed(Duration.zero);
 
-      expect(invitesRepository.importContactsCalls, 1);
+      expect(invitesRepository.importContactsCalls, 0);
       expect(
         controller.friendsSuggestionsStreamValue.value?.single.friend.name,
         'Ana Contato',
       );
+
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'app pane init keeps request budget with large cached contact set',
+    () async {
+      final largeContacts = List<ContactModel>.generate(
+        1200,
+        (index) => buildContactModel(
+          id: 'contact-$index',
+          displayName: 'Contato $index',
+          phones: <String>['+55 27 99999-${index.toString().padLeft(4, '0')}'],
+        ),
+      );
+      final contactsRepository = _FakeContactsRepository(
+        cachedContacts: largeContacts,
+      );
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Ana Contato',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['contact_match'],
+          ),
+          buildInviteableRecipient(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            displayName: 'Bia Favorita',
+            profileExposureLevel: 'full_profile',
+            inviteableReasons: const <String>['favorite_by_you'],
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: contactsRepository,
+        appData: _buildAppData(),
+      );
+
+      await controller.init(_buildInvite());
+
+      expect(contactsRepository.loadCachedContactsCalls, 1);
+      expect(contactsRepository.refreshContactsCalls, 0);
+      expect(invitesRepository.importContactsCalls, 0);
+      expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
+      expect(invitesRepository.sentStatusRefreshes, hasLength(1));
+      expect(invitesRepository.sentSummaryRefreshes, hasLength(1));
+      expect(
+        invitesRepository
+            .sentStatusRefreshes.single['recipient_account_profile_ids'],
+        ['profile-1', 'profile-2'],
+      );
+      expect(_friendSuggestions(controller), hasLength(2));
 
       await controller.onDispose();
     },
@@ -1938,7 +1769,7 @@ void main() {
       expect(contactsRepository.loadCachedContactsCalls, 1);
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
-      expect(invitesRepository.importContactsCalls, 1);
+      expect(invitesRepository.importContactsCalls, 0);
       expect(
         _friendSuggestions(controller).single.friend.name,
         'Bruna',
@@ -2088,13 +1919,18 @@ void main() {
   test(
     'Telefone pane exposes unmatched local contacts as native external share targets',
     () async {
+      final matchedContact = buildContactModel(
+        id: 'matched-contact',
+        displayName: 'Matched Contact',
+        phones: <String>['+55 27 99999-9999'],
+      );
+      final matchedHash = InviteContactImportHashes.contactHashes(
+        matchedContact,
+        regionCode: 'BR',
+      ).first;
       final contactsRepository = _FakeContactsRepository(
         contacts: <ContactModel>[
-          buildContactModel(
-            id: 'matched-contact',
-            displayName: 'Matched Contact',
-            phones: <String>['+55 27 99999-9999'],
-          ),
+          matchedContact,
           buildContactModel(
             id: 'external-contact',
             displayName: 'Mae',
@@ -2102,11 +1938,21 @@ void main() {
           ),
         ],
       );
+      final invitesRepository = _FakeInvitesRepository()
+        ..inviteableRecipients = <InviteableRecipient>[
+          _buildContactMatchedInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: 'Matched Contact',
+            contactHash: matchedHash,
+          ),
+        ];
       final controller = InviteShareScreenController(
-        invitesRepository: _FakeInvitesRepository(),
+        invitesRepository: invitesRepository,
         contactsRepository: contactsRepository,
         appData: _buildAppData(),
         isWebRuntime: false,
+        contactRegionCode: 'BR',
       );
 
       await controller.init(_buildInvite());
@@ -2513,18 +2359,7 @@ void main() {
         ..createShareCodeGatesByOccurrence['occurrence-1'] = staleShareCodeGate
         ..shareCodesByOccurrence['occurrence-1'] = 'OLD-CODE'
         ..shareCodesByOccurrence['occurrence-2'] = 'NEW-CODE'
-        ..inviteableRecipientsByOccurrence['occurrence-1'] =
-            <InviteableRecipient>[
-          buildInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Old Occurrence Contact',
-            profileExposureLevel: 'full_profile',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-        ]
-        ..inviteableRecipientsByOccurrence['occurrence-2'] =
-            <InviteableRecipient>[
+        ..inviteableRecipients = <InviteableRecipient>[
           buildInviteableRecipient(
             userId: 'user-2',
             accountProfileId: 'profile-2',

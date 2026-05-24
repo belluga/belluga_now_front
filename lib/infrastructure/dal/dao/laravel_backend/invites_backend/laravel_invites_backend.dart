@@ -164,12 +164,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() {
-    return _get('$_apiBaseUrl/v1/contacts/inviteables');
-  }
-
-  @override
-  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+  Future<Map<String, dynamic>> fetchInviteableContacts(
     InviteableContactsRequest request,
   ) {
     return _get(

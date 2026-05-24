@@ -36,6 +36,24 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 class InvitesResponseDecoder {
   const InvitesResponseDecoder();
 
+  Object? itemsPayload(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final data = response['data'];
+    if (data is Map) {
+      final dataMap = _asMap(data);
+      if (dataMap['items'] != null) {
+        return dataMap['items'];
+      }
+    }
+    return response['items'];
+  }
+
+  Object? dataPayload(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final data = response['data'];
+    return data is Map ? _asMap(data) : response;
+  }
+
   InviteDto decodeRequiredInviteDto(
     Object? rawInvite, {
     required String context,

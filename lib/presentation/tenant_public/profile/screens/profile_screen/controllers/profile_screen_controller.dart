@@ -9,7 +9,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
@@ -34,7 +34,7 @@ class ProfileScreenController implements Disposable {
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     ProfileAvatarStorageContract? avatarStorage,
     SelfProfileRepositoryContract? selfProfileRepository,
-    InvitesRepositoryContract? invitesRepository,
+    InviteablesRepositoryContract? inviteablesRepository,
   })  : _authRepository =
             authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
         _appDataRepository =
@@ -47,8 +47,8 @@ class ProfileScreenController implements Disposable {
             avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>(),
         _selfProfileRepository = selfProfileRepository ??
             GetIt.I.get<SelfProfileRepositoryContract>(),
-        _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>() {
+        _inviteablesRepository = inviteablesRepository ??
+            GetIt.I.get<InviteablesRepositoryContract>() {
     _bindUserStream();
     _bindSelfProfileStream();
     _bindMaxRadiusStream();
@@ -60,7 +60,7 @@ class ProfileScreenController implements Disposable {
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   final ProfileAvatarStorageContract _avatarStorage;
   final SelfProfileRepositoryContract _selfProfileRepository;
-  final InvitesRepositoryContract _invitesRepository;
+  final InviteablesRepositoryContract _inviteablesRepository;
   StreamSubscription<UserContract?>? _userSubscription;
   StreamSubscription<SelfProfile?>? _selfProfileSubscription;
   StreamSubscription<DistanceInMetersValue>? _maxRadiusSubscription;
@@ -402,9 +402,9 @@ class ProfileScreenController implements Disposable {
         return;
       }
       _applySelfProfile(profile);
-      await _invitesRepository.refreshInviteableRecipients();
+      await _inviteablesRepository.refreshInviteableRecipients();
       final recipients =
-          _invitesRepository.inviteableRecipientsStreamValue.value ??
+          _inviteablesRepository.inviteableRecipientsStreamValue.value ??
               const <InviteableRecipient>[];
       final filtered = recipients.where((recipient) {
         final userId = recipient.userId.trim();

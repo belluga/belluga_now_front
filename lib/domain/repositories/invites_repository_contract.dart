@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
-import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -54,8 +53,6 @@ abstract class InvitesRepositoryContract {
 
   final settingsStreamValue =
       StreamValue<InviteRuntimeSettings?>(defaultValue: null);
-  final inviteableRecipientsStreamValue =
-      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
   final importedContactMatchesStreamValue =
       StreamValue<List<InviteContactMatch>?>(defaultValue: null);
 
@@ -221,62 +218,6 @@ abstract class InvitesRepositoryContract {
     InviteContacts contacts,
   ) async =>
       null;
-
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      const <InviteableRecipient>[];
-
-  Future<void> refreshInviteableRecipients() async {
-    final recipients = await fetchInviteableRecipients();
-    inviteableRecipientsStreamValue.addValue(recipients);
-  }
-
-  StreamValue<List<InviteableRecipient>?>
-      inviteableRecipientsStreamValueForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) =>
-          throw UnimplementedError(
-            'Occurrence-scoped inviteables require repository slot storage.',
-          );
-
-  void setInviteableRecipientsForOccurrence({
-    required InvitesRepositoryContractPrimString occurrenceId,
-    required List<InviteableRecipient> recipients,
-  }) {
-    inviteableRecipientsStreamValueForOccurrence(occurrenceId).addValue(
-      List<InviteableRecipient>.unmodifiable(recipients),
-    );
-  }
-
-  List<InviteableRecipient>? inviteableRecipientsForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) =>
-      inviteableRecipientsStreamValueForOccurrence(occurrenceId).value;
-
-  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? eventId,
-    InvitesRepositoryContractPrimInt? page,
-    InvitesRepositoryContractPrimInt? pageSize,
-  }) async =>
-      fetchInviteableRecipients();
-
-  Future<void> refreshInviteableRecipientsForOccurrence({
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? eventId,
-    InvitesRepositoryContractPrimInt? page,
-    InvitesRepositoryContractPrimInt? pageSize,
-  }) async {
-    final recipients = await fetchInviteableRecipientsForOccurrence(
-      occurrenceId: occurrenceId,
-      eventId: eventId,
-      page: page,
-      pageSize: pageSize,
-    );
-    setInviteableRecipientsForOccurrence(
-      occurrenceId: occurrenceId,
-      recipients: recipients,
-    );
-  }
 
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];

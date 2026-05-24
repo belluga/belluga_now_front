@@ -265,14 +265,10 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       throw UnimplementedError();
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+  Future<Map<String, dynamic>> fetchInviteableContacts(
     InviteableContactsRequest request,
   ) async =>
-      fetchInviteableContacts();
+      throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> fetchContactGroups() async =>

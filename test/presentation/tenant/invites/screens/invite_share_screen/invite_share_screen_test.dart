@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_val
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
@@ -58,7 +59,7 @@ void main() {
     await GetIt.I.reset(dispose: false);
   });
 
-  testWidgets('renders deduped inviteables and narrows by relation filter', (
+  testWidgets('renders inviteables without rejected relation filter chips', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -79,18 +80,9 @@ void main() {
 
     expect(find.text('Ana Contato'), findsOneWidget);
     expect(find.text('Bia Favorita'), findsOneWidget);
-
-    await tester.tap(find.text('Favoritos'));
-    await tester.pump();
-
-    expect(find.text('Ana Contato'), findsNothing);
-    expect(find.text('Bia Favorita'), findsOneWidget);
-
-    await tester.tap(find.text('Todos'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ana Contato'), findsOneWidget);
-    expect(find.text('Bia Favorita'), findsOneWidget);
+    expect(find.text('Favoritos'), findsNothing);
+    expect(find.text('Todos'), findsNothing);
+    expect(find.text('Contatos'), findsNothing);
   });
 
   testWidgets('agenda refresh appears only on Telefone pane', (
@@ -293,7 +285,9 @@ void main() {
     await tester.pump();
 
     expect(
-        find.text('Nenhum contato convidável para este filtro.'), findsNothing);
+      find.text('Nenhuma pessoa do app disponível para convite.'),
+      findsNothing,
+    );
     expect(find.byType(CircularProgressIndicator), findsWidgets);
 
     invitesRepository.fetchInviteableRecipientsCompleter!.complete(
@@ -301,8 +295,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Nenhum contato convidável para este filtro.'),
-        findsOneWidget);
+    expect(
+      find.text('Nenhuma pessoa do app disponível para convite.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -347,7 +343,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
       expect(find.text('Ana Contato'), findsNothing);
@@ -360,14 +356,14 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
     },
   );
 
   testWidgets(
-    'app pane does not flash empty state while imported contact matches are still resolving',
+    'app pane does not wait for imported contact matches to resolve',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(480, 1200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -398,11 +394,11 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
-        findsNothing,
+        find.text('Nenhuma pessoa do app disponível para convite.'),
+        findsOneWidget,
       );
       expect(find.text('Contato Match'), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
 
       invitesRepository.importContactsCompleter!.complete(
         <InviteContactMatch>[
@@ -416,10 +412,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Contato Match'), findsOneWidget);
+      expect(find.text('Contato Match'), findsNothing);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
-        findsNothing,
+        find.text('Nenhuma pessoa do app disponível para convite.'),
+        findsOneWidget,
       );
     },
   );
@@ -464,7 +460,7 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
 
@@ -637,14 +633,8 @@ void main() {
         ],
       );
 
-      invitesRepository.setInviteableRecipientsForOccurrence(
-        occurrenceId: invitesRepoString(
-          'occurrence-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
-        recipients: invitesRepository.inviteableRecipients,
-      );
+      invitesRepository.inviteableRecipientsStreamValue
+          .addValue(invitesRepository.inviteableRecipients);
       invitesRepository.importedContactMatchesStreamValue.addValue(
         const <InviteContactMatch>[],
       );
@@ -732,7 +722,7 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
     },
@@ -842,16 +832,15 @@ void main() {
         ),
       );
 
-      expect(find.text('Convidado'), findsOneWidget);
+      expect(find.text('Convidado'), findsNWidgets(2));
       expect(find.text('Convite Aceito!'), findsOneWidget);
       expect(find.text('Convite recusado'), findsOneWidget);
-      expect(find.text('Confirmado'), findsOneWidget);
+      expect(find.text('Confirmado'), findsNothing);
       expect(find.text('Convidar'), findsNothing);
 
-      await tester.tap(find.text('Convidado'));
+      await tester.tap(find.text('Convidado').first);
       await tester.tap(find.text('Convite Aceito!'));
       await tester.tap(find.text('Convite recusado'));
-      await tester.tap(find.text('Confirmado'));
       await tester.pump();
 
       expect(inviteTapCount, 0);
@@ -1288,7 +1277,8 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInvitesRepository extends InvitesRepositoryContract
+    implements InviteablesRepositoryContract {
   _FakeInvitesRepository()
       : inviteableRecipients = [
           buildInviteableRecipient(
@@ -1315,36 +1305,31 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   String? lastShareCodeOccurrenceId;
   List<InviteableRecipient> inviteableRecipients;
   List<InviteContactMatch>? cachedImportContactMatches;
-  final inviteableRecipientStreamsByOccurrence =
-      <String, StreamValue<List<InviteableRecipient>?>>{};
   Completer<List<InviteContactMatch>>? importContactsCompleter;
   List<InviteContactMatch> importContactMatches = const <InviteContactMatch>[];
   Completer<List<InviteableRecipient>>? fetchInviteableRecipientsCompleter;
   Completer<void>? sendInvitesGate;
 
   @override
+  final inviteableRecipientsStreamValue =
+      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
+
+  @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     fetchInviteableRecipientsCalls += 1;
     if (fetchInviteableRecipientsCompleter != null) {
-      return fetchInviteableRecipientsCompleter!.future;
+      final recipients = await fetchInviteableRecipientsCompleter!.future;
+      inviteableRecipientsStreamValue.addValue(recipients);
+      return recipients;
     }
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
     return inviteableRecipients;
   }
 
   @override
-  StreamValue<List<InviteableRecipient>?>
-      inviteableRecipientsStreamValueForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) {
-    final normalizedOccurrenceId = occurrenceId.value.trim();
-    if (normalizedOccurrenceId.isEmpty) {
-      return inviteableRecipientsStreamValue;
-    }
-
-    return inviteableRecipientStreamsByOccurrence.putIfAbsent(
-      normalizedOccurrenceId,
-      () => StreamValue<List<InviteableRecipient>?>(defaultValue: null),
-    );
+  Future<void> refreshInviteableRecipients() async {
+    final recipients = await fetchInviteableRecipients();
+    inviteableRecipientsStreamValue.addValue(recipients);
   }
 
   @override

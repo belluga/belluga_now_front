@@ -44,7 +44,7 @@ class InviteFriendResumeWithStatus {
       case InviteStatus.expired:
         return 'Convite expirado';
       case InviteStatus.superseded:
-        return 'Confirmado';
+        return 'Convidado';
       case InviteStatus.suppressed:
         return 'Indisponível';
     }

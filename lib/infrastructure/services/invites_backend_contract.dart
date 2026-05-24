@@ -42,12 +42,9 @@ abstract class InvitesBackendContract {
     InviteContactImportRequest request,
   );
 
-  Future<Map<String, dynamic>> fetchInviteableContacts();
-
-  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+  Future<Map<String, dynamic>> fetchInviteableContacts(
     InviteableContactsRequest request,
-  ) async =>
-      fetchInviteableContacts();
+  );
 
   Future<Map<String, dynamic>> fetchContactGroups();
 

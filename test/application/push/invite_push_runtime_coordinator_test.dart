@@ -9,7 +9,6 @@ import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
-import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
@@ -335,10 +334,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InviteContacts contacts,
   ) async =>
       const <InviteContactMatch>[];
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      const <InviteableRecipient>[];
 
   @override
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
