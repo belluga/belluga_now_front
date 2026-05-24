@@ -127,6 +127,7 @@ class ImmersiveEventDetailController implements Disposable {
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final isShareActionLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  bool _confirmAttendanceInFlight = false;
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository?.appData.mainLogoDarkUrl.value;
@@ -575,6 +576,9 @@ class ImmersiveEventDetailController implements Disposable {
 
   /// Confirm attendance at this event
   Future<AttendanceConfirmationResult> confirmAttendance() async {
+    if (_confirmAttendanceInFlight) {
+      return AttendanceConfirmationResult.skipped;
+    }
     if (!_isAuthorized) {
       return AttendanceConfirmationResult.requiresAuthentication;
     }
@@ -588,7 +592,9 @@ class ImmersiveEventDetailController implements Disposable {
       return AttendanceConfirmationResult.skipped;
     }
 
+    _confirmAttendanceInFlight = true;
     isLoadingStreamValue.addValue(true);
+    isConfirmationStateLoadingStreamValue.addValue(true);
 
     try {
       await _userEventsRepository.confirmEventAttendance(
@@ -605,7 +611,9 @@ class ImmersiveEventDetailController implements Disposable {
       );
       return AttendanceConfirmationResult.confirmed;
     } finally {
+      _confirmAttendanceInFlight = false;
       isLoadingStreamValue.addValue(false);
+      isConfirmationStateLoadingStreamValue.addValue(false);
     }
   }
 

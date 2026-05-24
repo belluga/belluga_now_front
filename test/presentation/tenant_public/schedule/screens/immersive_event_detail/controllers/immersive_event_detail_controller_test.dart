@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -79,6 +81,37 @@ void main() {
     expect(result, AttendanceConfirmationResult.confirmed);
     expect(userEventsRepository.confirmCalls, 1);
     expect(invitesRepository.acceptInviteCalls, 0);
+    expect(controller.isConfirmedStreamValue.value, isTrue);
+  });
+
+  test('confirm attendance drops duplicate requests while pending', () async {
+    final userEventsRepository = _FakeUserEventsRepository()
+      ..confirmGate = Completer<void>();
+    final invitesRepository = _FakeInvitesRepository();
+    _linkRepositories(userEventsRepository, invitesRepository);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+
+    final firstResult = controller.confirmAttendance();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isConfirmationStateLoadingStreamValue.value, isTrue);
+    expect(userEventsRepository.confirmCalls, 1);
+
+    final duplicateResult = await controller.confirmAttendance();
+
+    expect(duplicateResult, AttendanceConfirmationResult.skipped);
+    expect(userEventsRepository.confirmCalls, 1);
+
+    userEventsRepository.confirmGate!.complete();
+
+    expect(await firstResult, AttendanceConfirmationResult.confirmed);
+    expect(controller.isConfirmationStateLoadingStreamValue.value, isFalse);
     expect(controller.isConfirmedStreamValue.value, isTrue);
   });
 
@@ -409,6 +442,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   int refreshConfirmedOccurrenceIdsCalls = 0;
   final Set<String> _confirmedIds = <String>{};
   void Function()? onRefreshConfirmedOccurrenceIds;
+  Completer<void>? confirmGate;
   _FakeInvitesRepository? linkedInvitesRepository;
 
   @override
@@ -417,6 +451,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     required UserEventsRepositoryContractPrimString occurrenceId,
   }) async {
     confirmCalls += 1;
+    await confirmGate?.future;
     _confirmedIds.add(occurrenceId.value);
     await refreshConfirmedOccurrenceIds();
     await linkedInvitesRepository?.syncAfterAttendanceMutation(

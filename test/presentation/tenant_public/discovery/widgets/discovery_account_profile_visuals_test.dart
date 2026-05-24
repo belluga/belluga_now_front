@@ -4,6 +4,7 @@ import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_r
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_card.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
@@ -47,11 +48,209 @@ void main() {
 
     expect(find.text('ARTIST'), findsNothing);
     expect(find.text('Artista'), findsNothing);
-    expect(find.byKey(const Key('discoveryPartnerIdentityAvatar')), findsOneWidget);
+    expect(find.byKey(const Key('discoveryPartnerIdentityAvatar')),
+        findsOneWidget);
     expect(find.byKey(const Key('discoveryPartnerTypeAvatar')), findsOneWidget);
     expect(find.text('Ananda Torres'), findsOneWidget);
     expect(find.text('brasilidades'), findsOneWidget);
     expect(find.text('samba'), findsOneWidget);
+  });
+
+  testWidgets('DiscoveryPartnerCard renders tags over the image bottom',
+      (tester) async {
+    final registry = _buildAppData().profileTypeRegistry;
+    final partner = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439030',
+      name: 'Forró Piseiro Smoke Perfil Público',
+      slug: 'forro-piseiro-smoke',
+      type: 'artist',
+      tags: const ['Forró Pé de Serra', 'Música Ao Vivo', 'Piseiro'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 182,
+            child: DiscoveryPartnerCard(
+              partner: partner,
+              isFavorite: false,
+              isFavoritable: true,
+              onFavoriteTap: () {},
+              onTap: () {},
+              resolvedVisual: AccountProfileVisualResolver.resolve(
+                accountProfile: partner,
+                registry: registry,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final imageBottom =
+        tester.getBottomRight(find.byType(AspectRatio).first).dy;
+    expect(
+      tester.getCenter(find.text('Forró Pé de Serra')).dy,
+      lessThan(imageBottom),
+    );
+    expect(
+      tester.getCenter(find.text('Música Ao Vivo')).dy,
+      lessThan(imageBottom),
+    );
+    final overlayRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryPartnerImageTagsOverlay')),
+    );
+    final firstTagRect = tester.getRect(
+      find.byKey(
+        const ValueKey<String>('discoveryPartnerImageTag:Forró Pé de Serra'),
+      ),
+    );
+    final secondTagRect = tester.getRect(
+      find.byKey(
+        const ValueKey<String>('discoveryPartnerImageTag:Música Ao Vivo'),
+      ),
+    );
+    expect(firstTagRect.left, greaterThanOrEqualTo(overlayRect.left));
+    expect(firstTagRect.right, lessThanOrEqualTo(overlayRect.right));
+    expect(secondTagRect.left, greaterThanOrEqualTo(overlayRect.left));
+    expect(secondTagRect.right, lessThanOrEqualTo(overlayRect.right));
+    final visibleTagCenters = <double>[
+      tester.getCenter(find.text('Forró Pé de Serra')).dy,
+      tester.getCenter(find.text('Música Ao Vivo')).dy,
+    ];
+    expect(_distinctVerticalRows(visibleTagCenters),
+        hasLength(lessThanOrEqualTo(2)));
+    expect(
+      tester.widget<Text>(find.text('Forró Pé de Serra')).maxLines,
+      1,
+    );
+    expect(
+      tester.widget<Text>(find.text('Música Ao Vivo')).maxLines,
+      1,
+    );
+    expect(find.text('Piseiro'), findsNothing);
+  });
+
+  testWidgets('DiscoveryPartnerCard accepts multiple tags capped to two rows',
+      (tester) async {
+    final registry = _buildAppData().profileTypeRegistry;
+    final partner = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439033',
+      name: 'Casa Musical',
+      slug: 'casa-musical',
+      type: 'artist',
+      tags: const ['Axé', 'Bar', 'DJ', 'Ao Vivo', 'Praia', 'Família'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 220,
+            child: DiscoveryPartnerCard(
+              partner: partner,
+              isFavorite: false,
+              isFavoritable: false,
+              onFavoriteTap: () {},
+              onTap: () {},
+              resolvedVisual: AccountProfileVisualResolver.resolve(
+                accountProfile: partner,
+                registry: registry,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final visibleLabels = <String>[
+      'Axé',
+      'Bar',
+      'DJ',
+      'Ao Vivo',
+      'Praia',
+      'Família',
+    ]
+        .where((label) => find.text(label).evaluate().isNotEmpty)
+        .toList(growable: false);
+    expect(visibleLabels.length, greaterThan(2));
+
+    final visibleRows = _distinctVerticalRows(
+      visibleLabels
+          .map((label) => tester.getCenter(find.text(label)).dy)
+          .toList(growable: false),
+    );
+    expect(visibleRows, hasLength(lessThanOrEqualTo(2)));
+
+    final overlayRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryPartnerImageTagsOverlay')),
+    );
+    for (final label in visibleLabels) {
+      final tagRect = tester.getRect(
+        find.byKey(ValueKey<String>('discoveryPartnerImageTag:$label')),
+      );
+      expect(tagRect.left, greaterThanOrEqualTo(overlayRect.left));
+      expect(tagRect.right, lessThanOrEqualTo(overlayRect.right));
+      expect(tester.widget<Text>(find.text(label)).maxLines, 1);
+      expect(tester.widget<Text>(find.text(label)).overflow,
+          TextOverflow.ellipsis);
+    }
+  });
+
+  testWidgets(
+      'DiscoveryPartnerGrid keeps tagged account profile cards within mobile cell constraints',
+      (tester) async {
+    tester.view.physicalSize = const Size(720, 1600);
+    tester.view.devicePixelRatio = 1.75;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = _buildAppData().profileTypeRegistry;
+    final partners = <AccountProfileModel>[
+      buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439031',
+        name: 'Promotion Smoke Perfil Público',
+        slug: 'promotion-smoke-a',
+        type: 'restaurant',
+        tags: const ['Forró Piseiro Smoke'],
+      ),
+      buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439032',
+        name: 'Promotion Smoke Perfil Público',
+        slug: 'promotion-smoke-b',
+        type: 'restaurant',
+        tags: const ['Forró Piseiro Smoke'],
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                sliver: DiscoveryPartnerGrid(
+                  partners: partners,
+                  favorites: const <String>{},
+                  isFavoritable: (_) => true,
+                  onFavoriteTap: (_) {},
+                  onPartnerTap: (_) {},
+                  resolvedVisualForPartner: (partner) =>
+                      AccountProfileVisualResolver.resolve(
+                    accountProfile: partner,
+                    registry: registry,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('DiscoveryPartnerCard exposes a named semantic navigation button',
@@ -133,7 +332,8 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const Key('discoveryPartnerIdentityAvatar')), findsNothing);
+    expect(
+        find.byKey(const Key('discoveryPartnerIdentityAvatar')), findsNothing);
     expect(find.byKey(const Key('discoveryPartnerTypeAvatar')), findsOneWidget);
   });
 
@@ -246,7 +446,8 @@ void main() {
           body: DiscoveryNearbyRow(
             items: items,
             onTap: (_) {},
-            resolvedVisualForItem: (item) => AccountProfileVisualResolver.resolve(
+            resolvedVisualForItem: (item) =>
+                AccountProfileVisualResolver.resolve(
               accountProfile: item,
               registry: registry,
             ),
@@ -256,12 +457,16 @@ void main() {
     );
 
     expect(find.byKey(const Key('discoveryNearbyHalo')), findsNothing);
-    final avatarImage = tester.widgetList<Image>(
-      find.byType(Image),
-    ).where((widget) => widget.image is NetworkImage).toList();
+    final avatarImage = tester
+        .widgetList<Image>(
+          find.byType(Image),
+        )
+        .where((widget) => widget.image is NetworkImage)
+        .toList();
     expect(
       avatarImage.any(
-        (widget) => (widget.image as NetworkImage).url ==
+        (widget) =>
+            (widget.image as NetworkImage).url ==
             'https://tenant.test/avatar.png',
       ),
       isTrue,
@@ -272,6 +477,19 @@ void main() {
       findsWidgets,
     );
   });
+}
+
+List<double> _distinctVerticalRows(List<double> centers) {
+  final rows = <double>[];
+  for (final center in centers) {
+    final belongsToExistingRow = rows.any(
+      (rowCenter) => (rowCenter - center).abs() < 4,
+    );
+    if (!belongsToExistingRow) {
+      rows.add(center);
+    }
+  }
+  return rows;
 }
 
 AppData _buildAppData() {

@@ -214,7 +214,7 @@ class _ImmersiveEventDetailScreenState
                             final footer =
                                 isConfirmationStateLoading && !isConfirmed
                                     ? DynamicFooter(
-                                        buttonText: 'Verificando presença...',
+                                        buttonText: 'Confirmando presença...',
                                         buttonIcon: Icons.hourglass_top_rounded,
                                         buttonColor:
                                             colorScheme.surfaceContainerHigh,

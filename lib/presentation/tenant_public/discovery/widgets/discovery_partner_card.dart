@@ -67,8 +67,6 @@ class DiscoveryPartnerCard extends StatelessWidget {
                   titleStyle: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
-                  supporting:
-                      partner.tags.isEmpty ? null : _CardTags(partner: partner),
                 ),
               ),
           ],
@@ -78,49 +76,161 @@ class DiscoveryPartnerCard extends StatelessWidget {
   }
 }
 
-class _CardTags extends StatelessWidget {
-  const _CardTags({required this.partner});
+class _CardImageTags extends StatelessWidget {
+  const _CardImageTags({required this.partner});
 
   final AccountProfileModel partner;
 
   @override
   Widget build(BuildContext context) {
-    final tags = partner.tags.take(2).toList(growable: false);
-    if (tags.isEmpty) {
+    final labels = partner.tags
+        .map((tag) => tag.value.trim())
+        .where((label) => label.isNotEmpty)
+        .toList(growable: false);
+    if (labels.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: tags
-          .map(
-            (tag) => Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: colorScheme.outlineVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ) ??
+            const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            );
+        final visibleLabels = _visibleTagLabelsForTwoRows(
+          labels: labels,
+          maxWidth: constraints.maxWidth,
+          textStyle: textStyle,
+          textDirection: Directionality.of(context),
+        );
+        if (visibleLabels.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Wrap(
+          key: const ValueKey<String>('discoveryPartnerImageTagsOverlay'),
+          spacing: _tagSpacing,
+          runSpacing: _tagRunSpacing,
+          children: visibleLabels
+              .map(
+                (label) => _CardImageTag(
+                  label: label,
+                  maxWidth: constraints.maxWidth,
+                  textStyle: textStyle,
                 ),
-              ),
-              child: Text(
-                tag.value,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          )
-          .toList(growable: false),
+              )
+              .toList(growable: false),
+        );
+      },
     );
   }
+}
+
+const double _tagHorizontalPadding = 20;
+const double _tagSpacing = 6;
+const double _tagRunSpacing = 6;
+const int _maxTagRows = 2;
+
+class _CardImageTag extends StatelessWidget {
+  const _CardImageTag({
+    required this.label,
+    required this.maxWidth,
+    required this.textStyle,
+  });
+
+  final String label;
+  final double maxWidth;
+  final TextStyle textStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      key: ValueKey<String>('discoveryPartnerImageTag:$label'),
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.58),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.34),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: _tagHorizontalPadding / 2,
+            vertical: 6,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textStyle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+List<String> _visibleTagLabelsForTwoRows({
+  required List<String> labels,
+  required double maxWidth,
+  required TextStyle textStyle,
+  required TextDirection textDirection,
+}) {
+  if (maxWidth <= 0) {
+    return const <String>[];
+  }
+
+  final visibleLabels = <String>[];
+  var currentRow = 1;
+  var currentRowWidth = 0.0;
+
+  for (final label in labels) {
+    final chipWidth = _boundedTagChipWidth(
+      label: label,
+      maxWidth: maxWidth,
+      textStyle: textStyle,
+      textDirection: textDirection,
+    );
+    final requiredWidth = currentRowWidth == 0
+        ? chipWidth
+        : currentRowWidth + _tagSpacing + chipWidth;
+
+    if (requiredWidth <= maxWidth) {
+      visibleLabels.add(label);
+      currentRowWidth = requiredWidth;
+      continue;
+    }
+
+    if (currentRow >= _maxTagRows) {
+      break;
+    }
+
+    currentRow += 1;
+    visibleLabels.add(label);
+    currentRowWidth = chipWidth;
+  }
+
+  return visibleLabels;
+}
+
+double _boundedTagChipWidth({
+  required String label,
+  required double maxWidth,
+  required TextStyle textStyle,
+  required TextDirection textDirection,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: textStyle),
+    maxLines: 1,
+    textDirection: textDirection,
+  )..layout(maxWidth: maxWidth);
+  final naturalWidth = painter.width + _tagHorizontalPadding;
+  return naturalWidth > maxWidth ? maxWidth : naturalWidth;
 }
 
 class _CardImage extends StatelessWidget {
@@ -192,6 +302,13 @@ class _CardImage extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            if (partner.tags.isNotEmpty)
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: 10,
+                child: _CardImageTags(partner: partner),
               ),
             if (isFavoritable)
               Positioned(
