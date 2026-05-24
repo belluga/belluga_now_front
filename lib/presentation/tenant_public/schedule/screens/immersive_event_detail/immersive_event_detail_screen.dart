@@ -14,7 +14,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -114,21 +114,20 @@ class _ImmersiveEventDetailScreenState
                       builder: (context, receivedInvites) {
                         return StreamValueBuilder<
                             Map<InvitesRepositoryContractPrimString,
-                                List<SentInviteStatus>>>(
-                          streamValue:
-                              _controller.sentInvitesByOccurrenceStreamValue,
-                          builder: (context, sentInvitesByOccurrence) {
+                                SentInviteSummary>>(
+                          streamValue: _controller
+                              .sentInviteSummariesByOccurrenceStreamValue,
+                          builder: (context, sentSummariesByOccurrence) {
                             final selectedOccurrenceId =
                                 resolvedEvent.selectedOccurrenceId?.trim();
-                            final sentForEvent = selectedOccurrenceId == null ||
+                            final sentSummary = selectedOccurrenceId == null ||
                                     selectedOccurrenceId.isEmpty
-                                ? const <SentInviteStatus>[]
-                                : sentInvitesByOccurrence[invitesRepoString(
-                                      selectedOccurrenceId,
-                                      defaultValue: '',
-                                      isRequired: true,
-                                    )] ??
-                                    const <SentInviteStatus>[];
+                                ? null
+                                : sentSummariesByOccurrence[invitesRepoString(
+                                    selectedOccurrenceId,
+                                    defaultValue: '',
+                                    isRequired: true,
+                                  )];
 
                             final Widget? topBanner = receivedInvites.isNotEmpty
                                 ? Padding(
@@ -226,7 +225,7 @@ class _ImmersiveEventDetailScreenState
                                             context,
                                             () =>
                                                 _openInviteFlow(resolvedEvent),
-                                            sentForEvent,
+                                            sentSummary,
                                           )
                                         : DynamicFooter(
                                             buttonText:
@@ -876,11 +875,10 @@ class _ImmersiveEventDetailScreenState
 Widget _buildInviteFooter(
   BuildContext context,
   VoidCallback onInviteFriends,
-  List<SentInviteStatus> sentInvites,
+  SentInviteSummary? sentSummary,
 ) {
-  final visibleSentInvites =
-      sentInvites.where((invite) => !invite.status.isHiddenSentStatus).toList();
-  final hasInvites = visibleSentInvites.isNotEmpty;
+  final visibleSentInvites = sentSummary?.preview ?? const <SentInviteStatus>[];
+  final hasInvites = sentSummary?.hasVisibleInvites ?? false;
   final theme = Theme.of(context);
   final colorScheme = theme.colorScheme;
   final subtleOnSurface = colorScheme.onSurface.withValues(alpha: 0.12);
@@ -925,7 +923,7 @@ Widget _buildInviteFooter(
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 220),
                 child: Text(
-                  _inviteSummary(visibleSentInvites),
+                  _inviteSummary(sentSummary),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -944,11 +942,7 @@ Widget _buildInviteFooter(
   );
 }
 
-String _inviteSummary(List<SentInviteStatus> shown) {
-  if (shown.isEmpty) return '';
-  final pending =
-      shown.where((invite) => invite.status.countsAsPendingSummary).length;
-  final confirmed =
-      shown.where((invite) => invite.status.countsAsAcceptedSummary).length;
-  return '$pending pendentes | $confirmed confirmados';
+String _inviteSummary(SentInviteSummary? summary) {
+  if (summary == null || !summary.hasVisibleInvites) return '';
+  return '${summary.pending} pendentes | ${summary.accepted} confirmados';
 }

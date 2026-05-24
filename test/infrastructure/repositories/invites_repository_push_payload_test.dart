@@ -1,4 +1,3 @@
-import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
@@ -228,6 +227,22 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       throw UnimplementedError();
 
   @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) async =>
+      const <String, dynamic>{
+        'summary': <String, dynamic>{
+          'pending': 0,
+          'accepted': 0,
+          'declined': 0,
+          'terminal_hidden': 0,
+          'total_visible': 0,
+          'total_sent': 0,
+        },
+        'preview': <Map<String, dynamic>>[],
+      };
+
+  @override
   Future<Map<String, dynamic>> createShareCode(
           InviteShareCodeCreateRequest request) async =>
       throw UnimplementedError();
@@ -252,6 +267,12 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   @override
   Future<Map<String, dynamic>> fetchInviteableContacts() async =>
       throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+    InviteableContactsRequest request,
+  ) async =>
+      fetchInviteableContacts();
 
   @override
   Future<Map<String, dynamic>> fetchContactGroups() async =>

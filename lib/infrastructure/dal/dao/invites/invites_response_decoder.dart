@@ -23,6 +23,8 @@ import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
@@ -166,6 +168,23 @@ class InvitesResponseDecoder {
     }
 
     return statuses;
+  }
+
+  SentInviteSummary decodeSentInviteSummary(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final summary = _asMap(response['summary']);
+
+    return SentInviteSummary(
+      pendingValue: _buildSentInviteSummaryCountValue(summary['pending']),
+      acceptedValue: _buildSentInviteSummaryCountValue(summary['accepted']),
+      declinedValue: _buildSentInviteSummaryCountValue(summary['declined']),
+      terminalHiddenValue:
+          _buildSentInviteSummaryCountValue(summary['terminal_hidden']),
+      totalVisibleValue:
+          _buildSentInviteSummaryCountValue(summary['total_visible']),
+      totalSentValue: _buildSentInviteSummaryCountValue(summary['total_sent']),
+      preview: decodeSentInviteStatuses(response['preview']),
+    );
   }
 
   List<InviteContactGroup> decodeContactGroups(Object? rawItems) {
@@ -360,7 +379,15 @@ class InvitesResponseDecoder {
         ..set(map['is_inviteable'] != false),
       contactHashValue: contactHashValue,
       contactTypeValue: contactTypeValue,
+      sentInviteStatus: _mapSentInviteStatusPayload(map['sent_invite_status']),
     );
+  }
+
+  SentInviteStatus? _mapSentInviteStatusPayload(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+    return _mapSentInviteStatus(Map<String, dynamic>.from(raw));
   }
 
   InviteContactGroup? _mapContactGroup(Map<String, dynamic> map) {
@@ -451,6 +478,10 @@ class InvitesResponseDecoder {
     return InviteableReasons(
       reasons.map((reason) => InviteableReasonValue()..parse(reason)),
     );
+  }
+
+  SentInviteSummaryCountValue _buildSentInviteSummaryCountValue(Object? raw) {
+    return SentInviteSummaryCountValue()..parse(raw?.toString());
   }
 
   String _stringOrEmpty(Object? raw) => raw?.toString() ?? '';

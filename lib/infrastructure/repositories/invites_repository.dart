@@ -38,6 +38,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
@@ -45,7 +46,6 @@ import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_cache_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
@@ -108,6 +108,8 @@ class InvitesRepository extends InvitesRepositoryContract
       const InvitePushPayloadDecoder();
   final Map<String, Future<List<SentInviteStatus>>> _activeSentStatusRefreshes =
       <String, Future<List<SentInviteStatus>>>{};
+  final Map<String, Future<SentInviteSummary>> _activeSentSummaryRefreshes =
+      <String, Future<SentInviteSummary>>{};
   UserEventsRepositoryContract? _userEventsRepository;
   StreamSubscription<Object?>? _inviteRealtimeAuthSubscription;
   StreamSubscription<InviteRealtimeDeltaDto>? _inviteRealtimeStreamSubscription;
@@ -580,6 +582,36 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    final normalizedOccurrenceId = occurrenceId.value.trim();
+    if (normalizedOccurrenceId.isEmpty) {
+      return fetchInviteableRecipients();
+    }
+
+    final response = await _backend.fetchInviteableContactsForOccurrence(
+      InviteableContactsRequest(
+        occurrenceId: normalizedOccurrenceId,
+        eventId: _normalizeNullable(eventId?.value),
+        page: page?.value ?? 1,
+        pageSize: pageSize?.value ?? 100,
+      ),
+    );
+    final recipients =
+        _responseDecoder.decodeInviteableRecipients(response['items']);
+    inviteableRecipientsStreamValue.addValue(recipients);
+    _storeSentInviteStatusesFromInviteables(
+      occurrenceId: normalizedOccurrenceId,
+      recipients: recipients,
+    );
+    return recipients;
+  }
+
+  @override
   Future<List<InviteContactGroup>> fetchContactGroups() async {
     final response = await _backend.fetchContactGroups();
     return _responseDecoder.decodeContactGroups(response['data']);
@@ -821,6 +853,111 @@ class InvitesRepository extends InvitesRepositoryContract
       occurrenceKey: nextStatuses,
     });
     return nextStatuses;
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    final normalizedOccurrenceId = occurrenceId.value.trim();
+    if (normalizedOccurrenceId.isEmpty) {
+      return SentInviteSummary.empty();
+    }
+
+    final refreshKey = normalizedOccurrenceId;
+    final activeRefresh = _activeSentSummaryRefreshes[refreshKey];
+    if (activeRefresh != null) {
+      return activeRefresh;
+    }
+
+    late final Future<SentInviteSummary> refresh;
+    refresh = _fetchAndStoreSentInviteSummaryForOccurrence(
+      occurrenceId: normalizedOccurrenceId,
+      eventId: _normalizeNullable(eventId?.value),
+      previewLimit: previewLimit?.value ?? 5,
+    ).whenComplete(() {
+      if (identical(_activeSentSummaryRefreshes[refreshKey], refresh)) {
+        _activeSentSummaryRefreshes.remove(refreshKey);
+      }
+    });
+    _activeSentSummaryRefreshes[refreshKey] = refresh;
+    return refresh;
+  }
+
+  Future<SentInviteSummary> _fetchAndStoreSentInviteSummaryForOccurrence({
+    required String occurrenceId,
+    required String? eventId,
+    required int previewLimit,
+  }) async {
+    final response = await _backend.fetchSentInviteSummary(
+      InviteSentSummaryRequest(
+        occurrenceId: occurrenceId,
+        eventId: eventId,
+        previewLimit: previewLimit,
+      ),
+    );
+    final summary = _responseDecoder.decodeSentInviteSummary(response);
+    final occurrenceKey = invitesRepoString(
+      occurrenceId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    sentInviteSummariesByOccurrenceStreamValue.addValue({
+      ...sentInviteSummariesByOccurrenceStreamValue.value,
+      occurrenceKey: summary,
+    });
+    _storeSentInviteStatuses(
+      occurrenceId: occurrenceId,
+      statuses: summary.preview,
+      merge: true,
+    );
+    return summary;
+  }
+
+  void _storeSentInviteStatusesFromInviteables({
+    required String occurrenceId,
+    required List<InviteableRecipient> recipients,
+  }) {
+    final statuses = recipients
+        .map((recipient) => recipient.sentInviteStatus)
+        .whereType<SentInviteStatus>()
+        .toList(growable: false);
+    if (statuses.isEmpty) {
+      return;
+    }
+    _storeSentInviteStatuses(
+      occurrenceId: occurrenceId,
+      statuses: statuses,
+      merge: true,
+    );
+  }
+
+  void _storeSentInviteStatuses({
+    required String occurrenceId,
+    required List<SentInviteStatus> statuses,
+    required bool merge,
+  }) {
+    if (statuses.isEmpty) {
+      return;
+    }
+    final occurrenceKey = invitesRepoString(
+      occurrenceId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final currentByOccurrence = sentInvitesByOccurrenceStreamValue.value;
+    final nextStatuses = merge
+        ? _mergeSentInviteStatuses(
+            currentByOccurrence[occurrenceKey] ?? const <SentInviteStatus>[],
+            statuses,
+          )
+        : statuses;
+    sentInvitesByOccurrenceStreamValue.addValue({
+      ...currentByOccurrence,
+      occurrenceKey: nextStatuses,
+    });
   }
 
   @override

@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
@@ -155,7 +156,7 @@ void main() {
   });
 
   test(
-      'event detail init refreshes sent invite statuses for selected occurrence',
+      'event detail init refreshes sent invite summary for selected occurrence',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -168,12 +169,14 @@ void main() {
     controller.init(_buildEvent());
     await pumpEventQueue();
 
-    expect(invitesRepository.sentStatusRefreshes, [
+    expect(invitesRepository.sentSummaryRefreshes, [
       {
         'occurrence_id': '507f1f77bcf86cd799439012',
         'event_id': '507f1f77bcf86cd799439011',
+        'preview_limit': null,
       },
     ]);
+    expect(invitesRepository.sentStatusRefreshes, isEmpty);
   });
 
   test(
@@ -478,6 +481,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
   int fetchInvitesCalls = 0;
   final sentStatusRefreshes = <Map<String, Object?>>[];
+  final sentSummaryRefreshes = <Map<String, Object?>>[];
   final List<String> acceptedShareCodes = <String>[];
   List<InviteModel> fetchInvitesResult = const <InviteModel>[];
   _FakeUserEventsRepository? linkedUserEventsRepository;
@@ -583,6 +587,20 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
             recipientAccountProfileIds.map((value) => value.value).toList(),
     });
     return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    sentSummaryRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'preview_limit': previewLimit?.value,
+    });
+    return SentInviteSummary.empty();
   }
 
   @override

@@ -104,8 +104,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                   hasRefreshFailed: hasRefreshFailed,
                                   availableReasons: const <String>[],
                                   selectedReason: selectedReason,
-                                  filteredFriends:
-                                      const <InviteFriendResumeWithStatus>[],
+                                  filteredFriends: const <InviteFriendResumeWithStatus>[],
                                   externalTargets: _cachedExternalTargets(),
                                   isPaneLoading: true,
                                 ),
@@ -135,8 +134,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                             }
 
                             return StreamValueBuilder<bool>(
-                              streamValue:
-                                  _controller.isPhonePaneInitialLoadingStreamValue,
+                              streamValue: _controller
+                                  .isPhonePaneInitialLoadingStreamValue,
                               builder: (context, isInitialPhonePaneLoading) {
                                 return StreamValueBuilder<
                                     List<InviteExternalContactShareTarget>?>(
@@ -155,16 +154,13 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                       _cachedFriendsWithStatus(),
                                       selectedReason,
                                     ),
-                                    externalTargets: const <
-                                        InviteExternalContactShareTarget>[],
+                                    externalTargets: const <InviteExternalContactShareTarget>[],
                                     isPaneLoading: true,
                                   ),
                                   builder: (context, externalTargets) {
                                     final resolvedExternalTargets =
                                         externalTargets ??
-                                            const <
-                                                InviteExternalContactShareTarget>[
-                                            ];
+                                            const <InviteExternalContactShareTarget>[];
                                     return _buildScreenBody(
                                       selectedPane: selectedPane,
                                       phoneContactCount:
@@ -180,8 +176,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                         selectedReason,
                                       ),
                                       externalTargets: resolvedExternalTargets,
-                                      isPaneLoading:
-                                          isInitialPhonePaneLoading,
+                                      isPaneLoading: isInitialPhonePaneLoading,
                                     );
                                   },
                                 );
@@ -336,9 +331,9 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       case 5:
         return const SizedBox(height: 16);
       case 2:
-        return StreamValueBuilder<List<SentInviteStatus>>(
-          streamValue: _controller.sentInvitesStreamValue,
-          builder: (context, invites) => InviteShareSummary(invites: invites),
+        return StreamValueBuilder(
+          streamValue: _controller.sentInviteSummaryStreamValue,
+          builder: (context, summary) => InviteShareSummary(summary: summary),
         );
       case 4:
         return _buildControls(
@@ -683,8 +678,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         ? null
         : InviteContactPhoneNormalization.preferredWhatsAppTarget(
             target.primaryPhone!,
-            regionCode:
-                _controller.debugContactRegionCodeValue ?? _currentCountryCode(),
+            regionCode: _controller.debugContactRegionCodeValue ??
+                _currentCountryCode(),
           );
     if (phone == null || phone.isEmpty) {
       return null;

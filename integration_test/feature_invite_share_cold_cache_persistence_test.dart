@@ -9,7 +9,6 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache.dart';
-import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
@@ -420,6 +419,28 @@ class _ColdCacheInvitesBackend implements InvitesBackendContract {
     InviteSentStatusesRequest request,
   ) async =>
       const <String, dynamic>{'items': <Map<String, dynamic>>[]};
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) async =>
+      const <String, dynamic>{
+        'summary': <String, dynamic>{
+          'pending': 0,
+          'accepted': 0,
+          'declined': 0,
+          'terminal_hidden': 0,
+          'total_visible': 0,
+          'total_sent': 0,
+        },
+        'preview': <Map<String, dynamic>>[],
+      };
+
+  @override
+  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+    InviteableContactsRequest request,
+  ) async =>
+      fetchInviteableContacts();
 
   @override
   Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>

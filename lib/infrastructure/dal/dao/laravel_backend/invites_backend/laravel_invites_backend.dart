@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
@@ -120,6 +119,16 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/invites/sent-summary',
+      queryParameters: request.toQueryParameters(),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,
   ) {
@@ -157,6 +166,16 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   @override
   Future<Map<String, dynamic>> fetchInviteableContacts() {
     return _get('$_apiBaseUrl/v1/contacts/inviteables');
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+    InviteableContactsRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/contacts/inviteables',
+      queryParameters: request.toQueryParameters(),
+    );
   }
 
   @override

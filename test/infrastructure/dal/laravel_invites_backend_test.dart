@@ -7,7 +7,9 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_summary_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/inviteable_contacts_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_message.dart';
@@ -102,6 +104,72 @@ void main() {
           .queryParametersAll['recipient_account_profile_ids[]'],
       ['profile-1', 'profile-2'],
     );
+  });
+
+  test('fetchSentInviteSummary targets exact summary endpoint', () async {
+    final adapter = _RecordingAdapter(
+      response: const {
+        'data': {
+          'summary': {
+            'pending': 0,
+            'accepted': 0,
+            'declined': 0,
+            'terminal_hidden': 0,
+            'total_visible': 0,
+            'total_sent': 0,
+          },
+          'preview': [],
+        },
+      },
+    );
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+
+    await backend.fetchSentInviteSummary(
+      const InviteSentSummaryRequest(
+        occurrenceId: 'occurrence-1',
+        eventId: 'event-1',
+        previewLimit: 5,
+      ),
+    );
+
+    expect(adapter.lastRequest?.uri.path, '/api/v1/invites/sent-summary');
+    expect(adapter.lastRequest?.uri.queryParameters['occurrence_id'],
+        'occurrence-1');
+    expect(adapter.lastRequest?.uri.queryParameters['event_id'], 'event-1');
+    expect(adapter.lastRequest?.uri.queryParameters['preview_limit'], '5');
+  });
+
+  test(
+      'fetchInviteableContactsForOccurrence targets inviteables with occurrence context',
+      () async {
+    final adapter = _RecordingAdapter(
+      response: const {
+        'data': {
+          'items': [],
+        },
+      },
+    );
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+
+    await backend.fetchInviteableContactsForOccurrence(
+      const InviteableContactsRequest(
+        occurrenceId: 'occurrence-1',
+        eventId: 'event-1',
+        page: 1,
+        pageSize: 100,
+      ),
+    );
+
+    expect(adapter.lastRequest?.uri.path, '/api/v1/contacts/inviteables');
+    expect(adapter.lastRequest?.uri.queryParameters['occurrence_id'],
+        'occurrence-1');
+    expect(adapter.lastRequest?.uri.queryParameters['event_id'], 'event-1');
+    expect(adapter.lastRequest?.uri.queryParameters['page'], '1');
+    expect(adapter.lastRequest?.uri.queryParameters['page_size'], '100');
   });
 
   test('watchInvitesStream decodes canonical upsert payload', () async {

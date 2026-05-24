@@ -25,6 +25,8 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
@@ -776,25 +778,28 @@ void main() {
   );
 
   testWidgets(
-    'summary counts only visible pending and accepted sent statuses',
+    'summary uses exact counters and bounded visible preview',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: InviteShareSummary(
-              invites: <SentInviteStatus>[
-                _sentStatus('profile-pending', InviteStatus.pending),
-                _sentStatus('profile-accepted', InviteStatus.accepted),
-                _sentStatus('profile-declined', InviteStatus.declined),
-                _sentStatus('profile-superseded', InviteStatus.superseded),
-              ],
+              summary: _sentSummary(
+                pending: 250,
+                accepted: 12,
+                preview: <SentInviteStatus>[
+                  _sentStatus('profile-pending', InviteStatus.pending),
+                  _sentStatus('profile-accepted', InviteStatus.accepted),
+                  _sentStatus('profile-superseded', InviteStatus.superseded),
+                ],
+              ),
             ),
           ),
         ),
       );
 
-      expect(find.text('1 pendentes | 1 aceitos'), findsOneWidget);
-      expect(find.textContaining('3 pendentes'), findsNothing);
+      expect(find.text('250 pendentes | 12 aceitos'), findsOneWidget);
+      expect(find.text('1 pendentes | 1 aceitos'), findsNothing);
     },
   );
 
@@ -1386,5 +1391,23 @@ SentInviteStatus _sentStatus(String accountProfileId, InviteStatus status) {
     ),
     status: status,
     sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+  );
+}
+
+SentInviteSummary _sentSummary({
+  required int pending,
+  required int accepted,
+  List<SentInviteStatus> preview = const <SentInviteStatus>[],
+}) {
+  return SentInviteSummary(
+    pendingValue: SentInviteSummaryCountValue()..parse(pending.toString()),
+    acceptedValue: SentInviteSummaryCountValue()..parse(accepted.toString()),
+    declinedValue: SentInviteSummaryCountValue(),
+    terminalHiddenValue: SentInviteSummaryCountValue(),
+    totalVisibleValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
+    totalSentValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
+    preview: preview,
   );
 }

@@ -13,11 +13,11 @@ import 'package:belluga_now/domain/repositories/value_objects/invites_repository
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
-import 'package:belluga_now/infrastructure/dal/dao/invites/invite_sent_statuses_request.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_requests.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
@@ -470,6 +470,66 @@ void main() {
       'user-1',
     );
   });
+
+  test(
+    'fetchInviteableRecipientsForOccurrence decodes row sent status without broad sent-status fetch',
+    () async {
+      final backend = _FakeInvitesBackend(
+        inviteableContactsResponse: {
+          'items': [
+            {
+              'user_id': 'user-2',
+              'receiver_account_profile_id': 'profile-2',
+              'display_name': 'Inviteable With Status',
+              'avatar_url': null,
+              'profile_exposure_level': 'full_profile',
+              'inviteable_reasons': ['contact_match'],
+              'is_inviteable': true,
+              'sent_invite_status': {
+                'invite_id': 'invite-2',
+                'receiver_account_profile_id': 'profile-2',
+                'receiver_user_id': 'user-2',
+                'display_name': 'Inviteable With Status',
+                'status': 'accepted',
+                'sent_at': '2026-05-23T12:00:00Z',
+                'responded_at': '2026-05-23T12:10:00Z',
+              },
+            },
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+
+      final recipients =
+          await repository.fetchInviteableRecipientsForOccurrence(
+        occurrenceId: invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          'event-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(backend.inviteableContactsPayloads, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'page': 1,
+          'page_size': 100,
+        },
+      ]);
+      expect(recipients.single.sentInviteStatus?.status, InviteStatus.accepted);
+      expect(
+        recipients.single.sentInviteStatus?.friend.accountProfileId,
+        'profile-2',
+      );
+      expect(backend.sentInviteStatusPayloads, isEmpty);
+    },
+  );
 
   test('importContacts sends region-aware OTP-compatible phone hash variants',
       () async {
@@ -1067,6 +1127,72 @@ void main() {
     },
   );
 
+  test(
+    'refreshSentInviteSummaryForOccurrence stores exact counters separately from targeted status hydration',
+    () async {
+      final backend = _FakeInvitesBackend(
+        sentInviteSummaryResponse: {
+          'event_id': 'event-1',
+          'occurrence_id': 'occurrence-1',
+          'summary': {
+            'pending': 203,
+            'accepted': 2,
+            'declined': 0,
+            'terminal_hidden': 0,
+            'total_visible': 205,
+            'total_sent': 205,
+          },
+          'preview': [
+            {
+              'invite_id': 'invite-preview',
+              'receiver_account_profile_id': 'profile-1',
+              'receiver_user_id': 'user-1',
+              'display_name': 'Preview Friend',
+              'status': 'pending',
+              'sent_at': '2026-05-23T12:00:00Z',
+            },
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+
+      final summary = await repository.refreshSentInviteSummaryForOccurrence(
+        occurrenceId: invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          'event-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(backend.sentInviteSummaryPayloads, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'preview_limit': 5,
+        },
+      ]);
+      expect(summary.pending, 203);
+      expect(summary.accepted, 2);
+      expect(summary.totalVisible, 205);
+      expect(summary.preview.single.friend.accountProfileId, 'profile-1');
+      expect(backend.sentInviteStatusPayloads, isEmpty);
+      expect(
+        repository
+            .sentInviteSummariesByOccurrenceStreamValue.value[invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        )],
+        isA<SentInviteSummary>(),
+      );
+    },
+  );
+
   test('createShareCode sends and returns the selected occurrence identity',
       () async {
     final backend = _FakeInvitesBackend(
@@ -1271,6 +1397,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? updateContactGroupResponse,
     Map<String, dynamic>? sendInvitesResponse,
     Map<String, dynamic>? sentInviteStatusesResponse,
+    Map<String, dynamic>? sentInviteSummaryResponse,
     Completer<Map<String, dynamic>>? sentInviteStatusesCompleter,
     Map<String, dynamic>? createShareCodeResponse,
     List<Stream<InviteRealtimeDeltaDto>> inviteRealtimeStreams = const [],
@@ -1332,6 +1459,18 @@ class _FakeInvitesBackend implements InvitesBackendContract {
         _sentInviteStatusesCompleter = sentInviteStatusesCompleter,
         _sentInviteStatusesResponse =
             sentInviteStatusesResponse ?? const {'items': []},
+        _sentInviteSummaryResponse = sentInviteSummaryResponse ??
+            const {
+              'summary': {
+                'pending': 0,
+                'accepted': 0,
+                'declined': 0,
+                'terminal_hidden': 0,
+                'total_visible': 0,
+                'total_sent': 0,
+              },
+              'preview': [],
+            },
         _createShareCodeResponse = createShareCodeResponse ??
             const {
               'code': 'SHARE-CODE',
@@ -1358,6 +1497,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _sendInvitesResponse;
   final Completer<Map<String, dynamic>>? _sentInviteStatusesCompleter;
   final Map<String, dynamic> _sentInviteStatusesResponse;
+  final Map<String, dynamic> _sentInviteSummaryResponse;
   final Map<String, dynamic> _createShareCodeResponse;
   final List<Stream<InviteRealtimeDeltaDto>> _inviteRealtimeStreams;
   final Map<String, dynamic> Function(Map<String, dynamic> payload)?
@@ -1370,6 +1510,10 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final List<Map<String, dynamic>> sentInvitePayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> sentInviteStatusPayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> sentInviteSummaryPayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> inviteableContactsPayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> createdShareCodePayloads =
       <Map<String, dynamic>>[];
@@ -1455,6 +1599,14 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       _inviteableContactsResponse;
 
   @override
+  Future<Map<String, dynamic>> fetchInviteableContactsForOccurrence(
+    InviteableContactsRequest request,
+  ) async {
+    inviteableContactsPayloads.add(request.toJson());
+    return _inviteableContactsResponse;
+  }
+
+  @override
   Future<Map<String, dynamic>> fetchContactGroups() async =>
       _contactGroupsResponse;
 
@@ -1515,6 +1667,14 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       return completer.future;
     }
     return _sentInviteStatusesResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) async {
+    sentInviteSummaryPayloads.add(request.toJson());
+    return _sentInviteSummaryResponse;
   }
 }
 

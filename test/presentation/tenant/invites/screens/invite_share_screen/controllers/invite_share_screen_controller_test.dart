@@ -29,6 +29,8 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
@@ -108,8 +110,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   List<InviteContactMatch>? importContactMatches;
   List<InviteContactMatch>? cachedImportContactMatches;
   List<SentInviteStatus> sentStatuses = const <SentInviteStatus>[];
+  SentInviteSummary sentSummary = SentInviteSummary.empty();
   final sentRecipientAccountProfileIds = <String>[];
   final sentStatusRefreshes = <Map<String, Object?>>[];
+  final sentSummaryRefreshes = <Map<String, Object?>>[];
   int importContactsCalls = 0;
   int hydrateImportedContactMatchesFromCacheCalls = 0;
   int fetchInviteableRecipientsCalls = 0;
@@ -227,6 +231,42 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    fetchInviteableRecipientsCalls += 1;
+    await fetchInviteableRecipientsGate?.future;
+    final statusesByProfileId = <String, SentInviteStatus>{
+      for (final status in sentStatuses)
+        status.friend.accountProfileId.trim(): status,
+    };
+    final enriched = inviteableRecipients
+        .map(
+          (recipient) => InviteableRecipient(
+            userIdValue: recipient.userIdValue,
+            receiverAccountProfileIdValue:
+                recipient.receiverAccountProfileIdValue,
+            displayNameValue: recipient.displayNameValue,
+            avatarValue: recipient.avatarValue,
+            profileExposureLevelValue: recipient.profileExposureLevelValue,
+            inviteableReasons: recipient.inviteableReasons,
+            isInviteableValue: recipient.isInviteableValue,
+            contactHashValue: recipient.contactHashValue,
+            contactTypeValue: recipient.contactTypeValue,
+            sentInviteStatus: statusesByProfileId[
+                    recipient.receiverAccountProfileId.trim()] ??
+                recipient.sentInviteStatus,
+          ),
+        )
+        .toList(growable: false);
+    inviteableRecipientsStreamValue.addValue(enriched);
+    return enriched;
+  }
+
+  @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     required InvitesRepositoryContractPrimString occurrenceId,
@@ -275,6 +315,20 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
           recipientAccountProfileIds.map((value) => value.value).toList(),
     });
     return sentStatuses;
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    sentSummaryRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'preview_limit': previewLimit?.value,
+    });
+    return sentSummary;
   }
 }
 
@@ -510,7 +564,8 @@ void main() {
             status: InviteStatus.accepted,
             sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
           ),
-        ];
+        ]
+        ..sentSummary = _sentSummary(pending: 0, accepted: 1);
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: _FakeContactsRepository(),
@@ -519,13 +574,15 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      expect(invitesRepository.sentStatusRefreshes, [
+      expect(invitesRepository.sentStatusRefreshes, isEmpty);
+      expect(invitesRepository.sentSummaryRefreshes, [
         {
           'occurrence_id': 'occurrence-1',
           'event_id': 'event-1',
-          'recipient_account_profile_ids': ['profile-1'],
+          'preview_limit': null,
         },
       ]);
+      expect(controller.sentInviteSummaryStreamValue.value.accepted, 1);
       expect(_friendSuggestions(controller).single.inviteStatus,
           InviteStatus.accepted);
 
@@ -1754,5 +1811,21 @@ InviteableRecipient _buildContactMatchedInviteableRecipient({
     contactHashValue: InviteContactHashValue()..parse(contactHash),
     contactTypeValue: InviteContactTypeValue()..parse('phone'),
     isInviteableValue: DomainBooleanValue()..parse('true'),
+  );
+}
+
+SentInviteSummary _sentSummary({
+  required int pending,
+  required int accepted,
+}) {
+  return SentInviteSummary(
+    pendingValue: SentInviteSummaryCountValue()..parse(pending.toString()),
+    acceptedValue: SentInviteSummaryCountValue()..parse(accepted.toString()),
+    declinedValue: SentInviteSummaryCountValue(),
+    terminalHiddenValue: SentInviteSummaryCountValue(),
+    totalVisibleValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
+    totalSentValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
   );
 }

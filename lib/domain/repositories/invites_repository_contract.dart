@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
@@ -44,6 +45,11 @@ abstract class InvitesRepositoryContract {
       Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>(
     defaultValue: const <InvitesRepositoryContractPrimString,
         List<SentInviteStatus>>{},
+  );
+  final sentInviteSummariesByOccurrenceStreamValue =
+      StreamValue<Map<InvitesRepositoryContractPrimString, SentInviteSummary>>(
+    defaultValue: const <InvitesRepositoryContractPrimString,
+        SentInviteSummary>{},
   );
 
   final settingsStreamValue =
@@ -224,6 +230,29 @@ abstract class InvitesRepositoryContract {
     inviteableRecipientsStreamValue.addValue(recipients);
   }
 
+  Future<List<InviteableRecipient>> fetchInviteableRecipientsForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async =>
+      fetchInviteableRecipients();
+
+  Future<void> refreshInviteableRecipientsForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    final recipients = await fetchInviteableRecipientsForOccurrence(
+      occurrenceId: occurrenceId,
+      eventId: eventId,
+      page: page,
+      pageSize: pageSize,
+    );
+    inviteableRecipientsStreamValue.addValue(recipients);
+  }
+
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];
 
@@ -266,4 +295,11 @@ abstract class InvitesRepositoryContract {
         const <InvitesRepositoryContractPrimString>[],
   }) async =>
       getSentInvitesForOccurrence(occurrenceId);
+
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async =>
+      SentInviteSummary.empty();
 }

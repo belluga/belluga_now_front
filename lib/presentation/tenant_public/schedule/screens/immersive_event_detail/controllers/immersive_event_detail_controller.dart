@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -119,6 +120,9 @@ class ImmersiveEventDetailController implements Disposable {
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
       get sentInvitesByOccurrenceStreamValue =>
           _invitesRepository.sentInvitesByOccurrenceStreamValue;
+  StreamValue<Map<InvitesRepositoryContractPrimString, SentInviteSummary>>
+      get sentInviteSummariesByOccurrenceStreamValue =>
+          _invitesRepository.sentInviteSummariesByOccurrenceStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final isShareActionLoadingStreamValue =
@@ -241,7 +245,7 @@ class ImmersiveEventDetailController implements Disposable {
     }
 
     try {
-      await _invitesRepository.refreshSentInvitesForOccurrence(
+      await _invitesRepository.refreshSentInviteSummaryForOccurrence(
         occurrenceId: invitesRepoString(
           occurrenceId,
           defaultValue: '',

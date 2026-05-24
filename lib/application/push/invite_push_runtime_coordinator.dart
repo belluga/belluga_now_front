@@ -147,6 +147,20 @@ class InvitePushRuntimeCoordinator {
                 ),
               ],
       );
+      await invitesRepository.refreshSentInviteSummaryForOccurrence(
+        occurrenceId: invitesRepoString(
+          payload.occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: payload.eventId == null
+            ? null
+            : invitesRepoString(
+                payload.eventId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+      );
     } catch (error) {
       debugPrint('[Push] Invite accepted status refresh failed: $error');
     }

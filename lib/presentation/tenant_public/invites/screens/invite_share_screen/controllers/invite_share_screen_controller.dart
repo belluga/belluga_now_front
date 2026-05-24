@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/value_objects/invite_contact_region_code_value.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
@@ -66,6 +67,9 @@ class InviteShareScreenController with Disposable {
   final contactsPermissionGranted = StreamValue<bool>(defaultValue: false);
   final sentInvitesStreamValue = StreamValue<List<SentInviteStatus>>(
     defaultValue: const [],
+  );
+  final sentInviteSummaryStreamValue = StreamValue<SentInviteSummary>(
+    defaultValue: SentInviteSummary.empty(),
   );
   final shareCodeStreamValue = StreamValue<InviteShareCodeResult?>(
     defaultValue: null,
@@ -301,7 +305,7 @@ class InviteShareScreenController with Disposable {
       });
     }
 
-    await _invitesRepository.refreshInviteableRecipients();
+    await _refreshInviteableRecipientsForCurrentOccurrence();
     if (_isDisposed) return;
 
     final inviteableRecipients =
@@ -404,6 +408,7 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> _syncSentInvites() async {
+    await _refreshInviteableRecipientsForCurrentOccurrence();
     await _applyInviteTargetsFromRepositoriesWithStatus();
   }
 
@@ -664,7 +669,7 @@ class InviteShareScreenController with Disposable {
     bool publishAppPane = true,
     bool publishPhonePane = false,
   }) async {
-    final sentInvites = await _resolveSentInvites();
+    final sentInvites = _sentInvitesFromInviteableRecipients();
     if (_isDisposed) return;
     sentInvitesStreamValue.addValue(sentInvites);
     _applyInviteTargetsFromRepositories(
@@ -674,17 +679,37 @@ class InviteShareScreenController with Disposable {
     );
   }
 
-  Future<List<SentInviteStatus>> _resolveSentInvites() async {
+  Future<void> _refreshInviteableRecipientsForCurrentOccurrence() async {
     final occurrenceId = _currentOccurrenceIdValue();
     if (occurrenceId == null) {
-      return const <SentInviteStatus>[];
+      await _invitesRepository.refreshInviteableRecipients();
+      if (!_isDisposed) {
+        sentInviteSummaryStreamValue.addValue(SentInviteSummary.empty());
+      }
+      return;
     }
 
-    return _invitesRepository.refreshSentInvitesForOccurrence(
+    final eventId = _currentEventIdValue();
+    await _invitesRepository.refreshInviteableRecipientsForOccurrence(
       occurrenceId: occurrenceId,
-      eventId: _currentEventIdValue(),
-      recipientAccountProfileIds: _visibleRecipientAccountProfileIds(),
+      eventId: eventId,
     );
+    final summary =
+        await _invitesRepository.refreshSentInviteSummaryForOccurrence(
+      occurrenceId: occurrenceId,
+      eventId: eventId,
+    );
+    if (!_isDisposed) {
+      sentInviteSummaryStreamValue.addValue(summary);
+    }
+  }
+
+  List<SentInviteStatus> _sentInvitesFromInviteableRecipients() {
+    return (_invitesRepository.inviteableRecipientsStreamValue.value ??
+            const <InviteableRecipient>[])
+        .map((recipient) => recipient.sentInviteStatus)
+        .whereType<SentInviteStatus>()
+        .toList(growable: false);
   }
 
   void _applyInviteTargetsFromRepositories({
@@ -926,24 +951,6 @@ class InviteShareScreenController with Disposable {
     return 'user:${invite.friend.id}';
   }
 
-  List<InvitesRepositoryContractPrimString>
-      _visibleRecipientAccountProfileIds() {
-    final ids = <String>{
-      ...(_invitesRepository.inviteableRecipientsStreamValue.value ??
-              const <InviteableRecipient>[])
-          .map((recipient) => recipient.receiverAccountProfileId.trim())
-          .where((id) => id.isNotEmpty),
-      ...(_invitesRepository.importedContactMatchesStreamValue.value ??
-              const <InviteContactMatch>[])
-          .map((match) => match.receiverAccountProfileId.trim())
-          .where((id) => id.isNotEmpty),
-    }.toList(growable: false);
-
-    return ids
-        .map((id) => invitesRepoString(id, defaultValue: '', isRequired: true))
-        .toList(growable: false);
-  }
-
   EventFriendResume _toEventFriendResume(InviteFriendResume friend) {
     final avatarUrlValue = UserAvatarValue();
     final avatarUrl = friend.avatarValue.value?.toString().trim();
@@ -996,6 +1003,7 @@ class InviteShareScreenController with Disposable {
     selectedFriendsSuggestionsStreamValue.dispose();
     contactsPermissionGranted.dispose();
     sentInvitesStreamValue.dispose();
+    sentInviteSummaryStreamValue.dispose();
     shareCodeStreamValue.dispose();
     isShareCodeLoadingStreamValue.dispose();
     isPhoneContactsRefreshingStreamValue.dispose();
