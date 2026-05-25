@@ -801,9 +801,10 @@ class InvitesRepository extends InvitesRepositoryContract
     final currentByOccurrence = sentInvitesByOccurrenceStreamValue.value;
     final nextStatuses = recipientAccountProfileIds.isEmpty
         ? statuses
-        : _mergeSentInviteStatuses(
+        : _replaceSentInviteStatusesForRecipients(
             currentByOccurrence[occurrenceKey] ?? const <SentInviteStatus>[],
             statuses,
+            recipientAccountProfileIds,
           );
     sentInvitesByOccurrenceStreamValue.addValue({
       ...currentByOccurrence,
@@ -1020,6 +1021,48 @@ class InvitesRepository extends InvitesRepositoryContract
       mergedByRecipient[_sentInviteStatusKey(status)] = status;
     }
     return List<SentInviteStatus>.unmodifiable(mergedByRecipient.values);
+  }
+
+  List<SentInviteStatus> _replaceSentInviteStatusesForRecipients(
+    List<SentInviteStatus> current,
+    List<SentInviteStatus> updates,
+    List<String> recipientAccountProfileIds,
+  ) {
+    final requestedKeys = recipientAccountProfileIds
+        .map(
+          (id) => _sentInviteRecipientKey(
+            userId: '',
+            accountProfileId: id,
+          ),
+        )
+        .toSet();
+    final updatesByRecipient = <String, SentInviteStatus>{
+      for (final status in updates) _sentInviteStatusKey(status): status,
+    };
+    final consumedUpdateKeys = <String>{};
+    final next = <SentInviteStatus>[];
+
+    for (final status in current) {
+      final key = _sentInviteStatusKey(status);
+      if (!requestedKeys.contains(key)) {
+        next.add(status);
+        continue;
+      }
+
+      final update = updatesByRecipient[key];
+      if (update != null) {
+        next.add(update);
+        consumedUpdateKeys.add(key);
+      }
+    }
+
+    for (final entry in updatesByRecipient.entries) {
+      if (!consumedUpdateKeys.contains(entry.key)) {
+        next.add(entry.value);
+      }
+    }
+
+    return List<SentInviteStatus>.unmodifiable(next);
   }
 
   String _sentInviteStatusKey(SentInviteStatus status) {

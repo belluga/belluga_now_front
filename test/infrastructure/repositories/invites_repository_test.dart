@@ -896,7 +896,7 @@ void main() {
   );
 
   test(
-    'refreshSentInvitesForOccurrence merges filtered status without dropping other recipients',
+    'refreshSentInvitesForOccurrence overwrites filtered recipients without dropping unrelated recipients',
     () async {
       final backend = _FakeInvitesBackend(
         sentInviteStatusesResponse: {
@@ -931,6 +931,11 @@ void main() {
             accountProfileId: 'profile-2',
             status: InviteStatus.pending,
           ),
+          _sentStatus(
+            userId: 'user-3',
+            accountProfileId: 'profile-3',
+            status: InviteStatus.pending,
+          ),
         ],
       });
 
@@ -943,17 +948,18 @@ void main() {
         ),
         recipientAccountProfileIds: [
           invitesRepoString('profile-1', defaultValue: '', isRequired: true),
+          invitesRepoString('profile-2', defaultValue: '', isRequired: true),
         ],
       );
 
       expect(backend.sentInviteStatusPayloads.single, {
         'occurrence_id': 'occurrence-1',
         'event_id': 'event-1',
-        'recipient_account_profile_ids': ['profile-1'],
+        'recipient_account_profile_ids': ['profile-1', 'profile-2'],
       });
       expect(statuses.map((status) => status.friend.accountProfileId), [
         'profile-1',
-        'profile-2',
+        'profile-3',
       ]);
       expect(statuses.map((status) => status.status), [
         InviteStatus.accepted,
@@ -963,7 +969,7 @@ void main() {
         (await repository.getSentInvitesForOccurrence(occurrenceId)).map(
             (status) =>
                 '${status.friend.accountProfileId}:${status.status.name}'),
-        ['profile-1:accepted', 'profile-2:pending'],
+        ['profile-1:accepted', 'profile-3:pending'],
       );
     },
   );
