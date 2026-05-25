@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -14,6 +16,7 @@ import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
@@ -78,6 +81,37 @@ void main() {
     expect(result, AttendanceConfirmationResult.confirmed);
     expect(userEventsRepository.confirmCalls, 1);
     expect(invitesRepository.acceptInviteCalls, 0);
+    expect(controller.isConfirmedStreamValue.value, isTrue);
+  });
+
+  test('confirm attendance drops duplicate requests while pending', () async {
+    final userEventsRepository = _FakeUserEventsRepository()
+      ..confirmGate = Completer<void>();
+    final invitesRepository = _FakeInvitesRepository();
+    _linkRepositories(userEventsRepository, invitesRepository);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+
+    final firstResult = controller.confirmAttendance();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isConfirmationStateLoadingStreamValue.value, isTrue);
+    expect(userEventsRepository.confirmCalls, 1);
+
+    final duplicateResult = await controller.confirmAttendance();
+
+    expect(duplicateResult, AttendanceConfirmationResult.skipped);
+    expect(userEventsRepository.confirmCalls, 1);
+
+    userEventsRepository.confirmGate!.complete();
+
+    expect(await firstResult, AttendanceConfirmationResult.confirmed);
+    expect(controller.isConfirmationStateLoadingStreamValue.value, isFalse);
     expect(controller.isConfirmedStreamValue.value, isTrue);
   });
 
@@ -152,6 +186,30 @@ void main() {
         event.selectedOccurrenceId);
     expect(controller.isConfirmedStreamValue.value, isTrue);
     expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
+  });
+
+  test(
+      'event detail init refreshes sent invite summary for selected occurrence',
+      () async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(_buildEvent());
+    await pumpEventQueue();
+
+    expect(invitesRepository.sentSummaryRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439012',
+        'event_id': '507f1f77bcf86cd799439011',
+        'preview_limit': null,
+      },
+    ]);
+    expect(invitesRepository.sentStatusRefreshes, isEmpty);
   });
 
   test(
@@ -384,6 +442,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   int refreshConfirmedOccurrenceIdsCalls = 0;
   final Set<String> _confirmedIds = <String>{};
   void Function()? onRefreshConfirmedOccurrenceIds;
+  Completer<void>? confirmGate;
   _FakeInvitesRepository? linkedInvitesRepository;
 
   @override
@@ -392,6 +451,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     required UserEventsRepositoryContractPrimString occurrenceId,
   }) async {
     confirmCalls += 1;
+    await confirmGate?.future;
     _confirmedIds.add(occurrenceId.value);
     await refreshConfirmedOccurrenceIds();
     await linkedInvitesRepository?.syncAfterAttendanceMutation(
@@ -455,6 +515,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
   int fetchInvitesCalls = 0;
+  final sentStatusRefreshes = <Map<String, Object?>>[];
+  final sentSummaryRefreshes = <Map<String, Object?>>[];
   final List<String> acceptedShareCodes = <String>[];
   List<InviteModel> fetchInvitesResult = const <InviteModel>[];
   _FakeUserEventsRepository? linkedUserEventsRepository;
@@ -543,6 +605,37 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString eventId) async {
     return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async {
+    sentStatusRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      if (recipientAccountProfileIds.isNotEmpty)
+        'recipient_account_profile_ids':
+            recipientAccountProfileIds.map((value) => value.value).toList(),
+    });
+    return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    sentSummaryRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'preview_limit': previewLimit?.value,
+    });
+    return SentInviteSummary.empty();
   }
 
   @override

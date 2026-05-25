@@ -53,6 +53,7 @@ void main() {
     expect(accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls, 0);
     expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 0);
     expect(invitesRepository.refreshPendingInvitesCalls, 0);
+    expect(invitesRepository.refreshSentInviteStatusesCalls, 0);
 
     authRepository.emit(_user(_registeredUserId, 'registered'));
     await pumpEventQueue();
@@ -61,6 +62,11 @@ void main() {
     expect(accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls, 1);
     expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
     expect(invitesRepository.refreshPendingInvitesCalls, 1);
+    expect(
+      invitesRepository.refreshSentInviteStatusesCalls,
+      0,
+      reason: 'Sent invite state is occurrence-scoped, not post-auth global.',
+    );
 
     authRepository.emit(_user(_registeredUserId, 'registered'));
     await pumpEventQueue();
@@ -73,6 +79,7 @@ void main() {
     expect(accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls, 1);
     expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
     expect(invitesRepository.refreshPendingInvitesCalls, 1);
+    expect(invitesRepository.refreshSentInviteStatusesCalls, 0);
 
     coordinator.dispose();
   });
@@ -338,6 +345,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int refreshPendingInvitesCalls = 0;
+  int refreshSentInviteStatusesCalls = 0;
 
   @override
   Future<void> refreshPendingInvites({
@@ -400,6 +408,17 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString occurrenceId,
   ) async =>
       const <SentInviteStatus>[];
+
+  @override
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async {
+    refreshSentInviteStatusesCalls += 1;
+    return const <SentInviteStatus>[];
+  }
 
   @override
   Future<InviteMaterializeResult> materializeShareCode(

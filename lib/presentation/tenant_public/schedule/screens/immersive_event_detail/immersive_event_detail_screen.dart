@@ -14,7 +14,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -114,127 +114,130 @@ class _ImmersiveEventDetailScreenState
                       builder: (context, receivedInvites) {
                         return StreamValueBuilder<
                             Map<InvitesRepositoryContractPrimString,
-                                List<SentInviteStatus>>>(
-                          streamValue:
-                              _controller.sentInvitesByOccurrenceStreamValue,
-                          builder: (context, sentInvitesByOccurrence) {
-                        final selectedOccurrenceId =
-                            resolvedEvent.selectedOccurrenceId?.trim();
-                        final sentForEvent = selectedOccurrenceId == null ||
-                                selectedOccurrenceId.isEmpty
-                            ? const <SentInviteStatus>[]
-                            : sentInvitesByOccurrence[invitesRepoString(
-                                  selectedOccurrenceId,
-                                  defaultValue: '',
-                                  isRequired: true,
-                                )] ??
-                                const <SentInviteStatus>[];
+                                SentInviteSummary>>(
+                          streamValue: _controller
+                              .sentInviteSummariesByOccurrenceStreamValue,
+                          builder: (context, sentSummariesByOccurrence) {
+                            final selectedOccurrenceId =
+                                resolvedEvent.selectedOccurrenceId?.trim();
+                            final sentSummary = selectedOccurrenceId == null ||
+                                    selectedOccurrenceId.isEmpty
+                                ? null
+                                : sentSummariesByOccurrence[invitesRepoString(
+                                    selectedOccurrenceId,
+                                    defaultValue: '',
+                                    isRequired: true,
+                                  )];
 
-                        final Widget? topBanner = receivedInvites.isNotEmpty
-                            ? Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                                child: SwipeableInviteWidget(
-                                  invites: receivedInvites,
-                                  onAccept: _handleAcceptInvite,
-                                  onDecline: _handleDeclineInvite,
-                                ),
-                              )
-                            : null;
-
-                        final tabs = <ImmersiveTabItem>[
-                          if (_hasAboutContent(resolvedEvent))
-                            ImmersiveTabItem(
-                              title: 'Sobre',
-                              content: EventInfoSection(event: resolvedEvent),
-                              footer: null,
-                            ),
-                          if (resolvedEvent.hasAnyProgrammingItems)
-                            ImmersiveTabItem(
-                              title: 'Programação',
-                              content: KeyedSubtree(
-                                key: _programmingSectionAnchorKey,
-                                child: EventProgrammingSection(
-                                  items: resolvedEvent.programmingItems,
-                                  occurrences: resolvedEvent.occurrences,
-                                  profileTypeRegistry:
-                                      _controller.profileTypeRegistry,
-                                  onOccurrenceTap: (occurrence) =>
-                                      _openOccurrence(
-                                    resolvedEvent,
-                                    occurrence,
-                                    tab: 'programming',
-                                  ),
-                                  onLocationTap: _openProgrammingLocationMap,
-                                ),
-                              ),
-                              onHorizontalSwipeEnd: ({
-                                required direction,
-                                required activateTab,
-                                required currentTabIndex,
-                              }) =>
-                                  _handleProgrammingSwipe(
-                                event: resolvedEvent,
-                                direction: direction,
-                                activateTab: activateTab,
-                                currentTabIndex: currentTabIndex,
-                              ),
-                              footer: null,
-                            ),
-                          ..._buildDynamicProfileTabs(
-                            event: resolvedEvent,
-                            favoriteAccountProfileIds:
-                                favoriteAccountProfileIds,
-                          ),
-                          ImmersiveTabItem(
-                            title: 'Como Chegar',
-                            content: LocationSection(
-                              event: resolvedEvent,
-                              canOpenMap: _canOpenEventMap(resolvedEvent),
-                              onOpenMap: _canOpenEventMap(resolvedEvent)
-                                  ? () => _openEventMap(resolvedEvent)
-                                  : null,
-                              onOpenDestinationMap: _openProgrammingLocationMap,
-                            ),
-                            footer: _canOpenDirections(resolvedEvent)
-                                ? DynamicFooter(
-                                    buttonText: 'Traçar rota',
-                                    buttonIcon: Icons.navigation,
-                                    onActionPressed: () =>
-                                        _presentDirectionsChooser(
-                                      resolvedEvent,
+                            final Widget? topBanner = receivedInvites.isNotEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 12, 16, 8),
+                                    child: SwipeableInviteWidget(
+                                      invites: receivedInvites,
+                                      onAccept: _handleAcceptInvite,
+                                      onDecline: _handleDeclineInvite,
                                     ),
                                   )
-                                : null,
-                          ),
-                        ];
+                                : null;
 
-                            final footer = isConfirmationStateLoading &&
-                                    !isConfirmed
-                                ? DynamicFooter(
-                                    buttonText: 'Verificando presença...',
-                                    buttonIcon: Icons.hourglass_top_rounded,
-                                    buttonColor:
-                                        colorScheme.surfaceContainerHigh,
-                                    onActionPressed: null,
-                                  )
-                                : isConfirmed
-                                    ? _buildInviteFooter(
-                                        context,
-                                        () => _openInviteFlow(resolvedEvent),
-                                        sentForEvent,
+                            final tabs = <ImmersiveTabItem>[
+                              if (_hasAboutContent(resolvedEvent))
+                                ImmersiveTabItem(
+                                  title: 'Sobre',
+                                  content:
+                                      EventInfoSection(event: resolvedEvent),
+                                  footer: null,
+                                ),
+                              if (resolvedEvent.hasAnyProgrammingItems)
+                                ImmersiveTabItem(
+                                  title: 'Programação',
+                                  content: KeyedSubtree(
+                                    key: _programmingSectionAnchorKey,
+                                    child: EventProgrammingSection(
+                                      items: resolvedEvent.programmingItems,
+                                      occurrences: resolvedEvent.occurrences,
+                                      profileTypeRegistry:
+                                          _controller.profileTypeRegistry,
+                                      onOccurrenceTap: (occurrence) =>
+                                          _openOccurrence(
+                                        resolvedEvent,
+                                        occurrence,
+                                        tab: 'programming',
+                                      ),
+                                      onLocationTap:
+                                          _openProgrammingLocationMap,
+                                    ),
+                                  ),
+                                  onHorizontalSwipeEnd: ({
+                                    required direction,
+                                    required activateTab,
+                                    required currentTabIndex,
+                                  }) =>
+                                      _handleProgrammingSwipe(
+                                    event: resolvedEvent,
+                                    direction: direction,
+                                    activateTab: activateTab,
+                                    currentTabIndex: currentTabIndex,
+                                  ),
+                                  footer: null,
+                                ),
+                              ..._buildDynamicProfileTabs(
+                                event: resolvedEvent,
+                                favoriteAccountProfileIds:
+                                    favoriteAccountProfileIds,
+                              ),
+                              ImmersiveTabItem(
+                                title: 'Como Chegar',
+                                content: LocationSection(
+                                  event: resolvedEvent,
+                                  canOpenMap: _canOpenEventMap(resolvedEvent),
+                                  onOpenMap: _canOpenEventMap(resolvedEvent)
+                                      ? () => _openEventMap(resolvedEvent)
+                                      : null,
+                                  onOpenDestinationMap:
+                                      _openProgrammingLocationMap,
+                                ),
+                                footer: _canOpenDirections(resolvedEvent)
+                                    ? DynamicFooter(
+                                        buttonText: 'Traçar rota',
+                                        buttonIcon: Icons.navigation,
+                                        onActionPressed: () =>
+                                            _presentDirectionsChooser(
+                                          resolvedEvent,
+                                        ),
                                       )
-                                    : DynamicFooter(
-                                        buttonText:
-                                            'Bóora! Confirmar Presença!',
-                                        buttonIcon: Icons.celebration,
-                                        buttonColor: colorScheme.primary,
-                                        onActionPressed: () {
-                                          unawaited(
-                                            _handleConfirmAttendance(),
+                                    : null,
+                              ),
+                            ];
+
+                            final footer =
+                                isConfirmationStateLoading && !isConfirmed
+                                    ? DynamicFooter(
+                                        buttonText: 'Confirmando presença...',
+                                        buttonIcon: Icons.hourglass_top_rounded,
+                                        buttonColor:
+                                            colorScheme.surfaceContainerHigh,
+                                        onActionPressed: null,
+                                      )
+                                    : isConfirmed
+                                        ? _buildInviteFooter(
+                                            context,
+                                            () =>
+                                                _openInviteFlow(resolvedEvent),
+                                            sentSummary,
+                                          )
+                                        : DynamicFooter(
+                                            buttonText:
+                                                'Bóora! Confirmar Presença!',
+                                            buttonIcon: Icons.celebration,
+                                            buttonColor: colorScheme.primary,
+                                            onActionPressed: () {
+                                              unawaited(
+                                                _handleConfirmAttendance(),
+                                              );
+                                            },
                                           );
-                                        },
-                                      );
 
                             return Theme(
                               data: Theme.of(context).copyWith(
@@ -246,8 +249,7 @@ class _ImmersiveEventDetailScreenState
                                 builder: (context, isShareLoading) {
                                   return ImmersiveDetailScreen(
                                     heroContentBuilder:
-                                        (context, activateTab) =>
-                                            ImmersiveHero(
+                                        (context, activateTab) => ImmersiveHero(
                                       event: resolvedEvent,
                                       fallbackImageUri:
                                           _controller.defaultEventImageUri,
@@ -705,7 +707,8 @@ class _ImmersiveEventDetailScreenState
     }
 
     final selectedIndex = _selectedOccurrenceIndex(event);
-    final step = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final step =
+        direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
     final targetIndex = selectedIndex + step;
     if (targetIndex >= 0 && targetIndex < occurrences.length) {
       unawaited(_scrollProgrammingSectionToTop());
@@ -737,7 +740,8 @@ class _ImmersiveEventDetailScreenState
     required ValueChanged<int> activateTab,
     required int currentTabIndex,
   }) {
-    final delta = direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final delta =
+        direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
     activateTab(currentTabIndex + delta);
   }
 
@@ -871,9 +875,10 @@ class _ImmersiveEventDetailScreenState
 Widget _buildInviteFooter(
   BuildContext context,
   VoidCallback onInviteFriends,
-  List<SentInviteStatus> sentInvites,
+  SentInviteSummary? sentSummary,
 ) {
-  final hasInvites = sentInvites.isNotEmpty;
+  final visibleSentInvites = sentSummary?.preview ?? const <SentInviteStatus>[];
+  final hasInvites = sentSummary?.hasVisibleInvites ?? false;
   final theme = Theme.of(context);
   final colorScheme = theme.colorScheme;
   final subtleOnSurface = colorScheme.onSurface.withValues(alpha: 0.12);
@@ -913,12 +918,12 @@ Widget _buildInviteFooter(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              OverlappedInviteAvatars(invites: sentInvites),
+              OverlappedInviteAvatars(invites: visibleSentInvites),
               const SizedBox(height: 4),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 220),
                 child: Text(
-                  _inviteSummary(sentInvites),
+                  _inviteSummary(sentSummary),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -937,10 +942,7 @@ Widget _buildInviteFooter(
   );
 }
 
-String _inviteSummary(List<SentInviteStatus> shown) {
-  if (shown.isEmpty) return '';
-  final pending =
-      shown.where((invite) => invite.status != InviteStatus.accepted).length;
-  final confirmed = shown.length - pending;
-  return '$pending pendentes | $confirmed confirmados';
+String _inviteSummary(SentInviteSummary? summary) {
+  if (summary == null || !summary.hasVisibleInvites) return '';
+  return '${summary.pending} pendentes | ${summary.accepted} confirmados';
 }

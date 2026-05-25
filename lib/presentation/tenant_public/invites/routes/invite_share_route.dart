@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/invite_share_module.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +18,7 @@ class InviteShareRoutePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedInvite = invite;
-    return ModuleScope<InvitesModule>(
+    return ModuleScope<InviteShareModule>(
       child: resolvedInvite == null
           ? Scaffold(
               appBar: AppBar(
@@ -51,8 +51,17 @@ class InviteShareRoutePage extends StatelessWidget {
               ),
             )
           : InviteShareScreen(
+              key: ValueKey(_inviteShareScreenIdentity(resolvedInvite)),
               invite: resolvedInvite,
             ),
     );
+  }
+
+  static String _inviteShareScreenIdentity(InviteModel invite) {
+    final occurrenceId = invite.occurrenceId?.trim();
+    if (occurrenceId != null && occurrenceId.isNotEmpty) {
+      return 'invite-share:occurrence:$occurrenceId';
+    }
+    return 'invite-share:event:${invite.eventId.trim()}';
   }
 }

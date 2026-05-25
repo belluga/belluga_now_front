@@ -844,6 +844,12 @@ class EventDTO {
         return InviteStatus.declined;
       case 'viewed':
         return InviteStatus.viewed;
+      case 'expired':
+        return InviteStatus.expired;
+      case 'superseded':
+        return InviteStatus.superseded;
+      case 'suppressed':
+        return InviteStatus.suppressed;
       default:
         return InviteStatus.pending;
     }

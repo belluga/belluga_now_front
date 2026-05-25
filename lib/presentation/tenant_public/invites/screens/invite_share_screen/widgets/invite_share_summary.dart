@@ -1,29 +1,29 @@
 import 'package:belluga_now/domain/schedule/invite_status.dart';
-import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_overlapped_avatars.dart';
 import 'package:flutter/material.dart';
 
 class InviteShareSummary extends StatelessWidget {
   const InviteShareSummary({
     super.key,
-    required this.invites,
+    required this.summary,
   });
 
-  final List<SentInviteStatus> invites;
+  final SentInviteSummary summary;
 
   @override
   Widget build(BuildContext context) {
-    final pending =
-        invites.where((i) => i.status != InviteStatus.accepted).length;
-    final confirmed = invites.length - pending;
+    final visibleInvites = summary.preview
+        .where((invite) => !invite.status.isHiddenSentStatus)
+        .toList();
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          InviteShareOverlappedAvatars(invites: invites),
+          InviteShareOverlappedAvatars(invites: visibleInvites),
           const SizedBox(width: 12),
           Text(
-            '$pending pendentes | $confirmed aceitos',
+            '${summary.pending} pendentes | ${summary.accepted} aceitos',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

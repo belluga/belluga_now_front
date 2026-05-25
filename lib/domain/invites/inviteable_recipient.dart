@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_val
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
@@ -24,6 +25,7 @@ class InviteableRecipient {
     DomainBooleanValue? isInviteableValue,
     InviteContactHashValue? contactHashValue,
     InviteContactTypeValue? contactTypeValue,
+    this.sentInviteStatus,
   })  : avatarValue = avatarValue ?? InviteInviterAvatarValue(),
         profileExposureLevelValue =
             profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
@@ -41,6 +43,7 @@ class InviteableRecipient {
   final DomainBooleanValue isInviteableValue;
   final InviteContactHashValue contactHashValue;
   final InviteContactTypeValue contactTypeValue;
+  final SentInviteStatus? sentInviteStatus;
 
   String get userId => userIdValue.value;
   String get receiverAccountProfileId => receiverAccountProfileIdValue.value;
@@ -81,7 +84,7 @@ class InviteableRecipient {
       return 'Favoritou você';
     }
     if (inviteableReasons.contains('contact_match')) {
-      return 'Contato no Belluga';
+      return 'Disponível para convidar';
     }
     return 'Disponível para convidar';
   }

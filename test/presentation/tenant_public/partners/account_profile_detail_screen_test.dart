@@ -586,6 +586,27 @@ void main() {
     );
   });
 
+  testWidgets(
+      'collapsed taxonomy chips choose foreground from rendered background contrast',
+      (tester) async {
+    await _expectCollapsedTaxonomyChipContrast(
+      tester,
+      chipBackground: const Color(0xFFFFFFFF),
+      unsafeForegroundCandidate: const Color(0xFFFDFDFD),
+    );
+  });
+
+  testWidgets(
+      'collapsed taxonomy chips choose foreground from dark background contrast',
+      (tester) async {
+    await _expectCollapsedTaxonomyChipContrast(
+      tester,
+      chipBackground: const Color(0xFF000000),
+      unsafeForegroundCandidate: const Color(0xFF010101),
+      brightness: Brightness.dark,
+    );
+  });
+
   testWidgets('live agenda highlight navigates to the highlighted event',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1359,9 +1380,65 @@ void main() {
   });
 }
 
+Future<void> _expectCollapsedTaxonomyChipContrast(
+  WidgetTester tester, {
+  required Color chipBackground,
+  required Color unsafeForegroundCandidate,
+  Brightness brightness = Brightness.light,
+}) async {
+  await tester.binding.setSurfaceSize(const Size(390, 640));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  final repository = _FakeAccountProfilesRepository();
+  final controller = AccountProfileDetailController(
+    accountProfilesRepository: repository,
+  );
+  GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+  await tester.pumpWidget(
+    _buildRoutedTestApp(
+      router: _RecordingStackRouter(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: brightness,
+        ).copyWith(
+          secondaryContainer: chipBackground,
+          onSecondaryContainer: unsafeForegroundCandidate,
+        ),
+      ),
+      child: AccountProfileDetailScreen(
+        accountProfile: _buildArtistProfileWithManyTaxonomies(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+  await tester.pumpAndSettle();
+  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
+  await tester.pumpAndSettle();
+
+  final collapsedTaxonomy = find.byKey(
+    const Key('accountProfileCollapsedTaxonomySummary'),
+  );
+  final label = tester.widget<Text>(
+    find.descendant(
+      of: collapsedTaxonomy,
+      matching: find.text('Sunset Premium'),
+    ),
+  );
+  final foreground = label.style?.color;
+
+  expect(foreground, isNotNull);
+  expect(
+      _contrastRatio(chipBackground, foreground!), greaterThanOrEqualTo(4.5));
+}
+
 Widget _buildRoutedTestApp({
   required _RecordingStackRouter router,
   required Widget child,
+  ThemeData? theme,
 }) {
   final routeData = RouteData(
     route: _FakeRouteMatch(fullPath: '/parceiro/teste'),
@@ -1375,6 +1452,7 @@ Widget _buildRoutedTestApp({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
+      theme: theme,
       locale: const Locale('pt', 'BR'),
       supportedLocales: const <Locale>[Locale('pt', 'BR')],
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
@@ -1388,6 +1466,18 @@ Widget _buildRoutedTestApp({
       ),
     ),
   );
+}
+
+double _contrastRatio(Color background, Color foreground) {
+  final backgroundLuminance = background.computeLuminance();
+  final foregroundLuminance = foreground.computeLuminance();
+  final brighter = backgroundLuminance > foregroundLuminance
+      ? backgroundLuminance
+      : foregroundLuminance;
+  final darker = backgroundLuminance > foregroundLuminance
+      ? foregroundLuminance
+      : backgroundLuminance;
+  return (brighter + 0.05) / (darker + 0.05);
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {

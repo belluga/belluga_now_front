@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_account_profile_ids.dart';
-import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -15,6 +14,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
@@ -45,11 +45,14 @@ abstract class InvitesRepositoryContract {
     defaultValue: const <InvitesRepositoryContractPrimString,
         List<SentInviteStatus>>{},
   );
+  final sentInviteSummariesByOccurrenceStreamValue =
+      StreamValue<Map<InvitesRepositoryContractPrimString, SentInviteSummary>>(
+    defaultValue: const <InvitesRepositoryContractPrimString,
+        SentInviteSummary>{},
+  );
 
   final settingsStreamValue =
       StreamValue<InviteRuntimeSettings?>(defaultValue: null);
-  final inviteableRecipientsStreamValue =
-      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
   final importedContactMatchesStreamValue =
       StreamValue<List<InviteContactMatch>?>(defaultValue: null);
 
@@ -216,14 +219,6 @@ abstract class InvitesRepositoryContract {
   ) async =>
       null;
 
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      const <InviteableRecipient>[];
-
-  Future<void> refreshInviteableRecipients() async {
-    final recipients = await fetchInviteableRecipients();
-    inviteableRecipientsStreamValue.addValue(recipients);
-  }
-
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];
 
@@ -249,6 +244,12 @@ abstract class InvitesRepositoryContract {
     InvitesRepositoryContractPrimString? accountProfileId,
   });
 
+  /// Sends direct invites for the occurrence.
+  ///
+  /// Implementations that receive created/already-invited acknowledgements must
+  /// publish those statuses to [sentInvitesByOccurrenceStreamValue] before this
+  /// future completes. Presentation controllers use that stream as the
+  /// synchronous acknowledgement source for optimistic UI.
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventId,
     InviteRecipients recipients, {
@@ -258,4 +259,19 @@ abstract class InvitesRepositoryContract {
 
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
       InvitesRepositoryContractPrimString occurrenceId);
+
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async =>
+      getSentInvitesForOccurrence(occurrenceId);
+
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async =>
+      SentInviteSummary.empty();
 }

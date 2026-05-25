@@ -2,6 +2,8 @@ import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_accepted_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_sent_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
@@ -17,6 +19,8 @@ class SelfProfileDto {
     required this.bio,
     required this.phone,
     required this.avatarUrl,
+    this.invitesSentCount = 0,
+    this.invitesAcceptedCount = 0,
     required this.pendingInvitesCount,
     required this.confirmedEventsCount,
     required this.timezone,
@@ -28,13 +32,19 @@ class SelfProfileDto {
   final String bio;
   final String phone;
   final String? avatarUrl;
+  final int invitesSentCount;
+  final int invitesAcceptedCount;
   final int pendingInvitesCount;
   final int confirmedEventsCount;
   final String? timezone;
 
   factory SelfProfileDto.fromJson(Map<String, dynamic> json) {
-    final counters =
-        json['counters'] is Map<String, dynamic> ? json['counters'] as Map<String, dynamic> : const <String, dynamic>{};
+    final counters = json['counters'] is Map<String, dynamic>
+        ? json['counters'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final socialScore = json['social_score'] is Map<String, dynamic>
+        ? json['social_score'] as Map<String, dynamic>
+        : const <String, dynamic>{};
     return SelfProfileDto(
       userId: json['user_id']?.toString().trim() ?? '',
       accountProfileId: json['account_profile_id']?.toString().trim() ?? '',
@@ -44,6 +54,8 @@ class SelfProfileDto {
       avatarUrl: json['avatar_url']?.toString().trim().isNotEmpty == true
           ? json['avatar_url']?.toString().trim()
           : null,
+      invitesSentCount: _parseCounter(socialScore['invites_sent']),
+      invitesAcceptedCount: _parseCounter(socialScore['invites_accepted']),
       pendingInvitesCount: _parseCounter(counters['pending_invites']),
       confirmedEventsCount: _parseCounter(counters['confirmed_events']),
       timezone: json['timezone']?.toString().trim().isNotEmpty == true
@@ -78,6 +90,10 @@ class SelfProfileDto {
       ..set(pendingInvitesCount);
     final confirmedEventsCountValue = SelfProfileConfirmedEventsCountValue()
       ..set(confirmedEventsCount);
+    final invitesSentCountValue = SelfProfileInvitesSentCountValue()
+      ..set(invitesSentCount);
+    final invitesAcceptedCountValue = SelfProfileInvitesAcceptedCountValue()
+      ..set(invitesAcceptedCount);
     final timezoneValue = UserTimezoneValue();
     final timezoneRaw = timezone?.trim();
     if (timezoneRaw != null && timezoneRaw.isNotEmpty) {
@@ -91,6 +107,8 @@ class SelfProfileDto {
       bioValue: bioValue,
       phoneValue: phoneValue,
       avatarValue: avatarValue,
+      invitesSentCountValue: invitesSentCountValue,
+      invitesAcceptedCountValue: invitesAcceptedCountValue,
       pendingInvitesCountValue: pendingInvitesCountValue,
       confirmedEventsCountValue: confirmedEventsCountValue,
       timezoneValue: timezoneValue,
