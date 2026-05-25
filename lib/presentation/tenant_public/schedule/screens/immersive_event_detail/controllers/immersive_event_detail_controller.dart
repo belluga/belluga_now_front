@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -79,8 +80,9 @@ class ImmersiveEventDetailController implements Disposable {
     final currentEvent = eventStreamValue.value;
     final hasSameSelectedTarget =
         _isSameSelectedEventTarget(currentEvent, resolvedEvent);
-    final effectiveEvent =
-        hasSameSelectedTarget && currentEvent != null ? currentEvent : resolvedEvent;
+    final effectiveEvent = hasSameSelectedTarget && currentEvent != null
+        ? currentEvent
+        : resolvedEvent;
     if (!hasSameSelectedTarget) {
       _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     }
@@ -118,10 +120,14 @@ class ImmersiveEventDetailController implements Disposable {
   StreamValue<Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>
       get sentInvitesByOccurrenceStreamValue =>
           _invitesRepository.sentInvitesByOccurrenceStreamValue;
+  StreamValue<Map<InvitesRepositoryContractPrimString, SentInviteSummary>>
+      get sentInviteSummariesByOccurrenceStreamValue =>
+          _invitesRepository.sentInviteSummariesByOccurrenceStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final isShareActionLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  bool _confirmAttendanceInFlight = false;
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository?.appData.mainLogoDarkUrl.value;
@@ -212,9 +218,8 @@ class ImmersiveEventDetailController implements Disposable {
     _shareSessionContextSubscription = _invitesRepository
         .shareCodeSessionContextStreamValue.stream
         .listen((_) => _refreshReceivedInvitesFor(event));
-    _confirmedOccurrenceIdsSubscription = _userEventsRepository
-        .confirmedOccurrenceIdsStream.stream
-        .listen((_) {
+    _confirmedOccurrenceIdsSubscription =
+        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
       final current = eventStreamValue.value;
       final currentOccurrenceId = current?.selectedOccurrenceId?.trim();
       if (current == null ||
@@ -227,6 +232,35 @@ class ImmersiveEventDetailController implements Disposable {
     });
 
     _refreshReceivedInvitesFor(event);
+    unawaited(_refreshSentInvitesFor(event));
+  }
+
+  Future<void> _refreshSentInvitesFor(EventModel event) async {
+    if (!_isAuthorized) {
+      return;
+    }
+    final eventId = event.id.value.trim();
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    if (eventId.isEmpty || occurrenceId == null || occurrenceId.isEmpty) {
+      return;
+    }
+
+    try {
+      await _invitesRepository.refreshSentInviteSummaryForOccurrence(
+        occurrenceId: invitesRepoString(
+          occurrenceId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          eventId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+    } catch (_) {
+      // Sent-status hydration is opportunistic; the invite screen retries.
+    }
   }
 
   EventModel _eventWithSelectedOccurrence(
@@ -542,6 +576,9 @@ class ImmersiveEventDetailController implements Disposable {
 
   /// Confirm attendance at this event
   Future<AttendanceConfirmationResult> confirmAttendance() async {
+    if (_confirmAttendanceInFlight) {
+      return AttendanceConfirmationResult.skipped;
+    }
     if (!_isAuthorized) {
       return AttendanceConfirmationResult.requiresAuthentication;
     }
@@ -555,7 +592,9 @@ class ImmersiveEventDetailController implements Disposable {
       return AttendanceConfirmationResult.skipped;
     }
 
+    _confirmAttendanceInFlight = true;
     isLoadingStreamValue.addValue(true);
+    isConfirmationStateLoadingStreamValue.addValue(true);
 
     try {
       await _userEventsRepository.confirmEventAttendance(
@@ -572,7 +611,9 @@ class ImmersiveEventDetailController implements Disposable {
       );
       return AttendanceConfirmationResult.confirmed;
     } finally {
+      _confirmAttendanceInFlight = false;
       isLoadingStreamValue.addValue(false);
+      isConfirmationStateLoadingStreamValue.addValue(false);
     }
   }
 

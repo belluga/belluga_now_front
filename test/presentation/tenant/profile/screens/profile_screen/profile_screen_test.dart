@@ -6,15 +6,9 @@ import 'package:belluga_now/application/router/support/canonical_route_family.da
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
-import 'package:belluga_now/domain/invites/invite_accept_result.dart';
-import 'package:belluga_now/domain/invites/invite_contact_match.dart';
-import 'package:belluga_now/domain/invites/invite_decline_result.dart';
-import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
-import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
@@ -26,6 +20,8 @@ import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_accepted_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/self_profile_invites_sent_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
@@ -36,7 +32,6 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
-import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -260,79 +255,20 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
   }
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInviteablesRepository extends InviteablesRepositoryContract {
   List<InviteableRecipient> inviteableRecipients = const [];
   Completer<List<InviteableRecipient>>? inviteableRecipientsCompleter;
 
   @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     if (inviteableRecipientsCompleter != null) {
-      return inviteableRecipientsCompleter!.future;
+      final recipients = await inviteableRecipientsCompleter!.future;
+      inviteableRecipientsStreamValue.addValue(recipients);
+      return recipients;
     }
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
     return inviteableRecipients;
   }
-
-  @override
-  Future<List<InviteModel>> fetchInvites({
-    InvitesRepositoryContractPrimInt? page,
-    InvitesRepositoryContractPrimInt? pageSize,
-  }) async =>
-      const <InviteModel>[];
-
-  @override
-  Future<InviteRuntimeSettings> fetchSettings() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<InviteAcceptResult> acceptInvite(
-    InvitesRepositoryContractPrimString inviteId,
-  ) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<InviteDeclineResult> declineInvite(
-    InvitesRepositoryContractPrimString inviteId,
-  ) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<InviteAcceptResult> acceptInviteByCode(
-    InvitesRepositoryContractPrimString code,
-  ) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<InviteContactMatch>> importContacts(
-      InviteContacts contacts) async {
-    return const <InviteContactMatch>[];
-  }
-
-  @override
-  Future<InviteShareCodeResult> createShareCode({
-    required InvitesRepositoryContractPrimString eventId,
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? accountProfileId,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> sendInvites(
-    InvitesRepositoryContractPrimString eventId,
-    InviteRecipients recipients, {
-    required InvitesRepositoryContractPrimString occurrenceId,
-    InvitesRepositoryContractPrimString? message,
-  }) async {}
-
-  @override
-  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-    InvitesRepositoryContractPrimString occurrenceId,
-  ) async =>
-      const <SentInviteStatus>[];
 }
 
 class _FakeUser implements UserContract {
@@ -430,7 +366,7 @@ void main() {
           accountProfileId: 'profile-1',
         ),
       );
-      final invitesRepository = _FakeInvitesRepository();
+      final inviteablesRepository = _FakeInviteablesRepository();
 
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
       GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
@@ -438,7 +374,9 @@ void main() {
       GetIt.I.registerSingleton<SelfProfileRepositoryContract>(
         selfProfileRepository,
       );
-      GetIt.I.registerSingleton<InvitesRepositoryContract>(invitesRepository);
+      GetIt.I.registerSingleton<InviteablesRepositoryContract>(
+        inviteablesRepository,
+      );
       GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
         _FakeProximityPreferencesRepository(),
       );
@@ -531,6 +469,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'profile social metrics render sender-side invites sent and accepted',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: _FakeSelfProfileRepository(
+          initialProfile: _buildSelfProfile(
+            userId: '507f1f77bcf86cd799439011',
+            accountProfileId: 'profile-self',
+            invitesSentCount: 12,
+            invitesAcceptedCount: 5,
+            pendingInvitesCount: 99,
+            confirmedEventsCount: 88,
+          ),
+        ),
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('12'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text('99'), findsNothing);
+      expect(find.text('88'), findsNothing);
+    },
+  );
+
   testWidgets('profile visible back falls back to home when no history exists',
       (tester) async {
     final controller = _buildController(
@@ -608,7 +578,7 @@ void main() {
       appDataRepository: appDataRepository,
       avatarStorage: avatarStorage,
       selfProfileRepository: selfProfileRepository,
-      invitesRepository: _FakeInvitesRepository(),
+      inviteablesRepository: _FakeInviteablesRepository(),
       proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
     );
 
@@ -869,7 +839,7 @@ ProfileScreenController _buildController({
   UserContract? initialUser,
   ProfileAvatarStorageContract? avatarStorage,
   SelfProfileRepositoryContract? selfProfileRepository,
-  InvitesRepositoryContract? invitesRepository,
+  InviteablesRepositoryContract? inviteablesRepository,
 }) {
   final authRepository = _FakeAuthRepository(
     backend: _FakeBackendContract(),
@@ -894,7 +864,8 @@ ProfileScreenController _buildController({
     appDataRepository: appDataRepository,
     avatarStorage: resolvedAvatarStorage,
     selfProfileRepository: profileRepository,
-    invitesRepository: invitesRepository ?? _FakeInvitesRepository(),
+    inviteablesRepository:
+        inviteablesRepository ?? _FakeInviteablesRepository(),
     proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
   );
 }
@@ -949,6 +920,8 @@ SelfProfile _buildSelfProfile({
   String? avatarUrl,
   int pendingInvitesCount = 0,
   int confirmedEventsCount = 0,
+  int invitesSentCount = 0,
+  int invitesAcceptedCount = 0,
   String? timezone,
 }) {
   final userIdValue = UserIdValue()..parse(userId);
@@ -974,6 +947,10 @@ SelfProfile _buildSelfProfile({
     ..set(pendingInvitesCount);
   final confirmedEventsCountValue = SelfProfileConfirmedEventsCountValue()
     ..set(confirmedEventsCount);
+  final invitesSentCountValue = SelfProfileInvitesSentCountValue()
+    ..set(invitesSentCount);
+  final invitesAcceptedCountValue = SelfProfileInvitesAcceptedCountValue()
+    ..set(invitesAcceptedCount);
   final timezoneValue = UserTimezoneValue();
   if (timezone != null && timezone.isNotEmpty) {
     timezoneValue.parse(timezone);
@@ -987,6 +964,8 @@ SelfProfile _buildSelfProfile({
     avatarValue: avatarValue,
     pendingInvitesCountValue: pendingInvitesCountValue,
     confirmedEventsCountValue: confirmedEventsCountValue,
+    invitesSentCountValue: invitesSentCountValue,
+    invitesAcceptedCountValue: invitesAcceptedCountValue,
     timezoneValue: timezoneValue,
   );
 }

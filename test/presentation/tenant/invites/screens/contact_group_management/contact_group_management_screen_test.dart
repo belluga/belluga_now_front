@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/controllers/contact_group_management_controller.dart';
@@ -31,7 +32,9 @@ void main() {
   testWidgets('creates contact group from dedicated management screen',
       (tester) async {
     final repository = _FakeInvitesRepository();
+    final inviteablesRepository = _FakeInviteablesRepository();
     final controller = ContactGroupManagementController(
+      inviteablesRepository: inviteablesRepository,
       invitesRepository: repository,
     );
     GetIt.I.registerSingleton<ContactGroupManagementController>(controller);
@@ -83,6 +86,27 @@ void main() {
   });
 }
 
+class _FakeInviteablesRepository extends InviteablesRepositoryContract {
+  final inviteables = [
+    buildInviteableRecipient(
+      userId: 'user-1',
+      accountProfileId: 'profile-1',
+      displayName: 'Ana',
+    ),
+    buildInviteableRecipient(
+      userId: 'user-2',
+      accountProfileId: 'profile-2',
+      displayName: 'Bia',
+    ),
+  ];
+
+  @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    inviteableRecipientsStreamValue.addValue(inviteables);
+    return inviteables;
+  }
+}
+
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   final createdNames = <String>[];
   final createdMemberIds = <List<String>>[];
@@ -96,20 +120,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       recipientAccountProfileIds: const ['profile-1'],
     ),
   ];
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async => [
-        buildInviteableRecipient(
-          userId: 'user-1',
-          accountProfileId: 'profile-1',
-          displayName: 'Ana',
-        ),
-        buildInviteableRecipient(
-          userId: 'user-2',
-          accountProfileId: 'profile-2',
-          displayName: 'Bia',
-        ),
-      ];
 
   @override
   Future<List<InviteContactGroup>> fetchContactGroups() async =>

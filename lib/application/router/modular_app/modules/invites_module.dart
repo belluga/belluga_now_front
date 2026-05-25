@@ -9,7 +9,6 @@ import 'package:belluga_now/application/router/support/canonical_route_family.da
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/controllers/contact_group_management_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
-import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -18,9 +17,6 @@ class InvitesModule extends ModuleContract {
   FutureOr<void> registerDependencies() {
     registerLazySingleton<InviteFlowScreenController>(
       () => InviteFlowScreenController(),
-    );
-    registerLazySingleton<InviteShareScreenController>(
-      () => InviteShareScreenController(),
     );
     registerLazySingleton<ContactGroupManagementController>(
       () => ContactGroupManagementController(),
@@ -50,12 +46,6 @@ class InvitesModule extends ModuleContract {
             ),
           ],
           meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteEntry),
-        ),
-        AutoRoute(
-          path: '/convites/compartilhar',
-          page: InviteShareRoute.page,
-          guards: [TenantRouteGuard(), AuthRouteGuard()],
-          meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteShare),
         ),
         AutoRoute(
           path: '/convites/grupos',

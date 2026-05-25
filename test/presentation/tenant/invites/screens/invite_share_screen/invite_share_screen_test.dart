@@ -21,14 +21,22 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_val
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_summary.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
@@ -40,6 +48,7 @@ import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 void main() {
   setUp(() async {
@@ -50,7 +59,7 @@ void main() {
     await GetIt.I.reset(dispose: false);
   });
 
-  testWidgets('renders deduped inviteables and narrows by relation filter', (
+  testWidgets('renders inviteables without rejected relation filter chips', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -71,18 +80,9 @@ void main() {
 
     expect(find.text('Ana Contato'), findsOneWidget);
     expect(find.text('Bia Favorita'), findsOneWidget);
-
-    await tester.tap(find.text('Favoritos'));
-    await tester.pump();
-
-    expect(find.text('Ana Contato'), findsNothing);
-    expect(find.text('Bia Favorita'), findsOneWidget);
-
-    await tester.tap(find.text('Todos'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ana Contato'), findsOneWidget);
-    expect(find.text('Bia Favorita'), findsOneWidget);
+    expect(find.text('Favoritos'), findsNothing);
+    expect(find.text('Todos'), findsNothing);
+    expect(find.text('Contatos'), findsNothing);
   });
 
   testWidgets('agenda refresh appears only on Telefone pane', (
@@ -139,6 +139,78 @@ void main() {
 
     expect(find.text('Ana Contato'), findsNothing);
     expect(find.text('Caio Amigo'), findsOneWidget);
+  });
+
+  testWidgets('invite button enters sending state and blocks duplicate taps', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final sendGate = Completer<void>();
+    final invitesRepository = _FakeInvitesRepository()
+      ..sendInvitesGate = sendGate;
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Convidar').first);
+    await tester.pump();
+
+    expect(invitesRepository.sendInvitesCalls, 1);
+    expect(find.text('Enviando...'), findsOneWidget);
+
+    await tester.tap(find.text('Enviando...'));
+    await tester.pump();
+
+    expect(invitesRepository.sendInvitesCalls, 1);
+
+    sendGate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Convidado'), findsOneWidget);
+  });
+
+  testWidgets('invite send failure shows feedback and keeps CTA retryable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final invitesRepository = _FakeInvitesRepository()
+      ..throwOnSendInvites = true;
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<InviteShareScreenController>(controller);
+    addTearDown(controller.onDispose);
+
+    await tester.pumpWidget(
+      MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Convidar').first);
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.sendInvitesCalls, 1);
+    expect(
+      find.text('Não foi possível enviar o convite. Tente novamente.'),
+      findsOneWidget,
+    );
+    expect(find.text('Convidado'), findsNothing);
+    expect(find.text('Convidar'), findsWidgets);
   });
 
   testWidgets(
@@ -213,7 +285,9 @@ void main() {
     await tester.pump();
 
     expect(
-        find.text('Nenhum contato convidável para este filtro.'), findsNothing);
+      find.text('Nenhuma pessoa do app disponível para convite.'),
+      findsNothing,
+    );
     expect(find.byType(CircularProgressIndicator), findsWidgets);
 
     invitesRepository.fetchInviteableRecipientsCompleter!.complete(
@@ -221,8 +295,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Nenhum contato convidável para este filtro.'),
-        findsOneWidget);
+    expect(
+      find.text('Nenhuma pessoa do app disponível para convite.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -267,7 +343,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
       expect(find.text('Ana Contato'), findsNothing);
@@ -280,14 +356,14 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
     },
   );
 
   testWidgets(
-    'app pane does not flash empty state while imported contact matches are still resolving',
+    'app pane does not wait for imported contact matches to resolve',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(480, 1200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -318,11 +394,11 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
-        findsNothing,
+        find.text('Nenhuma pessoa do app disponível para convite.'),
+        findsOneWidget,
       );
       expect(find.text('Contato Match'), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
 
       invitesRepository.importContactsCompleter!.complete(
         <InviteContactMatch>[
@@ -336,10 +412,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Contato Match'), findsOneWidget);
+      expect(find.text('Contato Match'), findsNothing);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
-        findsNothing,
+        find.text('Nenhuma pessoa do app disponível para convite.'),
+        findsOneWidget,
       );
     },
   );
@@ -384,7 +460,7 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
 
@@ -557,9 +633,8 @@ void main() {
         ],
       );
 
-      invitesRepository.inviteableRecipientsStreamValue.addValue(
-        invitesRepository.inviteableRecipients,
-      );
+      invitesRepository.inviteableRecipientsStreamValue
+          .addValue(invitesRepository.inviteableRecipients);
       invitesRepository.importedContactMatchesStreamValue.addValue(
         const <InviteContactMatch>[],
       );
@@ -647,7 +722,7 @@ void main() {
 
       expect(find.text('Ana Contato'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
     },
@@ -692,6 +767,145 @@ void main() {
 
     expect(find.text('Pessoa 79'), findsOneWidget);
   });
+
+  testWidgets(
+    'sent non-null invite status cards disable repeat invite CTA',
+    (tester) async {
+      var inviteTapCount = 0;
+      final pendingFriend = buildInviteableRecipient(
+        userId: 'user-pending',
+        accountProfileId: 'profile-pending',
+        displayName: 'Pessoa Pendente',
+      ).toFriendResume();
+      final acceptedFriend = buildInviteableRecipient(
+        userId: 'user-accepted',
+        accountProfileId: 'profile-accepted',
+        displayName: 'Pessoa Aceita',
+      ).toFriendResume();
+      final declinedFriend = buildInviteableRecipient(
+        userId: 'user-declined',
+        accountProfileId: 'profile-declined',
+        displayName: 'Pessoa Recusou',
+      ).toFriendResume();
+      final supersededFriend = buildInviteableRecipient(
+        userId: 'user-superseded',
+        accountProfileId: 'profile-superseded',
+        displayName: 'Pessoa Confirmada',
+      ).toFriendResume();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                InviteShareFriendCard(
+                  friend: pendingFriend,
+                  status: InviteStatus.pending,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                  isSending: false,
+                ),
+                InviteShareFriendCard(
+                  friend: acceptedFriend,
+                  status: InviteStatus.accepted,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                  isSending: false,
+                ),
+                InviteShareFriendCard(
+                  friend: declinedFriend,
+                  status: InviteStatus.declined,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                  isSending: false,
+                ),
+                InviteShareFriendCard(
+                  friend: supersededFriend,
+                  status: InviteStatus.superseded,
+                  onInvite: () => inviteTapCount += 1,
+                  isPlaceholder: false,
+                  isSending: false,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Convidado'), findsNWidgets(2));
+      expect(find.text('Convite Aceito!'), findsOneWidget);
+      expect(find.text('Convite recusado'), findsOneWidget);
+      expect(find.text('Confirmado'), findsNothing);
+      expect(find.text('Convidar'), findsNothing);
+
+      await tester.tap(find.text('Convidado').first);
+      await tester.tap(find.text('Convite Aceito!'));
+      await tester.tap(find.text('Convite recusado'));
+      await tester.pump();
+
+      expect(inviteTapCount, 0);
+    },
+  );
+
+  testWidgets(
+    'sending invite card disables the CTA while the request is in flight',
+    (tester) async {
+      var inviteTapCount = 0;
+      final friend = buildInviteableRecipient(
+        userId: 'user-sending',
+        accountProfileId: 'profile-sending',
+        displayName: 'Pessoa Enviando',
+      ).toFriendResume();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InviteShareFriendCard(
+              friend: friend,
+              status: null,
+              onInvite: () => inviteTapCount += 1,
+              isPlaceholder: false,
+              isSending: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Enviando...'), findsOneWidget);
+      expect(find.text('Convidar'), findsNothing);
+
+      await tester.tap(find.text('Enviando...'));
+      await tester.pump();
+
+      expect(inviteTapCount, 0);
+    },
+  );
+
+  testWidgets(
+    'summary uses exact counters and bounded visible preview',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InviteShareSummary(
+              summary: _sentSummary(
+                pending: 250,
+                accepted: 12,
+                preview: <SentInviteStatus>[
+                  _sentStatus('profile-pending', InviteStatus.pending),
+                  _sentStatus('profile-accepted', InviteStatus.accepted),
+                  _sentStatus('profile-superseded', InviteStatus.superseded),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('250 pendentes | 12 aceitos'), findsOneWidget);
+      expect(find.text('1 pendentes | 1 aceitos'), findsNothing);
+    },
+  );
 
   testWidgets('share CTA leaves Gerando state after failure and can retry', (
     tester,
@@ -1063,7 +1277,8 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   }
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInvitesRepository extends InvitesRepositoryContract
+    implements InviteablesRepositoryContract {
   _FakeInvitesRepository()
       : inviteableRecipients = [
           buildInviteableRecipient(
@@ -1081,22 +1296,40 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         ];
 
   bool throwOnCreateShareCode = false;
+  bool throwOnSentSummary = false;
+  bool throwOnSendInvites = false;
+  bool acknowledgeSendInvites = true;
   int fetchInviteableRecipientsCalls = 0;
   int createShareCodeCalls = 0;
+  int sendInvitesCalls = 0;
   String? lastShareCodeOccurrenceId;
   List<InviteableRecipient> inviteableRecipients;
   List<InviteContactMatch>? cachedImportContactMatches;
   Completer<List<InviteContactMatch>>? importContactsCompleter;
   List<InviteContactMatch> importContactMatches = const <InviteContactMatch>[];
   Completer<List<InviteableRecipient>>? fetchInviteableRecipientsCompleter;
+  Completer<void>? sendInvitesGate;
+
+  @override
+  final inviteableRecipientsStreamValue =
+      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
 
   @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     fetchInviteableRecipientsCalls += 1;
     if (fetchInviteableRecipientsCompleter != null) {
-      return fetchInviteableRecipientsCompleter!.future;
+      final recipients = await fetchInviteableRecipientsCompleter!.future;
+      inviteableRecipientsStreamValue.addValue(recipients);
+      return recipients;
     }
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
     return inviteableRecipients;
+  }
+
+  @override
+  Future<void> refreshInviteableRecipients() async {
+    final recipients = await fetchInviteableRecipients();
+    inviteableRecipientsStreamValue.addValue(recipients);
   }
 
   @override
@@ -1140,18 +1373,62 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-    InvitesRepositoryContractPrimString eventId,
-  ) async =>
-      const <SentInviteStatus>[];
-
-  @override
   Future<void> sendInvites(
     InvitesRepositoryContractPrimString eventId,
     InviteRecipients recipients, {
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? message,
-  }) async {}
+  }) async {
+    sendInvitesCalls += 1;
+    await sendInvitesGate?.future;
+    if (throwOnSendInvites) {
+      throw Exception('send failed');
+    }
+    if (!acknowledgeSendInvites) {
+      return;
+    }
+    final acknowledged = recipients.items
+        .where((recipient) => recipient.accountProfileId.trim().isNotEmpty)
+        .map(_pendingSentStatus)
+        .toList(growable: false);
+    if (acknowledged.isEmpty) {
+      return;
+    }
+
+    final occurrenceKey = invitesRepoString(
+      occurrenceId?.value ?? 'occurrence-1',
+      defaultValue: '',
+      isRequired: true,
+    );
+    sentInvitesByOccurrenceStreamValue.addValue({
+      ...sentInvitesByOccurrenceStreamValue.value,
+      occurrenceKey: acknowledged,
+    });
+  }
+
+  @override
+  Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
+    InvitesRepositoryContractPrimString occurrenceId,
+  ) async {
+    for (final entry in sentInvitesByOccurrenceStreamValue.value.entries) {
+      if (entry.key.value.trim() == occurrenceId.value.trim()) {
+        return entry.value;
+      }
+    }
+    return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    if (throwOnSentSummary) {
+      throw Exception('sent summary failed');
+    }
+    return SentInviteSummary.empty();
+  }
 
   @override
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
@@ -1267,5 +1544,45 @@ InviteContactMatch _buildInviteContactMatch({
       InviteableReasonValue()..parse('contact_match'),
     ]),
     isInviteableValue: DomainBooleanValue()..parse('true'),
+  );
+}
+
+SentInviteStatus _sentStatus(String accountProfileId, InviteStatus status) {
+  return SentInviteStatus(
+    friend: EventFriendResume(
+      idValue: UserIdValue()..parse('user-$accountProfileId'),
+      accountProfileIdValue: InviteAccountProfileIdValue()
+        ..parse(accountProfileId),
+      displayNameValue: UserDisplayNameValue()..parse(accountProfileId),
+      avatarUrlValue: UserAvatarValue(),
+    ),
+    status: status,
+    sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+  );
+}
+
+SentInviteStatus _pendingSentStatus(EventFriendResume recipient) {
+  return SentInviteStatus(
+    friend: recipient,
+    status: InviteStatus.pending,
+    sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+  );
+}
+
+SentInviteSummary _sentSummary({
+  required int pending,
+  required int accepted,
+  List<SentInviteStatus> preview = const <SentInviteStatus>[],
+}) {
+  return SentInviteSummary(
+    pendingValue: SentInviteSummaryCountValue()..parse(pending.toString()),
+    acceptedValue: SentInviteSummaryCountValue()..parse(accepted.toString()),
+    declinedValue: SentInviteSummaryCountValue(),
+    terminalHiddenValue: SentInviteSummaryCountValue(),
+    totalVisibleValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
+    totalSentValue: SentInviteSummaryCountValue()
+      ..parse((pending + accepted).toString()),
+    preview: preview,
   );
 }

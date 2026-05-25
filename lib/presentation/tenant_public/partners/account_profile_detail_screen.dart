@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
@@ -239,6 +240,16 @@ class _AccountProfileDetailScreenState
   Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final taxonomyLabels = _taxonomyLabels(accountProfile);
+    final chipBackground = colorScheme.secondaryContainer;
+    final chipForeground = chipBackground.computeIconColor(
+      context,
+      candidates: [
+        colorScheme.onSecondaryContainer,
+        colorScheme.onSurface,
+        Colors.black,
+        Colors.white,
+      ],
+    );
     if (taxonomyLabels.isEmpty) {
       return Align(
         alignment: Alignment.centerLeft,
@@ -286,7 +297,7 @@ class _AccountProfileDetailScreenState
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: colorScheme.secondaryContainer,
+                      color: chipBackground,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -294,7 +305,7 @@ class _AccountProfileDetailScreenState
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSecondaryContainer,
+                            color: chipForeground,
                             fontWeight: FontWeight.w800,
                           ),
                     ),

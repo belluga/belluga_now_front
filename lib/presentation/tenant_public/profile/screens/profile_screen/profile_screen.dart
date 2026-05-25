@@ -139,18 +139,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
                 StreamValueBuilder<int>(
-                  streamValue: _controller.pendingInvitesCountStreamValue,
-                  builder: (context, pendingInvitesCount) {
+                  streamValue: _controller.invitesSentCountStreamValue,
+                  builder: (context, invitesSentCount) {
                     return StreamValueBuilder<int>(
-                      streamValue:
-                          _controller.confirmedEventsCountStreamValue,
-                      builder: (context, confirmedEventsCount) {
+                      streamValue: _controller.invitesAcceptedCountStreamValue,
+                      builder: (context, invitesAcceptedCount) {
                         return ProfileHeader(
                           avatarImage: avatarImage,
                           displayName: _controller.nameController.text,
                           onChangeAvatar: _onChangeAvatar,
-                          pendingInvitesCount: pendingInvitesCount,
-                          confirmedEventsCount: confirmedEventsCount,
+                          invitesSentCount: invitesSentCount,
+                          invitesAcceptedCount: invitesAcceptedCount,
                           hasPendingChanges: hasPendingChanges,
                         );
                       },
@@ -208,9 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           title: const Text('Tema escuro'),
                           subtitle: Text(
-                            isDark
-                                ? 'Usando tema escuro'
-                                : 'Usando tema claro',
+                            isDark ? 'Usando tema escuro' : 'Usando tema claro',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -372,8 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 latitude: selection.latitude,
                                 longitude: selection.longitude,
                               );
-                              if (_controller
-                                  .fixedOriginLabelController.text
+                              if (_controller.fixedOriginLabelController.text
                                   .trim()
                                   .isEmpty) {
                                 _controller.fixedOriginLabelController.text =
@@ -791,7 +787,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final message = error
         .toString()
-        .replaceFirst(RegExp(r'^(Exception|StateError|Bad state|Error):\s*'), '')
+        .replaceFirst(
+            RegExp(r'^(Exception|StateError|Bad state|Error):\s*'), '')
         .trim();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

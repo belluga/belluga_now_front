@@ -38,6 +38,7 @@ import 'package:belluga_now/domain/partners/projections/value_objects/partner_pr
 import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -135,6 +136,7 @@ InviteableRecipient buildInviteableRecipient({
   required String displayName,
   List<String> inviteableReasons = const <String>[],
   String profileExposureLevel = '',
+  SentInviteStatus? sentInviteStatus,
 }) {
   return InviteableRecipient(
     userIdValue: UserIdValue()..parse(userId),
@@ -145,6 +147,7 @@ InviteableRecipient buildInviteableRecipient({
     inviteableReasons: buildInviteableReasons(inviteableReasons),
     profileExposureLevelValue: InviteProfileExposureLevelValue()
       ..parse(profileExposureLevel),
+    sentInviteStatus: sentInviteStatus,
   );
 }
 

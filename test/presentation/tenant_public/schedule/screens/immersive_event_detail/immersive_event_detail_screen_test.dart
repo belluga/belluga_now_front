@@ -146,6 +146,77 @@ void main() {
   });
 
   testWidgets(
+      'confirm presence button shows pending state and blocks repeated taps',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository()
+      ..confirmGate = Completer<void>();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 15, 20),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.textContaining('Confirmar Presença'));
+    await tester.pump();
+    await tester.pump();
+
+    final controller = GetIt.I.get<ImmersiveEventDetailController>();
+    expect(controller.isConfirmationStateLoadingStreamValue.value, isTrue);
+    expect(userEventsRepository.confirmCalls, 1);
+    expect(find.text('Confirmando presença...'), findsOneWidget);
+    expect(find.textContaining('Confirmar Presença'), findsNothing);
+
+    await tester.tap(find.text('Confirmando presença...'));
+    await tester.pump();
+
+    expect(userEventsRepository.confirmCalls, 1);
+
+    userEventsRepository.confirmGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(userEventsRepository.confirmCalls, 1);
+    expect(find.text('BORA? Agitar a galera!'), findsOneWidget);
+  });
+
+  testWidgets(
     'event detail consumes cached confirmation state without entry refresh',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository()
@@ -395,7 +466,8 @@ void main() {
       'occurrence-selected',
     );
     expect(sharedSubjects, ['Convite Belluga Now']);
-    expect(sharedTexts.single, contains('https://tenant.test/invite?code=CODE123'));
+    expect(sharedTexts.single,
+        contains('https://tenant.test/invite?code=CODE123'));
   });
 
   testWidgets(
@@ -458,7 +530,8 @@ void main() {
     await tester.pump();
 
     expect(invitesRepository.createShareCodeCalls, 1);
-    expect(find.byKey(const Key('immersiveShareActionLoading')), findsOneWidget);
+    expect(
+        find.byKey(const Key('immersiveShareActionLoading')), findsOneWidget);
     expect(shareLauncherCalls, 0);
 
     invitesRepository.createShareCodeCompleter!.complete(
@@ -2738,8 +2811,8 @@ void main() {
       );
 
       final emittedOccurrenceIds = <String?>[];
-      final subscription = invitesRepository.immersiveSelectedEventStreamValue
-          .stream
+      final subscription = invitesRepository
+          .immersiveSelectedEventStreamValue.stream
           .listen((event) {
         emittedOccurrenceIds.add(event?.selectedOccurrenceId?.trim());
       });
@@ -3588,6 +3661,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   int refreshConfirmedOccurrenceIdsCalls = 0;
   Set<String> refreshedConfirmedIds = <String>{};
   Completer<void>? refreshGate;
+  Completer<void>? confirmGate;
 
   @override
   Future<void> confirmEventAttendance(
@@ -3595,6 +3669,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     required UserEventsRepositoryContractPrimString occurrenceId,
   }) async {
     confirmCalls += 1;
+    await confirmGate?.future;
     confirmedIds.add(occurrenceId.value);
     refreshedConfirmedIds = Set<String>.from(confirmedIds);
     confirmedOccurrenceIdsStream.addValue(

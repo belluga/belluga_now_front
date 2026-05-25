@@ -8,16 +8,16 @@ class ProfileHeader extends StatelessWidget {
     this.avatarImage,
     required this.displayName,
     required this.onChangeAvatar,
-    required this.pendingInvitesCount,
-    required this.confirmedEventsCount,
+    required this.invitesSentCount,
+    required this.invitesAcceptedCount,
     required this.hasPendingChanges,
   });
 
   final ImageProvider? avatarImage;
   final String displayName;
   final VoidCallback onChangeAvatar;
-  final int pendingInvitesCount;
-  final int confirmedEventsCount;
+  final int invitesSentCount;
+  final int invitesAcceptedCount;
   final bool hasPendingChanges;
 
   @override
@@ -107,15 +107,15 @@ class ProfileHeader extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     ProfileMetricPill(
-                      value: pendingInvitesCount,
+                      value: invitesSentCount,
                       icon: BooraIcons.inviteOutlined,
                       iconColor: colorScheme.secondary,
                       backgroundColor:
                           colorScheme.secondary.withValues(alpha: 0.14),
                     ),
                     ProfileMetricPill(
-                      value: confirmedEventsCount,
-                      icon: BooraIcons.confirmedAttendance,
+                      value: invitesAcceptedCount,
+                      icon: BooraIcons.inviteSolid,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),

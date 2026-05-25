@@ -26,6 +26,9 @@ class InviteFriendResumeWithStatus {
   /// Whether the friend has viewed the invite
   bool get isViewed => inviteStatus == InviteStatus.viewed;
 
+  /// Whether the invite is hidden because the receiver is already confirmed
+  bool get isSuperseded => inviteStatus == InviteStatus.superseded;
+
   /// Get a user-friendly status label
   String get statusLabel {
     if (inviteStatus == null) return '';
@@ -38,6 +41,12 @@ class InviteFriendResumeWithStatus {
         return 'Convite recusado';
       case InviteStatus.viewed:
         return 'Visualizado';
+      case InviteStatus.expired:
+        return 'Convite expirado';
+      case InviteStatus.superseded:
+        return 'Convidado';
+      case InviteStatus.suppressed:
+        return 'Indisponível';
     }
   }
 }

@@ -20,6 +20,13 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_val
 import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
@@ -28,6 +35,24 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesResponseDecoder {
   const InvitesResponseDecoder();
+
+  Object? itemsPayload(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final data = response['data'];
+    if (data is Map) {
+      final dataMap = _asMap(data);
+      if (dataMap['items'] != null) {
+        return dataMap['items'];
+      }
+    }
+    return response['items'];
+  }
+
+  Object? dataPayload(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final data = response['data'];
+    return data is Map ? _asMap(data) : response;
+  }
 
   InviteDto decodeRequiredInviteDto(
     Object? rawInvite, {
@@ -141,6 +166,43 @@ class InvitesResponseDecoder {
     }
 
     return dedupedByProfileId.values.toList(growable: false);
+  }
+
+  List<SentInviteStatus> decodeSentInviteStatuses(Object? rawItems) {
+    if (rawItems is! List) {
+      return const <SentInviteStatus>[];
+    }
+
+    final statuses = <SentInviteStatus>[];
+    for (final item in rawItems) {
+      if (item is! Map) {
+        continue;
+      }
+      final status = _mapSentInviteStatus(Map<String, dynamic>.from(item));
+      if (status == null) {
+        continue;
+      }
+      statuses.add(status);
+    }
+
+    return statuses;
+  }
+
+  SentInviteSummary decodeSentInviteSummary(Object? rawResponse) {
+    final response = _asMap(rawResponse);
+    final summary = _asMap(response['summary']);
+
+    return SentInviteSummary(
+      pendingValue: _buildSentInviteSummaryCountValue(summary['pending']),
+      acceptedValue: _buildSentInviteSummaryCountValue(summary['accepted']),
+      declinedValue: _buildSentInviteSummaryCountValue(summary['declined']),
+      terminalHiddenValue:
+          _buildSentInviteSummaryCountValue(summary['terminal_hidden']),
+      totalVisibleValue:
+          _buildSentInviteSummaryCountValue(summary['total_visible']),
+      totalSentValue: _buildSentInviteSummaryCountValue(summary['total_sent']),
+      preview: decodeSentInviteStatuses(response['preview']),
+    );
   }
 
   List<InviteContactGroup> decodeContactGroups(Object? rawItems) {
@@ -295,8 +357,10 @@ class InvitesResponseDecoder {
   }
 
   InviteableRecipient? _mapInviteableRecipient(Map<String, dynamic> map) {
-    final userId = _stringOrEmpty(map['user_id']);
-    final accountProfileId = _stringOrEmpty(map['receiver_account_profile_id']);
+    final accountProfileId = _stringOrEmpty(
+      map['receiver_account_profile_id'] ?? map['account_profile_id'],
+    );
+    final userId = _stringOrEmpty(map['user_id'] ?? accountProfileId);
     final displayName = _stringOrEmpty(map['display_name']);
     if (userId.isEmpty || accountProfileId.isEmpty || displayName.isEmpty) {
       return null;
@@ -335,7 +399,15 @@ class InvitesResponseDecoder {
         ..set(map['is_inviteable'] != false),
       contactHashValue: contactHashValue,
       contactTypeValue: contactTypeValue,
+      sentInviteStatus: _mapSentInviteStatusPayload(map['sent_invite_status']),
     );
+  }
+
+  SentInviteStatus? _mapSentInviteStatusPayload(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+    return _mapSentInviteStatus(Map<String, dynamic>.from(raw));
   }
 
   InviteContactGroup? _mapContactGroup(Map<String, dynamic> map) {
@@ -356,6 +428,66 @@ class InvitesResponseDecoder {
     );
   }
 
+  SentInviteStatus? _mapSentInviteStatus(Map<String, dynamic> map) {
+    final accountProfileId = _stringOrEmpty(
+      map['receiver_account_profile_id'],
+    ).trim();
+    final receiverUserId = _stringOrEmpty(map['receiver_user_id']).trim();
+    final identity =
+        receiverUserId.isNotEmpty ? receiverUserId : accountProfileId;
+    if (identity.isEmpty || accountProfileId.isEmpty) {
+      return null;
+    }
+
+    final accountProfileIdValue = InviteAccountProfileIdValue()
+      ..parse(accountProfileId);
+    final displayNameValue =
+        UserDisplayNameValue(isRequired: false, minLenght: null)
+          ..parse(_stringOrEmpty(map['display_name']).trim());
+    final avatarValue = UserAvatarValue();
+    final avatarRaw = _stringOrNull(map['avatar_url']);
+    if (avatarRaw != null) {
+      avatarValue.parse(avatarRaw);
+    }
+
+    final sentAtRaw = _stringOrNull(map['sent_at']) ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true).toIso8601String();
+    final respondedAtRaw = _stringOrNull(map['responded_at']);
+
+    return SentInviteStatus(
+      friend: EventFriendResume(
+        idValue: UserIdValue()..parse(identity),
+        accountProfileIdValue: accountProfileIdValue,
+        displayNameValue: displayNameValue,
+        avatarUrlValue: avatarValue,
+      ),
+      status: _parseInviteStatus(_stringOrNull(map['status'])),
+      sentAtValue: DateTimeValue()..parse(sentAtRaw),
+      respondedAtValue: respondedAtRaw == null
+          ? null
+          : (DateTimeValue()..parse(respondedAtRaw)),
+    );
+  }
+
+  InviteStatus _parseInviteStatus(String? rawStatus) {
+    switch (rawStatus?.toLowerCase()) {
+      case 'accepted':
+        return InviteStatus.accepted;
+      case 'declined':
+        return InviteStatus.declined;
+      case 'viewed':
+        return InviteStatus.viewed;
+      case 'expired':
+        return InviteStatus.expired;
+      case 'superseded':
+        return InviteStatus.superseded;
+      case 'suppressed':
+        return InviteStatus.suppressed;
+      default:
+        return InviteStatus.pending;
+    }
+  }
+
   InviteAccountProfileIds _buildInviteAccountProfileIds(List<String> ids) {
     return InviteAccountProfileIds(
       ids.map((id) => InviteAccountProfileIdValue()..parse(id)),
@@ -366,6 +498,10 @@ class InvitesResponseDecoder {
     return InviteableReasons(
       reasons.map((reason) => InviteableReasonValue()..parse(reason)),
     );
+  }
+
+  SentInviteSummaryCountValue _buildSentInviteSummaryCountValue(Object? raw) {
+    return SentInviteSummaryCountValue()..parse(raw?.toString());
   }
 
   String _stringOrEmpty(Object? raw) => raw?.toString() ?? '';
