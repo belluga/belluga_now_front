@@ -170,7 +170,8 @@ class InvitePushRuntimeCoordinator {
     Map<String, dynamic> payload,
   ) {
     final fallbackPath = _resolveEventFallbackPath(payload) ?? '/';
-    if (_payloadDecoder.decodeAcceptedSentInvite(payload) != null) {
+    final acceptedPayload = _payloadDecoder.decodeAcceptedSentInvite(payload);
+    if (acceptedPayload != null && fallbackPath != '/') {
       return fallbackPath;
     }
 
