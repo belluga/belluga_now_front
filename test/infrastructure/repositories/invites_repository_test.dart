@@ -11,6 +11,9 @@ import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
@@ -25,6 +28,7 @@ import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
@@ -427,46 +431,6 @@ void main() {
     expect(matches.single.inviteableReasons, ['contact_match']);
   });
 
-  test('fetchInviteableRecipients reads backend-computed unified list',
-      () async {
-    final repository = InvitesRepository(
-      backend: _FakeInvitesBackend(
-        inviteableContactsResponse: {
-          'items': [
-            {
-              'user_id': 'user-1',
-              'receiver_account_profile_id': 'profile-1',
-              'display_name': 'Friend Contact',
-              'avatar_url': null,
-              'profile_exposure_level': 'full_profile',
-              'contact_hash': 'hash-1',
-              'contact_type': 'phone',
-              'inviteable_reasons': [
-                'contact_match',
-                'favorite_by_you',
-                'favorited_you',
-                'friend',
-              ],
-              'is_inviteable': true,
-            },
-          ],
-        },
-      ),
-    );
-
-    final recipients = await repository.fetchInviteableRecipients();
-
-    expect(recipients, hasLength(1));
-    expect(recipients.single.receiverAccountProfileId, 'profile-1');
-    expect(recipients.single.contactHash, 'hash-1');
-    expect(recipients.single.contactType, 'phone');
-    expect(recipients.single.isFriend, isTrue);
-    expect(
-      repository.inviteableRecipientsStreamValue.value?.single.userId,
-      'user-1',
-    );
-  });
-
   test('importContacts sends region-aware OTP-compatible phone hash variants',
       () async {
     final backend = _FakeInvitesBackend(
@@ -846,6 +810,295 @@ void main() {
     );
   });
 
+  test(
+    'refreshSentInvitesForOccurrence fetches backend statuses and stores by occurrence',
+    () async {
+      final backend = _FakeInvitesBackend(
+        sentInviteStatusesResponse: {
+          'items': [
+            {
+              'invite_id': 'invite-accepted',
+              'receiver_account_profile_id': 'profile-1',
+              'receiver_user_id': 'user-1',
+              'display_name': 'Friend One',
+              'avatar_url': 'https://tenant.test/friend.png',
+              'status': 'accepted',
+              'sent_at': '2026-05-23T12:00:00Z',
+              'responded_at': '2026-05-23T12:10:00Z',
+            },
+            {
+              'invite_id': 'invite-pending',
+              'receiver_account_profile_id': 'profile-2',
+              'receiver_user_id': 'user-2',
+              'display_name': 'Friend Two',
+              'status': 'pending',
+              'sent_at': '2026-05-23T12:05:00Z',
+            },
+            {
+              'invite_id': 'invite-superseded',
+              'receiver_account_profile_id': 'profile-3',
+              'receiver_user_id': 'user-3',
+              'display_name': 'Friend Three',
+              'status': 'superseded',
+              'sent_at': '2026-05-23T12:06:00Z',
+              'responded_at': '2026-05-23T12:11:00Z',
+              'supersession_reason': 'other_invite_credited',
+            },
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+
+      final statuses = await repository.refreshSentInvitesForOccurrence(
+        occurrenceId: invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          'event-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        recipientAccountProfileIds: [
+          invitesRepoString('profile-1', defaultValue: '', isRequired: true),
+          invitesRepoString('profile-2', defaultValue: '', isRequired: true),
+          invitesRepoString('profile-3', defaultValue: '', isRequired: true),
+        ],
+      );
+
+      expect(backend.sentInviteStatusPayloads, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'recipient_account_profile_ids': [
+            'profile-1',
+            'profile-2',
+            'profile-3',
+          ],
+        },
+      ]);
+      expect(statuses.map((status) => status.friend.accountProfileId), [
+        'profile-1',
+        'profile-2',
+        'profile-3',
+      ]);
+      expect(statuses.first.status.name, 'accepted');
+      expect(statuses.last.status, InviteStatus.superseded);
+      expect(
+        (await repository.getSentInvitesForOccurrence(
+          invitesRepoString('occurrence-1', defaultValue: '', isRequired: true),
+        ))
+            .map((status) => status.friend.accountProfileId),
+        ['profile-1', 'profile-2', 'profile-3'],
+      );
+    },
+  );
+
+  test(
+    'refreshSentInvitesForOccurrence overwrites filtered recipients without dropping unrelated recipients',
+    () async {
+      final backend = _FakeInvitesBackend(
+        sentInviteStatusesResponse: {
+          'items': [
+            {
+              'invite_id': 'invite-accepted',
+              'receiver_account_profile_id': 'profile-1',
+              'receiver_user_id': 'user-1',
+              'display_name': 'Friend One',
+              'status': 'accepted',
+              'sent_at': '2026-05-23T12:00:00Z',
+              'responded_at': '2026-05-23T12:10:00Z',
+            },
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+      final occurrenceId = invitesRepoString(
+        'occurrence-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      repository.sentInvitesByOccurrenceStreamValue.addValue({
+        occurrenceId: [
+          _sentStatus(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            status: InviteStatus.pending,
+          ),
+          _sentStatus(
+            userId: 'user-2',
+            accountProfileId: 'profile-2',
+            status: InviteStatus.pending,
+          ),
+          _sentStatus(
+            userId: 'user-3',
+            accountProfileId: 'profile-3',
+            status: InviteStatus.pending,
+          ),
+        ],
+      });
+
+      final statuses = await repository.refreshSentInvitesForOccurrence(
+        occurrenceId: occurrenceId,
+        eventId: invitesRepoString(
+          'event-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        recipientAccountProfileIds: [
+          invitesRepoString('profile-1', defaultValue: '', isRequired: true),
+          invitesRepoString('profile-2', defaultValue: '', isRequired: true),
+        ],
+      );
+
+      expect(backend.sentInviteStatusPayloads.single, {
+        'occurrence_id': 'occurrence-1',
+        'event_id': 'event-1',
+        'recipient_account_profile_ids': ['profile-1', 'profile-2'],
+      });
+      expect(statuses.map((status) => status.friend.accountProfileId), [
+        'profile-1',
+        'profile-3',
+      ]);
+      expect(statuses.map((status) => status.status), [
+        InviteStatus.accepted,
+        InviteStatus.pending,
+      ]);
+      expect(
+        (await repository.getSentInvitesForOccurrence(occurrenceId)).map(
+            (status) =>
+                '${status.friend.accountProfileId}:${status.status.name}'),
+        ['profile-1:accepted', 'profile-3:pending'],
+      );
+    },
+  );
+
+  test(
+    'refreshSentInvitesForOccurrence dedupes same-key in-flight requests',
+    () async {
+      final responseCompleter = Completer<Map<String, dynamic>>();
+      final backend = _FakeInvitesBackend(
+        sentInviteStatusesCompleter: responseCompleter,
+      );
+      final repository = InvitesRepository(backend: backend);
+      final occurrenceId = invitesRepoString(
+        'occurrence-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      final eventId = invitesRepoString(
+        'event-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      final recipientFilter = [
+        invitesRepoString('profile-2', defaultValue: '', isRequired: true),
+        invitesRepoString('profile-1', defaultValue: '', isRequired: true),
+      ];
+
+      final first = repository.refreshSentInvitesForOccurrence(
+        occurrenceId: occurrenceId,
+        eventId: eventId,
+        recipientAccountProfileIds: recipientFilter,
+      );
+      final second = repository.refreshSentInvitesForOccurrence(
+        occurrenceId: occurrenceId,
+        eventId: eventId,
+        recipientAccountProfileIds: recipientFilter.reversed,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(backend.sentInviteStatusPayloads, hasLength(1));
+
+      responseCompleter.complete({
+        'items': [
+          {
+            'invite_id': 'invite-accepted',
+            'receiver_account_profile_id': 'profile-1',
+            'receiver_user_id': 'user-1',
+            'display_name': 'Friend One',
+            'status': 'accepted',
+            'sent_at': '2026-05-23T12:00:00Z',
+            'responded_at': '2026-05-23T12:10:00Z',
+          },
+        ],
+      });
+
+      final results = await Future.wait([first, second]);
+
+      expect(results.first.single.friend.accountProfileId, 'profile-1');
+      expect(results.last.single.status, InviteStatus.accepted);
+      expect(backend.sentInviteStatusPayloads, hasLength(1));
+    },
+  );
+
+  test(
+    'refreshSentInviteSummaryForOccurrence stores exact counters separately from targeted status hydration',
+    () async {
+      final backend = _FakeInvitesBackend(
+        sentInviteSummaryResponse: {
+          'event_id': 'event-1',
+          'occurrence_id': 'occurrence-1',
+          'summary': {
+            'pending': 203,
+            'accepted': 2,
+            'declined': 0,
+            'terminal_hidden': 0,
+            'total_visible': 205,
+            'total_sent': 205,
+          },
+          'preview': [
+            {
+              'invite_id': 'invite-preview',
+              'receiver_account_profile_id': 'profile-1',
+              'receiver_user_id': 'user-1',
+              'display_name': 'Preview Friend',
+              'status': 'pending',
+              'sent_at': '2026-05-23T12:00:00Z',
+            },
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+
+      final summary = await repository.refreshSentInviteSummaryForOccurrence(
+        occurrenceId: invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        eventId: invitesRepoString(
+          'event-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(backend.sentInviteSummaryPayloads, [
+        {
+          'occurrence_id': 'occurrence-1',
+          'event_id': 'event-1',
+          'preview_limit': 5,
+        },
+      ]);
+      expect(summary.pending, 203);
+      expect(summary.accepted, 2);
+      expect(summary.totalVisible, 205);
+      expect(summary.preview.single.friend.accountProfileId, 'profile-1');
+      expect(backend.sentInviteStatusPayloads, isEmpty);
+      expect(
+        repository
+            .sentInviteSummariesByOccurrenceStreamValue.value[invitesRepoString(
+          'occurrence-1',
+          defaultValue: '',
+          isRequired: true,
+        )],
+        isA<SentInviteSummary>(),
+      );
+    },
+  );
+
   test('createShareCode sends and returns the selected occurrence identity',
       () async {
     final backend = _FakeInvitesBackend(
@@ -883,8 +1136,7 @@ void main() {
     });
   });
 
-  test(
-      'importContacts chunks expanded payloads to backend cap and merges matches',
+  test('importContacts sends expanded payload once without request-loop fanout',
       () async {
     final expectedHash = _sha256('5527999990250');
     final backend = _FakeInvitesBackend(
@@ -926,11 +1178,11 @@ void main() {
 
     final matches = await repository.importContacts(contacts);
 
-    expect(backend.importContactPayloads, hasLength(2));
+    expect(backend.importContactPayloads, hasLength(1));
     expect(
-      backend.importContactPayloads
-          .map((payload) => (payload['contacts'] as List<dynamic>).length),
-      [500, 2],
+      (backend.importContactPayloads.single['contacts'] as List<dynamic>)
+          .length,
+      502,
     );
     expect(matches.single.receiverAccountProfileId, 'profile-250');
   });
@@ -996,6 +1248,24 @@ void main() {
   });
 }
 
+SentInviteStatus _sentStatus({
+  required String userId,
+  required String accountProfileId,
+  required InviteStatus status,
+}) {
+  return SentInviteStatus(
+    friend: EventFriendResume(
+      idValue: UserIdValue()..parse(userId),
+      accountProfileIdValue: InviteAccountProfileIdValue()
+        ..parse(accountProfileId),
+      displayNameValue: UserDisplayNameValue()..parse('Friend'),
+      avatarUrlValue: UserAvatarValue(),
+    ),
+    status: status,
+    sentAtValue: DateTimeValue()..parse('2026-05-23T12:00:00Z'),
+  );
+}
+
 class _FakeInviteContactImportCache
     implements InviteContactImportCacheContract {
   final entries = <String, InviteContactImportCacheEntry>{};
@@ -1031,6 +1301,9 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? createContactGroupResponse,
     Map<String, dynamic>? updateContactGroupResponse,
     Map<String, dynamic>? sendInvitesResponse,
+    Map<String, dynamic>? sentInviteStatusesResponse,
+    Map<String, dynamic>? sentInviteSummaryResponse,
+    Completer<Map<String, dynamic>>? sentInviteStatusesCompleter,
     Map<String, dynamic>? createShareCodeResponse,
     List<Stream<InviteRealtimeDeltaDto>> inviteRealtimeStreams = const [],
     Map<String, dynamic> Function(Map<String, dynamic> payload)?
@@ -1088,6 +1361,21 @@ class _FakeInvitesBackend implements InvitesBackendContract {
               'created': [],
               'already_invited': [],
             },
+        _sentInviteStatusesCompleter = sentInviteStatusesCompleter,
+        _sentInviteStatusesResponse =
+            sentInviteStatusesResponse ?? const {'items': []},
+        _sentInviteSummaryResponse = sentInviteSummaryResponse ??
+            const {
+              'summary': {
+                'pending': 0,
+                'accepted': 0,
+                'declined': 0,
+                'terminal_hidden': 0,
+                'total_visible': 0,
+                'total_sent': 0,
+              },
+              'preview': [],
+            },
         _createShareCodeResponse = createShareCodeResponse ??
             const {
               'code': 'SHARE-CODE',
@@ -1112,6 +1400,9 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final Map<String, dynamic> _createContactGroupResponse;
   final Map<String, dynamic> _updateContactGroupResponse;
   final Map<String, dynamic> _sendInvitesResponse;
+  final Completer<Map<String, dynamic>>? _sentInviteStatusesCompleter;
+  final Map<String, dynamic> _sentInviteStatusesResponse;
+  final Map<String, dynamic> _sentInviteSummaryResponse;
   final Map<String, dynamic> _createShareCodeResponse;
   final List<Stream<InviteRealtimeDeltaDto>> _inviteRealtimeStreams;
   final Map<String, dynamic> Function(Map<String, dynamic> payload)?
@@ -1122,6 +1413,10 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   final List<String> acceptShareCodeCalls = <String>[];
   final List<String?> watchInvitesLastEventIds = <String?>[];
   final List<Map<String, dynamic>> sentInvitePayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> sentInviteStatusPayloads =
+      <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> sentInviteSummaryPayloads =
       <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> createdShareCodePayloads =
       <Map<String, dynamic>>[];
@@ -1203,7 +1498,9 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() async =>
+  Future<Map<String, dynamic>> fetchInviteableContacts(
+    InviteableContactsRequest request,
+  ) async =>
       _inviteableContactsResponse;
 
   @override
@@ -1255,6 +1552,26 @@ class _FakeInvitesBackend implements InvitesBackendContract {
     final payload = request.toJson();
     sentInvitePayloads.add(payload);
     return _sendInvitesResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  ) async {
+    sentInviteStatusPayloads.add(request.toJson());
+    final completer = _sentInviteStatusesCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+    return _sentInviteStatusesResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) async {
+    sentInviteSummaryPayloads.add(request.toJson());
+    return _sentInviteSummaryResponse;
   }
 }
 

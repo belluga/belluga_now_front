@@ -109,6 +109,26 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/invites/sent-statuses',
+      queryParameters: request.toQueryParameters(),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/invites/sent-summary',
+      queryParameters: request.toQueryParameters(),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,
   ) {
@@ -144,8 +164,13 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchInviteableContacts() {
-    return _get('$_apiBaseUrl/v1/contacts/inviteables');
+  Future<Map<String, dynamic>> fetchInviteableContacts(
+    InviteableContactsRequest request,
+  ) {
+    return _get(
+      '$_apiBaseUrl/v1/contacts/inviteables',
+      queryParameters: request.toQueryParameters(),
+    );
   }
 
   @override
@@ -290,10 +315,9 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     }
 
     final payload = Map<String, dynamic>.from(decoded);
-    final resolvedType =
-        _stringOrNull(payload['type']) ??
-            fallbackType?.trim() ??
-            'invite.updated';
+    final resolvedType = _stringOrNull(payload['type']) ??
+        fallbackType?.trim() ??
+        'invite.updated';
 
     final invitePayload = payload['invite'];
     final inviteDto = invitePayload == null

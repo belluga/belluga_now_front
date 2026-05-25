@@ -9,12 +9,14 @@ class InviteShareFriendCard extends StatelessWidget {
     required this.status,
     required this.onInvite,
     required this.isPlaceholder,
+    required this.isSending,
   });
 
   final InviteFriendResume friend;
   final InviteStatus? status;
   final VoidCallback? onInvite;
   final bool isPlaceholder;
+  final bool isSending;
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +26,8 @@ class InviteShareFriendCard extends StatelessWidget {
         : 'Convide para viver o rolê juntos';
     final avatarUrl = friend.avatarValue.value?.toString();
 
-    final (label, enabled) = _cta(status);
-    final disabled = !enabled || isPlaceholder;
+    final (label, enabled) = _cta(status, isSending: isSending);
+    final disabled = !enabled || isPlaceholder || isSending;
     final backgroundColor = disabled
         ? theme.colorScheme.surfaceContainerHighest
         : theme.colorScheme.primary;
@@ -87,10 +89,28 @@ class InviteShareFriendCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
+              child: isSending
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: foregroundColor,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          label,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
             ),
           ],
         ),
@@ -98,14 +118,25 @@ class InviteShareFriendCard extends StatelessWidget {
     );
   }
 
-  (String, bool) _cta(InviteStatus? status) {
+  (String, bool) _cta(InviteStatus? status, {required bool isSending}) {
+    if (isSending) {
+      return ('Enviando...', false);
+    }
     switch (status) {
       case InviteStatus.accepted:
         return ('Convite Aceito!', false);
       case InviteStatus.pending:
       case InviteStatus.viewed:
         return ('Convidado', false);
-      default:
+      case InviteStatus.declined:
+        return ('Convite recusado', false);
+      case InviteStatus.expired:
+        return ('Convite expirado', false);
+      case InviteStatus.superseded:
+        return ('Convidado', false);
+      case InviteStatus.suppressed:
+        return ('Indisponível', false);
+      case null:
         return ('Convidar', true);
     }
   }

@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
@@ -12,10 +13,14 @@ import 'package:stream_value/core/stream_value.dart';
 
 class ContactGroupManagementController with Disposable {
   ContactGroupManagementController({
+    InviteablesRepositoryContract? inviteablesRepository,
     InvitesRepositoryContract? invitesRepository,
-  }) : _invitesRepository =
+  })  : _inviteablesRepository = inviteablesRepository ??
+            GetIt.I.get<InviteablesRepositoryContract>(),
+        _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 
+  final InviteablesRepositoryContract _inviteablesRepository;
   final InvitesRepositoryContract _invitesRepository;
 
   final groupsStreamValue =
@@ -32,11 +37,11 @@ class ContactGroupManagementController with Disposable {
   }
 
   Future<void> refresh() async {
-    await _invitesRepository.refreshInviteableRecipients();
+    await _inviteablesRepository.refreshInviteableRecipients();
     final groups = await _invitesRepository.fetchContactGroups();
     if (_isDisposed) return;
     inviteableRecipientsStreamValue.addValue(
-        _invitesRepository.inviteableRecipientsStreamValue.value ??
+        _inviteablesRepository.inviteableRecipientsStreamValue.value ??
             const <InviteableRecipient>[]);
     groupsStreamValue.addValue(groups);
   }

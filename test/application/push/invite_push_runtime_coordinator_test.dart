@@ -9,9 +9,9 @@ import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
-import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -174,6 +174,87 @@ void main() {
 
     expect(navigatedPaths, <String>['/']);
   });
+
+  test('invite accepted push refreshes the affected sent invite occurrence',
+      () async {
+    final invitesRepository = _FakeInvitesRepository();
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: invitesRepository,
+      navigatePath: (_) async {},
+    );
+
+    await coordinator.handleIncomingMessage(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_accepted',
+          'invite_id': '507f1f77bcf86cd799439011',
+          'event_id': '507f1f77bcf86cd799439012',
+          'occurrence_id': '507f1f77bcf86cd799439013',
+          'accepted_by_account_profile_id': '507f1f77bcf86cd799439014',
+        },
+      ),
+    );
+
+    expect(invitesRepository.refreshPendingInvitesCalls, 0);
+    expect(invitesRepository.sentStatusRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439013',
+        'event_id': '507f1f77bcf86cd799439012',
+        'recipient_account_profile_ids': ['507f1f77bcf86cd799439014'],
+      },
+    ]);
+    expect(invitesRepository.sentSummaryRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439013',
+        'event_id': '507f1f77bcf86cd799439012',
+        'preview_limit': null,
+      },
+    ]);
+  });
+
+  test('invite accepted tap opens event destination and refreshes sent status',
+      () async {
+    final invitesRepository = _FakeInvitesRepository();
+    final navigatedPaths = <String>[];
+    final coordinator = InvitePushRuntimeCoordinator(
+      invitesRepository: invitesRepository,
+      navigatePath: (path) async => navigatedPaths.add(path),
+      currentPathProvider: () => '/agenda',
+    );
+
+    await coordinator.handleNotificationTap(
+      _buildRemoteMessage(
+        data: <String, dynamic>{
+          'push_type': 'invite_accepted',
+          'invite_id': '507f1f77bcf86cd799439011',
+          'event_id': '507f1f77bcf86cd799439012',
+          'occurrence_id': '507f1f77bcf86cd799439013',
+          'accepted_by_account_profile_id': '507f1f77bcf86cd799439014',
+          'push_message_id': 'push-accepted',
+          'message_instance_id': 'instance-accepted',
+        },
+      ),
+    );
+
+    expect(navigatedPaths, <String>[
+      '/agenda/evento/507f1f77bcf86cd799439012?occurrence=507f1f77bcf86cd799439013',
+    ]);
+    await Future<void>.delayed(Duration.zero);
+    expect(invitesRepository.sentStatusRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439013',
+        'event_id': '507f1f77bcf86cd799439012',
+        'recipient_account_profile_ids': ['507f1f77bcf86cd799439014'],
+      },
+    ]);
+    expect(invitesRepository.sentSummaryRefreshes, [
+      {
+        'occurrence_id': '507f1f77bcf86cd799439013',
+        'event_id': '507f1f77bcf86cd799439012',
+        'preview_limit': null,
+      },
+    ]);
+  });
 }
 
 RemoteMessage _buildRemoteMessage({
@@ -195,6 +276,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   final Completer<void>? refreshPendingInvitesCompleter;
   int refreshPendingInvitesCalls = 0;
+  final sentStatusRefreshes = <Map<String, Object?>>[];
+  final sentSummaryRefreshes = <Map<String, Object?>>[];
 
   @override
   Future<List<InviteModel>> fetchInvites({
@@ -253,10 +336,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       const <InviteContactMatch>[];
 
   @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      const <InviteableRecipient>[];
-
-  @override
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];
 
@@ -281,4 +360,35 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString occurrenceId,
   ) async =>
       const <SentInviteStatus>[];
+
+  @override
+  Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
+        const <InvitesRepositoryContractPrimString>[],
+  }) async {
+    sentStatusRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'recipient_account_profile_ids': recipientAccountProfileIds
+          .map((recipientId) => recipientId.value)
+          .toList(growable: false),
+    });
+    return const <SentInviteStatus>[];
+  }
+
+  @override
+  Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? eventId,
+    InvitesRepositoryContractPrimInt? previewLimit,
+  }) async {
+    sentSummaryRefreshes.add({
+      'occurrence_id': occurrenceId.value,
+      'event_id': eventId?.value,
+      'preview_limit': previewLimit?.value,
+    });
+    return SentInviteSummary.empty();
+  }
 }

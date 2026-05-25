@@ -10,7 +10,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
@@ -92,10 +92,12 @@ void main() {
 
       expect(find.text('50 km'), findsOneWidget);
       expect(find.text('100 km'), findsNothing);
-      await AutoRouter.of(
-        tester.element(find.text('Salvar').last),
-      ).maybePop();
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Salvar').last,
+        warnIfMissed: false,
+      );
       await tester.pumpAndSettle();
+      await _dismissRadiusSheetIfStillOpen(tester);
 
       final originTile = find.byKey(const Key('profileOriginPreferenceTile'));
       await tester.ensureVisible(originTile);
@@ -108,9 +110,10 @@ void main() {
       expect(find.text('Selecionar no mapa'), findsOneWidget);
       expect(find.byKey(const Key('profileSaveOriginPreferenceButton')),
           findsOneWidget);
-      await AutoRouter.of(
-        tester.element(find.text('Salvar origem')),
-      ).maybePop();
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Salvar origem').last,
+        warnIfMissed: false,
+      );
       await tester.pumpAndSettle();
 
       firstController.nameController.text = 'Alice Persistida';
@@ -462,6 +465,9 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   void pop<T extends Object?>([T? result]) {}
 
   @override
+  Future<bool> maybePop<T extends Object?>([T? result]) async => false;
+
+  @override
   Future<void> replaceAll(
     List<PageRouteInfo> routes, {
     OnNavigationFailure? onFailure,
@@ -548,9 +554,25 @@ ProfileScreenController _buildController({
     appDataRepository: _FakeAppDataRepository(),
     avatarStorage: avatarStorage ?? _FakeProfileAvatarStorage(),
     selfProfileRepository: selfProfileRepository,
-    invitesRepository: _StubInvitesRepository(),
+    inviteablesRepository: _StubInviteablesRepository(),
     proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
   );
+}
+
+Future<void> _dismissRadiusSheetIfStillOpen(WidgetTester tester) async {
+  final slider = find.byType(Slider);
+  if (slider.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.tapAt(const Offset(8, 8));
+  await tester.pump();
+  for (var tick = 0; tick < 20; tick += 1) {
+    if (slider.evaluate().isEmpty) {
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }
 
 UserContract _buildUser() {
@@ -614,5 +636,4 @@ SelfProfile _buildSelfProfile({
   );
 }
 
-class _StubInvitesRepository extends Fake
-    implements InvitesRepositoryContract {}
+class _StubInviteablesRepository extends InviteablesRepositoryContract {}

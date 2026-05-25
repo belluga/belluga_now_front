@@ -19,6 +19,15 @@ abstract class InvitesBackendContract {
 
   Future<Map<String, dynamic>> sendInvites(InviteSendRequest request);
 
+  Future<Map<String, dynamic>> fetchSentInviteStatuses(
+    InviteSentStatusesRequest request,
+  );
+
+  Future<Map<String, dynamic>> fetchSentInviteSummary(
+    InviteSentSummaryRequest request,
+  ) async =>
+      const <String, dynamic>{};
+
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,
   );
@@ -33,7 +42,9 @@ abstract class InvitesBackendContract {
     InviteContactImportRequest request,
   );
 
-  Future<Map<String, dynamic>> fetchInviteableContacts();
+  Future<Map<String, dynamic>> fetchInviteableContacts(
+    InviteableContactsRequest request,
+  );
 
   Future<Map<String, dynamic>> fetchContactGroups();
 

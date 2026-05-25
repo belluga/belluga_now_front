@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/controllers/contact_group_management_controller.dart';
@@ -18,7 +19,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('loads inviteables and executes contact group CRUD', () async {
     final repository = _FakeInvitesRepository();
+    final inviteablesRepository = _FakeInviteablesRepository();
     final controller = ContactGroupManagementController(
+      inviteablesRepository: inviteablesRepository,
       invitesRepository: repository,
     );
 
@@ -77,7 +80,7 @@ void main() {
   });
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInviteablesRepository extends InviteablesRepositoryContract {
   final inviteables = <InviteableRecipient>[
     buildInviteableRecipient(
       userId: 'user-1',
@@ -91,6 +94,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     ),
   ];
 
+  @override
+  Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
+    inviteableRecipientsStreamValue.addValue(inviteables);
+    return inviteables;
+  }
+}
+
+class _FakeInvitesRepository extends InvitesRepositoryContract {
   final groups = <InviteContactGroup>[
     buildInviteContactGroup(
       id: 'group-1',
@@ -103,10 +114,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final renamedNames = <String>[];
   final updatedMemberIds = <List<String>>[];
   final deletedGroupIds = <String>[];
-
-  @override
-  Future<List<InviteableRecipient>> fetchInviteableRecipients() async =>
-      inviteables;
 
   @override
   Future<List<InviteContactGroup>> fetchContactGroups() async =>

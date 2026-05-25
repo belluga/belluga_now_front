@@ -11,8 +11,8 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
-import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -45,6 +45,9 @@ void main() {
   testWidgets(
     'invite share runtime shows loading-before-empty on both panes and keeps Agenda refresh scoped to Agenda',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final invitesRepository = _FakeInvitesRepository()
         ..fetchInviteableRecipientsGate = Completer<void>();
       final contactsRepository = _FakeContactsRepository(
@@ -78,7 +81,7 @@ void main() {
       expect(find.text('Agenda'), findsOneWidget);
       expect(find.text('Carregando pessoas do app...'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
       expect(find.text('Atualizar agenda'), findsNothing);
@@ -110,7 +113,7 @@ void main() {
       await _pumpForRuntimeResolution(tester);
 
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
       expect(find.text('Mae'), findsOneWidget);
@@ -121,6 +124,15 @@ void main() {
   testWidgets(
     'invite share runtime preserves cached app recipients while silent refresh resolves fresh data',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final cachedRecipient = buildInviteableRecipient(
+        userId: 'user-cached',
+        accountProfileId: 'profile-cached',
+        displayName: 'Cached Friend',
+        inviteableReasons: const <String>['contact_match'],
+      );
       final invitesRepository = _FakeInvitesRepository()
         ..fetchInviteableRecipientsGate = Completer<void>()
         ..inviteableRecipients = <InviteableRecipient>[
@@ -131,22 +143,13 @@ void main() {
             inviteableReasons: const <String>['friend'],
           ),
         ];
+      invitesRepository.inviteableRecipientsStreamValue.addValue(
+        <InviteableRecipient>[cachedRecipient],
+      );
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: _FakeContactsRepository(),
         appData: _buildAppData(),
-      );
-      controller.friendsSuggestionsStreamValue.addValue(
-        <InviteFriendResumeWithStatus>[
-          InviteFriendResumeWithStatus(
-            friend: buildInviteableRecipient(
-              userId: 'user-cached',
-              accountProfileId: 'profile-cached',
-              displayName: 'Cached Friend',
-              inviteableReasons: const <String>['contact_match'],
-            ).toFriendResume(),
-          ),
-        ],
       );
 
       GetIt.I.registerSingleton<InviteShareScreenController>(controller);
@@ -162,7 +165,7 @@ void main() {
       expect(find.text('Cached Friend'), findsOneWidget);
       expect(find.text('Fresh Friend'), findsNothing);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
 
@@ -177,6 +180,9 @@ void main() {
   testWidgets(
     'invite share runtime keeps app pane loading while only empty imported-match cache is available',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final invitesRepository = _FakeInvitesRepository()
         ..cachedImportContactMatches = const <InviteContactMatch>[]
         ..inviteableRecipients = <InviteableRecipient>[
@@ -214,7 +220,7 @@ void main() {
 
       expect(find.text('Carregando pessoas do app...'), findsOneWidget);
       expect(
-        find.text('Nenhum contato convidável para este filtro.'),
+        find.text('Nenhuma pessoa do app disponível para convite.'),
         findsNothing,
       );
 
@@ -282,11 +288,16 @@ Future<void> _pumpForRuntimeResolution(WidgetTester tester) async {
   }
 }
 
-class _FakeInvitesRepository extends InvitesRepositoryContract {
+class _FakeInvitesRepository extends InvitesRepositoryContract
+    implements InviteablesRepositoryContract {
   List<InviteableRecipient> inviteableRecipients =
       const <InviteableRecipient>[];
   List<InviteContactMatch>? cachedImportContactMatches;
   Completer<void>? fetchInviteableRecipientsGate;
+
+  @override
+  final inviteableRecipientsStreamValue =
+      StreamValue<List<InviteableRecipient>?>(defaultValue: null);
 
   @override
   Future<List<InviteModel>> fetchInvites({
@@ -361,7 +372,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<InviteableRecipient>> fetchInviteableRecipients() async {
     await fetchInviteableRecipientsGate?.future;
+    inviteableRecipientsStreamValue.addValue(inviteableRecipients);
     return inviteableRecipients;
+  }
+
+  @override
+  Future<void> refreshInviteableRecipients() async {
+    final recipients = await fetchInviteableRecipients();
+    inviteableRecipientsStreamValue.addValue(recipients);
   }
 
   @override

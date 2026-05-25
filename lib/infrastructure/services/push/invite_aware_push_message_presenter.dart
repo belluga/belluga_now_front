@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:push_handler/push_handler.dart';
 
 class InviteAwarePushMessagePresenter extends PushMessagePresenter {
@@ -10,7 +10,9 @@ class InviteAwarePushMessagePresenter extends PushMessagePresenter {
     super.onStepSubmit,
     super.stepValidator,
     super.onCustomAction,
-  });
+  }) : _contextProvider = contextProvider;
+
+  final BuildContext? Function()? _contextProvider;
 
   @override
   Future<void> present({
@@ -19,6 +21,7 @@ class InviteAwarePushMessagePresenter extends PushMessagePresenter {
     String? deviceId,
   }) async {
     if (shouldSkipGenericPresentation(messageData)) {
+      _showInviteSpecificSignal(messageData);
       return;
     }
 
@@ -42,5 +45,40 @@ class InviteAwarePushMessagePresenter extends PushMessagePresenter {
     return title == 'seu convite foi aceito' ||
         title == 'voce recebeu um convite' ||
         title.startsWith('convite para ');
+  }
+
+  void _showInviteSpecificSignal(MessageData messageData) {
+    final context = _contextProvider?.call();
+    if (context == null || !context.mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+
+    final title = messageData.title.value.trim();
+    final body = messageData.body.value.trim();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(body),
+              ],
+            ],
+          ),
+        ),
+      );
   }
 }
