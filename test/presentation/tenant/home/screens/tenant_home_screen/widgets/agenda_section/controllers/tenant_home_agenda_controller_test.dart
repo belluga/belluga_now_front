@@ -55,6 +55,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_view.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -1791,7 +1792,8 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 60));
 
         expect(locationRepository.resolveUserLocationCallCount, 1);
-        expect(scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
+        expect(
+            scheduleRepository.getEventsPageCallCount, greaterThanOrEqualTo(1));
         expect(
           scheduleRepository.requestOriginHistory,
           isNotEmpty,
@@ -2603,6 +2605,237 @@ void main() {
     });
 
     testWidgets(
+      'home agenda triggers next page when initial loading clears at bottom',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final controller = _CountingHomeAgendaController(
+          appDataRepository: appDataRepository,
+        );
+        addTearDown(controller.onDispose);
+
+        controller.displayStateStreamValue.addValue(
+          TenantHomeAgendaDisplayState(
+            events: List<EventModel>.generate(
+              14,
+              (index) => _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(800 + index).toString()}',
+                title: 'Evento Initial Bottom $index',
+                slug: 'evento-initial-bottom-$index',
+              ),
+            ),
+          ),
+        );
+        controller.isInitialLoadingStreamValue.addValue(true);
+        controller.isPageLoadingStreamValue.addValue(false);
+        controller.hasMoreStreamValue.addValue(true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 520,
+                child: HomeAgendaBody(controller: controller),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.drag(
+            find.byType(Scrollable).first, const Offset(0, -2200));
+        await tester.pump();
+
+        expect(
+          controller.loadNextPageCallCount,
+          0,
+          reason: 'The current loading gate legitimately blocks paging while '
+              'the first load is still finalizing.',
+        );
+
+        controller.isInitialLoadingStreamValue.addValue(false);
+        await tester.pump();
+        await tester.pump();
+
+        expect(
+          controller.loadNextPageCallCount,
+          1,
+          reason:
+              'When loading clears while the user is already at the bottom, '
+              'the agenda must re-evaluate the current scroll metrics without '
+              'requiring an extra upward scroll.',
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda triggers next page when page loading clears at bottom',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final controller = _CountingHomeAgendaController(
+          appDataRepository: appDataRepository,
+        );
+        addTearDown(controller.onDispose);
+
+        controller.displayStateStreamValue.addValue(
+          TenantHomeAgendaDisplayState(
+            events: List<EventModel>.generate(
+              14,
+              (index) => _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(850 + index).toString()}',
+                title: 'Evento Page Bottom $index',
+                slug: 'evento-page-bottom-$index',
+              ),
+            ),
+          ),
+        );
+        controller.isInitialLoadingStreamValue.addValue(false);
+        controller.isPageLoadingStreamValue.addValue(true);
+        controller.hasMoreStreamValue.addValue(true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 520,
+                child: HomeAgendaBody(controller: controller),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final scrollable = find.byType(Scrollable).first;
+        await tester.dragUntilVisible(
+          find.byType(CircularProgressIndicator),
+          scrollable,
+          const Offset(0, -600),
+        );
+        await tester.pump();
+        final scrollableState = tester.state<ScrollableState>(scrollable);
+        expect(scrollableState.position.extentAfter, lessThan(320));
+
+        expect(
+          controller.loadNextPageCallCount,
+          0,
+          reason: 'The active page-loading gate must still suppress '
+              'duplicate page requests while the previous request is in '
+              'flight.',
+        );
+
+        controller.isPageLoadingStreamValue.addValue(false);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(
+          controller.loadNextPageCallCount,
+          1,
+          reason:
+              'When page loading clears while the user remains at the bottom, '
+              'the stored bottom metrics must trigger exactly one continuation '
+              'request.',
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda bottom replay issues exactly one paged request with larger batches',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final locationRepository = _FakeUserLocationRepository()
+          ..userLocationStreamValue.addValue(
+            CityCoordinate(
+              latitudeValue: LatitudeValue()..parse('-20.671339'),
+              longitudeValue: LongitudeValue()..parse('-40.495395'),
+            ),
+          );
+        final backend = _LargePagedHomeAgendaBackend(
+          totalEvents: 72,
+          pageSize: 24,
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: ScheduleRepository(backend: backend),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+        );
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+        expect(backend.requestedPages, <int>[1]);
+        expect(_displayedEvents(controller), hasLength(24));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 520,
+                child: HomeAgendaBody(controller: controller),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        controller.isInitialLoadingStreamValue.addValue(true);
+        await tester.pump();
+
+        final scrollable = find.byType(Scrollable).first;
+        for (var attempt = 0; attempt < 20; attempt++) {
+          await tester.drag(scrollable, const Offset(0, -900));
+          await tester.pump();
+        }
+
+        expect(
+          backend.requestedPages,
+          <int>[1],
+          reason:
+              'Scroll attempts while the first load gate is active must not '
+              'start duplicate page requests.',
+        );
+
+        controller.isInitialLoadingStreamValue.addValue(false);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(
+          backend.requestedPages,
+          <int>[1, 2],
+          reason:
+              'The replay should issue one next-page request, not one request '
+              'per stored scroll/update notification.',
+        );
+        expect(_displayedEvents(controller), hasLength(48));
+
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          backend.requestedPages,
+          <int>[1, 2],
+          reason:
+              'After the replayed page settles, the stale bottom snapshot must '
+              'not cause another request without a new user scroll.',
+        );
+      },
+    );
+
+    testWidgets(
       'anonymous home agenda scrolls through every event available inside the current range',
       (tester) async {
         final appData = _buildAppData(
@@ -3400,6 +3633,30 @@ TenantHomeAgendaController _buildAgendaController({
     radiusRefreshDebounce:
         radiusRefreshDebounce ?? const Duration(milliseconds: 250),
   );
+}
+
+class _CountingHomeAgendaController extends TenantHomeAgendaController {
+  _CountingHomeAgendaController({
+    required AppDataRepositoryContract appDataRepository,
+  }) : super(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          appDataRepository: appDataRepository,
+          userLocationRepository: _FakeUserLocationRepository(),
+          locationOriginService: LocationOriginService(
+            appDataRepository: appDataRepository,
+            userLocationRepository: _FakeUserLocationRepository(),
+          ),
+          isWebRuntime: false,
+        );
+
+  int loadNextPageCallCount = 0;
+
+  @override
+  Future<void> loadNextPage() async {
+    loadNextPageCallCount += 1;
+  }
 }
 
 AppData _buildAppData({
@@ -4487,6 +4744,103 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-04T20:00:00+00:00',
+      'linked_account_profiles': const [],
+      'tags': const ['music'],
+    });
+  }
+}
+
+class _LargePagedHomeAgendaBackend implements ScheduleBackendContract {
+  _LargePagedHomeAgendaBackend({
+    required this.totalEvents,
+    required this.pageSize,
+  });
+
+  final int totalEvents;
+  final int pageSize;
+  final List<int> requestedPages = <int>[];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({
+    required String eventIdOrSlug,
+    String? occurrenceId,
+  }) async =>
+      _eventDto(index: 0);
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    int? pageSize,
+    required bool showPastOnly,
+    bool liveNowOnly = false,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    requestedPages.add(page);
+    final effectivePageSize = pageSize ?? this.pageSize;
+    final start = (page - 1) * effectivePageSize;
+    if (start >= totalEvents) {
+      return EventPageDTO(events: const <EventDTO>[], hasMore: false);
+    }
+    final end = start + effectivePageSize < totalEvents
+        ? start + effectivePageSize
+        : totalEvents;
+    return EventPageDTO(
+      events: List<EventDTO>.generate(
+        end - start,
+        (index) => _eventDto(index: start + index),
+      ),
+      hasMore: end < totalEvents,
+    );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    List<String>? occurrenceIds,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _eventDto({required int index}) {
+    final suffix = index.toRadixString(16).padLeft(6, '0');
+    final startAt = DateTime.utc(2026, 3, 1, 18).add(Duration(days: index));
+    return EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799$suffix',
+      'occurrence_id': '507f1f77bcf86cd798$suffix',
+      'slug': 'evento-request-$index',
+      'title': 'Evento Request ${(index + 1).toString().padLeft(2, '0')}',
+      'content': 'Conteudo $index',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': startAt.toIso8601String(),
       'linked_account_profiles': const [],
       'tags': const ['music'],
     });
