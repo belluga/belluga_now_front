@@ -28,6 +28,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
   static const double _paginationThreshold = 320.0;
 
   bool _agendaLoadScheduled = false;
+  final ScrollController _agendaScrollController = ScrollController();
   _AgendaScrollSnapshot? _lastUserScrollSnapshot;
   StreamSubscription<bool>? _initialLoadingSubscription;
   StreamSubscription<bool>? _pageLoadingSubscription;
@@ -52,6 +53,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
   @override
   void dispose() {
     _detachLoadingListeners();
+    _agendaScrollController.dispose();
     super.dispose();
   }
 
@@ -182,45 +184,48 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                 return StreamValueBuilder<bool>(
                   streamValue: controller.showHistoryStreamValue,
                   builder: (context, showHistory) {
-                    return NotificationListener<ScrollNotification>(
-                      onNotification: (notification) =>
-                          _handleAgendaScroll(notification, controller),
-                      child: DateGroupedEventList(
-                        primary: true,
-                        events: resumes,
-                        isConfirmed: (event) =>
-                            controller.isOccurrenceConfirmed(
-                          event.selectedOccurrenceId ?? '',
-                        ),
-                        pendingInvitesCount: (event) =>
-                            controller.pendingInviteCount(
-                          event.selectedOccurrenceId ?? '',
-                        ),
-                        distanceLabel: controller.distanceLabelFor,
-                        statusIconSize: 22,
-                        highlightNowEvents: true,
-                        highlightTodayEvents: true,
-                        sortDescending: showHistory,
-                        footer: isPageLoading
-                            ? const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(),
+                    return PrimaryScrollController(
+                      controller: _agendaScrollController,
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: (notification) =>
+                            _handleAgendaScroll(notification, controller),
+                        child: DateGroupedEventList(
+                          primary: true,
+                          events: resumes,
+                          isConfirmed: (event) =>
+                              controller.isOccurrenceConfirmed(
+                            event.selectedOccurrenceId ?? '',
+                          ),
+                          pendingInvitesCount: (event) =>
+                              controller.pendingInviteCount(
+                            event.selectedOccurrenceId ?? '',
+                          ),
+                          distanceLabel: controller.distanceLabelFor,
+                          statusIconSize: 22,
+                          highlightNowEvents: true,
+                          highlightTodayEvents: true,
+                          sortDescending: showHistory,
+                          footer: isPageLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(),
+                                    ),
                                   ),
-                                ),
-                              )
-                            : null,
-                        onEventSelected: (event) {
-                          context.router.push(
-                            ImmersiveEventDetailRoute(
-                              eventSlug: event.slug,
-                              occurrenceId: event.selectedOccurrenceId,
-                            ),
-                          );
-                        },
+                                )
+                              : null,
+                          onEventSelected: (event) {
+                            context.router.push(
+                              ImmersiveEventDetailRoute(
+                                eventSlug: event.slug,
+                                occurrenceId: event.selectedOccurrenceId,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   },
@@ -281,14 +286,24 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       return;
     }
 
-    final snapshot = _lastUserScrollSnapshot;
-    if (snapshot == null) {
+    if (_lastUserScrollSnapshot == null) {
       return;
     }
+
+    final currentSnapshot = _currentAgendaScrollSnapshot();
+    if (currentSnapshot == null ||
+        !_isNearBottom(
+          pixels: currentSnapshot.pixels,
+          extentAfter: currentSnapshot.extentAfter,
+        )) {
+      _lastUserScrollSnapshot = null;
+      return;
+    }
+
     _scheduleNextPageIfNearBottom(
       controller,
-      pixels: snapshot.pixels,
-      extentAfter: snapshot.extentAfter,
+      pixels: currentSnapshot.pixels,
+      extentAfter: currentSnapshot.extentAfter,
     );
   }
 
@@ -297,7 +312,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     required double pixels,
     required double extentAfter,
   }) {
-    if (pixels <= 0 || extentAfter >= _paginationThreshold) {
+    if (!_isNearBottom(pixels: pixels, extentAfter: extentAfter)) {
       return;
     }
     if (_agendaLoadScheduled) {
@@ -312,6 +327,25 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       }
       controller.loadNextPage();
     });
+  }
+
+  _AgendaScrollSnapshot? _currentAgendaScrollSnapshot() {
+    final positions = _agendaScrollController.positions;
+    if (positions.length != 1) {
+      return null;
+    }
+    final position = positions.single;
+    return _AgendaScrollSnapshot(
+      pixels: position.pixels,
+      extentAfter: position.extentAfter,
+    );
+  }
+
+  bool _isNearBottom({
+    required double pixels,
+    required double extentAfter,
+  }) {
+    return pixels > 0 && extentAfter < _paginationThreshold;
   }
 
   Widget _buildFirstFetchLoading({
