@@ -28,7 +28,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
   static const double _paginationThreshold = 320.0;
 
   bool _agendaLoadScheduled = false;
-  final ScrollController _agendaScrollController = ScrollController();
+  _AgendaScrollSnapshot? _currentScrollSnapshot;
   _AgendaScrollSnapshot? _lastUserScrollSnapshot;
   StreamSubscription<bool>? _initialLoadingSubscription;
   StreamSubscription<bool>? _pageLoadingSubscription;
@@ -53,7 +53,6 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
   @override
   void dispose() {
     _detachLoadingListeners();
-    _agendaScrollController.dispose();
     super.dispose();
   }
 
@@ -184,8 +183,8 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                 return StreamValueBuilder<bool>(
                   streamValue: controller.showHistoryStreamValue,
                   builder: (context, showHistory) {
-                    return PrimaryScrollController(
-                      controller: _agendaScrollController,
+                    return NotificationListener<ScrollMetricsNotification>(
+                      onNotification: _handleAgendaMetricsChanged,
                       child: NotificationListener<ScrollNotification>(
                         onNotification: (notification) =>
                             _handleAgendaScroll(notification, controller),
@@ -246,6 +245,8 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       return false;
     }
 
+    _currentScrollSnapshot = _snapshotFromMetrics(notification.metrics);
+
     controller.updateRadiusActionCompactStateFromScroll(
       notification.metrics.pixels,
     );
@@ -290,7 +291,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       return;
     }
 
-    final currentSnapshot = _currentAgendaScrollSnapshot();
+    final currentSnapshot = _currentScrollSnapshot;
     if (currentSnapshot == null ||
         !_isNearBottom(
           pixels: currentSnapshot.pixels,
@@ -329,15 +330,18 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     });
   }
 
-  _AgendaScrollSnapshot? _currentAgendaScrollSnapshot() {
-    final positions = _agendaScrollController.positions;
-    if (positions.length != 1) {
-      return null;
+  bool _handleAgendaMetricsChanged(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
     }
-    final position = positions.single;
+    _currentScrollSnapshot = _snapshotFromMetrics(notification.metrics);
+    return false;
+  }
+
+  _AgendaScrollSnapshot _snapshotFromMetrics(ScrollMetrics metrics) {
     return _AgendaScrollSnapshot(
-      pixels: position.pixels,
-      extentAfter: position.extentAfter,
+      pixels: metrics.pixels,
+      extentAfter: metrics.extentAfter,
     );
   }
 
