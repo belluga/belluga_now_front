@@ -411,6 +411,59 @@ void main() {
   );
 
   testWidgets(
+    'agenda screen loads the next page when scrolled to the bottom',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository()
+        ..eventSearchPages = [
+          List<EventModel>.generate(
+            14,
+            (index) => _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439${(100 + index).toString()}',
+              title: 'Evento pagina um $index',
+              slug: 'evento-pagina-um-$index',
+              startAt: DateTime.utc(2026, 4, 15 + (index ~/ 3), 18, 0),
+            ),
+          ),
+          [
+            _buildScheduleEvent(
+              id: '507f1f77bcf86cd799439220',
+              title: 'Evento pagina dois',
+              slug: 'evento-pagina-dois',
+              startAt: DateTime.utc(2026, 4, 22, 18, 0),
+            ),
+          ],
+        ];
+      final controller = _buildEventSearchController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+      final router = _RecordingStackRouter();
+
+      await _pumpEventSearchScreen(
+        tester,
+        controller: controller,
+        router: router,
+      );
+      await tester.pumpAndSettle();
+
+      expect(scheduleRepository.loadMoreEventSearchCallCount, 0);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -2200));
+      await tester.pump();
+      await tester.pump();
+
+      expect(scheduleRepository.loadMoreEventSearchCallCount, 1);
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
+
+  testWidgets(
     'invite filter cycles pending received invites separately from confirmed occurrences',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository()

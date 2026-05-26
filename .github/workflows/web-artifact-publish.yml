@@ -34,7 +34,15 @@ jobs:
     steps:
       - name: Checkout flutter-app
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Temporary unauthenticated public checkout while Actions' implicit
+          # checkout token is rejected with a false account-suspension error.
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
+          git checkout --force refs/remotes/origin/ci-ref
 
       - name: Enforce branch promotion lanes
         if: github.event_name == 'pull_request'
@@ -119,9 +127,15 @@ jobs:
 
     steps:
       - name: Checkout flutter-app
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Temporary unauthenticated public checkout while Actions' implicit
+          # checkout token is rejected with a false account-suspension error.
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
+          git checkout --force refs/remotes/origin/ci-ref
 
       - name: Resolve lane define file
         id: lane_defines

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -23,7 +25,53 @@ class HomeAgendaBody extends StatefulWidget {
 }
 
 class _HomeAgendaBodyState extends State<HomeAgendaBody> {
+  static const double _paginationThreshold = 320.0;
+
   bool _agendaLoadScheduled = false;
+  _AgendaScrollSnapshot? _lastUserScrollSnapshot;
+  StreamSubscription<bool>? _initialLoadingSubscription;
+  StreamSubscription<bool>? _pageLoadingSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachLoadingListeners(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeAgendaBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      _detachLoadingListeners();
+      _lastUserScrollSnapshot = null;
+      _agendaLoadScheduled = false;
+      _attachLoadingListeners(widget.controller);
+    }
+  }
+
+  @override
+  void dispose() {
+    _detachLoadingListeners();
+    super.dispose();
+  }
+
+  void _attachLoadingListeners(TenantHomeAgendaController controller) {
+    _initialLoadingSubscription =
+        controller.isInitialLoadingStreamValue.stream.listen((_) {
+      _replayPendingBottomScrollIfReady(controller);
+    });
+    _pageLoadingSubscription =
+        controller.isPageLoadingStreamValue.stream.listen((_) {
+      _replayPendingBottomScrollIfReady(controller);
+    });
+  }
+
+  void _detachLoadingListeners() {
+    _initialLoadingSubscription?.cancel();
+    _initialLoadingSubscription = null;
+    _pageLoadingSubscription?.cancel();
+    _pageLoadingSubscription = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,20 +254,64 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     };
     if (!isUserDriven) return false;
 
+    _lastUserScrollSnapshot = _AgendaScrollSnapshot(
+      pixels: notification.metrics.pixels,
+      extentAfter: notification.metrics.extentAfter,
+    );
+
     final isLoading = controller.isPageLoadingStreamValue.value ||
         controller.isInitialLoadingStreamValue.value;
     final hasMore = controller.hasMoreStreamValue.value;
     if (isLoading || !hasMore) return false;
-    if (notification.metrics.pixels <= 0) return false;
-    if (notification.metrics.extentAfter < 320) {
-      if (_agendaLoadScheduled) return false;
-      _agendaLoadScheduled = true;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _agendaLoadScheduled = false;
-        controller.loadNextPage();
-      });
-    }
+    _scheduleNextPageIfNearBottom(
+      controller,
+      pixels: notification.metrics.pixels,
+      extentAfter: notification.metrics.extentAfter,
+    );
     return false;
+  }
+
+  void _replayPendingBottomScrollIfReady(
+    TenantHomeAgendaController controller,
+  ) {
+    if (!mounted ||
+        controller.isInitialLoadingStreamValue.value ||
+        controller.isPageLoadingStreamValue.value ||
+        !controller.hasMoreStreamValue.value) {
+      return;
+    }
+
+    final snapshot = _lastUserScrollSnapshot;
+    if (snapshot == null) {
+      return;
+    }
+    _scheduleNextPageIfNearBottom(
+      controller,
+      pixels: snapshot.pixels,
+      extentAfter: snapshot.extentAfter,
+    );
+  }
+
+  void _scheduleNextPageIfNearBottom(
+    TenantHomeAgendaController controller, {
+    required double pixels,
+    required double extentAfter,
+  }) {
+    if (pixels <= 0 || extentAfter >= _paginationThreshold) {
+      return;
+    }
+    if (_agendaLoadScheduled) {
+      return;
+    }
+    _lastUserScrollSnapshot = null;
+    _agendaLoadScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _agendaLoadScheduled = false;
+      if (!mounted) {
+        return;
+      }
+      controller.loadNextPage();
+    });
   }
 
   Widget _buildFirstFetchLoading({
@@ -251,4 +343,14 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       ),
     );
   }
+}
+
+class _AgendaScrollSnapshot {
+  const _AgendaScrollSnapshot({
+    required this.pixels,
+    required this.extentAfter,
+  });
+
+  final double pixels;
+  final double extentAfter;
 }
