@@ -2750,6 +2750,97 @@ void main() {
     );
 
     testWidgets(
+      'home agenda drops stale bottom replay after refresh changes scroll metrics',
+      (tester) async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final controller = _CountingHomeAgendaController(
+          appDataRepository: appDataRepository,
+        );
+        addTearDown(controller.onDispose);
+
+        controller.displayStateStreamValue.addValue(
+          TenantHomeAgendaDisplayState(
+            events: List<EventModel>.generate(
+              14,
+              (index) => _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(900 + index).toRadixString(16)}',
+                title: 'Evento Stale Bottom $index',
+                slug: 'evento-stale-bottom-$index',
+              ),
+            ),
+          ),
+        );
+        controller.isInitialLoadingStreamValue.addValue(false);
+        controller.isPageLoadingStreamValue.addValue(false);
+        controller.hasMoreStreamValue.addValue(false);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 520,
+                child: HomeAgendaBody(controller: controller),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final scrollable = find.byType(Scrollable).first;
+        for (var attempt = 0; attempt < 20; attempt++) {
+          await tester.drag(scrollable, const Offset(0, -900));
+          await tester.pump();
+        }
+
+        final scrollableState = tester.state<ScrollableState>(scrollable);
+        expect(scrollableState.position.extentAfter, lessThan(320));
+        expect(controller.loadNextPageCallCount, 0);
+
+        controller.isInitialLoadingStreamValue.addValue(true);
+        controller.displayStateStreamValue.addValue(
+          TenantHomeAgendaDisplayState(
+            events: List<EventModel>.generate(
+              60,
+              (index) => _buildHomeAgendaEvent(
+                occurrenceId:
+                    '507f1f77bcf86cd799439${(950 + index).toRadixString(16)}',
+                title: 'Evento Refreshed Bottom $index',
+                slug: 'evento-refreshed-bottom-$index',
+              ),
+            ),
+          ),
+        );
+        controller.hasMoreStreamValue.addValue(true);
+        await tester.pumpAndSettle();
+
+        expect(
+          scrollableState.position.extentAfter,
+          greaterThanOrEqualTo(320),
+          reason: 'The refreshed list is no longer near the bottom, so the '
+              'old bottom snapshot must not be replayed.',
+        );
+
+        controller.isInitialLoadingStreamValue.addValue(false);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(
+          controller.loadNextPageCallCount,
+          0,
+          reason: 'A stale bottom snapshot captured before the refresh must '
+              'not trigger pagination after the refreshed metrics are far from '
+              'the bottom.',
+        );
+      },
+    );
+
+    testWidgets(
       'home agenda bottom replay issues exactly one paged request with larger batches',
       (tester) async {
         final appData = _buildAppData(
