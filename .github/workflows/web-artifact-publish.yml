@@ -37,6 +37,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Temporary unauthenticated public checkout while Actions' implicit
+          # checkout token is rejected with a false account-suspension error.
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
           git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
@@ -128,6 +130,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Temporary unauthenticated public checkout while Actions' implicit
+          # checkout token is rejected with a false account-suspension error.
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
           git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
