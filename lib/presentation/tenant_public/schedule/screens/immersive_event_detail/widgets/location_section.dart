@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:flutter/material.dart';
 
 class LocationSection extends StatelessWidget {
@@ -7,6 +11,8 @@ class LocationSection extends StatelessWidget {
     required this.event,
     this.onOpenMap,
     this.onOpenDestinationMap,
+    this.onOpenDirectDirections,
+    this.onOpenOtherDirections,
     this.canOpenMap = false,
     super.key,
   });
@@ -14,6 +20,12 @@ class LocationSection extends StatelessWidget {
   final EventModel event;
   final VoidCallback? onOpenMap;
   final ValueChanged<EventLinkedAccountProfile>? onOpenDestinationMap;
+  final Future<void> Function(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  )? onOpenDirectDirections;
+  final Future<void> Function(DirectionsLaunchTarget target)?
+      onOpenOtherDirections;
   final bool canOpenMap;
 
   @override
@@ -25,6 +37,10 @@ class LocationSection extends StatelessWidget {
     final resolvedTitle = venueName != null && venueName.isNotEmpty
         ? venueName
         : 'Local do evento';
+    final mainDirectionsTarget = _directionsTargetFromEvent(
+      event,
+      destinationName: resolvedTitle,
+    );
     final destinations = _buildDestinations(event);
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
@@ -128,6 +144,15 @@ class LocationSection extends StatelessWidget {
               ),
             ),
           ),
+          if (mainDirectionsTarget != null) ...[
+            const SizedBox(height: 12),
+            _DirectionsProviderButtons(
+              target: mainDirectionsTarget,
+              isPrimary: true,
+              onOpenDirectDirections: onOpenDirectDirections,
+              onOpenOtherDirections: onOpenOtherDirections,
+            ),
+          ],
           if (destinations.isNotEmpty) ...[
             const SizedBox(height: 18),
             Text(
@@ -147,6 +172,8 @@ class LocationSection extends StatelessWidget {
                       : onOpenDestinationMap == null
                           ? null
                           : () => onOpenDestinationMap!(destination.profile!),
+                  onOpenDirectDirections: onOpenDirectDirections,
+                  onOpenOtherDirections: onOpenOtherDirections,
                 ),
               ),
             ),
@@ -189,6 +216,29 @@ class LocationSection extends StatelessWidget {
 
     return List<_LocationDestination>.unmodifiable(destinations);
   }
+
+  DirectionsLaunchTarget? _directionsTargetFromEvent(
+    EventModel event, {
+    required String destinationName,
+  }) {
+    final address = event.location.value.trim();
+    final coordinate = event.coordinate;
+    if (coordinate != null) {
+      return DirectionsLaunchTarget(
+        destinationName: destinationName,
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+        address: address.isEmpty ? null : address,
+      );
+    }
+    if (address.isEmpty) {
+      return null;
+    }
+    return DirectionsLaunchTarget(
+      destinationName: destinationName,
+      address: address,
+    );
+  }
 }
 
 class _LocationDestination {
@@ -201,42 +251,235 @@ class _LocationDestination {
   final String key;
   final String title;
   final EventLinkedAccountProfile? profile;
+  DirectionsLaunchTarget? get routeTarget {
+    final locationProfile = profile;
+    if (locationProfile == null) {
+      return null;
+    }
+
+    final address = locationProfile.locationAddress?.trim();
+    final latitude = locationProfile.locationLat;
+    final longitude = locationProfile.locationLng;
+    if (latitude != null && longitude != null) {
+      return DirectionsLaunchTarget(
+        destinationName: title,
+        latitude: latitude,
+        longitude: longitude,
+        address: address == null || address.isEmpty ? null : address,
+      );
+    }
+
+    if (address != null && address.isNotEmpty) {
+      return DirectionsLaunchTarget(
+        destinationName: title,
+        address: address,
+      );
+    }
+
+    return null;
+  }
 }
 
 class _LocationDestinationTile extends StatelessWidget {
   const _LocationDestinationTile({
     required this.destination,
     required this.onTap,
+    required this.onOpenDirectDirections,
+    required this.onOpenOtherDirections,
   });
 
   final _LocationDestination destination;
   final VoidCallback? onTap;
+  final Future<void> Function(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  )? onOpenDirectDirections;
+  final Future<void> Function(DirectionsLaunchTarget target)?
+      onOpenOtherDirections;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final routeTarget = destination.routeTarget;
     return Material(
       color: colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(20),
-      child: ListTile(
-        key: Key('eventLocationDestination_${destination.key}'),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: colorScheme.outlineVariant),
-        ),
-        leading: Icon(
-          Icons.location_on_outlined,
-          color: colorScheme.primary,
-        ),
-        title: Text(
-          destination.title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: routeTarget == null ? 0 : 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: Key('eventLocationDestination_${destination.key}'),
+              onTap: onTap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: colorScheme.outlineVariant),
               ),
+              leading: Icon(
+                Icons.location_on_outlined,
+                color: colorScheme.primary,
+              ),
+              title: Text(
+                destination.title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              trailing: onTap == null ? null : const Icon(Icons.map_outlined),
+            ),
+            if (routeTarget != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: _DirectionsProviderButtons(
+                  target: routeTarget,
+                  isPrimary: false,
+                  onOpenDirectDirections: onOpenDirectDirections,
+                  onOpenOtherDirections: onOpenOtherDirections,
+                ),
+              ),
+          ],
         ),
-        trailing: onTap == null ? null : const Icon(Icons.map_outlined),
       ),
+    );
+  }
+}
+
+class _DirectionsProviderButtons extends StatelessWidget {
+  const _DirectionsProviderButtons({
+    required this.target,
+    required this.isPrimary,
+    required this.onOpenDirectDirections,
+    required this.onOpenOtherDirections,
+  });
+
+  final DirectionsLaunchTarget target;
+  final bool isPrimary;
+  final Future<void> Function(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  )? onOpenDirectDirections;
+  final Future<void> Function(DirectionsLaunchTarget target)?
+      onOpenOtherDirections;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!target.hasLaunchableDestination) {
+      return const SizedBox.shrink();
+    }
+
+    final height = isPrimary ? 48.0 : 38.0;
+    final textStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: isPrimary ? 14 : 12,
+        );
+    return Row(
+      children: [
+        Expanded(
+          child: _DirectionProviderButton(
+            key: Key(
+                isPrimary ? 'eventMainWazeButton' : 'eventSecondaryWazeButton'),
+            label: 'Waze',
+            icon: Icons.alt_route_outlined,
+            height: height,
+            textStyle: textStyle,
+            onPressed: onOpenDirectDirections == null
+                ? null
+                : () => unawaited(
+                      onOpenDirectDirections!(
+                        DirectionsDirectProvider.waze,
+                        target,
+                      ),
+                    ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _DirectionProviderButton(
+            key: Key(
+                isPrimary ? 'eventMainUberButton' : 'eventSecondaryUberButton'),
+            label: 'Uber',
+            icon: Icons.local_taxi,
+            height: height,
+            textStyle: textStyle,
+            onPressed: onOpenDirectDirections == null || !target.hasCoordinates
+                ? null
+                : () => unawaited(
+                      onOpenDirectDirections!(
+                        DirectionsDirectProvider.uber,
+                        target,
+                      ),
+                    ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: isPrimary ? 56 : 44,
+          child: _DirectionProviderButton(
+            key: Key(
+              isPrimary
+                  ? 'eventMainOtherDirectionsButton'
+                  : 'eventSecondaryOtherDirectionsButton',
+            ),
+            label: '',
+            icon: Icons.more_horiz,
+            height: height,
+            textStyle: textStyle,
+            onPressed: onOpenOtherDirections == null
+                ? null
+                : () => unawaited(onOpenOtherDirections!(target)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DirectionProviderButton extends StatelessWidget {
+  const _DirectionProviderButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.height,
+    required this.textStyle,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final double height;
+  final TextStyle? textStyle;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = label.isEmpty
+        ? Icon(icon, size: 20)
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyle,
+                ),
+              ),
+            ],
+          );
+
+    return FilledButton.tonal(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        minimumSize: Size.fromHeight(height),
+        padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 8 : 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: child,
     );
   }
 }

@@ -17,7 +17,10 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -29,8 +32,10 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
@@ -40,6 +45,9 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
@@ -3283,6 +3291,8 @@ void main() {
       displayName: 'Palco Central',
       profileType: 'venue',
       slug: 'palco-central',
+      locationLat: -20.671339,
+      locationLng: -40.495395,
     );
 
     await tester.pumpWidget(
@@ -3343,6 +3353,12 @@ void main() {
         of: programmingDestination,
         matching: find.text('Palco Central'),
       ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('eventSecondaryWazeButton')), findsOneWidget);
+    expect(find.byKey(const Key('eventSecondaryUberButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventSecondaryOtherDirectionsButton')),
       findsOneWidget,
     );
 
@@ -3472,8 +3488,7 @@ void main() {
     expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
   });
 
-  testWidgets(
-      'event detail only promotes Como Chegar footer after confirmation',
+  testWidgets('event detail keeps standard footer and inline route actions',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -3518,9 +3533,188 @@ void main() {
     await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Traçar rota'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
+    expect(find.byKey(const Key('eventMainWazeButton')), findsOneWidget);
+    expect(find.byKey(const Key('eventMainUberButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventMainOtherDirectionsButton')),
+      findsOneWidget,
+    );
     expect(find.textContaining('Confirmar Presença'), findsNothing);
   });
+
+  testWidgets(
+      'event detail route launch prompts for reference point and persists checked policy',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      _referencePointPreference(
+        useReferencePointForRoutes: null,
+      ),
+    );
+    final directionsChooser = _RecordingDirectionsAppChooser();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        proximityPreferencesRepository: proximityRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(venue: _buildVenueResume()),
+              directionsAppChooser: directionsChooser,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('eventMainWazeButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Qual PONTO DE PARTIDA quer usar?'), findsOneWidget);
+    expect(find.text('Sua localização atual'), findsOneWidget);
+    expect(find.text('O ponto de referência selecionado'), findsOneWidget);
+    expect(find.text('Hotel Base'), findsOneWidget);
+    expect(find.text('Ver perfil'), findsOneWidget);
+
+    await tester.tap(find.text('O ponto de referência selecionado'));
+    await tester.pump();
+    await tester.tap(find.text('Não perguntar de novo'));
+    await tester.pump();
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+
+    expect(directionsChooser.lastDirectProvider, DirectionsDirectProvider.waze);
+    expect(directionsChooser.lastDirectTarget?.originDisplayName, 'Hotel Base');
+    expect(directionsChooser.lastDirectTarget?.originLatitude,
+        closeTo(-20.6736, 0.000001));
+    expect(directionsChooser.lastDirectTarget?.originLongitude,
+        closeTo(-40.4976, 0.000001));
+    expect(proximityRepository.lastPolicy, isTrue);
+  });
+
+  testWidgets(
+      'event detail route launch keeps prompt policy null when not persisted',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      _referencePointPreference(
+        useReferencePointForRoutes: null,
+      ),
+    );
+    final directionsChooser = _RecordingDirectionsAppChooser();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        proximityPreferencesRepository: proximityRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(venue: _buildVenueResume()),
+              directionsAppChooser: directionsChooser,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('eventMainWazeButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+
+    expect(directionsChooser.lastDirectProvider, DirectionsDirectProvider.waze);
+    expect(
+      directionsChooser.lastDirectTarget?.hasLaunchableOrigin,
+      isFalse,
+    );
+    expect(proximityRepository.lastPolicy, isNull);
+    expect(
+      proximityRepository.proximityPreference?.useReferencePointForRoutes,
+      isNull,
+    );
+  });
+}
+
+class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
+  DirectionsDirectProvider? lastDirectProvider;
+  DirectionsLaunchTarget? lastDirectTarget;
+  DirectionsLaunchTarget? lastPresentedTarget;
+
+  @override
+  Future<List<DirectionsAppChoice>> loadOptions({
+    required DirectionsLaunchTarget target,
+  }) async =>
+      const <DirectionsAppChoice>[];
+
+  @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async {
+    lastDirectProvider = provider;
+    lastDirectTarget = target;
+    return true;
+  }
+
+  @override
+  Future<void> present(
+    BuildContext context, {
+    required DirectionsLaunchTarget target,
+    ValueChanged<String>? onStatusMessage,
+  }) async {
+    lastPresentedTarget = target;
+  }
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
@@ -3833,6 +4027,29 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       InvitesRepositoryContractPrimString? message}) async {}
 }
 
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository(ProximityPreference preference) {
+    setCurrentPreference(preference);
+  }
+
+  bool? lastPolicy;
+
+  @override
+  Future<void> setRouteReferencePointPolicy(
+    RouteReferencePointPolicyValue policyValue,
+  ) async {
+    lastPolicy = policyValue.value;
+    final current = proximityPreference;
+    if (current == null) {
+      return;
+    }
+    setCurrentPreference(
+      current.copyWith(routeReferencePointPolicyValue: policyValue),
+    );
+  }
+}
+
 class _FakeAuthRepository extends AuthRepositoryContract {
   _FakeAuthRepository({required this.authorized});
 
@@ -3972,6 +4189,9 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
   String? avatarUrl,
   String? coverUrl,
   String? partyType,
+  String? locationAddress,
+  double? locationLat,
+  double? locationLng,
   List<EventLinkedAccountProfileTaxonomyTerm> taxonomyTerms = const [],
 }) {
   final taxonomyTermsGroup = EventLinkedAccountProfileTaxonomyTerms();
@@ -3993,7 +4213,45 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
     partyTypeValue: partyType == null
         ? null
         : EventLinkedAccountProfileTextValue(partyType),
+    locationAddressValue: locationAddress == null
+        ? null
+        : EventLinkedAccountProfileTextValue(locationAddress),
+    locationLatitudeValue:
+        locationLat == null ? null : (LatitudeValue()..parse('$locationLat')),
+    locationLongitudeValue:
+        locationLng == null ? null : (LongitudeValue()..parse('$locationLng')),
     taxonomyTerms: taxonomyTermsGroup,
+  );
+}
+
+ProximityPreference _referencePointPreference({
+  required bool? useReferencePointForRoutes,
+}) {
+  return ProximityPreference(
+    maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+    routeReferencePointPolicyValue: RouteReferencePointPolicyValue(
+      useReferencePointForRoutes,
+    ),
+    locationPreference: ProximityLocationPreference.fixedReference(
+      fixedReference: FixedLocationReference(
+        sourceKind: FixedLocationReferenceSourceKind.entityReference,
+        coordinate: CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.6736'),
+          longitudeValue: LongitudeValue()..parse('-40.4976'),
+        ),
+        labelValue: ProximityPreferenceOptionalTextValue.fromRaw('Hotel Base'),
+        entityNamespaceValue: ProximityPreferenceOptionalTextValue.fromRaw(
+          'account_profile',
+        ),
+        entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw('hotel'),
+        entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+          'profile-1',
+        ),
+        entitySlugValue: ProximityPreferenceOptionalTextValue.fromRaw(
+          'hotel-base',
+        ),
+      ),
+    ),
   );
 }
 

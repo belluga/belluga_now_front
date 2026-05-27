@@ -1596,6 +1596,15 @@ class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
       const <DirectionsAppChoice>[];
 
   @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async {
+    lastTarget = target;
+    return true;
+  }
+
+  @override
   Future<void> present(
     BuildContext context, {
     required DirectionsLaunchTarget target,

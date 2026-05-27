@@ -12,11 +12,13 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 
@@ -35,6 +37,7 @@ class ImmersiveEventDetailController implements Disposable {
     AuthRepositoryContract? authRepository,
     AppDataRepositoryContract? appDataRepository,
     AccountProfilesRepositoryContract? accountProfilesRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
@@ -50,6 +53,10 @@ class ImmersiveEventDetailController implements Disposable {
         _accountProfilesRepository = accountProfilesRepository ??
             (GetIt.I.isRegistered<AccountProfilesRepositoryContract>()
                 ? GetIt.I.get<AccountProfilesRepositoryContract>()
+                : null),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
                 : null);
 
   final UserEventsRepositoryContract _userEventsRepository;
@@ -57,6 +64,7 @@ class ImmersiveEventDetailController implements Disposable {
   final AuthRepositoryContract? _authRepository;
   final AppDataRepositoryContract? _appDataRepository;
   final AccountProfilesRepositoryContract? _accountProfilesRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -139,6 +147,19 @@ class ImmersiveEventDetailController implements Disposable {
 
   ProfileTypeRegistry? get profileTypeRegistry =>
       _appDataRepository?.appData.profileTypeRegistry;
+
+  ProximityPreference? get proximityPreference =>
+      _proximityPreferencesRepository?.proximityPreference;
+
+  Future<void> setRouteReferencePointPolicy(bool? useReferencePoint) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      return;
+    }
+    await repository.setRouteReferencePointPolicy(
+      RouteReferencePointPolicyValue(useReferencePoint),
+    );
+  }
 
   String profileTypePluralLabelFor(
     String profileType, {

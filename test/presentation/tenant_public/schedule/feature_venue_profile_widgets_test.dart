@@ -70,6 +70,12 @@ void main() {
     );
 
     expect(find.text('Ver no mapa'), findsOneWidget);
+    expect(find.byKey(const Key('eventMainWazeButton')), findsOneWidget);
+    expect(find.byKey(const Key('eventMainUberButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('eventMainOtherDirectionsButton')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Venue card shows profile button', (tester) async {

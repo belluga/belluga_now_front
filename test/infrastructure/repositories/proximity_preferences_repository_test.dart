@@ -102,6 +102,9 @@ void main() {
           entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
             'profile-1',
           ),
+          entitySlugValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'hotel-base',
+          ),
         ),
       );
 
@@ -111,6 +114,7 @@ void main() {
       );
       expect(backend.lastUpsert?.useReferencePointForRoutes, isNull);
       expect(backend.lastUpsert?.fixedReference?['entity_id'], 'profile-1');
+      expect(backend.lastUpsert?.fixedReference?['entity_slug'], 'hotel-base');
     },
   );
 }

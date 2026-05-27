@@ -18,11 +18,11 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     DirectionsLaunchUrl? launchUrl,
     bool Function()? isWebProvider,
     TargetPlatform Function()? platformProvider,
-  }) : _availableMapsLoader = availableMapsLoader ?? _defaultAvailableMaps,
-       _canLaunchUrl = canLaunchUrl ?? _defaultCanLaunchUrl,
-       _launchUrl = launchUrl ?? _defaultLaunchUrl,
-       _isWebProvider = isWebProvider ?? (() => kIsWeb),
-       _platformProvider = platformProvider ?? (() => defaultTargetPlatform);
+  })  : _availableMapsLoader = availableMapsLoader ?? _defaultAvailableMaps,
+        _canLaunchUrl = canLaunchUrl ?? _defaultCanLaunchUrl,
+        _launchUrl = launchUrl ?? _defaultLaunchUrl,
+        _isWebProvider = isWebProvider ?? (() => kIsWeb),
+        _platformProvider = platformProvider ?? (() => defaultTargetPlatform);
 
   final DirectionsAvailableMapsLoader _availableMapsLoader;
   final DirectionsCanLaunchUrl _canLaunchUrl;
@@ -51,6 +51,29 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     }
 
     return _buildNativeChoices(target);
+  }
+
+  @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async {
+    if (!target.hasLaunchableDestination) {
+      return false;
+    }
+
+    final useWebUrisOnly = _isWebProvider();
+    final uris = switch (provider) {
+      DirectionsDirectProvider.waze => _wazeUris(target),
+      DirectionsDirectProvider.uber => _uberUris(
+          target,
+          useWebUrisOnly: useWebUrisOnly,
+        ),
+    };
+    if (uris.isEmpty) {
+      return false;
+    }
+    return _launchFirstSupportedUri(uris);
   }
 
   @override

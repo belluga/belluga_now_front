@@ -442,6 +442,16 @@ void main() {
               'profile_type': 'artist',
             },
           ],
+          'location_profile': {
+            'id': 'venue-1',
+            'display_name': 'Palco Central',
+            'slug': 'palco-central',
+            'profile_type': 'venue',
+            'location': {
+              'type': 'Point',
+              'coordinates': [-40.495395, -20.671339],
+            },
+          },
         },
       ],
     });
@@ -458,6 +468,12 @@ void main() {
     expect(domain.programmingItems.first.endTime, '18:30');
     expect(domain.programmingItems.first.displayTitle, isEmpty);
     expect(domain.programmingItems.first.linkedAccountProfiles, hasLength(1));
+    expect(domain.programmingItems.first.locationProfile?.displayName,
+        'Palco Central');
+    expect(domain.programmingItems.first.locationProfile?.locationLat,
+        closeTo(-20.671339, 0.000001));
+    expect(domain.programmingItems.first.locationProfile?.locationLng,
+        closeTo(-40.495395, 0.000001));
   });
 
   test('maps online occurrence location label into non-empty domain location',

@@ -2,6 +2,8 @@ export 'event_linked_account_profile_taxonomy_term.dart';
 export 'event_linked_account_profile_taxonomy_terms.dart';
 
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile_taxonomy_terms.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -16,9 +18,12 @@ class EventLinkedAccountProfile {
     this.avatarUrlValue,
     this.coverUrlValue,
     this.partyTypeValue,
+    this.locationAddressValue,
+    this.locationLatitudeValue,
+    this.locationLongitudeValue,
     EventLinkedAccountProfileTaxonomyTerms? taxonomyTerms,
-  }) : taxonomyTerms =
-           taxonomyTerms ?? const EventLinkedAccountProfileTaxonomyTerms.empty();
+  }) : taxonomyTerms = taxonomyTerms ??
+            const EventLinkedAccountProfileTaxonomyTerms.empty();
 
   final EventLinkedAccountProfileTextValue idValue;
   final EventLinkedAccountProfileTextValue displayNameValue;
@@ -27,6 +32,9 @@ class EventLinkedAccountProfile {
   final ThumbUriValue? avatarUrlValue;
   final ThumbUriValue? coverUrlValue;
   final EventLinkedAccountProfileTextValue? partyTypeValue;
+  final EventLinkedAccountProfileTextValue? locationAddressValue;
+  final LatitudeValue? locationLatitudeValue;
+  final LongitudeValue? locationLongitudeValue;
   final EventLinkedAccountProfileTaxonomyTerms taxonomyTerms;
 
   String get id => idValue.value;
@@ -36,4 +44,15 @@ class EventLinkedAccountProfile {
   String? get avatarUrl => avatarUrlValue?.value.toString();
   String? get coverUrl => coverUrlValue?.value.toString();
   String? get partyType => partyTypeValue?.value;
+  String? get locationAddress {
+    final value = locationAddressValue?.value.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  double? get locationLat => locationLatitudeValue?.value;
+  double? get locationLng => locationLongitudeValue?.value;
+  bool get hasLocationCoordinates => locationLat != null && locationLng != null;
 }

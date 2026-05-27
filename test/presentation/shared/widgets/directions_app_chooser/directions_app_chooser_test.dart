@@ -1,5 +1,6 @@
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_sheet.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:flutter/material.dart';
@@ -151,6 +152,34 @@ void main() {
     expect(uriStrings, contains('from=-20.6736%2C-40.4976'));
     expect(uriStrings, contains('pickup%5Blatitude%5D=-20.6736'));
     expect(uriStrings, contains('pickup%5Blongitude%5D=-40.4976'));
+  });
+
+  test('direct provider launch skips chooser options and launches provider uri',
+      () async {
+    final launchedUris = <Uri>[];
+    final chooser = DirectionsAppChooser(
+      isWebProvider: () => true,
+      platformProvider: () => TargetPlatform.android,
+      availableMapsLoader: () async => const <AvailableMap>[],
+      canLaunchUrl: (_) async => true,
+      launchUrl: (uri, __) async {
+        launchedUris.add(uri);
+        return true;
+      },
+    );
+
+    final launched = await chooser.launchDirect(
+      provider: DirectionsDirectProvider.waze,
+      target: const DirectionsLaunchTarget(
+        destinationName: 'Casa Marracini',
+        latitude: -20.7389,
+        longitude: -40.8212,
+      ),
+    );
+
+    expect(launched, isTrue);
+    expect(launchedUris, hasLength(1));
+    expect(launchedUris.single.toString(), startsWith('https://waze.com/ul'));
   });
 
   testWidgets('sheet renders provided dynamic options and close button', (

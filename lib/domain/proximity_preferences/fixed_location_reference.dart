@@ -12,6 +12,7 @@ class FixedLocationReference {
     this.entityNamespaceValue,
     this.entityTypeValue,
     this.entityIdValue,
+    this.entitySlugValue,
     this.referenceStatus = FixedLocationReferenceStatus.active,
     this.referenceStatusReason = FixedLocationReferenceStatusReason.eligible,
     this.blockedCapabilityKeyValue,
@@ -23,6 +24,7 @@ class FixedLocationReference {
   final ProximityPreferenceOptionalTextValue? entityNamespaceValue;
   final ProximityPreferenceOptionalTextValue? entityTypeValue;
   final ProximityPreferenceOptionalTextValue? entityIdValue;
+  final ProximityPreferenceOptionalTextValue? entitySlugValue;
   final FixedLocationReferenceStatus referenceStatus;
   final FixedLocationReferenceStatusReason referenceStatusReason;
   final ProximityPreferenceOptionalTextValue? blockedCapabilityKeyValue;
@@ -31,6 +33,7 @@ class FixedLocationReference {
   String? get entityNamespace => entityNamespaceValue?.nullableValue;
   String? get entityType => entityTypeValue?.nullableValue;
   String? get entityId => entityIdValue?.nullableValue;
+  String? get entitySlug => entitySlugValue?.nullableValue;
   String? get blockedCapabilityKey => blockedCapabilityKeyValue?.nullableValue;
   bool get isActive => referenceStatus == FixedLocationReferenceStatus.active;
   bool get isDisabled =>

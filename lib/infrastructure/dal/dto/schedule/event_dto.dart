@@ -410,6 +410,16 @@ class EventDTO {
         existing['hero_image_url'],
         profile['hero_image_url'],
       );
+      existing['location'] = _preferNonEmptyMap(
+        existing['location'],
+        profile['location'],
+      );
+      existing['location_address'] = _preferNonEmptyString(
+        existing['location_address'],
+        profile['location_address'] ?? profile['address'],
+      );
+      existing['latitude'] = existing['latitude'] ?? profile['latitude'];
+      existing['longitude'] = existing['longitude'] ?? profile['longitude'];
       existing['taxonomy_terms'] = _mergeTaxonomyTerms(
         existing['taxonomy_terms'],
         profile['taxonomy_terms'],
@@ -584,6 +594,7 @@ class EventDTO {
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
             ? _asString(profile['profile_type'])!.trim()
             : (_asString(profile['party_type'])?.trim() ?? '');
+    final locationCoordinates = _resolveProfileCoordinates(profile);
 
     return EventLinkedAccountProfile(
       idValue: EventLinkedAccountProfileTextValue(id),
@@ -599,6 +610,15 @@ class EventDTO {
       ),
       partyTypeValue:
           _textValueOrNull(_asNullableString(profile['party_type'])),
+      locationAddressValue: _textValueOrNull(
+        _resolveProfileLocationAddress(profile),
+      ),
+      locationLatitudeValue: _latitudeValueOrNull(
+        locationCoordinates.latitude,
+      ),
+      locationLongitudeValue: _longitudeValueOrNull(
+        locationCoordinates.longitude,
+      ),
       taxonomyTerms: taxonomyTerms,
     );
   }
@@ -616,6 +636,49 @@ class EventDTO {
     return profile['slug'] ??
         profile['account_profile_slug'] ??
         profile['profile_slug'];
+  }
+
+  static ({double? latitude, double? longitude}) _resolveProfileCoordinates(
+    Map<String, dynamic> profile,
+  ) {
+    final directLatitude = _asDouble(profile['latitude'] ?? profile['lat']);
+    final directLongitude = _asDouble(profile['longitude'] ?? profile['lng']);
+    if (directLatitude != null && directLongitude != null) {
+      return (latitude: directLatitude, longitude: directLongitude);
+    }
+
+    final location = _asMap(profile['location']);
+    final locationLatitude = _asDouble(location['latitude'] ?? location['lat']);
+    final locationLongitude =
+        _asDouble(location['longitude'] ?? location['lng']);
+    if (locationLatitude != null && locationLongitude != null) {
+      return (latitude: locationLatitude, longitude: locationLongitude);
+    }
+
+    for (final geoSource in [location, _asMap(location['geo'])]) {
+      final coordinates = geoSource['coordinates'];
+      if (coordinates is List && coordinates.length >= 2) {
+        final lng = _asDouble(coordinates[0]);
+        final lat = _asDouble(coordinates[1]);
+        if (lat != null && lng != null) {
+          return (latitude: lat, longitude: lng);
+        }
+      }
+    }
+
+    return (latitude: directLatitude, longitude: directLongitude);
+  }
+
+  static String? _resolveProfileLocationAddress(Map<String, dynamic> profile) {
+    final location = _asMap(profile['location']);
+    return _asNullableString(
+      profile['location_address'] ??
+          profile['address'] ??
+          location['address'] ??
+          location['address_line'] ??
+          location['display_name'] ??
+          location['label'],
+    );
   }
 
   static SlugValue _requiredLinkedAccountProfileSlugValue({
@@ -637,6 +700,20 @@ class EventDTO {
       return null;
     }
     return EventLinkedAccountProfileTextValue(normalized);
+  }
+
+  static LatitudeValue? _latitudeValueOrNull(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return LatitudeValue()..parse(value.toString());
+  }
+
+  static LongitudeValue? _longitudeValueOrNull(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return LongitudeValue()..parse(value.toString());
   }
 
   static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
@@ -690,6 +767,15 @@ class EventDTO {
     ingest(candidateRaw);
 
     return merged.values.toList(growable: false);
+  }
+
+  static dynamic _preferNonEmptyMap(dynamic current, dynamic candidate) {
+    final currentMap = _asMap(current);
+    if (currentMap.isNotEmpty) {
+      return current;
+    }
+    final candidateMap = _asMap(candidate);
+    return candidateMap.isNotEmpty ? candidate : current;
   }
 
   static int _asInt(dynamic value) {

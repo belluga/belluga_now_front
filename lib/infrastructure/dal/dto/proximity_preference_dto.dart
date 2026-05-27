@@ -65,6 +65,7 @@ class ProximityPreferenceDTO {
               'entity_namespace': fixedReference.entityNamespace,
               'entity_type': fixedReference.entityType,
               'entity_id': fixedReference.entityId,
+              'entity_slug': fixedReference.entitySlug,
               'reference_status': _referenceStatusToWire(
                 fixedReference.referenceStatus,
               ),
@@ -116,6 +117,9 @@ class ProximityPreferenceDTO {
                   fixedReference?['entity_type'],
                 ),
                 entityIdValue: _optionalTextValue(fixedReference?['entity_id']),
+                entitySlugValue: _optionalTextValue(
+                  fixedReference?['entity_slug'],
+                ),
                 referenceStatus: _referenceStatusFromWire(
                   fixedReference?['reference_status'],
                 ),
