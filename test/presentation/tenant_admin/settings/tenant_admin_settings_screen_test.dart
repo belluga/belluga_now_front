@@ -133,6 +133,24 @@ TenantAdminBooleanValue _booleanValue(bool raw) {
   return value;
 }
 
+TenantAdminMapUiSettings _mapUiSettingsWithFilters(
+  List<TenantAdminMapFilterCatalogItem> filters,
+) {
+  final items = TenantAdminMapFilterCatalogItems();
+  for (final filter in filters) {
+    items.add(filter);
+  }
+  return TenantAdminMapUiSettings(
+    rawMapUiValue: TenantAdminDynamicMapValue({
+      'filters': filters
+          .map((filter) => filter.toJson().value)
+          .toList(growable: false),
+    }),
+    defaultOrigin: null,
+    filters: items,
+  );
+}
+
 TenantAdminDomainStatusValue _domainStatus(String raw) {
   final value = TenantAdminDomainStatusValue();
   value.parse(raw);
@@ -166,6 +184,60 @@ TenantAdminTaxonomyTermDefinition _taxonomyTermDefinition({
     taxonomyIdValue: _requiredText(taxonomyId),
     slugValue: _requiredText(slug),
     nameValue: _requiredText(name),
+  );
+}
+
+TenantAdminEventType _eventTypeDefinition({
+  required String name,
+  required String slug,
+  List<String> allowedTaxonomies = const <String>[],
+}) {
+  return TenantAdminEventType.withAllowedTaxonomies(
+    nameValue: _requiredText(name),
+    slugValue: _requiredText(slug),
+    allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(
+      allowedTaxonomies,
+    ),
+  );
+}
+
+TenantAdminProfileTypeDefinition _accountProfileTypeDefinition({
+  required String type,
+  required String label,
+}) {
+  return TenantAdminProfileTypeDefinition(
+    typeValue: _requiredText(type),
+    labelValue: _requiredText(label),
+    allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
+    capabilities: TenantAdminProfileTypeCapabilities(
+      isFavoritable: TenantAdminFlagValue(true),
+      isPoiEnabled: TenantAdminFlagValue(true),
+      hasBio: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(false),
+      hasCover: TenantAdminFlagValue(false),
+      hasEvents: TenantAdminFlagValue(false),
+    ),
+  );
+}
+
+TenantAdminStaticProfileTypeDefinition _staticProfileTypeDefinition({
+  required String type,
+  required String label,
+}) {
+  return TenantAdminStaticProfileTypeDefinition(
+    typeValue: _requiredText(type),
+    labelValue: _requiredText(label),
+    allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
+    capabilities: TenantAdminStaticProfileTypeCapabilities(
+      isPoiEnabled: TenantAdminFlagValue(true),
+      hasBio: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(false),
+      hasCover: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+    ),
   );
 }
 
@@ -1024,6 +1096,175 @@ void main() {
     expect(find.text('Filtros públicos'), findsNothing);
   });
 
+  testWidgets(
+    'local preferences rule sheet hydrates event types and saves event payload',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final initialFilter = TenantAdminMapFilterCatalogItem(
+        keyValue: _token('events'),
+        labelValue: _requiredText('Eventos'),
+        query: TenantAdminMapFilterQuery(
+          source: TenantAdminMapFilterSource.event,
+        ),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialMapUiSettings: _mapUiSettingsWithFilters([initialFilter]),
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminAccountProfilesRepositoryContract>(
+        _FakeDiscoveryFilterAccountProfilesRepository(
+          profileTypes: [
+            _accountProfileTypeDefinition(
+              type: 'restaurant',
+              label: 'Restaurantes',
+            ),
+          ],
+        ),
+      );
+      GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+        _FakeDiscoveryFilterStaticAssetsRepository(
+          staticTypes: [
+            _staticProfileTypeDefinition(type: 'beach', label: 'Praias'),
+          ],
+        ),
+      );
+      GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+        _FakeDiscoveryFilterTaxonomiesRepository(),
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsRepositoryContract>(
+        _FakeDiscoveryFilterEventsRepository(
+          eventTypes: [
+            _eventTypeDefinition(name: 'Show', slug: 'show'),
+          ],
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      );
+
+      final rowFinder =
+          find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0));
+      await tester.scrollUntilVisible(
+        rowFinder,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: rowFinder,
+          matching: find.widgetWithText(OutlinedButton, 'Regra'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Regra do filtro'), findsOneWidget);
+      expect(find.text('Show'), findsOneWidget);
+      expect(find.text('Sem tipos para essa origem.'), findsNothing);
+
+      await tester.tap(find.text('Show'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Salvar filtros do mapa'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Salvar filtros do mapa'),
+      );
+      await tester.pumpAndSettle();
+
+      final raw = settingsRepository.updatedMapUiSettings!.rawMapUi.value;
+      final filters = raw['filters'] as List<dynamic>;
+      final savedFilter = filters.single as Map<dynamic, dynamic>;
+      final query = savedFilter['query'] as Map<dynamic, dynamic>;
+      expect(query['source'], 'event');
+      expect(query['types'], <String>['show']);
+    },
+  );
+
+  testWidgets(
+    'local preferences rule sheet keeps event empty state for empty registry',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final initialFilter = TenantAdminMapFilterCatalogItem(
+        keyValue: _token('events'),
+        labelValue: _requiredText('Eventos'),
+        query: TenantAdminMapFilterQuery(
+          source: TenantAdminMapFilterSource.event,
+        ),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialMapUiSettings: _mapUiSettingsWithFilters([initialFilter]),
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminAccountProfilesRepositoryContract>(
+        _FakeDiscoveryFilterAccountProfilesRepository(
+          profileTypes: [
+            _accountProfileTypeDefinition(
+              type: 'restaurant',
+              label: 'Restaurantes',
+            ),
+          ],
+        ),
+      );
+      GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+        _FakeDiscoveryFilterStaticAssetsRepository(
+          staticTypes: [
+            _staticProfileTypeDefinition(type: 'beach', label: 'Praias'),
+          ],
+        ),
+      );
+      GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+        _FakeDiscoveryFilterTaxonomiesRepository(),
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsRepositoryContract>(
+        _FakeDiscoveryFilterEventsRepository(),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+      );
+
+      final rowFinder =
+          find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0));
+      await tester.scrollUntilVisible(
+        rowFinder,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: rowFinder,
+          matching: find.widgetWithText(OutlinedButton, 'Regra'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Regra do filtro'), findsOneWidget);
+      expect(find.text('Sem tipos para essa origem.'), findsOneWidget);
+      expect(find.text('Show'), findsNothing);
+    },
+  );
+
   test(
     'discovery filters controller ignores load completion after disposal',
     () async {
@@ -1859,8 +2100,7 @@ void main() {
     );
 
     final projectIdRow = find.byKey(
-      TenantAdminSettingsKeys
-          .technicalIntegrationsPushCredentialsProjectIdEdit,
+      TenantAdminSettingsKeys.technicalIntegrationsPushCredentialsProjectIdEdit,
       skipOffstage: false,
     );
     final clientEmailRow = find.byKey(
@@ -1938,7 +2178,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedPushCredentials, isNotNull);
-    expect(settingsRepository.updatedPushCredentials!.projectId, 'project-updated');
+    expect(settingsRepository.updatedPushCredentials!.projectId,
+        'project-updated');
     expect(
       settingsRepository.updatedPushCredentials!.clientEmail,
       'push-updated@tenant-a.test',
@@ -3402,9 +3643,16 @@ bool _isScaffoldWithBody<T extends Widget>(Widget child) {
 
 class _FakeDiscoveryFilterAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
+  _FakeDiscoveryFilterAccountProfilesRepository({
+    List<TenantAdminProfileTypeDefinition> profileTypes =
+        const <TenantAdminProfileTypeDefinition>[],
+  }) : _profileTypes = profileTypes;
+
+  final List<TenantAdminProfileTypeDefinition> _profileTypes;
+
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const <TenantAdminProfileTypeDefinition>[];
+    return _profileTypes;
   }
 
   @override
@@ -3413,10 +3661,17 @@ class _FakeDiscoveryFilterAccountProfilesRepository
 
 class _FakeDiscoveryFilterStaticAssetsRepository
     extends TenantAdminStaticAssetsRepositoryContract {
+  _FakeDiscoveryFilterStaticAssetsRepository({
+    List<TenantAdminStaticProfileTypeDefinition> staticTypes =
+        const <TenantAdminStaticProfileTypeDefinition>[],
+  }) : _staticTypes = staticTypes;
+
+  final List<TenantAdminStaticProfileTypeDefinition> _staticTypes;
+
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const <TenantAdminStaticProfileTypeDefinition>[];
+    return _staticTypes;
   }
 
   @override
@@ -3427,22 +3682,26 @@ class _FakeDiscoveryFilterEventsRepository
     extends TenantAdminEventsRepositoryContract {
   _FakeDiscoveryFilterEventsRepository({
     this.allowedTaxonomies = const <String>[],
-  });
+    List<TenantAdminEventType>? eventTypes,
+  }) : _eventTypes = eventTypes;
 
   final List<String> allowedTaxonomies;
+  final List<TenantAdminEventType>? _eventTypes;
 
   @override
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    final eventTypes = _eventTypes;
+    if (eventTypes != null) {
+      return eventTypes;
+    }
     if (allowedTaxonomies.isEmpty) {
       return const <TenantAdminEventType>[];
     }
     return [
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Event'),
-        slugValue: tenantAdminRequiredText('event'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-          allowedTaxonomies,
-        ),
+      _eventTypeDefinition(
+        name: 'Event',
+        slug: 'event',
+        allowedTaxonomies: allowedTaxonomies,
       ),
     ];
   }
