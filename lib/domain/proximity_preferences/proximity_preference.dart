@@ -1,5 +1,7 @@
 export 'package:belluga_now/domain/proximity_preferences/fixed_location_reference.dart';
 export 'package:belluga_now/domain/proximity_preferences/fixed_location_reference_source_kind.dart';
+export 'package:belluga_now/domain/proximity_preferences/fixed_location_reference_status.dart';
+export 'package:belluga_now/domain/proximity_preferences/fixed_location_reference_status_reason.dart';
 export 'package:belluga_now/domain/proximity_preferences/proximity_location_preference.dart';
 export 'package:belluga_now/domain/proximity_preferences/proximity_location_preference_mode.dart';
 export 'package:belluga_now/domain/proximity_preferences/proximity_preference_model.dart';

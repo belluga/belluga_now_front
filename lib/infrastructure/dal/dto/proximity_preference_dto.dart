@@ -59,6 +59,13 @@ class ProximityPreferenceDTO {
               'entity_namespace': fixedReference.entityNamespace,
               'entity_type': fixedReference.entityType,
               'entity_id': fixedReference.entityId,
+              'reference_status': _referenceStatusToWire(
+                fixedReference.referenceStatus,
+              ),
+              'reference_status_reason': _referenceStatusReasonToWire(
+                fixedReference.referenceStatusReason,
+              ),
+              'blocked_capability_key': fixedReference.blockedCapabilityKey,
             },
     );
   }
@@ -99,8 +106,15 @@ class ProximityPreferenceDTO {
                 entityTypeValue: _optionalTextValue(
                   fixedReference?['entity_type'],
                 ),
-                entityIdValue: _optionalTextValue(
-                  fixedReference?['entity_id'],
+                entityIdValue: _optionalTextValue(fixedReference?['entity_id']),
+                referenceStatus: _referenceStatusFromWire(
+                  fixedReference?['reference_status'],
+                ),
+                referenceStatusReason: _referenceStatusReasonFromWire(
+                  fixedReference?['reference_status_reason'],
+                ),
+                blockedCapabilityKeyValue: _optionalTextValue(
+                  fixedReference?['blocked_capability_key'],
                 ),
               ),
             )
@@ -123,5 +137,43 @@ class ProximityPreferenceDTO {
   ) {
     final normalized = ProximityPreferenceOptionalTextValue.fromRaw(value);
     return normalized.nullableValue == null ? null : normalized;
+  }
+
+  static FixedLocationReferenceStatus _referenceStatusFromWire(Object? value) {
+    return switch ((value as String?)?.trim()) {
+      'disabled' => FixedLocationReferenceStatus.disabled,
+      _ => FixedLocationReferenceStatus.active,
+    };
+  }
+
+  static FixedLocationReferenceStatusReason _referenceStatusReasonFromWire(
+    Object? value,
+  ) {
+    return switch ((value as String?)?.trim()) {
+      'manual_coordinate' =>
+        FixedLocationReferenceStatusReason.manualCoordinate,
+      'source_capability_disabled' =>
+        FixedLocationReferenceStatusReason.sourceCapabilityDisabled,
+      _ => FixedLocationReferenceStatusReason.eligible,
+    };
+  }
+
+  static String _referenceStatusToWire(FixedLocationReferenceStatus status) {
+    return switch (status) {
+      FixedLocationReferenceStatus.active => 'active',
+      FixedLocationReferenceStatus.disabled => 'disabled',
+    };
+  }
+
+  static String _referenceStatusReasonToWire(
+    FixedLocationReferenceStatusReason reason,
+  ) {
+    return switch (reason) {
+      FixedLocationReferenceStatusReason.eligible => 'eligible',
+      FixedLocationReferenceStatusReason.manualCoordinate =>
+        'manual_coordinate',
+      FixedLocationReferenceStatusReason.sourceCapabilityDisabled =>
+        'source_capability_disabled',
+    };
   }
 }
