@@ -1657,7 +1657,7 @@ void main() {
     expect(find.text('Visual do filtro'), findsNothing);
   });
 
-  testWidgets('Visual sheet owns canonical marker icon-image flow',
+  testWidgets('Visual sheet saves filter visual while marker override is off',
       (tester) async {
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
@@ -1701,10 +1701,6 @@ void main() {
 
     expect(find.text('Visual do filtro'), findsOneWidget);
     expect(find.text('Sobrescrever marcador'), findsOneWidget);
-    expect(find.byType(TenantAdminMapMarkerIconPickerField), findsNothing);
-
-    await tester.tap(find.byType(Checkbox).first);
-    await tester.pumpAndSettle();
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
     expect(find.text('Cor do marcador'), findsOneWidget);
     expect(find.text('Cor do ícone'), findsOneWidget);
@@ -1746,7 +1742,7 @@ void main() {
     final filters = surface['filters'] as List;
     expect(filters, hasLength(1));
     final filter = filters.single as Map;
-    expect(filter['override_marker'], isTrue);
+    expect(filter['override_marker'], isFalse);
     final markerOverride = filter['marker_override'] as Map;
     expect(markerOverride['mode'], 'image');
     expect(

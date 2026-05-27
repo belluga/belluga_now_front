@@ -20,7 +20,7 @@ class MapFilterCategoryIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overrideVisual = category.markerOverrideVisual;
+    final overrideVisual = category.filterVisual;
     if (overrideVisual != null && overrideVisual.isValid) {
       if (overrideVisual.isIcon) {
         final iconData =

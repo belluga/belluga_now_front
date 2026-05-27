@@ -45,6 +45,43 @@ void main() {
       expect(find.byKey(const ValueKey<String>(imageUri)), findsNothing);
     },
   );
+
+  testWidgets(
+    'renders configured filter visual while marker override is off',
+    (tester) async {
+      const imageUri = 'https://tenant.test/media/filter.png';
+      final category = _buildCategory(
+        imageUri: imageUri,
+        overrideMarker: false,
+        markerOverride: PoiFilterMarkerOverride.icon(
+          iconValue: _iconValue('music_note'),
+          colorHexValue: _hexValue('#990000'),
+          iconColorHexValue: _hexValue('#FFFFFF'),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: MapFilterCategoryIcon(
+              category: category,
+              isActive: false,
+              fallbackIcon: Icons.filter_alt_rounded,
+              fallbackColor: Colors.black,
+            ),
+          ),
+        ),
+      );
+
+      expect(category.markerOverrideVisual, isNull);
+      expect(category.filterVisual, isNotNull);
+      expect(
+        find.byIcon(MapMarkerVisualResolver.resolveIcon('music_note')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey<String>(imageUri)), findsNothing);
+    },
+  );
 }
 
 PoiFilterCategory _buildCategory({

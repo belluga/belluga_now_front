@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boole
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
@@ -605,6 +606,10 @@ void main() {
       settings.filters.first.imageUri,
       'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
     );
+    expect(settings.filters.first.overrideMarker, isFalse);
+    expect(settings.filters.first.markerOverride?.mode,
+        TenantAdminMapFilterMarkerOverrideMode.icon);
+    expect(settings.filters.first.markerOverride?.icon, 'music');
     expect(
       settings.filters.first.query.source,
       TenantAdminMapFilterSource.event,
@@ -821,6 +826,13 @@ void main() {
             'label': 'Eventos',
             'image_uri':
                 'https://tenant-a.test/map-filters/events/image?v=1710000000',
+            'override_marker': false,
+            'marker_override': {
+              'mode': 'icon',
+              'icon': 'music',
+              'color': '#C6141F',
+              'icon_color': '#FFFFFF',
+            },
             'query': {
               'source': 'event',
               'types': ['show'],
@@ -841,6 +853,12 @@ void main() {
           imageUriValue: TenantAdminOptionalUrlValue()
             ..parse(
                 'https://tenant-a.test/map-filters/events/image?v=1710000000'),
+          overrideMarkerValue: TenantAdminFlagValue(false),
+          markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+            iconValue: _requiredTextValue('music'),
+            colorValue: _hexColorValue('#C6141F'),
+            iconColorValue: _hexColorValue('#FFFFFF'),
+          ),
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
             typeValues: [_tokenValue('show')],
@@ -867,6 +885,11 @@ void main() {
     final queryPayload = Map<String, dynamic>.from(
       firstFilterPayload['query'] as Map,
     );
+    expect(firstFilterPayload['override_marker'], isFalse);
+    final markerOverridePayload =
+        Map<String, dynamic>.from(firstFilterPayload['marker_override'] as Map);
+    expect(markerOverridePayload['mode'], 'icon');
+    expect(markerOverridePayload['icon'], 'music');
     expect(queryPayload['source'], 'event');
     expect(queryPayload['types'], equals(['show']));
     expect(queryPayload['taxonomy'], equals(['music_genre:rock']));
@@ -2219,6 +2242,13 @@ class _RoutingAdapter implements HttpClientAdapter {
                       'label': 'Eventos',
                       'image_uri':
                           'https://tenant-a.test/map-filters/events/image?v=1710000000',
+                      'override_marker': false,
+                      'marker_override': {
+                        'mode': 'icon',
+                        'icon': 'music',
+                        'color': '#C6141F',
+                        'icon_color': '#FFFFFF',
+                      },
                       'query': {
                         'source': 'event',
                         'types': ['show'],

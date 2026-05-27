@@ -60,7 +60,7 @@ class TenantAdminMapFilterCatalogItem {
       'label': label,
       if (imageUri != null) 'image_uri': imageUri,
       'override_marker': overrideMarker,
-      if (overrideMarker && markerOverride?.isValid == true)
+      if (markerOverride?.isValid == true)
         'marker_override': markerOverride!.toJson().value,
       if (!query.isEmpty) 'query': query.toJson().value,
     });

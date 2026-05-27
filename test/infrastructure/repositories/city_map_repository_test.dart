@@ -49,6 +49,9 @@ void main() {
     );
     expect(filters.categories.single.key, 'events');
     expect(filters.categories.single.serverQuery?.sourceValue?.value, 'event');
+    expect(filters.categories.single.overrideMarker, isFalse);
+    expect(filters.categories.single.filterVisual?.isIcon, isTrue);
+    expect(filters.categories.single.markerOverrideVisual, isNull);
   });
 }
 
@@ -73,6 +76,12 @@ class _MapFiltersAdapter implements HttpClientAdapter {
             'label': 'Events',
             'count': 1,
             'override_marker': false,
+            'marker_override': {
+              'mode': 'icon',
+              'icon': 'music',
+              'color': '#C6141F',
+              'icon_color': '#FFFFFF',
+            },
             'query': {'source': 'event'},
           },
         ],

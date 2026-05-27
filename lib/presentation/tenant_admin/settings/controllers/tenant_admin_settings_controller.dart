@@ -959,7 +959,6 @@ class TenantAdminSettingsController implements Disposable {
 
     final overrideMarker = nextItem.overrideMarker;
     final markerOverride = _sanitizeMapFilterMarkerOverride(
-      overrideMarker: overrideMarker,
       markerOverride: nextItem.markerOverride,
       imageUri: imageUri,
     );
@@ -981,7 +980,7 @@ class TenantAdminSettingsController implements Disposable {
       clearImageUriValue: TenantAdminFlagValue(imageUri == null),
       overrideMarkerValue: TenantAdminFlagValue(overrideMarker),
       markerOverride: markerOverride,
-      clearMarkerOverrideValue: TenantAdminFlagValue(!overrideMarker),
+      clearMarkerOverrideValue: TenantAdminFlagValue(markerOverride == null),
     );
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
@@ -2412,14 +2411,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminMapFilterMarkerOverride? _sanitizeMapFilterMarkerOverride({
-    required bool overrideMarker,
     required TenantAdminMapFilterMarkerOverride? markerOverride,
     required String? imageUri,
   }) {
-    if (!overrideMarker) {
-      return null;
-    }
-
     if (markerOverride == null) {
       return null;
     }

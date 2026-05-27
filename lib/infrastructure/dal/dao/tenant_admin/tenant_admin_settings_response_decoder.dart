@@ -597,7 +597,6 @@ class TenantAdminSettingsResponseDecoder {
         );
         final overrideMarker = _parseBool(filterMap['override_marker']);
         final markerOverride = _mapMapFilterMarkerOverride(
-          overrideMarker: overrideMarker,
           raw: filterMap['marker_override'],
           fallbackImageUri: imageUri,
         );
@@ -663,11 +662,10 @@ class TenantAdminSettingsResponseDecoder {
   }
 
   TenantAdminMapFilterMarkerOverride? _mapMapFilterMarkerOverride({
-    required bool overrideMarker,
     required Object? raw,
     required String? fallbackImageUri,
   }) {
-    if (!overrideMarker || raw is! Map) {
+    if (raw is! Map) {
       return null;
     }
 
