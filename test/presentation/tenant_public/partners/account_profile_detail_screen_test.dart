@@ -5,10 +5,16 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
@@ -1059,6 +1065,105 @@ void main() {
   });
 
   testWidgets(
+      'hero saves eligible account profile as ponto de referência with provenance',
+      (tester) async {
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final repository = _FakeAccountProfilesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: proximityRepository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildRestaurantProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usar como ponto de referência'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileHeroReferencePointButton')),
+    );
+    await tester.pumpAndSettle();
+
+    final fixedReference = proximityRepository.lastFixedReference;
+    expect(fixedReference, isNotNull);
+    expect(fixedReference!.entityNamespace, 'account_profile');
+    expect(fixedReference.entityType, 'restaurant');
+    expect(fixedReference.entityId, '507f1f77bcf86cd799439012');
+    expect(fixedReference.entitySlug, 'casa-marracini');
+    expect(fixedReference.label, 'Casa Marracini');
+    expect(fixedReference.coordinate.latitude, closeTo(-20.7389, 0.00001));
+    expect(fixedReference.coordinate.longitude, closeTo(-40.8212, 0.00001));
+    expect(find.text('Ponto de referência'), findsOneWidget);
+  });
+
+  testWidgets('hero renders current ponto de referência selected state',
+      (tester) async {
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final profile = _buildRestaurantProfile();
+    final repository = _FakeAccountProfilesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      fixedReference: _fixedReferenceFor(profile),
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: proximityRepository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(accountProfile: profile),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ponto de referência'), findsOneWidget);
+    expect(find.text('Usar como ponto de referência'), findsNothing);
+  });
+
+  testWidgets('hero hides reference point action when capability is disabled',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildRestaurantProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usar como ponto de referência'), findsNothing);
+    expect(
+      find.byKey(const Key('accountProfileHeroReferencePointButton')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
       'renders favorite CTA fallback when no tabs are available and profile is favoritable',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1615,6 +1720,36 @@ class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
   }
 }
 
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({
+    FixedLocationReference? fixedReference,
+  }) {
+    if (fixedReference != null) {
+      setCurrentPreference(_preferenceWith(fixedReference));
+    }
+  }
+
+  FixedLocationReference? lastFixedReference;
+
+  @override
+  Future<void> setFixedReference({
+    required FixedLocationReference fixedReference,
+  }) async {
+    lastFixedReference = fixedReference;
+    setCurrentPreference(_preferenceWith(fixedReference));
+  }
+
+  ProximityPreference _preferenceWith(FixedLocationReference fixedReference) {
+    return ProximityPreference(
+      maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+      locationPreference: ProximityLocationPreference.fixedReference(
+        fixedReference: fixedReference,
+      ),
+    );
+  }
+}
+
 class _LoadingAccountProfileDetailController
     extends AccountProfileDetailController {
   _LoadingAccountProfileDetailController({
@@ -1844,6 +1979,23 @@ AccountProfileModel _buildRestaurantProfile() {
   );
 }
 
+FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
+  return FixedLocationReference(
+    sourceKind: FixedLocationReferenceSourceKind.entityReference,
+    coordinate: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(profile.locationLat.toString()),
+      longitudeValue: LongitudeValue()..parse(profile.locationLng.toString()),
+    ),
+    labelValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.name),
+    entityNamespaceValue:
+        ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+    entityTypeValue:
+        ProximityPreferenceOptionalTextValue.fromRaw(profile.profileType),
+    entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.id),
+    entitySlugValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.slug),
+  );
+}
+
 AccountProfileModel _buildRestaurantWithAgendaProfile() {
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439015',
@@ -2037,6 +2189,7 @@ AccountProfileModel _buildProfileWithCrowdedLiveAgenda() {
 
 AppData _buildAppData({
   bool artistFavoritable = true,
+  bool restaurantReferenceLocationEnabled = false,
 }) {
   final remoteData = {
     'name': 'Tenant Test',
@@ -2091,6 +2244,7 @@ AppData _buildAppData({
         'capabilities': {
           'is_favoritable': true,
           'is_poi_enabled': true,
+          'is_reference_location_enabled': restaurantReferenceLocationEnabled,
           'has_events': false,
           'has_bio': false,
         },

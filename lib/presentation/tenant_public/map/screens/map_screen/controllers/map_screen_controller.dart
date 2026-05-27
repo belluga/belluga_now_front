@@ -6,6 +6,7 @@ import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
@@ -40,9 +41,12 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -68,7 +72,7 @@ class MapScreenController implements Disposable {
   static const double _selectedPoiViewportAnchor = 0.28;
   static const double _filteredPreviewViewportAnchor = 0.40;
   static const String missingDefaultOriginConfigurationMessage =
-      'Configure a origem padrão do mapa nas configurações do tenant.';
+      'Configure o ponto de referência do mapa nas configurações do tenant.';
   static const Duration _postFilterMarkerTapSuppression = Duration(
     milliseconds: 1000,
   );
@@ -82,6 +86,7 @@ class MapScreenController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
     AuthRepositoryContract? authRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
@@ -96,6 +101,10 @@ class MapScreenController implements Disposable {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+                : null),
         mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
@@ -105,6 +114,7 @@ class MapScreenController implements Disposable {
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
   final AuthRepositoryContract? _authRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
 
   final BellugaMapHandleContract mapHandle;
 
@@ -153,6 +163,8 @@ class MapScreenController implements Disposable {
   final StreamValue<int> poiDeckHeightRevisionStreamValue = StreamValue<int>(
     defaultValue: 0,
   );
+  final StreamValue<ProximityPreference?> _emptyProximityPreferenceStreamValue =
+      StreamValue<ProximityPreference?>(defaultValue: null);
   final Map<String, double> poiDeckHeights = <String, double>{};
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
@@ -175,6 +187,10 @@ class MapScreenController implements Disposable {
       _poiRepository.filterOptionsStreamValue;
   StreamValue<int> get poiDeckContentRevisionStreamValue =>
       _poiRepository.poiHydrationRevisionStreamValue;
+
+  StreamValue<ProximityPreference?> get proximityPreferenceStreamValue =>
+      _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
+      _emptyProximityPreferenceStreamValue;
 
   final StreamValue<Set<String>> activeCategoryKeysStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
@@ -239,6 +255,79 @@ class MapScreenController implements Disposable {
 
   AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedAccountProfileForPoi(poi);
+  }
+
+  bool canUsePoiAsReferencePoint(CityPoiModel poi) {
+    if (!_isAccountProfilePoi(poi)) {
+      return false;
+    }
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile == null) {
+      return false;
+    }
+    return AccountProfileReferencePointResolver.canUseAccountProfile(
+      profile,
+      capabilities: _appData.profileTypeRegistry.capabilitiesFor(
+        ProfileTypeKeyValue(profile.profileType),
+      ),
+      fallbackCoordinate: poi.coordinate,
+    );
+  }
+
+  bool isPoiReferencePoint(CityPoiModel poi) {
+    final fixedReference = _proximityPreferencesRepository
+        ?.proximityPreference?.locationPreference.fixedReference;
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile != null) {
+      return AccountProfileReferencePointResolver.matchesAccountProfile(
+        fixedReference,
+        profile,
+      );
+    }
+    return AccountProfileReferencePointResolver.matchesEntity(
+      fixedReference,
+      entityType: poi.resolvedCategoryLabel ?? '',
+      entityId: poi.refId,
+      entitySlug: poi.refSlug,
+    );
+  }
+
+  Future<bool> setPoiAsReferencePoint(CityPoiModel poi) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível salvar o ponto de referência.',
+      );
+      return false;
+    }
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile == null || !canUsePoiAsReferencePoint(poi)) {
+      statusMessageStreamValue.addValue(
+        'Este perfil não pode ser usado como ponto de referência.',
+      );
+      return false;
+    }
+    final fixedReference =
+        AccountProfileReferencePointResolver.buildFromAccountProfile(
+      profile,
+      fallbackCoordinate: poi.coordinate,
+    );
+    if (fixedReference == null) {
+      statusMessageStreamValue.addValue(
+        'Localização indisponível para ${poi.name}.',
+      );
+      return false;
+    }
+    try {
+      await repository.setFixedReference(fixedReference: fixedReference);
+      statusMessageStreamValue.addValue('Ponto de referência atualizado.');
+      return true;
+    } catch (_) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível salvar o ponto de referência.',
+      );
+      return false;
+    }
   }
 
   EventModel? hydratedEventForPoi(CityPoiModel poi) {
@@ -999,6 +1088,13 @@ class MapScreenController implements Disposable {
       return false;
     }
     return poiQueryKey == normalizedPoiQuery;
+  }
+
+  bool _isAccountProfilePoi(CityPoiModel poi) {
+    final refType = poi.refType.trim().toLowerCase();
+    return refType == 'account_profile' ||
+        refType == 'accountprofile' ||
+        refType == 'partner';
   }
 
   String _buildPoiQueryKey(CityPoiModel poi) {
@@ -2726,6 +2822,7 @@ class MapScreenController implements Disposable {
     pendingFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
     poiDeckHeightRevisionStreamValue.dispose();
+    _emptyProximityPreferenceStreamValue.dispose();
     filterInteractionLockedStreamValue.dispose();
     mapInteractionGuardActiveStreamValue.dispose();
     mapTrayModeStreamValue.dispose();

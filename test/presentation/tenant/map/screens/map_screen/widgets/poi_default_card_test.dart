@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_default_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,60 @@ void main() {
       find.byKey(const ValueKey<String>('poi-card-hero-backdrop')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('account profile card shows reference point action and tap',
+      (tester) async {
+    var tapCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PoiDefaultCard(
+            poi: _buildAccountProfilePoi(),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+            referencePointAction: PoiCardReferencePointAction(
+              isActive: false,
+              onTap: () => tapCount += 1,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Usar como ponto de referência'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('poiCardSetReferencePointButton')));
+    await tester.pump();
+
+    expect(tapCount, 1);
+  });
+
+  testWidgets('account profile card shows current reference point state',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PoiDefaultCard(
+            poi: _buildAccountProfilePoi(),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+            referencePointAction: PoiCardReferencePointAction(
+              isActive: true,
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Ponto de referência'), findsOneWidget);
+    expect(find.byKey(const Key('poiCardCurrentReferencePointButton')),
+        findsOneWidget);
   });
 }
 

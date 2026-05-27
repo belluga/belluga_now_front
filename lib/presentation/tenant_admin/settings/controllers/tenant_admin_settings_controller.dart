@@ -748,14 +748,14 @@ class TenantAdminSettingsController implements Disposable {
     final latitudeRaw = mapDefaultOriginLatitudeController.text.trim();
     if (latitudeRaw.isEmpty) {
       remoteErrorStreamValue.addValue(
-        'Latitude da origem padrão é obrigatória.',
+        'Latitude do ponto de referência padrão é obrigatória.',
       );
       return;
     }
     final latitude = tenantAdminParseLatitude(latitudeRaw);
     if (latitude == null) {
       remoteErrorStreamValue.addValue(
-        'Latitude da origem padrão inválida.',
+        'Latitude do ponto de referência padrão inválida.',
       );
       return;
     }
@@ -763,14 +763,14 @@ class TenantAdminSettingsController implements Disposable {
     final longitudeRaw = mapDefaultOriginLongitudeController.text.trim();
     if (longitudeRaw.isEmpty) {
       remoteErrorStreamValue.addValue(
-        'Longitude da origem padrão é obrigatória.',
+        'Longitude do ponto de referência padrão é obrigatória.',
       );
       return;
     }
     final longitude = tenantAdminParseLongitude(longitudeRaw);
     if (longitude == null) {
       remoteErrorStreamValue.addValue(
-        'Longitude da origem padrão inválida.',
+        'Longitude do ponto de referência padrão inválida.',
       );
       return;
     }

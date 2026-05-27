@@ -12,6 +12,7 @@ class EventPoiDetailCard extends PoiBaseCard {
     required super.onPrimaryAction,
     required super.secondaryAction,
     required super.onRoute,
+    super.referencePointAction,
     super.onClose,
     super.heroMaxHeight,
   });

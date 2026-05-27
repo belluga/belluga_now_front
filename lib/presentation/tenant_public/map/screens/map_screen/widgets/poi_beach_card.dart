@@ -9,6 +9,7 @@ class PoiBeachCard extends PoiBaseCard {
     required super.onPrimaryAction,
     required super.secondaryAction,
     required super.onRoute,
+    super.referencePointAction,
   });
 
   @override

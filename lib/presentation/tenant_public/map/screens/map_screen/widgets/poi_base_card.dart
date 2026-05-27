@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ abstract class PoiBaseCard extends StatelessWidget {
     required this.onPrimaryAction,
     required this.secondaryAction,
     required this.onRoute,
+    this.referencePointAction,
     this.onClose,
     this.heroMaxHeight,
   });
@@ -21,6 +23,7 @@ abstract class PoiBaseCard extends StatelessWidget {
   final VoidCallback onPrimaryAction;
   final PoiCardSecondaryAction? secondaryAction;
   final VoidCallback onRoute;
+  final PoiCardReferencePointAction? referencePointAction;
   final VoidCallback? onClose;
   final double? heroMaxHeight;
 
@@ -237,6 +240,14 @@ abstract class PoiBaseCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (referencePointAction != null) ...[
+                      SizedBox(height: isCompactLayout ? 8 : 10),
+                      _ReferencePointButton(
+                        action: referencePointAction!,
+                        colorScheme: colorScheme,
+                        compact: isCompactLayout,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -299,8 +310,7 @@ abstract class PoiBaseCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (hasMedia)
-                  heroBackdrop,
+                if (hasMedia) heroBackdrop,
                 heroChild,
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -428,6 +438,62 @@ abstract class PoiBaseCard extends StatelessWidget {
 
   List<Widget Function(BuildContext)> buildSections() =>
       const <Widget Function(BuildContext)>[];
+}
+
+class _ReferencePointButton extends StatelessWidget {
+  const _ReferencePointButton({
+    required this.action,
+    required this.colorScheme,
+    required this.compact,
+  });
+
+  final PoiCardReferencePointAction action;
+  final ColorScheme colorScheme;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final minimumHeight = compact ? 40.0 : 46.0;
+    if (action.isActive) {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton.tonalIcon(
+          key: const Key('poiCardCurrentReferencePointButton'),
+          onPressed: action.onTap,
+          icon: const Icon(Icons.check_circle_rounded),
+          label: const Text('Ponto de referência'),
+          style: FilledButton.styleFrom(
+            minimumSize: Size.fromHeight(minimumHeight),
+            backgroundColor: colorScheme.secondaryContainer,
+            foregroundColor: colorScheme.onSecondaryContainer,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const Key('poiCardSetReferencePointButton'),
+        onPressed: action.onTap,
+        icon: const Icon(Icons.flag_outlined),
+        label: const Text('Usar como ponto de referência'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: Size.fromHeight(minimumHeight),
+          foregroundColor: colorScheme.primary,
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.9),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _CardAvatar extends StatelessWidget {

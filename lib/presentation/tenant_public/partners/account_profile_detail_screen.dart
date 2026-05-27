@@ -11,6 +11,7 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
@@ -103,57 +104,65 @@ class _AccountProfileDetailScreenState
                                 streamValue:
                                     _controller.agendaStatusRevisionStreamValue,
                                 builder: (context, _) {
-                                  final isFav = favorites
-                                      .contains(resolvedAccountProfile.id);
-                                  final isFavoritable = _controller
-                                      .isFavoritable(resolvedAccountProfile);
-                                  final configTabs = _buildTabsFromConfig(
-                                    resolvedAccountProfile,
-                                    resolvedConfig,
-                                    moduleData,
-                                    isFav: isFav,
-                                    isFavoritable: isFavoritable,
-                                  );
-                                  final effectiveTabs = configTabs.isEmpty
-                                      ? <ImmersiveTabItem>[
-                                          _buildFallbackTab(
-                                            resolvedAccountProfile,
-                                            isFav: isFav,
-                                            isFavoritable: isFavoritable,
-                                          ),
-                                        ]
-                                      : configTabs;
-                                  return ImmersiveDetailScreen(
-                                    heroContent: _buildHero(
-                                      resolvedAccountProfile,
-                                    ),
-                                    title: resolvedAccountProfile.name,
-                                    collapsedTitle: _buildCollapsedTitle(
-                                      resolvedAccountProfile,
-                                    ),
-                                    collapsedToolbarHeight: 72,
-                                    centerCollapsedTitle: false,
-                                    appBarActionsBuilder:
-                                        (context, innerBoxIsScrolled) =>
-                                            _buildAppBarActions(
-                                      context,
-                                      innerBoxIsScrolled,
-                                      resolvedAccountProfile,
-                                      isFav: isFav,
-                                      isFavoritable: isFavoritable,
-                                    ),
-                                    backPolicy:
-                                        buildCanonicalCurrentRouteBackPolicy(
-                                      context,
-                                    ),
-                                    onSharePressed: () => unawaited(
-                                      _shareAccountProfile(
+                                  return StreamValueBuilder<
+                                      ProximityPreference?>(
+                                    streamValue: _controller
+                                        .proximityPreferenceStreamValue,
+                                    builder: (context, __) {
+                                      final isFav = favorites
+                                          .contains(resolvedAccountProfile.id);
+                                      final isFavoritable =
+                                          _controller.isFavoritable(
+                                              resolvedAccountProfile);
+                                      final configTabs = _buildTabsFromConfig(
                                         resolvedAccountProfile,
-                                      ),
-                                    ),
-                                    shareIcon: BooraIcons.share,
-                                    tabs: effectiveTabs,
-                                    betweenHeroAndTabs: null,
+                                        resolvedConfig,
+                                        moduleData,
+                                        isFav: isFav,
+                                        isFavoritable: isFavoritable,
+                                      );
+                                      final effectiveTabs = configTabs.isEmpty
+                                          ? <ImmersiveTabItem>[
+                                              _buildFallbackTab(
+                                                resolvedAccountProfile,
+                                                isFav: isFav,
+                                                isFavoritable: isFavoritable,
+                                              ),
+                                            ]
+                                          : configTabs;
+                                      return ImmersiveDetailScreen(
+                                        heroContent: _buildHero(
+                                          resolvedAccountProfile,
+                                        ),
+                                        title: resolvedAccountProfile.name,
+                                        collapsedTitle: _buildCollapsedTitle(
+                                          resolvedAccountProfile,
+                                        ),
+                                        collapsedToolbarHeight: 72,
+                                        centerCollapsedTitle: false,
+                                        appBarActionsBuilder:
+                                            (context, innerBoxIsScrolled) =>
+                                                _buildAppBarActions(
+                                          context,
+                                          innerBoxIsScrolled,
+                                          resolvedAccountProfile,
+                                          isFav: isFav,
+                                          isFavoritable: isFavoritable,
+                                        ),
+                                        backPolicy:
+                                            buildCanonicalCurrentRouteBackPolicy(
+                                          context,
+                                        ),
+                                        onSharePressed: () => unawaited(
+                                          _shareAccountProfile(
+                                            resolvedAccountProfile,
+                                          ),
+                                        ),
+                                        shareIcon: BooraIcons.share,
+                                        tabs: effectiveTabs,
+                                        betweenHeroAndTabs: null,
+                                      );
+                                    },
                                   );
                                 },
                               );
@@ -471,6 +480,8 @@ class _AccountProfileDetailScreenState
               )
               .toList(),
         ),
+      if (_controller.canUseAsReferencePoint(accountProfile))
+        _buildHeroReferencePointAction(accountProfile),
     ];
 
     if (children.isEmpty) {
@@ -486,6 +497,68 @@ class _AccountProfileDetailScreenState
         ],
       ],
     );
+  }
+
+  Widget _buildHeroReferencePointAction(AccountProfileModel accountProfile) {
+    final isCurrent = _controller.isCurrentReferencePoint(accountProfile);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 296),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.tonalIcon(
+          key: const Key('accountProfileHeroReferencePointButton'),
+          onPressed: () => unawaited(
+            _handleReferencePointTap(accountProfile),
+          ),
+          icon: Icon(
+            isCurrent ? Icons.check_circle_rounded : Icons.flag_outlined,
+          ),
+          label: Text(
+            isCurrent ? 'Ponto de referência' : 'Usar como ponto de referência',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: isCurrent
+                ? Colors.white.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.14),
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: isCurrent ? 0.32 : 0.16),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleReferencePointTap(
+    AccountProfileModel accountProfile,
+  ) async {
+    if (_controller.isCurrentReferencePoint(accountProfile)) {
+      return;
+    }
+    try {
+      final saved = await _controller.setAsReferencePoint(accountProfile);
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        saved
+            ? 'Ponto de referência atualizado.'
+            : 'Não foi possível salvar o ponto de referência.',
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage('Não foi possível salvar o ponto de referência.');
+    }
   }
 
   List<ImmersiveTabItem> _buildTabsFromConfig(
