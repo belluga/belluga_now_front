@@ -52,6 +52,9 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminAccountProfile>>
+      nestedProfileCandidatesStreamValue =
+      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>>(
@@ -243,6 +246,27 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (!_isDisposed) {
         isLoadingStreamValue.addValue(false);
       }
+    }
+  }
+
+  Future<void> loadNestedProfileCandidates({String? excludeProfileId}) async {
+    try {
+      final profiles = await _profilesRepository.fetchAccountProfiles();
+      if (_isDisposed) return;
+      final normalizedExclude = excludeProfileId?.trim();
+      nestedProfileCandidatesStreamValue.addValue(
+        profiles
+            .where(
+              (profile) =>
+                  normalizedExclude == null ||
+                  normalizedExclude.isEmpty ||
+                  profile.id != normalizedExclude,
+            )
+            .toList(growable: false),
+      );
+    } catch (_) {
+      if (_isDisposed) return;
+      nestedProfileCandidatesStreamValue.addValue(const []);
     }
   }
 
@@ -475,9 +499,11 @@ class TenantAdminAccountProfilesController implements Disposable {
         editStateStreamValue.value
             .copyWith(
               selectedProfileType: profile.profileType,
+              nestedProfileGroups: profile.nestedProfileGroups,
             )
             .syncRemoteState(profile),
       );
+      unawaited(loadNestedProfileCandidates(excludeProfileId: profile.id));
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
     } catch (error) {
@@ -621,6 +647,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
     String? coverUrl,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     createSubmittingStreamValue.addValue(true);
     try {
@@ -636,6 +664,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUpload: coverUpload,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        nestedProfileGroups: nestedProfileGroups,
       );
       if (_isDisposed) return;
       createErrorMessageStreamValue.addValue(null);
@@ -717,6 +746,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     editSubmittingStreamValue.addValue(true);
     try {
@@ -735,6 +765,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUrl: coverUrl,
         removeAvatar: removeAvatar ?? _removeAvatarOnSubmit,
         removeCover: removeCover ?? _removeCoverOnSubmit,
+        nestedProfileGroups: nestedProfileGroups,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -933,6 +964,138 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  void addCreateNestedProfileGroup() {
+    final groups = createStateStreamValue.value.nestedProfileGroups;
+    if (groups.length >= 12) {
+      reportCreateErrorMessage('Limite de grupos atingido.');
+      return;
+    }
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: _appendNestedProfileGroup(groups),
+      ),
+    );
+  }
+
+  void addEditNestedProfileGroup() {
+    final groups = editStateStreamValue.value.nestedProfileGroups;
+    if (groups.length >= 12) {
+      reportEditErrorMessage('Limite de grupos atingido.');
+      return;
+    }
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: _appendNestedProfileGroup(groups),
+      ),
+    );
+  }
+
+  void renameCreateNestedProfileGroup(String groupId, String label) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: _renameNestedProfileGroup(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId,
+          label,
+        ),
+      ),
+    );
+  }
+
+  void renameEditNestedProfileGroup(String groupId, String label) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: _renameNestedProfileGroup(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId,
+          label,
+        ),
+      ),
+    );
+  }
+
+  void removeCreateNestedProfileGroup(String groupId) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: _removeNestedProfileGroup(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId,
+        ),
+      ),
+    );
+  }
+
+  void removeEditNestedProfileGroup(String groupId) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: _removeNestedProfileGroup(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId,
+        ),
+      ),
+    );
+  }
+
+  void moveCreateNestedProfileGroup(String groupId, int delta) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: _moveNestedProfileGroup(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId,
+          delta,
+        ),
+      ),
+    );
+  }
+
+  void moveEditNestedProfileGroup(String groupId, int delta) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: _moveNestedProfileGroup(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId,
+          delta,
+        ),
+      ),
+    );
+  }
+
+  void toggleCreateNestedProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final next = _toggleNestedProfileGroupMember(
+      createStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () =>
+          reportCreateErrorMessage('Limite de perfis no grupo atingido.'),
+    );
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(nestedProfileGroups: next),
+    );
+  }
+
+  void toggleEditNestedProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final next = _toggleNestedProfileGroupMember(
+      editStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () =>
+          reportEditErrorMessage('Limite de perfis no grupo atingido.'),
+    );
+    _updateEditState(
+      editStateStreamValue.value.copyWith(nestedProfileGroups: next),
+    );
+  }
+
   void resetFormControllers() {
     slugController.clear();
     displayNameController.clear();
@@ -985,6 +1148,111 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void resetCreateState() {
     _updateCreateState(TenantAdminAccountProfileCreateDraft.initial());
+  }
+
+  List<TenantAdminNestedProfileGroup> _appendNestedProfileGroup(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    final nextOrder = groups.length;
+    return _normalizeNestedProfileGroupOrders([
+      ...groups,
+      TenantAdminNestedProfileGroup(
+        idValue: TenantAdminNestedProfileGroupTextValue(
+          'grupo-${DateTime.now().microsecondsSinceEpoch}',
+        ),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Novo grupo'),
+        orderValue: TenantAdminNestedProfileGroupOrderValue(nextOrder),
+      ),
+    ]);
+  }
+
+  List<TenantAdminNestedProfileGroup> _renameNestedProfileGroup(
+    List<TenantAdminNestedProfileGroup> groups,
+    String groupId,
+    String label,
+  ) {
+    return groups
+        .map(
+          (group) => group.id == groupId
+              ? group.copyWith(
+                  labelValue: TenantAdminNestedProfileGroupTextValue(label),
+                )
+              : group,
+        )
+        .toList(growable: false);
+  }
+
+  List<TenantAdminNestedProfileGroup> _removeNestedProfileGroup(
+    List<TenantAdminNestedProfileGroup> groups,
+    String groupId,
+  ) {
+    return _normalizeNestedProfileGroupOrders(
+      groups.where((group) => group.id != groupId).toList(growable: false),
+    );
+  }
+
+  List<TenantAdminNestedProfileGroup> _moveNestedProfileGroup(
+    List<TenantAdminNestedProfileGroup> groups,
+    String groupId,
+    int delta,
+  ) {
+    final next = [...groups]
+      ..sort((left, right) => left.order.compareTo(right.order));
+    final index = next.indexWhere((group) => group.id == groupId);
+    if (index < 0) {
+      return groups;
+    }
+    final target = (index + delta).clamp(0, next.length - 1);
+    if (target == index) {
+      return groups;
+    }
+    final group = next.removeAt(index);
+    next.insert(target, group);
+    return _normalizeNestedProfileGroupOrders(next);
+  }
+
+  List<TenantAdminNestedProfileGroup> _toggleNestedProfileGroupMember(
+    List<TenantAdminNestedProfileGroup> groups, {
+    required String groupId,
+    required String profileId,
+    required bool selected,
+    required VoidCallback onLimit,
+  }) {
+    return groups.map((group) {
+      if (group.id != groupId) {
+        return group;
+      }
+      final current = group.accountProfileIdValues
+          .map((entry) => entry.value)
+          .toList(growable: true);
+      if (selected) {
+        if (current.contains(profileId)) {
+          return group;
+        }
+        if (current.length >= 50) {
+          onLimit();
+          return group;
+        }
+        current.add(profileId);
+      } else {
+        current.removeWhere((entry) => entry == profileId);
+      }
+      return group.copyWith(
+        accountProfileIdValues:
+            current.map(TenantAdminNestedProfileGroupTextValue.new).toList(),
+      );
+    }).toList(growable: false);
+  }
+
+  List<TenantAdminNestedProfileGroup> _normalizeNestedProfileGroupOrders(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    return [
+      for (var index = 0; index < groups.length; index++)
+        groups[index].copyWith(
+          orderValue: TenantAdminNestedProfileGroupOrderValue(index),
+        ),
+    ];
   }
 
   void _updateEditState(TenantAdminAccountProfileEditDraft state) {
@@ -1081,6 +1349,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final filtered = _filterCapabilities(
       profileType: profileType,
@@ -1125,6 +1395,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoString(filtered.coverUrl),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
+      nestedProfileGroups: nestedProfileGroups,
     );
     if (!_isDisposed) {
       accountProfileStreamValue.addValue(profile);
@@ -1148,6 +1419,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     final filtered = profileType == null
         ? _CapabilityFilter(
@@ -1208,6 +1480,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoBool(removeCover),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
+      nestedProfileGroups: nestedProfileGroups,
     );
     await loadProfiles(profile.accountId);
     return profile;
@@ -1284,6 +1557,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     latitudeController.dispose();
     longitudeController.dispose();
     profilesStreamValue.dispose();
+    nestedProfileCandidatesStreamValue.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();

@@ -161,6 +161,49 @@ void main() {
     expect((data as Map<String, dynamic>)['bio'], '');
   });
 
+  test('updateAccountProfile sends nested profile group payload', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+            TenantAdminNestedProfileGroupTextValue(
+              '507f1f77bcf86cd799439081',
+            ),
+            TenantAdminNestedProfileGroupTextValue(
+              '507f1f77bcf86cd799439082',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['nested_profile_groups'], [
+      {
+        'id': 'parceiros',
+        'label': 'Parceiros',
+        'order': 0,
+        'account_profile_ids': [
+          '507f1f77bcf86cd799439081',
+          '507f1f77bcf86cd799439082',
+        ],
+      },
+    ]);
+  });
+
   test(
     'updateAccountProfile sends explicit remove avatar/cover flags',
     () async {

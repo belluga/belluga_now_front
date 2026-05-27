@@ -455,6 +455,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     throw UnimplementedError();
   }
@@ -475,6 +477,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     throw UnimplementedError();
   }

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -298,6 +299,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
       final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
+      final nestedGroups =
+          _extractNestedProfileGroups(json['nested_profile_groups']);
       final distanceMeters = _resolveDistanceMeters(
         json,
         distanceOrigin: distanceOrigin,
@@ -353,6 +356,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           tagValues:
               tags.map(AccountProfileTagValue.new).toList(growable: false),
           agendaEventViews: agendaEvents,
+          nestedProfileGroupValues: nestedGroups,
           distanceMetersValue:
               AccountProfileDistanceMetersValue(distanceMeters),
           locationAddressValue: locationAddressValue,
@@ -362,6 +366,92 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       );
     }
     return profiles;
+  }
+
+  List<AccountProfileNestedGroup> _extractNestedProfileGroups(dynamic raw) {
+    if (raw is! List) {
+      return const <AccountProfileNestedGroup>[];
+    }
+
+    final groups = <AccountProfileNestedGroup>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final id = (json['id'] ?? json['key'])?.toString().trim() ?? '';
+      final label = json['label']?.toString().trim() ?? '';
+      if (id.isEmpty || label.isEmpty) {
+        continue;
+      }
+      groups.add(
+        AccountProfileNestedGroup(
+          idValue: AccountProfileNestedGroupIdValue(id),
+          labelValue: AccountProfileNestedGroupLabelValue(label),
+          orderValue: AccountProfileNestedGroupOrderValue(
+            _parsePageValue(json['order']) ?? groups.length,
+          ),
+          profiles: _extractNestedGroupMembers(json['profiles']),
+        ),
+      );
+    }
+
+    groups.sort((left, right) => left.order.compareTo(right.order));
+    return List<AccountProfileNestedGroup>.unmodifiable(groups);
+  }
+
+  List<AccountProfileNestedGroupMember> _extractNestedGroupMembers(
+    dynamic raw,
+  ) {
+    if (raw is! List) {
+      return const <AccountProfileNestedGroupMember>[];
+    }
+
+    final members = <AccountProfileNestedGroupMember>[];
+    final seen = <String>{};
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final id = json['id']?.toString().trim() ?? '';
+      final displayName =
+          (json['display_name'] ?? json['name'])?.toString().trim() ?? '';
+      final slug = json['slug']?.toString().trim() ?? '';
+      final profileType = json['profile_type']?.toString().trim() ?? '';
+      if (id.isEmpty ||
+          displayName.isEmpty ||
+          slug.isEmpty ||
+          profileType.isEmpty ||
+          !seen.add(id)) {
+        continue;
+      }
+
+      ThumbUriValue? avatarValue;
+      final avatarUrl = json['avatar_url']?.toString().trim();
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
+          ..parse(avatarUrl);
+      }
+      ThumbUriValue? coverValue;
+      final coverUrl = json['cover_url']?.toString().trim();
+      if (coverUrl != null && coverUrl.isNotEmpty) {
+        coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
+          ..parse(coverUrl);
+      }
+
+      members.add(
+        AccountProfileNestedGroupMember(
+          idValue: MongoIDValue()..parse(id),
+          nameValue: TitleValue()..parse(displayName),
+          slugValue: SlugValue()..parse(slug),
+          profileTypeValue: AccountProfileTypeValue(profileType),
+          avatarValue: avatarValue,
+          coverValue: coverValue,
+          tagValues: _extractTags(json['taxonomy_terms'])
+              .map(AccountProfileTagValue.new)
+              .toList(growable: false),
+        ),
+      );
+    }
+
+    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
   }
 
   List<dynamic> _extractDataList(Map<String, dynamic> payload) {

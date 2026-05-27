@@ -240,6 +240,70 @@ void main() {
     expect(profile?.slug, 'slug-detail-artist');
   });
 
+  test('fetchAccountProfileBySlug parses nested account profile groups',
+      () async {
+    final parentId = _generateMongoId();
+    final partnerAId = _generateMongoId();
+    final partnerBId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': parentId,
+          'display_name': 'Parent Profile',
+          'slug': 'parent-profile',
+          'profile_type': 'venue',
+          'taxonomy_terms': const [],
+          'nested_profile_groups': [
+            {
+              'id': 'parceiros',
+              'label': 'Parceiros',
+              'order': 1,
+              'profiles': [
+                {
+                  'id': partnerBId,
+                  'display_name': 'Parceiro B',
+                  'slug': 'parceiro-b',
+                  'profile_type': 'artist',
+                  'avatar_url': 'https://tenant.test/b.png',
+                  'taxonomy_terms': [
+                    {'name': 'Música', 'value': 'musica'},
+                  ],
+                },
+                {
+                  'id': partnerAId,
+                  'display_name': 'Parceiro A',
+                  'slug': 'parceiro-a',
+                  'profile_type': 'artist',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+
+    expect(profile, isNotNull);
+    expect(profile!.nestedProfileGroups, hasLength(1));
+    final group = profile.nestedProfileGroups.single;
+    expect(group.id, 'parceiros');
+    expect(group.label, 'Parceiros');
+    expect(group.profiles.map((entry) => entry.slug).toList(), [
+      'parceiro-b',
+      'parceiro-a',
+    ]);
+    expect(group.profiles.first.avatarUrl, 'https://tenant.test/b.png');
+    expect(group.profiles.first.tags.single.value, 'Música');
+  });
+
   test('fetchAccountProfileBySlug returns null on not found', () async {
     final adapter = _RecordingAdapter(
       response: {

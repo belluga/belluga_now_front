@@ -88,6 +88,48 @@ void main() {
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
     expect(accountsRepository.lastFetchedSlug, 'route-account');
   });
+
+  testWidgets('adds nested group editor and selects Account candidate',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profilesToReturn = [
+      _profile(id: 'profile-partner', displayName: 'Conta Parceira'),
+    ];
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+      300,
+      scrollable: scrollable,
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Novo grupo'), findsOneWidget);
+    expect(find.text('Nome da aba'), findsOneWidget);
+    expect(find.text('Conta Parceira'), findsOneWidget);
+
+    await tester.tap(find.text('Conta Parceira'));
+    await tester.pumpAndSettle();
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    expect(
+      controller.createStateStreamValue.value.nestedProfileGroups.single
+          .accountProfileIdValues
+          .map((entry) => entry.value)
+          .toList(growable: false),
+      ['profile-partner'],
+    );
+  });
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -194,11 +236,13 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 
 class _FakeAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
+  List<TenantAdminAccountProfile> profilesToReturn = [];
+
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
   }) async {
-    return [];
+    return profilesToReturn;
   }
 
   @override
@@ -234,6 +278,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     throw UnimplementedError();
   }
@@ -254,6 +300,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     throw UnimplementedError();
   }
@@ -390,5 +437,18 @@ TenantAdminAccount _account({required String slug}) {
     slug: slug,
     document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
     ownershipState: TenantAdminOwnershipState.tenantOwned,
+  );
+}
+
+TenantAdminAccountProfile _profile({
+  required String id,
+  required String displayName,
+}) {
+  return tenantAdminAccountProfileFromRaw(
+    id: id,
+    accountId: 'acc-route-account',
+    profileType: 'venue',
+    displayName: displayName,
+    slug: id,
   );
 }

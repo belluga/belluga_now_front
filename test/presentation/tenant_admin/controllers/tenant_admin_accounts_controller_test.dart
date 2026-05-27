@@ -393,6 +393,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final error = createProfileError;
     if (error != null) {
@@ -451,6 +453,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',

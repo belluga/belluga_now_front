@@ -392,6 +392,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
@@ -437,6 +439,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',

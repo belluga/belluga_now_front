@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -28,6 +29,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   String? locationAddress,
   double? locationLat,
   double? locationLng,
+  List<AccountProfileNestedGroup>? nestedProfileGroups,
 }) {
   ThumbUriValue? avatarValue;
   if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -86,6 +88,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     locationAddressValue: locationAddressValue,
     locationLatitudeValue: locationLatitudeValue,
     locationLongitudeValue: locationLongitudeValue,
+    nestedProfileGroupValues: nestedProfileGroups,
   );
 }
 

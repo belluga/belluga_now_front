@@ -93,6 +93,8 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     try {
       final payload = _requestEncoder.encodeCreateAccountProfile(
@@ -105,6 +107,7 @@ class TenantAdminAccountProfilesRepository
         content: content?.value,
         avatarUrl: avatarUrl?.value,
         coverUrl: coverUrl?.value,
+        nestedProfileGroups: nestedProfileGroups,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -144,6 +147,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccountProfile(
@@ -158,6 +162,7 @@ class TenantAdminAccountProfilesRepository
         coverUrl: coverUrl?.value,
         removeAvatar: removeAvatar?.value,
         removeCover: removeCover?.value,
+        nestedProfileGroups: nestedProfileGroups,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,

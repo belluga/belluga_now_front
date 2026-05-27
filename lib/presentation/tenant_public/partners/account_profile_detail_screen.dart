@@ -10,6 +10,7 @@ import 'package:belluga_now/application/router/support/canonical_route_governanc
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
@@ -598,8 +599,28 @@ class _AccountProfileDetailScreenState
       (left, right) =>
           _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
     );
+    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
+  }
+
+  List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
+    AccountProfileModel accountProfile,
+  ) {
+    final groups = accountProfile.nestedProfileGroups
+        .where((group) => group.isVisible)
+        .toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+
+    return groups
+        .map(
+          (group) => ImmersiveTabItem(
+            title: group.label,
+            content: _nestedProfileGroup(group),
+            footer: null,
+          ),
+        )
+        .toList(growable: false);
   }
 
   int _tabOrderRank(String title) {
@@ -2356,6 +2377,136 @@ class _AccountProfileDetailScreenState
             ),
         ],
       ),
+    );
+  }
+
+  Widget _nestedProfileGroup(AccountProfileNestedGroup group) {
+    return Padding(
+      key: Key('accountProfileNestedGroup_${group.id}'),
+      padding: const EdgeInsets.all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 720 ? 3 : (width >= 460 ? 2 : 1);
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: columns == 1 ? 124 : 136,
+            ),
+            itemCount: group.profiles.length,
+            itemBuilder: (context, index) {
+              final member = group.profiles[index];
+              return _nestedProfileMemberCard(group, member);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _nestedProfileMemberCard(
+    AccountProfileNestedGroup group,
+    AccountProfileNestedGroupMember member,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final memberProfile = _profileFromNestedMember(member);
+    final resolvedVisual = _controller.resolvedVisualFor(memberProfile);
+    final labels = member.tags
+        .map((tag) => tag.value.trim())
+        .where((label) => label.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+    return Material(
+      key: Key('accountProfileNestedCard_${group.id}_${member.id}'),
+      color: colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: member.slug.trim().isEmpty
+            ? null
+            : () => _safeRouterPushPath('/parceiro/${member.slug}'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: AccountProfileIdentityBlock(
+                  name: member.name,
+                  avatarUrl: resolvedVisual.identityAvatarUrl,
+                  typeVisual: resolvedVisual.typeVisual,
+                  avatarSize: 48,
+                  avatarSpacing: 10,
+                  typeAvatarSize: 24,
+                  typeAvatarIconSize: 14,
+                  titleSpacing: 6,
+                  titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                  supporting: labels.isEmpty
+                      ? null
+                      : Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: labels
+                              .map(
+                                (label) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: _contentColorForBackground(
+                                            colorScheme.secondaryContainer,
+                                          ),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                Icons.chevron_right,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  AccountProfileModel _profileFromNestedMember(
+    AccountProfileNestedGroupMember member,
+  ) {
+    return AccountProfileModel(
+      idValue: member.idValue,
+      nameValue: member.nameValue,
+      slugValue: member.slugValue,
+      profileTypeValue: member.profileTypeValue,
+      avatarValue: member.avatarValue,
+      coverValue: member.coverValue,
+      tagValues: member.tags,
     );
   }
 

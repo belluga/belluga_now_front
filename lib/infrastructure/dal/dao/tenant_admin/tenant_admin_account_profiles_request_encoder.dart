@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -17,6 +18,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     return {
       'account_id': accountId,
@@ -32,6 +35,10 @@ class TenantAdminAccountProfilesRequestEncoder {
       if (content != null) 'content': content,
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (coverUrl != null) 'cover_url': coverUrl,
+      if (nestedProfileGroups.isNotEmpty)
+        'nested_profile_groups': _encodeNestedProfileGroups(
+          nestedProfileGroups,
+        ),
     };
   }
 
@@ -47,6 +54,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -69,7 +77,29 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (coverUrl != null) payload['cover_url'] = coverUrl;
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
+    if (nestedProfileGroups != null) {
+      payload['nested_profile_groups'] = _encodeNestedProfileGroups(
+        nestedProfileGroups,
+      );
+    }
     return payload;
+  }
+
+  List<Map<String, dynamic>> _encodeNestedProfileGroups(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    return groups
+        .map(
+          (group) => {
+            'id': group.id,
+            'label': group.label,
+            'order': group.order,
+            'account_profile_ids': group.accountProfileIdValues
+                .map((entry) => entry.value)
+                .toList(),
+          },
+        )
+        .toList(growable: false);
   }
 
   Map<String, dynamic> encodeCreateProfileType({

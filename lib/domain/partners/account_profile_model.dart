@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -27,6 +28,7 @@ class AccountProfileModel {
   final AccountProfileLocationAddressValue? locationAddressValue;
   final LatitudeValue? locationLatitudeValue;
   final LongitudeValue? locationLongitudeValue;
+  final List<AccountProfileNestedGroup> nestedProfileGroupValues;
 
   AccountProfileModel({
     required this.idValue,
@@ -46,11 +48,15 @@ class AccountProfileModel {
     this.locationAddressValue,
     this.locationLatitudeValue,
     this.locationLongitudeValue,
+    List<AccountProfileNestedGroup>? nestedProfileGroupValues,
   })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
           tagValues ?? const <AccountProfileTagValue>[],
         ),
         agendaEventViews = List<PartnerEventView>.unmodifiable(
           agendaEventViews ?? const <PartnerEventView>[],
+        ),
+        nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
+          nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
         ),
         isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
         acceptedInvitesValue =
@@ -86,6 +92,8 @@ class AccountProfileModel {
 
   double? get locationLat => locationLatitudeValue?.value;
   double? get locationLng => locationLongitudeValue?.value;
+  List<AccountProfileNestedGroup> get nestedProfileGroups =>
+      List<AccountProfileNestedGroup>.unmodifiable(nestedProfileGroupValues);
 
   AccountProfileModel copyWith({
     MongoIDValue? idValue,
@@ -105,6 +113,7 @@ class AccountProfileModel {
     AccountProfileLocationAddressValue? locationAddressValue,
     LatitudeValue? locationLatitudeValue,
     LongitudeValue? locationLongitudeValue,
+    List<AccountProfileNestedGroup>? nestedProfileGroupValues,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
@@ -126,6 +135,8 @@ class AccountProfileModel {
           locationLatitudeValue ?? this.locationLatitudeValue,
       locationLongitudeValue:
           locationLongitudeValue ?? this.locationLongitudeValue,
+      nestedProfileGroupValues:
+          nestedProfileGroupValues ?? this.nestedProfileGroupValues,
     );
   }
 }

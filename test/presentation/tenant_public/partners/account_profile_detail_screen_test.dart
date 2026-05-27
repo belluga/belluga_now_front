@@ -10,11 +10,14 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
@@ -30,6 +33,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
@@ -945,6 +949,54 @@ void main() {
       tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_2'))).data,
       'Como Chegar',
     );
+  });
+
+  testWidgets(
+      'renders nested account profile groups as custom tabs and navigates linked profile',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueFullProfile().copyWith(
+            nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+      'Parceiros',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+    expect(find.text('Ananda Torres'), findsOneWidget);
+    expect(find.text('Música'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(router.lastPushedPath, '/parceiro/ananda-torres');
   });
 
   testWidgets('removes social metrics from the account profile MVP surface',
@@ -2072,6 +2124,23 @@ AccountProfileModel _buildVenueFullProfile() {
     locationLat: -20.7532,
     locationLng: -40.6067,
     agendaEvents: _buildRestaurantAgendaEvents(),
+  );
+}
+
+AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
+  return AccountProfileNestedGroup(
+    idValue: AccountProfileNestedGroupIdValue('parceiros'),
+    labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    profiles: [
+      AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+        nameValue: TitleValue()..parse('Ananda Torres'),
+        slugValue: SlugValue()..parse('ananda-torres'),
+        profileTypeValue: AccountProfileTypeValue('artist'),
+        tagValues: [AccountProfileTagValue('Música')],
+      ),
+    ],
   );
 }
 

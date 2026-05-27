@@ -382,11 +382,11 @@ Future<void> _pumpFormScreen(
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
   _TestProfileTypesController({required int impactCount})
-    : _impactCount = impactCount,
-      super(
-        repository: _FakeAccountProfilesRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-      );
+      : _impactCount = impactCount,
+        super(
+          repository: _FakeAccountProfilesRepository(),
+          taxonomiesRepository: _FakeTaxonomiesRepository(),
+        );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -434,6 +434,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     throw UnimplementedError();
   }
@@ -493,7 +495,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-  fetchProfileTypesPage({
+      fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -531,6 +533,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     throw UnimplementedError();
   }
@@ -549,8 +552,7 @@ class _FakeAccountProfilesRepository
       label: label ?? type,
       pluralLabel: pluralLabel ?? label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
-      capabilities:
-          capabilities ??
+      capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -604,7 +606,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-  fetchTaxonomiesPage({
+      fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -623,7 +625,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-  fetchTermsPage({
+      fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
