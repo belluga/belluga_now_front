@@ -16,7 +16,11 @@ class ProximityLocationPreference {
   bool get usesLiveDeviceLocation =>
       mode == ProximityLocationPreferenceMode.liveDeviceLocation;
 
-  bool get usesFixedReference =>
+  bool get hasFixedReference =>
       mode == ProximityLocationPreferenceMode.fixedReference &&
       fixedReference != null;
+
+  bool get usesFixedReference =>
+      mode == ProximityLocationPreferenceMode.fixedReference &&
+      fixedReference?.isActive == true;
 }
