@@ -76,6 +76,20 @@ class ProximityPreferencesRepository
       locationPreference: ProximityLocationPreference.fixedReference(
         fixedReference: fixedReference,
       ),
+      routeReferencePointPolicyValue: RouteReferencePointPolicyValue.prompt(),
+    );
+    final persisted = await _backend.upsert(
+      ProximityPreferenceDTO.fromDomain(next),
+    );
+    await _apply(persisted.toDomain());
+  }
+
+  @override
+  Future<void> setRouteReferencePointPolicy(
+    RouteReferencePointPolicyValue policyValue,
+  ) async {
+    final next = _currentPreference.copyWith(
+      routeReferencePointPolicyValue: policyValue,
     );
     final persisted = await _backend.upsert(
       ProximityPreferenceDTO.fromDomain(next),

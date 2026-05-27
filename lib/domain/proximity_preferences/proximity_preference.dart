@@ -6,3 +6,4 @@ export 'package:belluga_now/domain/proximity_preferences/proximity_location_pref
 export 'package:belluga_now/domain/proximity_preferences/proximity_location_preference_mode.dart';
 export 'package:belluga_now/domain/proximity_preferences/proximity_preference_model.dart';
 export 'package:belluga_now/domain/proximity_preferences/value_objects/proximity_preference_optional_text_value.dart';
+export 'package:belluga_now/domain/proximity_preferences/value_objects/route_reference_point_policy_value.dart';

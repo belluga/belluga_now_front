@@ -1,6 +1,10 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/proximity_preferences_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/proximity_preference_dto.dart';
@@ -56,6 +60,59 @@ void main() {
       );
     },
   );
+
+  test(
+    'setFixedReference resets route reference point policy to prompt',
+    () async {
+      final backend = _FakeProximityPreferencesBackend(
+        remote: ProximityPreferenceDTO.fromJson({
+          'max_distance_meters': 25000,
+          'use_reference_point_for_routes': true,
+          'location_preference': {
+            'mode': 'fixed_reference',
+            'fixed_reference': {
+              'source_kind': 'manual_coordinate',
+              'coordinate': {'lat': -20.1, 'lng': -40.1},
+            },
+          },
+        }),
+      );
+      final repository = ProximityPreferencesRepository(
+        appDataRepository: _FakeAppDataRepository(),
+        backend: backend,
+      );
+      await repository.syncAfterIdentityReady();
+
+      await repository.setFixedReference(
+        fixedReference: FixedLocationReference(
+          sourceKind: FixedLocationReferenceSourceKind.entityReference,
+          coordinate: CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.6736'),
+            longitudeValue: LongitudeValue()..parse('-40.4976'),
+          ),
+          labelValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'Hotel Base',
+          ),
+          entityNamespaceValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'account_profile',
+          ),
+          entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'hotel',
+          ),
+          entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'profile-1',
+          ),
+        ),
+      );
+
+      expect(
+        repository.proximityPreference?.useReferencePointForRoutes,
+        isNull,
+      );
+      expect(backend.lastUpsert?.useReferencePointForRoutes, isNull);
+      expect(backend.lastUpsert?.fixedReference?['entity_id'], 'profile-1');
+    },
+  );
 }
 
 class _FakeProximityPreferencesBackend
@@ -63,6 +120,7 @@ class _FakeProximityPreferencesBackend
   _FakeProximityPreferencesBackend({required this.remote});
 
   final ProximityPreferenceDTO? remote;
+  ProximityPreferenceDTO? lastUpsert;
 
   @override
   Future<ProximityPreferenceDTO?> fetch() async => remote;
@@ -71,6 +129,7 @@ class _FakeProximityPreferencesBackend
   Future<ProximityPreferenceDTO> upsert(
     ProximityPreferenceDTO preference,
   ) async {
+    lastUpsert = preference;
     return preference;
   }
 }

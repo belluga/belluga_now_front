@@ -3,6 +3,25 @@ import 'package:belluga_now/infrastructure/dal/dto/proximity_preference_dto.dart
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('maps nullable route reference point policy', () {
+    for (final value in <bool?>[null, true, false]) {
+      final dto = ProximityPreferenceDTO.fromJson({
+        'max_distance_meters': 25000,
+        'use_reference_point_for_routes': value,
+        'location_preference': {
+          'mode': 'live_device_location',
+          'fixed_reference': null,
+        },
+      });
+
+      final preference = dto.toDomain();
+      final encoded = ProximityPreferenceDTO.fromDomain(preference).toJson();
+
+      expect(preference.useReferencePointForRoutes, value);
+      expect(encoded['use_reference_point_for_routes'], value);
+    }
+  });
+
   test('maps disabled entity reference status while preserving provenance', () {
     final dto = ProximityPreferenceDTO.fromJson({
       'max_distance_meters': 25000,

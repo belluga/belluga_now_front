@@ -8,11 +8,13 @@ class ProximityPreferenceDTO {
   ProximityPreferenceDTO({
     required this.maxDistanceMeters,
     required this.mode,
+    this.useReferencePointForRoutes,
     this.fixedReference,
   });
 
   final int maxDistanceMeters;
   final String mode;
+  final bool? useReferencePointForRoutes;
   final Map<String, dynamic>? fixedReference;
 
   factory ProximityPreferenceDTO.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,9 @@ class ProximityPreferenceDTO {
     return ProximityPreferenceDTO(
       maxDistanceMeters: (json['max_distance_meters'] as num?)?.round() ?? 0,
       mode: locationPreference['mode'] as String? ?? 'live_device_location',
+      useReferencePointForRoutes: _nullableBool(
+        json['use_reference_point_for_routes'],
+      ),
       fixedReference:
           locationPreference['fixed_reference'] is Map<String, dynamic>
               ? Map<String, dynamic>.from(
@@ -42,6 +47,7 @@ class ProximityPreferenceDTO {
           'live_device_location',
         ProximityLocationPreferenceMode.fixedReference => 'fixed_reference',
       },
+      useReferencePointForRoutes: preference.useReferencePointForRoutes,
       fixedReference: fixedReference == null
           ? null
           : <String, dynamic>{
@@ -75,6 +81,9 @@ class ProximityPreferenceDTO {
       maxDistanceMetersValue: DistanceInMetersValue.fromRaw(
         maxDistanceMeters,
         defaultValue: maxDistanceMeters.toDouble(),
+      ),
+      routeReferencePointPolicyValue: RouteReferencePointPolicyValue(
+        useReferencePointForRoutes,
       ),
       locationPreference: mode == 'fixed_reference' && fixedReference != null
           ? ProximityLocationPreference.fixedReference(
@@ -125,6 +134,7 @@ class ProximityPreferenceDTO {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'max_distance_meters': maxDistanceMeters,
+      'use_reference_point_for_routes': useReferencePointForRoutes,
       'location_preference': <String, dynamic>{
         'mode': mode,
         'fixed_reference': fixedReference,
@@ -137,6 +147,13 @@ class ProximityPreferenceDTO {
   ) {
     final normalized = ProximityPreferenceOptionalTextValue.fromRaw(value);
     return normalized.nullableValue == null ? null : normalized;
+  }
+
+  static bool? _nullableBool(Object? value) {
+    if (value is bool) {
+      return value;
+    }
+    return null;
   }
 
   static FixedLocationReferenceStatus _referenceStatusFromWire(Object? value) {
