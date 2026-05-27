@@ -102,7 +102,7 @@ class _TenantAdminImageCropSheetState
   double get _aspectRatio => widget.slot == TenantAdminImageSlot.avatar
       ? 1.0
       : switch (widget.slot) {
-          TenantAdminImageSlot.cover => 16 / 9,
+          TenantAdminImageSlot.cover => 560 / 512,
           TenantAdminImageSlot.lightLogo => 18 / 5,
           TenantAdminImageSlot.darkLogo => 18 / 5,
           TenantAdminImageSlot.lightIcon => 1.0,

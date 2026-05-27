@@ -303,7 +303,7 @@ class TenantAdminImageIngestionService {
           fileExtension: 'jpg',
         ),
       TenantAdminImageSlot.cover => const _TenantAdminImageSlotSpec(
-          aspectRatio: 16 / 9,
+          aspectRatio: 560 / 512,
           maxWidth: 1920,
           maxHeight: 1080,
           mimeType: 'image/jpeg',
