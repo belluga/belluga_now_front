@@ -31,6 +31,7 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  const expectedCoverAspectRatio = 560 / 512;
 
   tearDownAll(() async {
     await GetIt.I.reset();
@@ -85,7 +86,7 @@ void main() {
     await _confirmCropAndDismiss(tester);
   });
 
-  testWidgets('device image selection opens crop sheet for cover',
+  testWidgets('device image selection opens crop sheet for cover (560:512)',
       (tester) async {
     final tmpFile = _writeTempImage('picked_cover.png');
     final originalImagePicker = ImagePickerPlatform.instance;
@@ -129,7 +130,7 @@ void main() {
     expect(find.text('Usar'), findsOneWidget);
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
-    expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    expect(crop.aspectRatio, closeTo(expectedCoverAspectRatio, 0.0001));
     await _confirmCropAndDismiss(tester);
   });
 
@@ -166,7 +167,8 @@ void main() {
     await _confirmCropAndDismiss(tester);
   });
 
-  testWidgets('web url selection opens crop sheet for cover', (tester) async {
+  testWidgets('web url selection opens crop sheet for cover (560:512)',
+      (tester) async {
     await GetIt.I.reset();
     _registerFakes();
 
@@ -195,7 +197,7 @@ void main() {
     );
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
-    expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    expect(crop.aspectRatio, closeTo(expectedCoverAspectRatio, 0.0001));
     await _confirmCropAndDismiss(tester);
   });
 }

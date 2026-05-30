@@ -990,6 +990,8 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.localPreferencesBackButton),
       findsOneWidget,
     );
+    expect(find.text('Ponto de referência de localização'), findsOneWidget);
+    expect(find.textContaining('Origem padrão'), findsNothing);
 
     await tester.tap(find.text('Escuro'));
     await tester.pumpAndSettle();

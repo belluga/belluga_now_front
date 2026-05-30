@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_asset.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -64,13 +66,11 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 24, 0, 0),
+        padding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: colorScheme.surface.withValues(alpha: 0.98),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(32),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.22),
@@ -80,7 +80,7 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -90,30 +90,35 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
                     Column(
                       children: [
                         Container(
-                          width: 56,
-                          height: 6,
+                          width: 48,
+                          height: 5,
                           decoration: BoxDecoration(
                             color: colorScheme.outlineVariant,
                             borderRadius: BorderRadius.circular(999),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 14),
                         Text(
                           widget.title,
                           textAlign: TextAlign.center,
                           style:
-                              Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.w900,
                                   ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.subtitle,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
+                        if (widget.subtitle.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.subtitle,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
                       ],
                     ),
                     Positioned(
@@ -135,7 +140,7 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 Flexible(
                   child: Builder(
                     builder: (context) {
@@ -163,8 +168,7 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: _options.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 14),
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final option = _options[index];
                           return _DirectionsAppChoiceTile(
@@ -231,49 +235,44 @@ class _DirectionsAppChoiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brand = _brandForVisualType(option.visualType);
     return Material(
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.78),
-      borderRadius: BorderRadius.circular(28),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(18),
         onTap: () {
           unawaited(onTap());
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: colorScheme.secondaryContainer.withValues(alpha: 0.72),
-                  shape: BoxShape.circle,
-                ),
-                child: _DirectionsAppChoiceLeading(option: option),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      option.label,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      option.subtitle,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
+              if (brand == null)
+                Container(
+                  width: 48,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color:
+                        colorScheme.secondaryContainer.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _DirectionsAppChoiceLeading(option: option),
+                )
+              else
+                _DirectionsBrandChoiceLeading(brand: brand),
               const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right_rounded,
                 color: colorScheme.onSurfaceVariant,
@@ -281,6 +280,54 @@ class _DirectionsAppChoiceTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+DirectionsProviderBrandAsset? _brandForVisualType(
+  DirectionsAppVisualType visualType,
+) {
+  return DirectionsProviderBrandCatalog.fromVisualType(visualType);
+}
+
+class _DirectionsBrandChoiceLeading extends StatelessWidget {
+  const _DirectionsBrandChoiceLeading({
+    required this.brand,
+  });
+
+  final DirectionsProviderBrandAsset brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      height: 40,
+      decoration: BoxDecoration(
+        color: brand.backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 0.6,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: brand.sheetLogoSize.width,
+        height: brand.sheetLogoSize.height,
+        child: switch (brand.assetType) {
+          DirectionsProviderBrandAssetType.rasterImage => Image.asset(
+              brand.assetPath,
+              fit: BoxFit.contain,
+            ),
+          DirectionsProviderBrandAssetType.svg => SvgPicture.asset(
+              brand.assetPath,
+              fit: BoxFit.contain,
+              colorFilter: brand.logoTint == null
+                  ? null
+                  : ColorFilter.mode(brand.logoTint!, BlendMode.srcIn),
+            ),
+        },
       ),
     );
   }

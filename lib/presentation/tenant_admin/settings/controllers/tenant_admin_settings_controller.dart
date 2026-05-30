@@ -790,7 +790,7 @@ class TenantAdminSettingsController implements Disposable {
       );
       _applyMapUiSettings(updated);
       await _refreshAppDataSnapshot();
-      _reportSuccess('Origem padrão atualizada com sucesso.');
+      _reportSuccess('Ponto de referência atualizado com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {

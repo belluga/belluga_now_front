@@ -290,7 +290,7 @@ void main() {
   });
 
   testWidgets(
-      'renders directions section and route CTA for restaurant with POI coordinates',
+      'renders directions section and inline provider actions for restaurant with POI coordinates',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -312,13 +312,20 @@ void main() {
     expect(find.text('Como Chegar'), findsWidgets);
     expect(find.text('Ver no mapa'), findsOneWidget);
     expect(find.text('752 m de você'), findsWidgets);
-    expect(find.text('Traçar rota'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
     expect(find.text('Seguir'), findsNothing);
     expect(find.byKey(const Key('accountProfileLocationTile')), findsOneWidget);
     expect(find.byKey(const Key('accountProfileLocationDistanceBadge')),
         findsOneWidget);
-    expect(find.byKey(const Key('accountProfileRouteFooterButton')),
+    expect(
+        find.byKey(const Key('accountProfileRouteFooterButton')), findsNothing);
+    expect(
+        find.byKey(const Key('accountProfileMainWazeButton')), findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileMainUberButton')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileMainOtherDirectionsButton')),
         findsOneWidget);
+    expect(find.bySemanticsLabel('Outros'), findsOneWidget);
     expect(find.byKey(const Key('accountProfileEmbeddedMapPreview')),
         findsOneWidget);
   });
@@ -1087,7 +1094,7 @@ void main() {
     );
   });
 
-  testWidgets('tapping route footer delegates to shared directions chooser',
+  testWidgets('tapping inline directions delegates to shared directions widget',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -1107,13 +1114,29 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('accountProfileRouteFooterButton')));
+    final otherDirectionsButton =
+        find.byKey(const Key('accountProfileMainOtherDirectionsButton'));
+    await tester.ensureVisible(otherDirectionsButton);
+    await tester.pumpAndSettle();
+    await tester.tap(otherDirectionsButton);
     await tester.pump();
 
     expect(chooser.presentCallCount, 1);
     expect(chooser.lastTarget?.destinationName, 'Casa Marracini');
     expect(chooser.lastTarget?.latitude, closeTo(-20.7389, 0.00001));
     expect(chooser.lastTarget?.longitude, closeTo(-40.8212, 0.00001));
+
+    final wazeButton = find.byKey(const Key('accountProfileMainWazeButton'));
+    await tester.ensureVisible(wazeButton);
+    await tester.pumpAndSettle();
+    await tester.tap(wazeButton);
+    await tester.pump();
+
+    expect(chooser.directCallCount, 1);
+    expect(chooser.lastDirectProvider, DirectionsDirectProvider.waze);
+    expect(chooser.lastDirectTarget?.destinationName, 'Casa Marracini');
+    expect(chooser.lastDirectTarget?.latitude, closeTo(-20.7389, 0.00001));
+    expect(chooser.lastDirectTarget?.longitude, closeTo(-40.8212, 0.00001));
   });
 
   testWidgets(
@@ -1744,7 +1767,10 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 
 class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
   int presentCallCount = 0;
+  int directCallCount = 0;
   DirectionsLaunchTarget? lastTarget;
+  DirectionsDirectProvider? lastDirectProvider;
+  DirectionsLaunchTarget? lastDirectTarget;
 
   @override
   Future<List<DirectionsAppChoice>> loadOptions({
@@ -1757,7 +1783,9 @@ class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
     required DirectionsDirectProvider provider,
     required DirectionsLaunchTarget target,
   }) async {
-    lastTarget = target;
+    directCallCount += 1;
+    lastDirectProvider = provider;
+    lastDirectTarget = target;
     return true;
   }
 

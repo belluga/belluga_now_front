@@ -174,7 +174,6 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     ];
 
     choices.addAll(await _buildRideShareChoices(target, useWebUrisOnly: true));
-    choices.add(_buildBrowserChoice(target));
     return choices;
   }
 

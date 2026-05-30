@@ -3361,6 +3361,27 @@ void main() {
       find.byKey(const Key('eventSecondaryOtherDirectionsButton')),
       findsOneWidget,
     );
+    expect(find.bySemanticsLabel('Outros'), findsWidgets);
+    expect(
+      tester.getSize(find.byKey(const Key('eventMainWazeButton'))).height,
+      greaterThan(
+        tester
+            .getSize(find.byKey(const Key('eventSecondaryWazeButton')))
+            .height,
+      ),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const Key('eventMainOtherDirectionsButton')))
+          .width,
+      greaterThan(
+        tester
+            .getSize(
+              find.byKey(const Key('eventSecondaryOtherDirectionsButton')),
+            )
+            .width,
+      ),
+    );
 
     await tester.ensureVisible(programmingDestination);
     await tester.pumpAndSettle();

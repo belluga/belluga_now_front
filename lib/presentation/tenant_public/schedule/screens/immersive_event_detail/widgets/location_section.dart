@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:flutter/material.dart';
 
 class LocationSection extends StatelessWidget {
@@ -31,7 +31,6 @@ class LocationSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
     final address = event.location.value.trim();
     final venueName = event.venue?.displayName.trim();
     final resolvedTitle = venueName != null && venueName.isNotEmpty
@@ -42,144 +41,51 @@ class LocationSection extends StatelessWidget {
       destinationName: resolvedTitle,
     );
     final destinations = _buildDestinations(event);
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
+    final mainSubtitle = [
+      resolvedTitle,
+      if (address.isNotEmpty) address,
+    ].join(' - ');
+
+    return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Como Chegar',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      titleStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      mapCanvas: _LocationMapCanvas(event: event),
+      destinationSubtitle: mainSubtitle,
+      canOpenMap: canOpenMap,
+      onOpenMap: onOpenMap,
+      directionsTarget: mainDirectionsTarget,
+      onOpenDirectDirections: onOpenDirectDirections,
+      onOpenOtherDirections: onOpenOtherDirections,
+      primaryWazeButtonKey: const Key('eventMainWazeButton'),
+      primaryUberButtonKey: const Key('eventMainUberButton'),
+      primaryOtherButtonKey: const Key('eventMainOtherDirectionsButton'),
+      extraChildren: [
+        if (destinations.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Text(
+            'Outros endereços relacionados',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: canOpenMap ? onOpenMap : null,
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _LocationMapCanvas(event: event),
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.near_me_outlined,
-                              color: colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Ver no mapa',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(
-                                        color: colorScheme.onSurface,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  [
-                                    resolvedTitle,
-                                    if (address.isNotEmpty) address,
-                                  ].join(' - '),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: colorScheme.onSurface,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (canOpenMap)
-                            Icon(
-                              Icons.map_outlined,
-                              color: colorScheme.onSurface,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 10),
+          ...destinations.map(
+            (destination) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _LocationDestinationTile(
+                destination: destination,
+                onTap: destination.profile == null
+                    ? onOpenMap
+                    : onOpenDestinationMap == null
+                        ? null
+                        : () => onOpenDestinationMap!(destination.profile!),
+                onOpenDirectDirections: onOpenDirectDirections,
+                onOpenOtherDirections: onOpenOtherDirections,
               ),
             ),
           ),
-          if (mainDirectionsTarget != null) ...[
-            const SizedBox(height: 12),
-            _DirectionsProviderButtons(
-              target: mainDirectionsTarget,
-              isPrimary: true,
-              onOpenDirectDirections: onOpenDirectDirections,
-              onOpenOtherDirections: onOpenOtherDirections,
-            ),
-          ],
-          if (destinations.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Text(
-              'Outros endereços relacionados',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...destinations.map(
-              (destination) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _LocationDestinationTile(
-                  destination: destination,
-                  onTap: destination.profile == null
-                      ? onOpenMap
-                      : onOpenDestinationMap == null
-                          ? null
-                          : () => onOpenDestinationMap!(destination.profile!),
-                  onOpenDirectDirections: onOpenDirectDirections,
-                  onOpenOtherDirections: onOpenOtherDirections,
-                ),
-              ),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
@@ -331,155 +237,20 @@ class _LocationDestinationTile extends StatelessWidget {
             if (routeTarget != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: _DirectionsProviderButtons(
+                child: DirectionsProviderActions(
                   target: routeTarget,
                   isPrimary: false,
                   onOpenDirectDirections: onOpenDirectDirections,
                   onOpenOtherDirections: onOpenOtherDirections,
+                  wazeButtonKey: const Key('eventSecondaryWazeButton'),
+                  uberButtonKey: const Key('eventSecondaryUberButton'),
+                  otherButtonKey:
+                      const Key('eventSecondaryOtherDirectionsButton'),
                 ),
               ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _DirectionsProviderButtons extends StatelessWidget {
-  const _DirectionsProviderButtons({
-    required this.target,
-    required this.isPrimary,
-    required this.onOpenDirectDirections,
-    required this.onOpenOtherDirections,
-  });
-
-  final DirectionsLaunchTarget target;
-  final bool isPrimary;
-  final Future<void> Function(
-    DirectionsDirectProvider provider,
-    DirectionsLaunchTarget target,
-  )? onOpenDirectDirections;
-  final Future<void> Function(DirectionsLaunchTarget target)?
-      onOpenOtherDirections;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!target.hasLaunchableDestination) {
-      return const SizedBox.shrink();
-    }
-
-    final height = isPrimary ? 48.0 : 38.0;
-    final textStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          fontSize: isPrimary ? 14 : 12,
-        );
-    return Row(
-      children: [
-        Expanded(
-          child: _DirectionProviderButton(
-            key: Key(
-                isPrimary ? 'eventMainWazeButton' : 'eventSecondaryWazeButton'),
-            label: 'Waze',
-            icon: Icons.alt_route_outlined,
-            height: height,
-            textStyle: textStyle,
-            onPressed: onOpenDirectDirections == null
-                ? null
-                : () => unawaited(
-                      onOpenDirectDirections!(
-                        DirectionsDirectProvider.waze,
-                        target,
-                      ),
-                    ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _DirectionProviderButton(
-            key: Key(
-                isPrimary ? 'eventMainUberButton' : 'eventSecondaryUberButton'),
-            label: 'Uber',
-            icon: Icons.local_taxi,
-            height: height,
-            textStyle: textStyle,
-            onPressed: onOpenDirectDirections == null || !target.hasCoordinates
-                ? null
-                : () => unawaited(
-                      onOpenDirectDirections!(
-                        DirectionsDirectProvider.uber,
-                        target,
-                      ),
-                    ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: isPrimary ? 56 : 44,
-          child: _DirectionProviderButton(
-            key: Key(
-              isPrimary
-                  ? 'eventMainOtherDirectionsButton'
-                  : 'eventSecondaryOtherDirectionsButton',
-            ),
-            label: '',
-            icon: Icons.more_horiz,
-            height: height,
-            textStyle: textStyle,
-            onPressed: onOpenOtherDirections == null
-                ? null
-                : () => unawaited(onOpenOtherDirections!(target)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DirectionProviderButton extends StatelessWidget {
-  const _DirectionProviderButton({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.height,
-    required this.textStyle,
-    required this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final double height;
-  final TextStyle? textStyle;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = label.isEmpty
-        ? Icon(icon, size: 20)
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textStyle,
-                ),
-              ),
-            ],
-          );
-
-    return FilledButton.tonal(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        minimumSize: Size.fromHeight(height),
-        padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 8 : 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: child,
     );
   }
 }

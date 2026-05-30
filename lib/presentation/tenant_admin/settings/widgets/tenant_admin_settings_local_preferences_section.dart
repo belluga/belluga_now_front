@@ -146,7 +146,7 @@ class _DefaultOriginEditor extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Origem padrão de localização',
+              'Ponto de referência de localização',
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 6),

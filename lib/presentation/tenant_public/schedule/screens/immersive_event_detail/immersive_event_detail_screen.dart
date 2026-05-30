@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
@@ -144,8 +145,7 @@ class _ImmersiveEventDetailScreenState
 
                             final tabs = <ImmersiveTabItem>[
                               if (_hasAboutContent(resolvedEvent))
-                                ImmersiveTabItem(
-                                  title: 'Sobre',
+                                ImmersiveCommonTabs.about(
                                   content:
                                       EventInfoSection(event: resolvedEvent),
                                   footer: null,
@@ -188,8 +188,7 @@ class _ImmersiveEventDetailScreenState
                                 favoriteAccountProfileIds:
                                     favoriteAccountProfileIds,
                               ),
-                              ImmersiveTabItem(
-                                title: 'Como Chegar',
+                              ImmersiveCommonTabs.directions(
                                 content: LocationSection(
                                   event: resolvedEvent,
                                   canOpenMap: _canOpenEventMap(resolvedEvent),

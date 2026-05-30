@@ -64,6 +64,13 @@ void main() {
       'Como Chegar',
     );
     expect(find.text('Quiosques, píer e acesso fácil.'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
+    expect(find.byKey(const Key('staticAssetMainWazeButton')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetMainUberButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('staticAssetMainOtherDirectionsButton')),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -267,7 +274,8 @@ class _RecordingStackRouter extends Fake implements StackRouter {
       <List<PageRouteInfo<dynamic>>>[];
 
   @override
-  RootStackRouter get root => _FakeRootStackRouter('/static/praia-das-virtudes');
+  RootStackRouter get root =>
+      _FakeRootStackRouter('/static/praia-das-virtudes');
 
   @override
   bool canPop({

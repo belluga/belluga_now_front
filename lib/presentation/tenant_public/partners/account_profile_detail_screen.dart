@@ -21,8 +21,10 @@ import 'package:belluga_now/presentation/shared/widgets/account_profile_identity
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
@@ -581,16 +583,13 @@ class _AccountProfileDetailScreenState
           ),
         )
         .map(
-          (tab) => ImmersiveTabItem(
-            title: tab.title,
-            content: _buildModules(tab.modules, moduleData),
-            footer: _buildTabFooter(
-              accountProfile,
-              tab,
-              location: locationView,
-              isFav: isFav,
-              isFavoritable: isFavoritable,
-            ),
+          (tab) => _buildConfiguredTab(
+            accountProfile,
+            tab,
+            moduleData,
+            location: locationView,
+            isFav: isFav,
+            isFavoritable: isFavoritable,
           ),
         )
         .toList();
@@ -602,6 +601,38 @@ class _AccountProfileDetailScreenState
     tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
+  }
+
+  ImmersiveTabItem _buildConfiguredTab(
+    AccountProfileModel accountProfile,
+    ProfileTabConfig tab,
+    Map<ProfileModuleId, Object?> moduleData, {
+    required PartnerLocationView? location,
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
+    final content = _buildModules(tab.modules, moduleData);
+    final footer = _buildTabFooter(
+      accountProfile,
+      tab,
+      location: location,
+      isFav: isFav,
+      isFavoritable: isFavoritable,
+    );
+    final normalizedTitle = tab.title.trim().toLowerCase();
+
+    if (normalizedTitle == ImmersiveCommonTabs.aboutTitle.toLowerCase()) {
+      return ImmersiveCommonTabs.about(content: content, footer: footer);
+    }
+    if (normalizedTitle.contains('chegar')) {
+      return ImmersiveCommonTabs.directions(content: content, footer: footer);
+    }
+
+    return ImmersiveCommonTabs.custom(
+      title: tab.title,
+      content: content,
+      footer: footer,
+    );
   }
 
   List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
@@ -960,10 +991,6 @@ class _AccountProfileDetailScreenState
       return _favoriteFooter(accountProfile);
     }
 
-    if (lowerTitle.contains('chegar') && _canOpenMaps(location)) {
-      return _routeFooter(location!);
-    }
-
     return null;
   }
 
@@ -985,18 +1012,6 @@ class _AccountProfileDetailScreenState
         onPressed: () => _handleFavoriteTap(accountProfile.id),
         icon: const Icon(Icons.favorite_border),
         label: const Text('Favoritar'),
-        style: _primaryFooterButtonStyle(),
-      ),
-    );
-  }
-
-  Widget _routeFooter(PartnerLocationView location) {
-    return _buildFooterShell(
-      child: FilledButton.icon(
-        key: const Key('accountProfileRouteFooterButton'),
-        onPressed: () => _presentDirectionsChooser(location),
-        icon: const Icon(Icons.navigation_outlined),
-        label: const Text('Traçar rota'),
         style: _primaryFooterButtonStyle(),
       ),
     );
@@ -1178,151 +1193,30 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _locationInfo(PartnerLocationView? location) {
-    final colorScheme = Theme.of(context).colorScheme;
     final distanceLabel = widget.accountProfile.distanceMeters == null
         ? null
         : _distanceLabelFromMeters(widget.accountProfile.distanceMeters!);
     final resolvedAddress = location?.address.trim();
     final hasAddress = resolvedAddress != null && resolvedAddress.isNotEmpty;
     final canOpenProfileMap = _canOpenProfileMap(location);
-    final distanceBadgeBackground = Colors.white.withValues(alpha: 0.96);
-    final distanceBadgeForeground =
-        _contentColorForBackground(distanceBadgeBackground);
-    final addressCardBackground = colorScheme.surface.withValues(alpha: 0.95);
-    final addressCardForeground =
-        _contentColorForBackground(addressCardBackground);
+    final directionsTarget = _directionsTargetFromLocation(location);
 
-    return Padding(
+    return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Como Chegar',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            key: const Key('accountProfileLocationTile'),
-            onTap: canOpenProfileMap ? _openProfileMap : null,
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildLocationMapCanvas(location),
-                  if (distanceLabel != null)
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: Container(
-                        key: const Key('accountProfileLocationDistanceBadge'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: distanceBadgeBackground,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          distanceLabel,
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: distanceBadgeForeground,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: addressCardBackground,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.near_me_outlined,
-                              color: _contentColorForBackground(
-                                colorScheme.primaryContainer,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Ver no mapa',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(
-                                        color: addressCardForeground,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                                if (hasAddress) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    resolvedAddress,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: addressCardForeground,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (canOpenProfileMap)
-                            Icon(
-                              Icons.map_outlined,
-                              color: addressCardForeground,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      mapCanvas: _buildLocationMapCanvas(location),
+      destinationSubtitle: hasAddress ? resolvedAddress : null,
+      distanceLabel: distanceLabel,
+      canOpenMap: canOpenProfileMap,
+      onOpenMap: canOpenProfileMap ? _openProfileMap : null,
+      directionsTarget: directionsTarget,
+      onOpenDirectDirections: _openDirectDirections,
+      onOpenOtherDirections: _presentDirectionsTarget,
+      mapTileKey: const Key('accountProfileLocationTile'),
+      distanceBadgeKey: const Key('accountProfileLocationDistanceBadge'),
+      primaryWazeButtonKey: const Key('accountProfileMainWazeButton'),
+      primaryUberButtonKey: const Key('accountProfileMainUberButton'),
+      primaryOtherButtonKey:
+          const Key('accountProfileMainOtherDirectionsButton'),
     );
   }
 
@@ -1443,12 +1337,21 @@ class _AccountProfileDetailScreenState
     _safeRouterPushPath(path);
   }
 
-  void _presentDirectionsChooser(PartnerLocationView? location) {
-    final target = _directionsTargetFromLocation(location);
-    if (target == null) {
-      return;
+  Future<void> _openDirectDirections(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  ) async {
+    final launched = await _directionsAppChooser.launchDirect(
+      provider: provider,
+      target: target,
+    );
+    if (!launched) {
+      _showStatusMessage('Não foi possível abrir o aplicativo de rota.');
     }
-    _directionsAppChooser.present(
+  }
+
+  Future<void> _presentDirectionsTarget(DirectionsLaunchTarget target) async {
+    await _directionsAppChooser.present(
       context,
       target: target,
       onStatusMessage: _showStatusMessage,
