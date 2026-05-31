@@ -131,6 +131,41 @@ void main() {
   });
 
   test(
+      'discovery stops automatic pagination when a subsequent page request fails',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+                id: _mongoId('page-fail-1'), type: 'artist', name: 'First'),
+          ],
+          hasMore: true,
+        ),
+      },
+      failingPages: const <int>{2},
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+
+    await controller.init();
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(controller.hasMoreStreamValue.value, isTrue);
+
+    await controller.loadNextPage();
+
+    expect(controller.isPageLoadingStreamValue.value, isFalse);
+    expect(controller.hasMoreStreamValue.value, isFalse);
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+
+    await controller.loadNextPage();
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+    controller.onDispose();
+  });
+
+  test(
       'discovery re-entry keeps shared schedule stream alive and pagination healthy',
       () async {
     final repository = _FakeAccountProfilesRepository(
@@ -742,6 +777,79 @@ void main() {
     );
     expect(find.text('Descubra'), findsOneWidget);
     expect(find.byIcon(Icons.search), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen stops repeated bottom-scroll pagination after next page failure',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: List<AccountProfileModel>.generate(
+            40,
+            (index) => _profile(
+              id: _mongoId('ui-page-fail-$index'),
+              type: 'artist',
+              name: 'Perfil Scroll $index',
+            ),
+          ),
+          hasMore: true,
+        ),
+      },
+      failingPages: const <int>{2},
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1]);
+
+    expect(controller.scrollController.hasClients, isTrue);
+    expect(
+        controller.scrollController.position.maxScrollExtent, greaterThan(0));
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+    expect(controller.hasMoreStreamValue.value, isFalse);
+    expect(controller.isPageLoadingStreamValue.value, isFalse);
+
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
@@ -1805,10 +1913,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     required this.pages,
     this.nearbyProfiles = const <AccountProfileModel>[],
+    this.failingPages = const <int>{},
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
   final List<AccountProfileModel> nearbyProfiles;
+  final Set<int> failingPages;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
@@ -1855,6 +1965,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         taxonomyFilters: normalizedTaxonomyFilters,
       ),
     );
+    if (failingPages.contains(pageValue)) {
+      throw Exception('forced discovery page $pageValue failure');
+    }
     var result = pages[pageValue] ??
         pagedAccountProfilesResultFromRaw(
           profiles: const <AccountProfileModel>[],

@@ -255,6 +255,14 @@ abstract class AccountProfilesRepositoryContract {
       pagedAccountProfilesErrorStreamValue.addValue(
         AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
       );
+      _paginationState.hasMore =
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
+      hasMorePagedAccountProfilesStreamValue.addValue(
+        _paginationState.hasMore,
+      );
       if (page.value == 1) {
         discoveryFilteredAccountProfilesStreamValue.addValue(
           const <AccountProfileModel>[],
@@ -265,10 +273,14 @@ abstract class AccountProfilesRepositoryContract {
             hasMore: false,
           ),
         );
-        hasMorePagedAccountProfilesStreamValue.addValue(
-          AccountProfilesRepositoryContractPrimBool.fromRaw(
-            false,
-            defaultValue: false,
+      } else {
+        final currentProfiles =
+            _paginationState.pagedAccountProfilesStreamValue.value?.profiles ??
+                const <AccountProfileModel>[];
+        pagedAccountProfilesStreamValue.addValue(
+          pagedAccountProfilesResultFromRaw(
+            profiles: currentProfiles,
+            hasMore: false,
           ),
         );
       }
