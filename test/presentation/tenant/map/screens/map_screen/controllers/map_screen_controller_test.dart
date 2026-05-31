@@ -3541,6 +3541,79 @@ void main() {
       },
     );
 
+    test(
+      'hydrates account profile lookup before exposing reference point eligibility',
+      () async {
+        final fakeMapHandle = _FakeMapHandle();
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(
+            mapRepository: mapRepository,
+            accountProfilesRepository: accountProfilesRepository,
+            staticAssetsRepository: staticAssetsRepository,
+          ),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: fakeMapHandle,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: proximityPreferencesRepository,
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+          fakeMapHandle.dispose();
+        });
+
+        accountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+          coverUrl: 'https://tenant.test/media/casa-cover.png',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        mapRepository.nextPois = const <CityPoiModel>[];
+        mapRepository.nextLookupPoi = _buildPoi(
+          id: 'poi-lookup-profile',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localController.init(
+          initialPoiQuery: 'account_profile:507f1f77bcf86cd799439011',
+        );
+        await _flushMicrotasks();
+
+        final selectedPoi = localController.selectedPoiStreamValue.value;
+        expect(selectedPoi?.id, 'poi-lookup-profile');
+        expect(
+          selectedPoi?.visual?.imageUri,
+          'https://tenant.test/media/casa-avatar.png',
+        );
+        expect(
+          selectedPoi?.coverImageUri,
+          'https://tenant.test/media/casa-cover.png',
+        );
+        expect(
+          accountProfilesRepository.requestedSlugs,
+          contains('casa-marracini'),
+        );
+        expect(
+          localController.hydratedAccountProfileForPoi(selectedPoi!),
+          isNotNull,
+        );
+        expect(
+          localController.canUsePoiAsReferencePoint(selectedPoi),
+          isTrue,
+        );
+      },
+    );
+
     test('hydrates initial poi before refreshIfPermitted completes', () async {
       final refreshCompleter = Completer<bool>();
       userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
@@ -4541,6 +4614,62 @@ void main() {
     );
 
     testWidgets(
+      'selected filter chip adopts backend visual colors when marker override is disabled',
+      (tester) async {
+        final router = _RecordingStackRouter()..canPopResult = false;
+
+        await _pumpMapScreen(
+          tester,
+          router: router,
+          fallbackRoute: const TenantHomeRoute(),
+        );
+
+        controller.filterOptionsStreamValue.addValue(
+          PoiFilterOptions(
+            categories: <PoiFilterCategory>[
+              _buildCategory(
+                key: 'perfis',
+                label: 'Perfis Configurados',
+                overrideMarker: false,
+                markerOverride: _buildIconMarkerOverride(
+                  icon: 'storefront',
+                  colorHex: '#0F766E',
+                  iconColorHex: '#FFFFFF',
+                ),
+              ),
+            ],
+          ),
+        );
+        controller.activeCatalogFilterKeyStreamValue.addValue('perfis');
+        controller.activeFilterLabelStreamValue.addValue('Perfis Configurados');
+        await tester.pump();
+
+        final category =
+            controller.filterOptionsStreamValue.value!.categories.single;
+        expect(category.overrideMarker, isFalse);
+        expect(category.filterVisual?.colorHex, '#0F766E');
+        expect(category.markerOverrideVisual, isNull);
+        expect(find.text('Perfis Configurados'), findsOneWidget);
+
+        final chipDecoration = tester.widget<DecoratedBox>(
+          find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+        );
+        final boxDecoration = chipDecoration.decoration as BoxDecoration;
+        expect(boxDecoration.color, const Color(0xFF0F766E));
+
+        final selectedIcon = tester.widget<Icon>(
+          find.descendant(
+            of: find.byKey(const ValueKey<String>('map-selected-filter-chip')),
+            matching: find.byIcon(
+              MapMarkerVisualResolver.resolveIcon('storefront'),
+            ),
+          ),
+        );
+        expect(selectedIcon.color, Colors.white);
+      },
+    );
+
+    testWidgets(
       'selected filter chip keeps backend category icon while clear is pending',
       (tester) async {
         final router = _RecordingStackRouter()..canPopResult = false;
@@ -4979,6 +5108,91 @@ void main() {
         await localPoiRepository.ensurePoiHydrated(poi);
         expect(localController.canUsePoiAsReferencePoint(poi), isTrue);
         expect(localController.isPoiReferencePoint(poi), isTrue);
+
+        await localController.onDispose();
+      },
+    );
+
+    testWidgets(
+      'map deck asks for confirmation before saving account profile reference point',
+      (tester) async {
+        final localProximityRepository = _FakeProximityPreferencesRepository();
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: localProximityRepository,
+        );
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeck(
+          tester,
+          controller: localController,
+          router: _RecordingStackRouter(),
+        );
+
+        await tester
+            .tap(find.byKey(const Key('poiCardSetReferencePointButton')));
+        await tester.pumpAndSettle();
+
+        expect(localProximityRepository.lastFixedReference, isNull);
+        expect(
+          find.text(
+            'Todas as distâncias serão calculadas a partir desse local:',
+          ),
+          findsOneWidget,
+        );
+        final previewCard = find.byKey(
+          const Key('poiReferencePointPreviewCard'),
+        );
+        expect(previewCard, findsOneWidget);
+        expect(
+          find.descendant(
+              of: previewCard, matching: find.text('Casa Marracini')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: previewCard, matching: find.text('Artist')),
+          findsOneWidget,
+        );
+
+        await tester
+            .tap(find.byKey(const Key('poiReferencePointConfirmButton')));
+        await tester.pumpAndSettle();
+
+        final fixedReference = localProximityRepository.lastFixedReference;
+        expect(fixedReference, isNotNull);
+        expect(fixedReference!.entityNamespace, 'account_profile');
+        expect(fixedReference.entityId, '507f1f77bcf86cd799439011');
+        expect(fixedReference.label, 'Casa Marracini');
 
         await localController.onDispose();
       },

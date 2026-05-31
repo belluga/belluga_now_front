@@ -8,14 +8,17 @@ import 'package:belluga_now/application/sharing/account_profile_public_share_pay
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_content_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/single_poi_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -181,7 +184,185 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
     return PoiCardReferencePointAction(
       isActive: _controller.isPoiReferencePoint(poi),
-      onTap: () => unawaited(_controller.setPoiAsReferencePoint(poi)),
+      onTap: () => unawaited(_handleReferencePointTap(poi)),
+    );
+  }
+
+  Future<void> _handleReferencePointTap(CityPoiModel poi) async {
+    if (_controller.isPoiReferencePoint(poi)) {
+      return;
+    }
+    final confirmed = await _showReferencePointConfirmationDialog(poi);
+    if (!confirmed) {
+      return;
+    }
+    await _controller.setPoiAsReferencePoint(poi);
+  }
+
+  Future<bool> _showReferencePointConfirmationDialog(CityPoiModel poi) async {
+    final profile = _controller.hydratedAccountProfileForPoi(poi);
+    if (profile == null) {
+      return false;
+    }
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('poiReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Todas as distâncias serão calculadas a partir desse local:',
+                style: Theme.of(dialogContext).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 16),
+              _buildReferencePointPreviewCard(
+                dialogContext,
+                poi: poi,
+                profile: profile,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              key: const Key('poiReferencePointConfirmButton'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.location_on_outlined),
+              label: const Text('Usar como Ponto de Referência'),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Widget _buildReferencePointPreviewCard(
+    BuildContext context, {
+    required CityPoiModel poi,
+    required AccountProfileModel profile,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualForAccountProfile(profile);
+    final typeLabel = resolvedVisual.typeLabel.trim();
+    final address =
+        profile.locationAddress ?? PoiContentResolver.compactAddress(poi);
+    final distanceLabel = PoiContentResolver.distanceLabel(
+      poi,
+      includeAudienceSuffix: true,
+    );
+
+    return Container(
+      key: const Key('poiReferencePointPreviewCard'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: AccountProfileIdentityBlock(
+        name: profile.name,
+        avatarUrl: resolvedVisual.identityAvatarUrl,
+        typeVisual: resolvedVisual.typeVisual,
+        avatarSize: 44,
+        avatarSpacing: 10,
+        typeAvatarSize: 22,
+        typeAvatarIconSize: 14,
+        titleMaxLines: 1,
+        titleStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+        supportingSpacing: 8,
+        supporting: _buildReferencePointPreviewSupporting(
+          context,
+          typeLabel: typeLabel,
+          address: address,
+          distanceLabel: distanceLabel,
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildReferencePointPreviewSupporting(
+    BuildContext context, {
+    required String typeLabel,
+    required String? address,
+    required String? distanceLabel,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final rows = <Widget>[
+      if (typeLabel.isNotEmpty)
+        Text(
+          typeLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      if (address != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: address,
+        )
+      else if (distanceLabel != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: distanceLabel,
+        ),
+    ];
+
+    if (rows.isEmpty) {
+      return null;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < rows.length; index++) ...[
+          if (index > 0) const SizedBox(height: 4),
+          rows[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReferencePointPreviewMetaRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+      ],
     );
   }
 

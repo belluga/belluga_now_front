@@ -48,9 +48,13 @@ void main() {
       isNot(contains('taxonomy:genre:brasilidades')),
     );
     expect(filters.categories.single.key, 'events');
+    expect(filters.categories.single.label, 'Agenda Configurada');
     expect(filters.categories.single.serverQuery?.sourceValue?.value, 'event');
     expect(filters.categories.single.overrideMarker, isFalse);
     expect(filters.categories.single.filterVisual?.isIcon, isTrue);
+    expect(filters.categories.single.filterVisual?.icon, 'music');
+    expect(filters.categories.single.filterVisual?.colorHex, '#C6141F');
+    expect(filters.categories.single.filterVisual?.iconColorHex, '#FFFFFF');
     expect(filters.categories.single.markerOverrideVisual, isNull);
   });
 }
@@ -73,7 +77,7 @@ class _MapFiltersAdapter implements HttpClientAdapter {
         'categories': [
           {
             'key': 'events',
-            'label': 'Events',
+            'label': 'Agenda Configurada',
             'count': 1,
             'override_marker': false,
             'marker_override': {

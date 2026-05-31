@@ -800,7 +800,8 @@ void main() {
     expect(adapter.requests.single.uri.path, '/admin/api/v1/domains/domain-1');
   });
 
-  test('updateMapUiSettings patches map_ui namespace payload', () async {
+  test('updateMapUiSettings patches map_ui namespace without legacy filters',
+      () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
@@ -877,43 +878,16 @@ void main() {
     expect(payload['default_origin.lat'], -20.611111);
     expect(payload['default_origin.lng'], -40.422222);
     expect(payload['default_origin.label'], 'Praia do Morro');
-    expect(payload['filters'], isA<List<dynamic>>());
-    final filtersPayload = payload['filters'] as List<dynamic>;
-    expect(filtersPayload, hasLength(1));
-    final firstFilterPayload =
-        Map<String, dynamic>.from(filtersPayload.first as Map);
-    final queryPayload = Map<String, dynamic>.from(
-      firstFilterPayload['query'] as Map,
+    expect(payload.containsKey('filters'), isFalse);
+    expect(
+      payload.keys.where((key) => key.startsWith('filters.')),
+      isEmpty,
     );
-    expect(firstFilterPayload['override_marker'], isFalse);
-    final markerOverridePayload =
-        Map<String, dynamic>.from(firstFilterPayload['marker_override'] as Map);
-    expect(markerOverridePayload['mode'], 'icon');
-    expect(markerOverridePayload['icon'], 'music');
-    expect(queryPayload['source'], 'event');
-    expect(queryPayload['types'], equals(['show']));
-    expect(queryPayload['taxonomy'], equals(['music_genre:rock']));
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
     expect(updated.defaultOrigin!.label, 'Praia do Morro');
-    expect(updated.filters, hasLength(1));
-    expect(updated.filters.first.key, 'events');
-    expect(updated.filters.first.label, 'Eventos');
-    expect(
-      updated.filters.first.imageUri,
-      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
-    );
-    expect(
-        updated.filters.first.query.source, TenantAdminMapFilterSource.event);
-    expect(
-      updated.filters.first.query.types.map((entry) => entry.value).toList(),
-      equals(['show']),
-    );
-    expect(
-      updated.filters.first.query.taxonomy.map((entry) => entry.value).toList(),
-      equals(['music_genre:rock']),
-    );
+    expect(updated.filters, isEmpty);
   });
 
   test('updateAppLinksSettings patches app_links namespace payload', () async {

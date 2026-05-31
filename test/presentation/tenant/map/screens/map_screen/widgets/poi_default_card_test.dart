@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart
 import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_default_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,6 +65,44 @@ void main() {
   });
 
   testWidgets(
+      'hydrated account profile card renders cover in hero and avatar in title',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PoiDefaultCard(
+            poi: _buildAccountProfilePoi(
+              avatarUrl: 'https://tenant.test/media/casa-avatar.png',
+              coverUrl: 'https://tenant.test/media/casa-cover.png',
+            ),
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            onPrimaryAction: () {},
+            secondaryAction: null,
+            onRoute: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is BellugaNetworkImage &&
+            widget.url == 'https://tenant.test/media/casa-cover.png',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is BellugaNetworkImage &&
+            widget.url == 'https://tenant.test/media/casa-avatar.png',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
       'cards with remote cover use branded hero placeholder instead of generic gray image placeholder',
       (tester) async {
     await tester.pumpWidget(
@@ -110,6 +149,7 @@ void main() {
     );
 
     expect(find.text('Usar como ponto de referência'), findsOneWidget);
+    expect(find.byIcon(Icons.location_on_outlined), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('poiCardSetReferencePointButton')));
     await tester.pump();
@@ -145,6 +185,8 @@ void main() {
 
 CityPoiModel _buildAccountProfilePoi({
   String refType = 'account_profile',
+  String avatarUrl = 'https://tenant.test/media/casa-avatar.png',
+  String? coverUrl,
 }) {
   final idValue = CityPoiIdValue()..parse('poi-1');
   final nameValue = CityPoiNameValue()..parse('Casa Marracini');
@@ -156,8 +198,9 @@ CityPoiModel _buildAccountProfilePoi({
   final refIdValue = PoiReferenceIdValue()..parse('profile-1');
   final latitude = LatitudeValue()..parse('-20.0');
   final longitude = LongitudeValue()..parse('-40.0');
-  final imageUriValue = PoiFilterImageUriValue()
-    ..parse('https://tenant.test/media/casa-avatar.png');
+  final imageUriValue = PoiFilterImageUriValue()..parse(avatarUrl);
+  final coverImageUriValue =
+      coverUrl == null ? null : (PoiFilterImageUriValue()..parse(coverUrl));
 
   return CityPoiModel(
     idValue: idValue,
@@ -173,6 +216,7 @@ CityPoiModel _buildAccountProfilePoi({
     refTypeValue: refTypeValue,
     refIdValue: refIdValue,
     stackItems: CityPoiStackItems(),
+    coverImageUriValue: coverImageUriValue,
     visual: CityPoiVisual.image(
       imageUriValue: imageUriValue,
     ),

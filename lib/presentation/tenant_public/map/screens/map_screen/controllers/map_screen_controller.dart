@@ -61,6 +61,8 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_selected_poi_memory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
@@ -255,6 +257,15 @@ class MapScreenController implements Disposable {
 
   AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedAccountProfileForPoi(poi);
+  }
+
+  ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    return AccountProfileVisualResolver.resolve(
+      accountProfile: accountProfile,
+      registry: _appData.profileTypeRegistry,
+    );
   }
 
   bool canUsePoiAsReferencePoint(CityPoiModel poi) {
@@ -996,10 +1007,13 @@ class MapScreenController implements Disposable {
       return;
     }
 
-    if (selectedPoiStreamValue.value?.id != resolvedPoi.id) {
-      selectPoi(resolvedPoi);
+    final hydratedPoi = await _hydratePoiForSelection(resolvedPoi);
+    final selectablePoi = hydratedPoi ?? resolvedPoi;
+
+    if (selectedPoiStreamValue.value?.id != selectablePoi.id) {
+      selectPoi(selectablePoi);
     }
-    _queueInitialPoiFocus(resolvedPoi);
+    _queueInitialPoiFocus(selectablePoi);
   }
 
   String? _normalizePoiQuery(String? rawPoiQuery) {

@@ -152,6 +152,11 @@ void main() {
     final decoration = avatarContainer.decoration as BoxDecoration;
     expect(decoration.shape, BoxShape.circle);
     expect(decoration.color, const Color(0xFF7E22CE));
+
+    final heroFallback = tester.widget<Container>(
+      find.byKey(const Key('accountProfileHeroDefaultFallback')),
+    );
+    expect(heroFallback.alignment, const Alignment(0, -0.62));
   });
 
   testWidgets('hero renders avatar with type badge overlay when avatar exists',
@@ -184,6 +189,93 @@ void main() {
         findsOneWidget);
     expect(
         find.byKey(const Key('accountProfileHeroTypeAvatar')), findsOneWidget);
+  });
+
+  testWidgets('hero fades cover into theme surface before profile data',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439115',
+            name: 'QA Discovery Tag Longa',
+            slug: 'qa-discovery-tag-longa',
+            type: 'restaurant',
+            coverUrl: 'https://tenant.test/cover.png',
+            distanceMeters: 0,
+            locationLat: -20.7389,
+            locationLng: -40.8212,
+            tags: const [
+              'Super Festival Gastronômico Com Nome Muito Grande',
+              'Música Instrumental Experimental Noturna',
+              'Ao Vivo',
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+    expect(appBar.expandedHeight, 400);
+
+    final summaryFinder = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(summaryFinder, findsOneWidget);
+
+    final summaryContext = tester.element(summaryFinder);
+    final colorScheme = Theme.of(summaryContext).colorScheme;
+
+    final fadeBox = tester.widget<DecoratedBox>(
+      find.byKey(const Key('accountProfileHeroFadeGradient')),
+    );
+    final decoration = fadeBox.decoration as BoxDecoration;
+    final gradient = decoration.gradient as LinearGradient;
+
+    expect(
+      gradient.stops,
+      const <double>[0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
+    );
+    expect(gradient.colors.first, Colors.transparent);
+    expect(gradient.colors.last, colorScheme.surface);
+
+    final title = tester.widget<Text>(
+      find.descendant(
+        of: summaryFinder,
+        matching: find.text('QA Discovery Tag Longa'),
+      ),
+    );
+    expect(title.style?.color, colorScheme.onSurface);
+
+    final referencePointButton = find.byKey(
+      const Key('accountProfileHeroReferencePointButton'),
+    );
+    expect(referencePointButton, findsOneWidget);
+    final buttonLabel = tester.widget<Text>(
+      find.descendant(
+        of: referencePointButton,
+        matching: find.text('Usar como ponto de referência'),
+      ),
+    );
+    expect(buttonLabel.maxLines, 1);
   });
 
   testWidgets('account profile detail exposes the canonical share action',
@@ -1164,10 +1256,43 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final referencePointButton = find.byKey(
+      const Key('accountProfileHeroReferencePointButton'),
+    );
     expect(find.text('Usar como ponto de referência'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: referencePointButton,
+        matching: find.byIcon(Icons.location_on_outlined),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(referencePointButton);
+    await tester.pumpAndSettle();
+
+    expect(proximityRepository.lastFixedReference, isNull);
+    expect(
+      find.text(
+        'Todas as distâncias serão calculadas a partir desse local:',
+      ),
+      findsOneWidget,
+    );
+    final previewCard = find.byKey(
+      const Key('accountProfileReferencePointPreviewCard'),
+    );
+    expect(previewCard, findsOneWidget);
+    expect(
+      find.descendant(of: previewCard, matching: find.text('Casa Marracini')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: previewCard, matching: find.text('Restaurante')),
+      findsOneWidget,
+    );
 
     await tester.tap(
-      find.byKey(const Key('accountProfileHeroReferencePointButton')),
+      find.byKey(const Key('accountProfileReferencePointConfirmButton')),
     );
     await tester.pumpAndSettle();
 

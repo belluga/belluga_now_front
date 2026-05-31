@@ -137,6 +137,7 @@ class _AccountProfileDetailScreenState
                                         heroContent: _buildHero(
                                           resolvedAccountProfile,
                                         ),
+                                        heroViewportHeightFactor: 0.5,
                                         title: resolvedAccountProfile.name,
                                         collapsedTitle: _buildCollapsedTitle(
                                           resolvedAccountProfile,
@@ -191,61 +192,92 @@ class _AccountProfileDetailScreenState
       colorScheme: colorScheme,
       visual: resolvedVisual.typeVisual,
     );
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        resolvedVisual.surfaceImageUrl != null
-            ? BellugaNetworkImage(
-                resolvedVisual.surfaceImageUrl!,
-                fit: BoxFit.cover,
-                errorWidget: fallbackHero,
-              )
-            : fallbackHero,
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  Colors.transparent,
-                  colorScheme.surface.withValues(alpha: 0.16),
-                  colorScheme.surface.withValues(alpha: 0.9),
-                ],
-                stops: const <double>[0, 0.62, 1],
+
+    return ColoredBox(
+      color: colorScheme.surface,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          resolvedVisual.surfaceImageUrl != null
+              ? BellugaNetworkImage(
+                  resolvedVisual.surfaceImageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorWidget: fallbackHero,
+                )
+              : fallbackHero,
+          Positioned.fill(
+            child: DecoratedBox(
+              key: const Key('accountProfileHeroFadeGradient'),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Colors.transparent,
+                    colorScheme.surface.withValues(alpha: 0.06),
+                    colorScheme.surface.withValues(alpha: 0.22),
+                    colorScheme.surface.withValues(alpha: 0.48),
+                    colorScheme.surface.withValues(alpha: 0.72),
+                    colorScheme.surface.withValues(alpha: 0.9),
+                    colorScheme.surface,
+                  ],
+                  stops: const <double>[
+                    0,
+                    0.16,
+                    0.32,
+                    0.48,
+                    0.64,
+                    0.8,
+                    1,
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: 24,
-          child: AccountProfileIdentityBlock(
-            name: accountProfile.name,
-            avatarUrl: resolvedVisual.identityAvatarUrl,
-            typeVisual: resolvedVisual.typeVisual,
-            identityAvatarKey: const Key('accountProfileHeroIdentityAvatar'),
-            typeAvatarKey: const Key('accountProfileHeroTypeAvatar'),
-            avatarSize: 56,
-            avatarSpacing: 14,
-            typeAvatarSize: 28,
-            typeAvatarIconSize: 16,
-            titleSpacing: 10,
-            supportingSpacing: 12,
-            titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  height: 0.95,
-                ),
-            titleTrailing: [
-              if (accountProfile.isVerified)
-                _buildVerifiedBadge(onDarkBackground: true),
-            ],
-            supporting: _buildHeroSupporting(accountProfile),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildHeroSurfaceSummary(accountProfile),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroSurfaceSummary(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
+
+    return KeyedSubtree(
+      key: const Key('accountProfileHeroSurfaceSummary'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        child: AccountProfileIdentityBlock(
+          name: accountProfile.name,
+          avatarUrl: resolvedVisual.identityAvatarUrl,
+          typeVisual: resolvedVisual.typeVisual,
+          identityAvatarKey: const Key('accountProfileHeroIdentityAvatar'),
+          typeAvatarKey: const Key('accountProfileHeroTypeAvatar'),
+          avatarSize: 56,
+          avatarSpacing: 14,
+          typeAvatarSize: 28,
+          typeAvatarIconSize: 16,
+          titleSpacing: 10,
+          supportingSpacing: 12,
+          titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+                height: 0.95,
+              ),
+          titleTrailing: [
+            if (accountProfile.isVerified)
+              _buildVerifiedBadge(onDarkBackground: false),
+          ],
+          supporting: _buildHeroSupporting(accountProfile),
         ),
-      ],
+      ),
     );
   }
 
@@ -423,8 +455,9 @@ class _AccountProfileDetailScreenState
     required ResolvedProfileTypeVisual? visual,
   }) {
     return Container(
+      key: const Key('accountProfileHeroDefaultFallback'),
       color: visual?.backgroundColor ?? colorScheme.surfaceContainerHighest,
-      alignment: Alignment.center,
+      alignment: const Alignment(0, -0.62),
       child: Icon(
         visual?.iconData ?? Icons.account_circle,
         size: 64,
@@ -434,54 +467,78 @@ class _AccountProfileDetailScreenState
   }
 
   Widget? _buildHeroSupporting(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final chipBackground = colorScheme.surfaceContainerHighest;
+    final chipForeground = chipBackground.computeIconColor(
+      context,
+      candidates: [
+        colorScheme.onSurface,
+        colorScheme.onSurfaceVariant,
+        Colors.black,
+      ],
+    );
     final children = <Widget>[
       if (accountProfile.distanceMeters != null)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.place_outlined,
               size: 16,
-              color: Colors.white70,
+              color: colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 6),
             Text(
               _distanceLabelFromMeters(accountProfile.distanceMeters!),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
             ),
           ],
         ),
       if (accountProfile.tags.isNotEmpty)
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: accountProfile.tags
-              .map(
-                (tag) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
-                    ),
-                  ),
-                  child: Text(
-                    tag.value,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxChipWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width - 32;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: accountProfile.tags
+                  .map(
+                    (tag) => ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxChipWidth),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
                         ),
-                  ),
-                ),
-              )
-              .toList(),
+                        decoration: BoxDecoration(
+                          color: chipBackground,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          tag.value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: chipForeground,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
         ),
       if (_controller.canUseAsReferencePoint(accountProfile))
         _buildHeroReferencePointAction(accountProfile),
@@ -503,37 +560,42 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _buildHeroReferencePointAction(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isCurrent = _controller.isCurrentReferencePoint(accountProfile);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 296),
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton.tonalIcon(
-          key: const Key('accountProfileHeroReferencePointButton'),
-          onPressed: () => unawaited(
-            _handleReferencePointTap(accountProfile),
-          ),
-          icon: Icon(
-            isCurrent ? Icons.check_circle_rounded : Icons.flag_outlined,
-          ),
-          label: Text(
-            isCurrent ? 'Ponto de referência' : 'Usar como ponto de referência',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: isCurrent
-                ? Colors.white.withValues(alpha: 0.22)
-                : Colors.white.withValues(alpha: 0.14),
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: isCurrent ? 0.32 : 0.16),
-            ),
+    final backgroundColor =
+        isCurrent ? colorScheme.secondaryContainer : colorScheme.primary;
+    final foregroundColor = backgroundColor.computeIconColor(
+      context,
+      candidates: [
+        isCurrent ? colorScheme.onSecondaryContainer : colorScheme.onPrimary,
+        colorScheme.onSurface,
+        Colors.white,
+        Colors.black,
+      ],
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        key: const Key('accountProfileHeroReferencePointButton'),
+        onPressed: () => unawaited(
+          _handleReferencePointTap(accountProfile),
+        ),
+        icon: Icon(
+          isCurrent ? Icons.check_circle_rounded : Icons.location_on_outlined,
+        ),
+        label: Text(
+          isCurrent ? 'Ponto de referência' : 'Usar como ponto de referência',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          minimumSize: const Size.fromHeight(44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
@@ -544,6 +606,11 @@ class _AccountProfileDetailScreenState
     AccountProfileModel accountProfile,
   ) async {
     if (_controller.isCurrentReferencePoint(accountProfile)) {
+      return;
+    }
+    final confirmed =
+        await _showReferencePointConfirmationDialog(accountProfile);
+    if (!mounted || !confirmed) {
       return;
     }
     try {
@@ -562,6 +629,167 @@ class _AccountProfileDetailScreenState
       }
       _showStatusMessage('Não foi possível salvar o ponto de referência.');
     }
+  }
+
+  Future<bool> _showReferencePointConfirmationDialog(
+    AccountProfileModel accountProfile,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('accountProfileReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Todas as distâncias serão calculadas a partir desse local:',
+                style: Theme.of(dialogContext).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 16),
+              _buildReferencePointPreviewCard(
+                dialogContext,
+                accountProfile,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              key: const Key('accountProfileReferencePointConfirmButton'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.location_on_outlined),
+              label: const Text('Usar como Ponto de Referência'),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Widget _buildReferencePointPreviewCard(
+    BuildContext context,
+    AccountProfileModel accountProfile,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
+    final typeLabel = _controller.typeLabelFor(accountProfile).trim();
+    final address = accountProfile.locationAddress;
+    final distanceLabel = accountProfile.distanceMeters == null
+        ? null
+        : _distanceLabelFromMeters(accountProfile.distanceMeters!);
+
+    return Container(
+      key: const Key('accountProfileReferencePointPreviewCard'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: AccountProfileIdentityBlock(
+        name: accountProfile.name,
+        avatarUrl: resolvedVisual.identityAvatarUrl,
+        typeVisual: resolvedVisual.typeVisual,
+        avatarSize: 44,
+        avatarSpacing: 10,
+        typeAvatarSize: 22,
+        typeAvatarIconSize: 14,
+        titleMaxLines: 1,
+        titleStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+        supportingSpacing: 8,
+        supporting: _buildReferencePointPreviewSupporting(
+          context,
+          typeLabel: typeLabel,
+          address: address,
+          distanceLabel: distanceLabel,
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildReferencePointPreviewSupporting(
+    BuildContext context, {
+    required String typeLabel,
+    required String? address,
+    required String? distanceLabel,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final rows = <Widget>[
+      if (typeLabel.isNotEmpty)
+        Text(
+          typeLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      if (address != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: address,
+        )
+      else if (distanceLabel != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: distanceLabel,
+        ),
+    ];
+
+    if (rows.isEmpty) {
+      return null;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < rows.length; index++) ...[
+          if (index > 0) const SizedBox(height: 4),
+          rows[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReferencePointPreviewMetaRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+      ],
+    );
   }
 
   List<ImmersiveTabItem> _buildTabsFromConfig(

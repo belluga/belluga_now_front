@@ -17,6 +17,37 @@ void main() {
   });
 
   testWidgets(
+    'hero viewport fraction controls the shared sliver app bar height',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.8,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 200, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+      expect(appBar.expandedHeight, 640);
+    },
+  );
+
+  testWidgets(
     'tab tap keeps the target section start visible with taller collapsed app bar',
     (tester) async {
       await _pumpImmersiveScreen(

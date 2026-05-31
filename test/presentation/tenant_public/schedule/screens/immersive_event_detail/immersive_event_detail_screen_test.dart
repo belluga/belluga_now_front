@@ -399,6 +399,50 @@ void main() {
     expect(find.textContaining('20:00 -'), findsNothing);
   });
 
+  testWidgets('event detail uses eighty percent immersive hero height',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+    expect(appBar.expandedHeight, 640);
+  });
+
   testWidgets(
       'event detail share action generates invite code for the selected occurrence',
       (tester) async {
@@ -1327,12 +1371,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Line-up'), findsNothing);
-    expect(find.text('Artists'), findsNWidgets(2));
+    expect(find.text('Artists'), findsOneWidget);
     expect(find.byKey(const Key('immersiveTabLabel_1')), findsOneWidget);
-    expect(find.text('Como Chegar'), findsNWidgets(2));
+    expect(find.text('Como Chegar'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
-    await tester.pumpAndSettle();
+    await _tapImmersiveTab(tester, 1);
 
     expect(find.text('Ananda Torres'), findsWidgets);
     expect(find.text('Samba'), findsOneWidget);
@@ -1407,6 +1450,8 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+
+    await _tapImmersiveTab(tester, 1);
 
     final favoriteButton =
         find.byKey(const Key('linkedProfileFavoriteButton_artist-1'));
@@ -1701,19 +1746,25 @@ void main() {
     expect(find.text('O Rolê'), findsNothing);
     expect(find.text('O Local'), findsNothing);
     expect(find.text('Sobre'), findsWidgets);
-    expect(find.text('Como Chegar'), findsNWidgets(2));
+    expect(find.text('Como Chegar'), findsOneWidget);
+    expect(find.text('Show tipo'), findsOneWidget);
+    expect(find.text('Ananda Torres'), findsWidgets);
+    expect(find.textContaining('Carvoeiro'), findsWidgets);
+
+    await tester.drag(
+      find.byKey(const Key('immersiveSwipeSurface')),
+      const Offset(0, -700),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.byType(Html), findsOneWidget);
     final htmlWidget = tester.widget<Html>(find.byType(Html));
     expect(htmlWidget.data, contains('<s>riscado</s>'));
     expect(htmlWidget.data, isNot(contains('<u>')));
     expect(htmlWidget.data, isNot(contains('<a')));
     expect(htmlWidget.data, contains('🎉'));
-    expect(find.text('Show tipo'), findsOneWidget);
-    expect(find.text('Ananda Torres'), findsWidgets);
-    expect(find.textContaining('Carvoeiro'), findsWidgets);
 
-    await tester.tap(find.byKey(const Key('immersiveTabLabel_2')));
-    await tester.pumpAndSettle();
+    await _tapImmersiveTab(tester, 2);
 
     expect(find.text('Ver no mapa'), findsOneWidget);
     expect(find.text('Traçar rota'), findsNothing);
@@ -3505,7 +3556,7 @@ void main() {
     expect(find.text('Sobre'), findsNothing);
     expect(find.text('Sem descrição disponível.'), findsNothing);
     expect(find.byType(Html), findsNothing);
-    expect(find.text('Como Chegar'), findsNWidgets(2));
+    expect(find.text('Como Chegar'), findsOneWidget);
     expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
   });
 
@@ -3551,8 +3602,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
-    await tester.pumpAndSettle();
+    await _tapImmersiveTab(tester, 1);
 
     expect(find.text('Traçar rota'), findsNothing);
     expect(find.byKey(const Key('eventMainWazeButton')), findsOneWidget);
@@ -4348,6 +4398,15 @@ EventModel _buildEvent({
     friendsGoing: null,
     totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
   );
+}
+
+Future<void> _tapImmersiveTab(WidgetTester tester, int index) async {
+  final tab = find.byKey(Key('immersiveTab_$index'));
+  expect(tab, findsOneWidget);
+  final inkWell = tester.widget<InkWell>(tab);
+  expect(inkWell.onTap, isNotNull);
+  inkWell.onTap!.call();
+  await tester.pumpAndSettle();
 }
 
 EventOccurrenceOption _buildOccurrence({

@@ -479,7 +479,7 @@ class _ReferencePointButton extends StatelessWidget {
       child: OutlinedButton.icon(
         key: const Key('poiCardSetReferencePointButton'),
         onPressed: action.onTap,
-        icon: const Icon(Icons.flag_outlined),
+        icon: const Icon(Icons.location_on_outlined),
         label: const Text('Usar como ponto de referência'),
         style: OutlinedButton.styleFrom(
           minimumSize: Size.fromHeight(minimumHeight),

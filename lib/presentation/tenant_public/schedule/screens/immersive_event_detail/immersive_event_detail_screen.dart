@@ -259,6 +259,7 @@ class _ImmersiveEventDetailScreenState
                                         }
                                       },
                                     ),
+                                    heroViewportHeightFactor: 0.8,
                                     title: resolvedEvent.title.value,
                                     betweenHeroAndTabs: topBanner,
                                     tabs: tabs,

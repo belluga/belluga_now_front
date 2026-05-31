@@ -26,6 +26,7 @@ class ImmersiveDetailScreen extends StatefulWidget {
   const ImmersiveDetailScreen({
     this.heroContent,
     this.heroContentBuilder,
+    this.heroViewportHeightFactor = 0.5,
     required this.title,
     required this.tabs,
     required this.backPolicy,
@@ -41,9 +42,13 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.shareIcon = Icons.share,
     this.isShareLoading = false,
     super.key,
-  }) : assert(
+  })  : assert(
           heroContent != null || heroContentBuilder != null,
           'Either heroContent or heroContentBuilder must be provided.',
+        ),
+        assert(
+          heroViewportHeightFactor > 0 && heroViewportHeightFactor <= 1,
+          'heroViewportHeightFactor must be greater than 0 and at most 1.',
         );
 
   /// Widget displayed in the hero area (typically an image or custom content)
@@ -52,6 +57,9 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// Optional hero builder for hero content that needs to activate one of the
   /// configured tabs from an in-page affordance.
   final ImmersiveHeroContentBuilder? heroContentBuilder;
+
+  /// Fraction of the viewport height used by the expanded hero.
+  final double heroViewportHeightFactor;
 
   /// Title displayed in the AppBar when collapsed
   final String title;
@@ -164,7 +172,14 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    const appBarExpandedHeight = 400.0;
+    final mediaQuery = MediaQuery.of(context);
+    final requestedHeroHeight =
+        mediaQuery.size.height * widget.heroViewportHeightFactor;
+    final minimumHeroHeight =
+        mediaQuery.padding.top + widget.collapsedToolbarHeight;
+    final appBarExpandedHeight = requestedHeroHeight < minimumHeroHeight
+        ? minimumHeroHeight
+        : requestedHeroHeight;
 
     return RouteBackScope(
       backPolicy: widget.backPolicy,
