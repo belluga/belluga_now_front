@@ -21,10 +21,11 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     final theme = Theme.of(context);
     final effectiveColorScheme = colorScheme ?? theme.colorScheme;
+    final elevation = overlapsContent ? 4.0 : 0.0;
 
     return Material(
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.2),
+      elevation: elevation,
+      shadowColor: elevation > 0 ? Colors.black.withValues(alpha: 0.2) : null,
       color: effectiveColorScheme.surface,
       child: Padding(
         padding: EdgeInsets.only(top: topPadding),

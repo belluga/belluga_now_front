@@ -16,10 +16,13 @@ import 'package:belluga_now/domain/proximity_preferences/proximity_preference.da
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -238,47 +241,37 @@ class _ImmersiveEventDetailScreenState
                               data: Theme.of(context).copyWith(
                                 colorScheme: colorScheme,
                               ),
-                              child: StreamValueBuilder<bool>(
-                                streamValue:
-                                    _controller.isShareActionLoadingStreamValue,
-                                builder: (context, isShareLoading) {
-                                  return ImmersiveDetailScreen(
-                                    heroContentBuilder:
-                                        (context, activateTab) => ImmersiveHero(
-                                      event: resolvedEvent,
-                                      fallbackImageUri:
-                                          _controller.defaultEventImageUri,
-                                      onCounterpartTap: (profile) {
-                                        final targetIndex =
-                                            _linkedProfileTabIndexForHeroTap(
-                                          resolvedEvent,
-                                          profile,
-                                        );
-                                        if (targetIndex != null) {
-                                          activateTab(targetIndex);
-                                        }
-                                      },
-                                    ),
-                                    heroViewportHeightFactor: 0.8,
-                                    title: resolvedEvent.title.value,
-                                    betweenHeroAndTabs: topBanner,
-                                    tabs: tabs,
-                                    canUseTabFooter: (_) => isConfirmed,
-                                    // Don't auto-navigate, let user scroll naturally
-                                    initialTabIndex:
-                                        _resolveInitialTabIndex(tabs, context),
-                                    footer: footer,
-                                    backPolicy:
-                                        buildCanonicalCurrentRouteBackPolicy(
-                                      context,
-                                    ),
-                                    onSharePressed: () => unawaited(
-                                      _shareSelectedEvent(resolvedEvent),
-                                    ),
-                                    shareIcon: BooraIcons.inviteOutlined,
-                                    isShareLoading: isShareLoading,
-                                  );
-                                },
+                              child: ImmersiveDetailScreen(
+                                heroContentBuilder: (context, activateTab) =>
+                                    ImmersiveHero(
+                                  event: resolvedEvent,
+                                  fallbackImageUri:
+                                      _controller.defaultEventImageUri,
+                                  onCounterpartTap: (profile) {
+                                    final targetIndex =
+                                        _linkedProfileTabIndexForHeroTap(
+                                      resolvedEvent,
+                                      profile,
+                                    );
+                                    if (targetIndex != null) {
+                                      activateTab(targetIndex);
+                                    }
+                                  },
+                                ),
+                                heroViewportHeightFactor: 0.65,
+                                title: resolvedEvent.title.value,
+                                betweenHeroAndTabs: topBanner,
+                                tabs: tabs,
+                                canUseTabFooter: (_) => isConfirmed,
+                                // Don't auto-navigate, let user scroll naturally
+                                initialTabIndex:
+                                    _resolveInitialTabIndex(tabs, context),
+                                footer: footer,
+                                backPolicy:
+                                    buildCanonicalCurrentRouteBackPolicy(
+                                  context,
+                                ),
+                                heroActions: _buildHeroActions(resolvedEvent),
                               ),
                             );
                           },
@@ -298,6 +291,31 @@ class _ImmersiveEventDetailScreenState
   bool _hasAboutContent(EventModel event) {
     final rawHtml = event.content.value ?? '';
     return InviteFromEventFactory.stripHtml(rawHtml).isNotEmpty;
+  }
+
+  List<ImmersiveHeroAction> _buildHeroActions(EventModel event) {
+    return <ImmersiveHeroAction>[
+      ImmersiveHeroAction(
+        key: const Key('immersiveHeroInviteAction'),
+        label: 'Convidar',
+        icon: BooraIcons.inviteOutlined,
+        isPrimary: true,
+        onPressed: () => _openInviteFlow(event),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('immersiveHeroShareAction'),
+        label: 'Compartilhar',
+        icon: BooraIcons.share,
+        onPressed: () => unawaited(_shareSelectedEvent(event)),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('immersiveHeroWhatsappAction'),
+        label: 'WhatsApp',
+        icon: BooraIcons.whatsapp,
+        foregroundColor: const Color(0xFF25D366),
+        onPressed: () => unawaited(_shareSelectedEventOnWhatsApp(event)),
+      ),
+    ];
   }
 
   Future<void> _handleConfirmAttendance() async {
@@ -322,59 +340,22 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _shareSelectedEvent(EventModel event) async {
-    final eventPath = _eventRedirectPath(event);
-    if (eventPath == null) {
+    final payload = _buildEventPublicSharePayload(event);
+    if (payload == null) {
       _showStatusMessage(
         'Não foi possível compartilhar ${event.title.value}.',
       );
       return;
     }
-
-    if (kIsWeb) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: eventPath,
-        actionType: AuthWallActionType.sendInvite,
-      );
-      return;
-    }
-
-    final shareUri = await _controller.createShareUriForSelectedEvent();
-    if (!mounted) {
-      return;
-    }
-    if (shareUri == null) {
-      _showStatusMessage(
-        'Não foi possível compartilhar ${event.title.value}.',
-      );
-      return;
-    }
-
-    final invite = InviteFromEventFactory.build(
-      event: event,
-      fallbackImageUri: _controller.defaultEventImageUri,
-    );
-    final shareText =
-        'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime}.'
-        '\nDetalhes: $shareUri';
 
     try {
-      final launcher = widget.shareLauncher;
-      if (launcher != null) {
-        await launcher(
-          ShareParams(
-            text: shareText,
-            subject: 'Convite Belluga Now',
-          ),
-        );
-      } else {
-        await SharePlus.instance.share(
-          ShareParams(
-            text: shareText,
-            subject: 'Convite Belluga Now',
-          ),
-        );
-      }
+      await PublicShareLauncher.launchSystemShare(
+        ShareParams(
+          text: payload.message,
+          subject: payload.subject,
+        ),
+        launcher: widget.shareLauncher,
+      );
     } catch (_) {
       if (!mounted) {
         return;
@@ -383,6 +364,55 @@ class _ImmersiveEventDetailScreenState
         'Não foi possível compartilhar ${event.title.value}.',
       );
     }
+  }
+
+  Future<void> _shareSelectedEventOnWhatsApp(EventModel event) async {
+    final payload = _buildEventPublicSharePayload(event);
+    if (payload == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+      return;
+    }
+
+    try {
+      await PublicShareLauncher.launchWhatsAppOrSystemShare(
+        text: payload.message,
+        subject: payload.subject,
+        fallbackShareLauncher: widget.shareLauncher,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        'Não foi possível compartilhar ${event.title.value}.',
+      );
+    }
+  }
+
+  ({String subject, String message})? _buildEventPublicSharePayload(
+    EventModel event,
+  ) {
+    final eventPath = _eventRedirectPath(event);
+    if (eventPath == null) {
+      return null;
+    }
+    final publicUri = _controller.buildTenantPublicUriFromPath(eventPath);
+    if (publicUri == null) {
+      return null;
+    }
+
+    final invite = InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
+    );
+    return EventInviteSharePayloadBuilder.build(
+      eventName: invite.eventName,
+      location: invite.location,
+      eventDateTime: invite.eventDateTime,
+      publicUri: publicUri,
+    );
   }
 
   String? _eventRedirectPath(EventModel event) {
@@ -522,17 +552,6 @@ class _ImmersiveEventDetailScreenState
   }
 
   void _openInviteFlow(EventModel event) {
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: redirectPath,
-        actionType: AuthWallActionType.sendInvite,
-      );
-      return;
-    }
-
     final invite = _buildInviteFromEvent(event);
     context.router.push(InviteShareRoute(invite: invite));
   }

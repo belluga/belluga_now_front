@@ -148,6 +148,16 @@ class ImmersiveEventDetailController implements Disposable {
   ProfileTypeRegistry? get profileTypeRegistry =>
       _appDataRepository?.appData.profileTypeRegistry;
 
+  Uri? buildTenantPublicUriFromPath(String? rawPath) {
+    final normalizedPath = rawPath?.trim();
+    if (normalizedPath == null || normalizedPath.isEmpty) {
+      return null;
+    }
+    return _appDataRepository?.appData.mainDomainValue.value.resolve(
+      normalizedPath,
+    );
+  }
+
   ProximityPreference? get proximityPreference =>
       _proximityPreferencesRepository?.proximityPreference;
 

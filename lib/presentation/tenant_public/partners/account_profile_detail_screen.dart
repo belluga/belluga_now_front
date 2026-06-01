@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -23,6 +24,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -44,10 +46,16 @@ class AccountProfileDetailScreen extends StatefulWidget {
     super.key,
     required this.accountProfile,
     this.directionsAppChooser,
+    this.shareLauncher,
+    this.externalUrlLauncher,
+    this.isWebRuntime = kIsWeb,
   });
 
   final AccountProfileModel accountProfile;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final SystemShareLauncher? shareLauncher;
+  final ExternalUrlLauncher? externalUrlLauncher;
+  final bool isWebRuntime;
 
   @override
   State<AccountProfileDetailScreen> createState() =>
@@ -144,11 +152,7 @@ class _AccountProfileDetailScreenState
                                         ),
                                         collapsedToolbarHeight: 72,
                                         centerCollapsedTitle: false,
-                                        appBarActionsBuilder:
-                                            (context, innerBoxIsScrolled) =>
-                                                _buildAppBarActions(
-                                          context,
-                                          innerBoxIsScrolled,
+                                        heroActions: _buildHeroActions(
                                           resolvedAccountProfile,
                                           isFav: isFav,
                                           isFavoritable: isFavoritable,
@@ -157,12 +161,6 @@ class _AccountProfileDetailScreenState
                                             buildCanonicalCurrentRouteBackPolicy(
                                           context,
                                         ),
-                                        onSharePressed: () => unawaited(
-                                          _shareAccountProfile(
-                                            resolvedAccountProfile,
-                                          ),
-                                        ),
-                                        shareIcon: BooraIcons.share,
                                         tabs: effectiveTabs,
                                         betweenHeroAndTabs: null,
                                       );
@@ -379,51 +377,37 @@ class _AccountProfileDetailScreenState
     return labels;
   }
 
-  List<Widget> _buildAppBarActions(
-    BuildContext context,
-    bool innerBoxIsScrolled,
+  List<ImmersiveHeroAction> _buildHeroActions(
     AccountProfileModel accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
-    if (!isFavoritable) {
-      return const <Widget>[];
-    }
-
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = innerBoxIsScrolled
-        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.96)
-        : Colors.black.withValues(alpha: 0.28);
-    final foregroundColor = _contentColorForBackground(backgroundColor);
-    final iconColor = isFav
-        ? (ThemeData.estimateBrightnessForColor(backgroundColor) ==
-                Brightness.dark
-            ? Colors.red.shade200
-            : Colors.red.shade700)
-        : foregroundColor;
-
-    return <Widget>[
-      Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: innerBoxIsScrolled
-                  ? colorScheme.outlineVariant.withValues(alpha: 0.42)
-                  : Colors.white.withValues(alpha: 0.12),
-            ),
-          ),
-          child: IconButton(
-            key: const Key('accountProfileFavoriteAction'),
-            icon: Icon(
-              isFav ? Icons.favorite : Icons.favorite_border,
-              color: iconColor,
-            ),
-            tooltip: isFav ? 'Favoritado' : 'Favoritar',
-            onPressed: () => _handleFavoriteTap(accountProfile.id),
-          ),
+    return <ImmersiveHeroAction>[
+      if (isFavoritable)
+        ImmersiveHeroAction(
+          key: const Key('accountProfileFavoriteAction'),
+          label: isFav ? 'Favoritado' : 'Favoritar',
+          icon: Icons.favorite_border,
+          activeIcon: Icons.favorite,
+          isPrimary: true,
+          isActive: isFav,
+          activeForegroundColor: Colors.red.shade400,
+          onPressed: () => _handleFavoriteTap(accountProfile.id),
+        ),
+      ImmersiveHeroAction(
+        key: const Key('accountProfileShareAction'),
+        label: 'Compartilhar',
+        icon: BooraIcons.share,
+        isPrimary: !isFavoritable,
+        onPressed: () => unawaited(_shareAccountProfile(accountProfile)),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('accountProfileWhatsappAction'),
+        label: 'WhatsApp',
+        icon: BooraIcons.whatsapp,
+        foregroundColor: const Color(0xFF25D366),
+        onPressed: () => unawaited(
+          _shareAccountProfileOnWhatsApp(accountProfile),
         ),
       ),
     ];
@@ -938,7 +922,7 @@ class _AccountProfileDetailScreenState
   }
 
   void _checkPendingIntent() {
-    if (kIsWeb) {
+    if (widget.isWebRuntime) {
       return;
     }
     final redirectPath = _safeRedirectPath();
@@ -953,7 +937,7 @@ class _AccountProfileDetailScreenState
 
   void _handleFavoriteTap(String accountProfileId) {
     final redirectPath = _safeRedirectPath();
-    if (kIsWeb) {
+    if (widget.isWebRuntime && !_controller.isAuthorized) {
       launchWebInstalledAppHandoffOrPromotion(
         context: context,
         redirectPath: redirectPath,
@@ -977,43 +961,75 @@ class _AccountProfileDetailScreenState
   }
 
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
-    final slug = accountProfile.slug.trim();
-    if (slug.isEmpty) {
+    final payload = _buildAccountProfilePublicSharePayload(accountProfile);
+    if (payload == null) {
       _showStatusMessage(
         'Não foi possível compartilhar ${accountProfile.name}.',
       );
       return;
     }
-
-    final publicUri = _controller.buildTenantPublicUriFromPath(
-      '/parceiro/$slug',
-    );
-    if (publicUri == null) {
-      _showStatusMessage(
-        'Não foi possível compartilhar ${accountProfile.name}.',
-      );
-      return;
-    }
-
-    final payload = AccountProfilePublicSharePayloadBuilder.build(
-      publicUri: publicUri,
-      fallbackName: accountProfile.name,
-      profile: accountProfile,
-      actorDisplayName: _controller.authenticatedUserDisplayName,
-    );
 
     try {
-      await SharePlus.instance.share(
+      await PublicShareLauncher.launchSystemShare(
         ShareParams(
           text: payload.message,
           subject: payload.subject,
         ),
+        launcher: widget.shareLauncher,
       );
     } catch (_) {
       _showStatusMessage(
         'Não foi possível compartilhar ${accountProfile.name}.',
       );
     }
+  }
+
+  Future<void> _shareAccountProfileOnWhatsApp(
+    AccountProfileModel accountProfile,
+  ) async {
+    final payload = _buildAccountProfilePublicSharePayload(accountProfile);
+    if (payload == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+      return;
+    }
+
+    try {
+      await PublicShareLauncher.launchWhatsAppOrSystemShare(
+        text: payload.message,
+        subject: payload.subject,
+        fallbackShareLauncher: widget.shareLauncher,
+        externalUrlLauncher: widget.externalUrlLauncher,
+      );
+    } catch (_) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+    }
+  }
+
+  ({String subject, String message})? _buildAccountProfilePublicSharePayload(
+    AccountProfileModel accountProfile,
+  ) {
+    final slug = accountProfile.slug.trim();
+    if (slug.isEmpty) {
+      return null;
+    }
+
+    final publicUri = _controller.buildTenantPublicUriFromPath(
+      '/parceiro/$slug',
+    );
+    if (publicUri == null) {
+      return null;
+    }
+
+    return AccountProfilePublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: accountProfile.name,
+      profile: accountProfile,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+    );
   }
 
   Widget _buildLoadingState() {

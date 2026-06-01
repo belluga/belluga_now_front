@@ -4,12 +4,14 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/presentation/tenant_public/static_assets/controllers/static_asset_detail_controller.dart';
@@ -27,11 +29,15 @@ class StaticAssetDetailScreen extends StatefulWidget {
     required this.asset,
     this.controller,
     this.directionsAppChooser,
+    this.shareLauncher,
+    this.externalUrlLauncher,
   });
 
   final PublicStaticAssetModel asset;
   final StaticAssetDetailController? controller;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final SystemShareLauncher? shareLauncher;
+  final ExternalUrlLauncher? externalUrlLauncher;
 
   @override
   State<StaticAssetDetailScreen> createState() =>
@@ -54,11 +60,29 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
         collapsedToolbarHeight: 72,
         centerCollapsedTitle: false,
         backPolicy: buildCanonicalCurrentRouteBackPolicy(context),
-        onSharePressed: () => unawaited(_shareStaticAsset()),
-        shareIcon: BooraIcons.share,
+        heroActions: _buildHeroActions(),
         tabs: tabs,
       ),
     );
+  }
+
+  List<ImmersiveHeroAction> _buildHeroActions() {
+    return <ImmersiveHeroAction>[
+      ImmersiveHeroAction(
+        key: const Key('staticAssetShareAction'),
+        label: 'Compartilhar',
+        icon: BooraIcons.share,
+        isPrimary: true,
+        onPressed: () => unawaited(_shareStaticAsset()),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('staticAssetWhatsappAction'),
+        label: 'WhatsApp',
+        icon: BooraIcons.whatsapp,
+        foregroundColor: const Color(0xFF25D366),
+        onPressed: () => unawaited(_shareStaticAssetOnWhatsApp()),
+      ),
+    ];
   }
 
   List<ImmersiveTabItem> _buildTabs() {
@@ -330,24 +354,44 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
   }
 
   Future<void> _shareStaticAsset() async {
-    final publicUri = _controller.buildTenantPublicUriForAsset(widget.asset);
-    final payload = StaticAssetPublicSharePayloadBuilder.build(
-      publicUri: publicUri,
-      fallbackName: widget.asset.displayName,
-      asset: widget.asset,
-      actorDisplayName: _controller.authenticatedUserDisplayName,
-    );
+    final payload = _buildStaticAssetPublicSharePayload();
     try {
-      await SharePlus.instance.share(
+      await PublicShareLauncher.launchSystemShare(
         ShareParams(
           text: payload.message,
           subject: payload.subject,
         ),
+        launcher: widget.shareLauncher,
       );
     } catch (_) {
       _showStatusMessage(
           'Não foi possível compartilhar ${widget.asset.displayName}.');
     }
+  }
+
+  Future<void> _shareStaticAssetOnWhatsApp() async {
+    final payload = _buildStaticAssetPublicSharePayload();
+    try {
+      await PublicShareLauncher.launchWhatsAppOrSystemShare(
+        text: payload.message,
+        subject: payload.subject,
+        fallbackShareLauncher: widget.shareLauncher,
+        externalUrlLauncher: widget.externalUrlLauncher,
+      );
+    } catch (_) {
+      _showStatusMessage(
+          'Não foi possível compartilhar ${widget.asset.displayName}.');
+    }
+  }
+
+  ({String subject, String message}) _buildStaticAssetPublicSharePayload() {
+    final publicUri = _controller.buildTenantPublicUriForAsset(widget.asset);
+    return StaticAssetPublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: widget.asset.displayName,
+      asset: widget.asset,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+    );
   }
 
   void _openAssetMap() {

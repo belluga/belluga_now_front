@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -33,6 +34,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -296,7 +299,98 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileShareAction')), findsOneWidget);
+    expect(
+      find.byKey(const Key('accountProfileWhatsappAction')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'web authenticated favorite action toggles instead of leaving the page',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isTrue,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets('account profile WhatsApp action uses public profile payload',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    final sharedParams = <ShareParams>[];
+    final launchedUris = <Uri>[];
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          shareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            expect(mode, LaunchMode.externalApplication);
+            return false;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileWhatsappAction')));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(2));
+    expect(launchedUris.first.scheme, 'whatsapp');
+    expect(launchedUris.first.host, 'send');
+    expect(launchedUris.last.host, 'wa.me');
+    expect(
+      launchedUris.last.queryParameters['text'],
+      contains('https://tenant.test/parceiro/cafe-de-la-musique'),
+    );
+    expect(sharedParams, hasLength(1));
+    expect(sharedParams.single.subject, 'Cafe de la Musique');
+    expect(sharedParams.single.text, contains('Cafe de la Musique'));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/parceiro/cafe-de-la-musique'),
+    );
   });
 
   testWidgets(
@@ -1993,6 +2087,75 @@ class _ErrorAccountProfileDetailController
       AccountProfileModel accountProfile) async {
     errorMessageStreamValue.addValue('Falha ao preparar o perfil');
   }
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  Object get backend => Object();
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-id';
+
+  @override
+  Future<String?> getUserId() async => authorized ? 'user-id' : null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  bool get isAuthorized => authorized;
+
+  @override
+  bool get isUserLoggedIn => authorized;
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
+
+  @override
+  void setUserToken(AuthRepositoryContractParamString? token) {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> updateUser(UserCustomData data) async {}
+
+  @override
+  String get userToken => authorized ? 'token' : '';
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {

@@ -1100,7 +1100,13 @@ void main() {
       sharedParams.single.text,
       contains('https://tenant.test/invite?code=SHARE-CODE'),
     );
-    expect(sharedParams.single.subject, 'Convite Belluga Now');
+    expect(sharedParams.single.text, contains('Bora para Evento Teste?'));
+    expect(
+      sharedParams.single.text,
+      contains('sexta-feira, 13 de março às 20h em Guarapari'),
+    );
+    expect(sharedParams.single.text, isNot(contains('2026-03-13')));
+    expect(sharedParams.single.subject, 'Convite para Evento Teste');
   });
 
   testWidgets(

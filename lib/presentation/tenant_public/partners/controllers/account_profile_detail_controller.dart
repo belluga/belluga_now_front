@@ -114,6 +114,8 @@ class AccountProfileDetailController implements Disposable {
       _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
       _emptyProximityPreferenceStreamValue;
 
+  bool get isAuthorized => _authRepository?.isAuthorized ?? true;
+
   Future<void> loadAccountProfile(String slug) async {
     isLoadingStreamValue.addValue(true);
     errorMessageStreamValue.addValue('');

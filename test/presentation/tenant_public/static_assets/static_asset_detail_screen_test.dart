@@ -13,6 +13,8 @@ import 'package:belluga_now/presentation/tenant_public/static_assets/static_asse
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
@@ -54,7 +56,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetWhatsappAction')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileFavoriteAction')), findsNothing);
     expect(
       tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
       'Sobre',
@@ -163,6 +167,59 @@ void main() {
     expect(router.canPopCallCount, 1);
     expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets('static asset share and WhatsApp actions use public payloads',
+      (tester) async {
+    final sharedParams = <ShareParams>[];
+    final launchedUris = <Uri>[];
+    final controller = StaticAssetDetailController(
+      appData: _buildAppData(),
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: StaticAssetDetailScreen(
+          asset: _buildStaticAsset(),
+          controller: controller,
+          shareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            expect(mode, LaunchMode.externalApplication);
+            return false;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('staticAssetShareAction')));
+    await tester.pumpAndSettle();
+
+    expect(sharedParams, hasLength(1));
+    expect(sharedParams.single.subject, 'Praia das Virtudes');
+    expect(sharedParams.single.text, contains('Praia das Virtudes'));
+    expect(sharedParams.single.text, contains('Quiosques'));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/static/praia-das-virtudes'),
+    );
+
+    await tester.tap(find.byKey(const Key('staticAssetWhatsappAction')));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(2));
+    expect(launchedUris.first.scheme, 'whatsapp');
+    expect(launchedUris.first.host, 'send');
+    expect(launchedUris.last.host, 'wa.me');
+    expect(
+      launchedUris.last.queryParameters['text'],
+      contains('https://tenant.test/static/praia-das-virtudes'),
+    );
+    expect(sharedParams, hasLength(2));
   });
 }
 

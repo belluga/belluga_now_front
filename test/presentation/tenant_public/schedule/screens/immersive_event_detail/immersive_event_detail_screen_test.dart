@@ -399,7 +399,7 @@ void main() {
     expect(find.textContaining('20:00 -'), findsNothing);
   });
 
-  testWidgets('event detail uses eighty percent immersive hero height',
+  testWidgets('event detail uses sixty-five percent immersive hero height',
       (tester) async {
     tester.view.physicalSize = const Size(390, 800);
     tester.view.devicePixelRatio = 1;
@@ -440,11 +440,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
-    expect(appBar.expandedHeight, 640);
+    expect(appBar.expandedHeight, 520);
   });
 
   testWidgets(
-      'event detail share action generates invite code for the selected occurrence',
+      'event detail share action uses the public event route without creating invite code',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -500,35 +500,32 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final shareAction = tester.widget<IconButton>(
-      find.byKey(const Key('immersiveShareAction')),
+      find.byKey(const Key('immersiveHeroShareAction')),
     );
     final shareIcon = shareAction.icon as Icon;
-    expect(shareIcon.icon, BooraIcons.inviteOutlined);
+    expect(shareIcon.icon, BooraIcons.share);
 
-    await tester.tap(find.byKey(const Key('immersiveShareAction')));
+    await tester.tap(find.byKey(const Key('immersiveHeroShareAction')));
     await tester.pumpAndSettle();
 
-    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(invitesRepository.createShareCodeCalls, 0);
+    expect(sharedSubjects, ['Convite para Evento de Teste']);
+    expect(sharedTexts.single, contains('Bora para Evento de Teste?'));
     expect(
-      invitesRepository.lastCreateShareEventId,
-      '507f1f77bcf86cd799439011',
+      sharedTexts.single,
+      contains('segunda-feira, 16 de março às 9h'),
     );
-    expect(
-      invitesRepository.lastCreateShareOccurrenceId,
-      'occurrence-selected',
-    );
-    expect(sharedSubjects, ['Convite Belluga Now']);
     expect(sharedTexts.single,
-        contains('https://tenant.test/invite?code=CODE123'));
+        contains('https://tenant.test/agenda/evento/evento-de-teste'));
+    expect(sharedTexts.single, contains('occurrence=occurrence-selected'));
+    expect(sharedTexts.single, isNot(contains('2026-03-16')));
   });
 
   testWidgets(
-      'event detail share action stays bounded while share code generation is in flight',
+      'event detail invite hero action opens the canonical invite route',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository()
-      ..createShareCodeCompleter = Completer<InviteShareCodeResult>();
-    var shareLauncherCalls = 0;
+    final invitesRepository = _FakeInvitesRepository();
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
       ImmersiveEventDetailController(
         userEventsRepository: userEventsRepository,
@@ -564,9 +561,6 @@ void main() {
                   ),
                 ],
               ),
-              shareLauncher: (_) async {
-                shareLauncherCalls += 1;
-              },
             ),
           ),
         ),
@@ -576,27 +570,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byKey(const Key('immersiveShareAction')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('immersiveShareAction')));
-    await tester.pump();
-
-    expect(invitesRepository.createShareCodeCalls, 1);
-    expect(
-        find.byKey(const Key('immersiveShareActionLoading')), findsOneWidget);
-    expect(shareLauncherCalls, 0);
-
-    invitesRepository.createShareCodeCompleter!.complete(
-      buildInviteShareCodeResult(
-        code: 'CODE123',
-        eventId: '507f1f77bcf86cd799439011',
-        occurrenceId: 'occurrence-selected',
-      ),
-    );
+    await tester.tap(find.byKey(const Key('immersiveHeroInviteAction')));
     await tester.pumpAndSettle();
 
-    expect(shareLauncherCalls, 1);
-    expect(find.byKey(const Key('immersiveShareActionLoading')), findsNothing);
+    expect(router.lastPushedRoute, isA<InviteShareRoute>());
+    final pushedRoute = router.lastPushedRoute! as InviteShareRoute;
+    expect(pushedRoute.args!.invite, isNotNull);
+    expect(pushedRoute.args!.invite!.occurrenceId, 'occurrence-selected');
+    expect(invitesRepository.createShareCodeCalls, 0);
   });
 
   testWidgets(
@@ -1371,9 +1352,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Line-up'), findsNothing);
-    expect(find.text('Artists'), findsOneWidget);
     expect(find.byKey(const Key('immersiveTabLabel_1')), findsOneWidget);
-    expect(find.text('Como Chegar'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_1'))).data,
+      'Artists',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+      'Como Chegar',
+    );
 
     await _tapImmersiveTab(tester, 1);
 
@@ -1746,7 +1733,10 @@ void main() {
     expect(find.text('O Rolê'), findsNothing);
     expect(find.text('O Local'), findsNothing);
     expect(find.text('Sobre'), findsWidgets);
-    expect(find.text('Como Chegar'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_2'))).data,
+      'Como Chegar',
+    );
     expect(find.text('Show tipo'), findsOneWidget);
     expect(find.text('Ananda Torres'), findsWidgets);
     expect(find.textContaining('Carvoeiro'), findsWidgets);
@@ -3556,8 +3546,11 @@ void main() {
     expect(find.text('Sobre'), findsNothing);
     expect(find.text('Sem descrição disponível.'), findsNothing);
     expect(find.byType(Html), findsNothing);
-    expect(find.text('Como Chegar'), findsOneWidget);
     expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
+      'Como Chegar',
+    );
   });
 
   testWidgets('event detail keeps standard footer and inline route actions',

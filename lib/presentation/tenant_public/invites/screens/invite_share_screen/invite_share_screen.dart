@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/invites/invite_contact_phone_normalization.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
@@ -615,7 +615,12 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       return;
     }
 
-    await _shareSystem(ShareParams(text: text, subject: 'Convite Belluga Now'));
+    await _shareSystem(
+      ShareParams(
+        text: text,
+        subject: 'Convite para ${widget.invite.eventName}',
+      ),
+    );
   }
 
   Uri? _buildWhatsappUri(InviteExternalContactShareTarget target, String text) {
@@ -656,10 +661,11 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 
   String _buildShareText(Uri shareUri) {
-    final localEventDate = TimezoneConverter.utcToLocal(
-      widget.invite.eventDateTime,
-    );
-    return 'Bora? ${widget.invite.eventName} em ${widget.invite.location} no dia $localEventDate.'
-        '\nDetalhes: $shareUri';
+    return EventInviteSharePayloadBuilder.build(
+      eventName: widget.invite.eventName,
+      location: widget.invite.location,
+      eventDateTime: widget.invite.eventDateTime,
+      publicUri: shareUri,
+    ).message;
   }
 }
