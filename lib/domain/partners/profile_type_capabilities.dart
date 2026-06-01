@@ -11,8 +11,11 @@ class ProfileTypeCapabilities {
     required this.hasAvatarValue,
     required this.hasCoverValue,
     required this.hasEventsValue,
-  }) : isReferenceLocationEnabledValue =
-            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false);
+    ProfileTypeFlagValue? hasNestedProfileGroupsValue,
+  })  : isReferenceLocationEnabledValue =
+            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
+        hasNestedProfileGroupsValue =
+            hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false);
 
   final ProfileTypeFlagValue isFavoritableValue;
   final ProfileTypeFlagValue isPoiEnabledValue;
@@ -23,6 +26,7 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasAvatarValue;
   final ProfileTypeFlagValue hasCoverValue;
   final ProfileTypeFlagValue hasEventsValue;
+  final ProfileTypeFlagValue hasNestedProfileGroupsValue;
 
   bool get isFavoritable => isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
@@ -34,4 +38,5 @@ class ProfileTypeCapabilities {
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
   bool get hasEvents => hasEventsValue.value;
+  bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
 }

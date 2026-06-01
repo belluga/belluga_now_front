@@ -244,6 +244,44 @@ void main() {
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
   });
 
+  testWidgets('toggles nested account tab capability in profile type form', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(
+      SwitchListTile,
+      'Abas de contas vinculadas',
+    );
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(controller.currentCapabilities.hasNestedProfileGroups, isTrue);
+  });
+
   testWidgets('renders and hydrates plural label field', (tester) async {
     final controller = _TestProfileTypesController(impactCount: 0);
     await _pumpFormScreen(

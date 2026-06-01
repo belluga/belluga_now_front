@@ -439,6 +439,9 @@ class AppDataDTO {
             hasEventsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_events'] == true,
             ),
+            hasNestedProfileGroupsValue: ProfileTypeFlagValue(
+              capabilitiesMap['has_nested_profile_groups'] == true,
+            ),
           ),
         ),
       );

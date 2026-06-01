@@ -14,18 +14,21 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
     required TenantAdminFlagValue hasEvents,
-  }) : isPubliclyDiscoverableValue =
-           isPubliclyDiscoverable ?? TenantAdminFlagValue(isFavoritable.value),
-       isFavoritableValue = isFavoritable,
-       isPoiEnabledValue = isPoiEnabled,
-       isReferenceLocationEnabledValue =
-           isReferenceLocationEnabled ?? TenantAdminFlagValue(false),
-       hasBioValue = hasBio,
-       hasContentValue = hasContent,
-       hasTaxonomiesValue = hasTaxonomies,
-       hasAvatarValue = hasAvatar,
-       hasCoverValue = hasCover,
-       hasEventsValue = hasEvents;
+    TenantAdminFlagValue? hasNestedProfileGroups,
+  })  : isPubliclyDiscoverableValue =
+            isPubliclyDiscoverable ?? TenantAdminFlagValue(isFavoritable.value),
+        isFavoritableValue = isFavoritable,
+        isPoiEnabledValue = isPoiEnabled,
+        isReferenceLocationEnabledValue =
+            isReferenceLocationEnabled ?? TenantAdminFlagValue(false),
+        hasBioValue = hasBio,
+        hasContentValue = hasContent,
+        hasTaxonomiesValue = hasTaxonomies,
+        hasAvatarValue = hasAvatar,
+        hasCoverValue = hasCover,
+        hasEventsValue = hasEvents,
+        hasNestedProfileGroupsValue =
+            hasNestedProfileGroups ?? TenantAdminFlagValue(false);
 
   final TenantAdminFlagValue isPubliclyDiscoverableValue;
   final TenantAdminFlagValue isFavoritableValue;
@@ -37,6 +40,7 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue hasAvatarValue;
   final TenantAdminFlagValue hasCoverValue;
   final TenantAdminFlagValue hasEventsValue;
+  final TenantAdminFlagValue hasNestedProfileGroupsValue;
 
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isPubliclyDiscoverable && isFavoritableValue.value;
@@ -49,4 +53,5 @@ class TenantAdminProfileTypeCapabilities {
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
   bool get hasEvents => hasEventsValue.value;
+  bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
 }

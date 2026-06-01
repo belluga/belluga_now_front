@@ -66,7 +66,8 @@ void main() {
       );
     });
 
-    test('parses canonical type_asset image payload for account profile types', () {
+    test('parses canonical type_asset image payload for account profile types',
+        () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'restaurant',
         'label': 'Restaurant',
@@ -154,7 +155,8 @@ void main() {
       expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
-    test('defaults public discoverability to favoritable when flag is absent', () {
+    test('defaults public discoverability to favoritable when flag is absent',
+        () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -166,6 +168,20 @@ void main() {
 
       expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
       expect(dto.toDomain().capabilities.isFavoritable, isTrue);
+    });
+
+    test('parses nested profile group capability for account profile types',
+        () {
+      final dto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'market',
+        'label': 'Market',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'has_nested_profile_groups': true,
+        },
+      });
+
+      expect(dto.toDomain().capabilities.hasNestedProfileGroups, isTrue);
     });
   });
 }

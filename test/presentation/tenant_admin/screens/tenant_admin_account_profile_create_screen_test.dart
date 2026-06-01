@@ -89,11 +89,37 @@ void main() {
     expect(accountsRepository.lastFetchedSlug, 'route-account');
   });
 
+  testWidgets('hides nested group editor when profile type disables capability',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: false),
+    ];
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+
+    expect(find.text('Abas de contas vinculadas'), findsNothing);
+    expect(
+      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+      findsNothing,
+    );
+  });
+
   testWidgets('adds nested group editor and selects Account candidate',
       (tester) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: true),
+    ];
     profilesRepository.profilesToReturn = [
       _profile(id: 'profile-partner', displayName: 'Conta Parceira'),
     ];
@@ -102,6 +128,8 @@ void main() {
       tester,
       TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
     );
+
+    await _selectProfileType(tester, 'Venue');
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -153,6 +181,13 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
       routerDelegate: router.delegate(),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectProfileType(WidgetTester tester, String label) async {
+  await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
 }
 
@@ -237,6 +272,9 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 class _FakeAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
+    _profileType(hasNestedProfileGroups: true),
+  ];
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -254,7 +292,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return [];
+    return profileTypesToReturn;
   }
 
   @override
@@ -450,5 +488,26 @@ TenantAdminAccountProfile _profile({
     profileType: 'venue',
     displayName: displayName,
     slug: id,
+  );
+}
+
+TenantAdminProfileTypeDefinition _profileType({
+  required bool hasNestedProfileGroups,
+}) {
+  return tenantAdminProfileTypeDefinitionFromRaw(
+    type: 'venue',
+    label: 'Venue',
+    allowedTaxonomies: const [],
+    capabilities: TenantAdminProfileTypeCapabilities(
+      isFavoritable: TenantAdminFlagValue(false),
+      isPoiEnabled: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(false),
+      hasCover: TenantAdminFlagValue(false),
+      hasEvents: TenantAdminFlagValue(false),
+      hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
+    ),
   );
 }

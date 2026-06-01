@@ -343,6 +343,7 @@ void main() {
           hasAvatar: TenantAdminFlagValue(true),
           hasCover: TenantAdminFlagValue(true),
           hasEvents: TenantAdminFlagValue(true),
+          hasNestedProfileGroups: TenantAdminFlagValue(true),
         ),
         visual: TenantAdminPoiVisual.icon(
           iconValue: TenantAdminRequiredTextValue()..parse('place'),
@@ -351,6 +352,7 @@ void main() {
       );
 
       final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+      expect(payload['capabilities']['has_nested_profile_groups'], isTrue);
       expect(payload['visual'], <String, dynamic>{
         'mode': 'icon',
         'icon': 'place',

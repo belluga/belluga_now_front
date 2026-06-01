@@ -183,6 +183,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       'has_avatar': capabilities.hasAvatar,
       'has_cover': capabilities.hasCover,
       'has_events': capabilities.hasEvents,
+      'has_nested_profile_groups': capabilities.hasNestedProfileGroups,
     };
   }
 }

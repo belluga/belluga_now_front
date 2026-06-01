@@ -131,6 +131,11 @@ class _TenantAdminAccountProfileEditScreenState
     return definition?.capabilities.hasCover ?? false;
   }
 
+  bool _hasNestedProfileGroups(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasNestedProfileGroups ?? false;
+  }
+
   List<String> _allowedTaxonomies(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.allowedTaxonomies ?? const [];
@@ -570,6 +575,10 @@ class _TenantAdminAccountProfileEditScreenState
                                         _hasTaxonomies(
                                           state.selectedProfileType,
                                         );
+                                final hasNestedProfileGroups =
+                                    _hasNestedProfileGroups(
+                                  state.selectedProfileType,
+                                );
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
@@ -650,11 +659,13 @@ class _TenantAdminAccountProfileEditScreenState
                                             const SizedBox(height: 16),
                                             _buildLocationSection(context),
                                           ],
-                                          const SizedBox(height: 16),
-                                          _buildNestedGroupsSection(
-                                            context,
-                                            state.nestedProfileGroups,
-                                          ),
+                                          if (hasNestedProfileGroups) ...[
+                                            const SizedBox(height: 16),
+                                            _buildNestedGroupsSection(
+                                              context,
+                                              state.nestedProfileGroups,
+                                            ),
+                                          ],
                                           const SizedBox(height: 24),
                                           TenantAdminPrimaryFormAction(
                                             label: 'Salvar alteracoes',
@@ -763,8 +774,13 @@ class _TenantAdminAccountProfileEditScreenState
                                                       coverUpload: coverUpload,
                                                       avatarUrl: null,
                                                       coverUrl: null,
-                                                      nestedProfileGroups: state
-                                                          .nestedProfileGroups,
+                                                      nestedProfileGroups:
+                                                          _hasNestedProfileGroups(
+                                                        selectedType,
+                                                      )
+                                                              ? state
+                                                                  .nestedProfileGroups
+                                                              : null,
                                                     );
                                                   },
                                           ),

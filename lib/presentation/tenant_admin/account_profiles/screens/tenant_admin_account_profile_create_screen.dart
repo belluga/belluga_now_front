@@ -158,6 +158,11 @@ class _TenantAdminAccountProfileCreateScreenState
     return definition?.capabilities.hasCover ?? false;
   }
 
+  bool _hasNestedProfileGroups(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.hasNestedProfileGroups ?? false;
+  }
+
   List<String> _allowedTaxonomies(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     return definition?.allowedTaxonomies ?? const [];
@@ -333,7 +338,9 @@ class _TenantAdminAccountProfileCreateScreenState
       coverUpload: coverUpload,
       avatarUrl: null,
       coverUrl: null,
-      nestedProfileGroups: state.nestedProfileGroups,
+      nestedProfileGroups: _hasNestedProfileGroups(state.selectedProfileType)
+          ? state.nestedProfileGroups
+          : const <TenantAdminNestedProfileGroup>[],
     );
   }
 
@@ -358,6 +365,9 @@ class _TenantAdminAccountProfileCreateScreenState
                 final hasContent = _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
+                final hasNestedProfileGroups = _hasNestedProfileGroups(
+                  state.selectedProfileType,
+                );
                 final accountSlugForUi = _currentAccountSlugForRequests();
                 return TenantAdminFormScaffold(
                   closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
@@ -381,11 +391,13 @@ class _TenantAdminAccountProfileCreateScreenState
                             const SizedBox(height: 16),
                             _buildLocationSection(context),
                           ],
-                          const SizedBox(height: 16),
-                          _buildNestedGroupsSection(
-                            context,
-                            state.nestedProfileGroups,
-                          ),
+                          if (hasNestedProfileGroups) ...[
+                            const SizedBox(height: 16),
+                            _buildNestedGroupsSection(
+                              context,
+                              state.nestedProfileGroups,
+                            ),
+                          ],
                           const SizedBox(height: 24),
                           TenantAdminPrimaryFormAction(
                             label: 'Salvar perfil',
