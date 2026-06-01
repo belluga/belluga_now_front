@@ -2,7 +2,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -11,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
@@ -393,9 +393,33 @@ class _TenantAdminAccountProfileCreateScreenState
                           ],
                           if (hasNestedProfileGroups) ...[
                             const SizedBox(height: 16),
-                            _buildNestedGroupsSection(
-                              context,
-                              state.nestedProfileGroups,
+                            TenantAdminNestedProfileGroupsEditor(
+                              keyPrefix: 'tenantAdminCreate',
+                              groups: state.nestedProfileGroups,
+                              candidatesStreamValue: _controller
+                                  .nestedProfileCandidatesStreamValue,
+                              profileTypes:
+                                  _controller.profileTypesStreamValue.value,
+                              addButtonKey: const Key(
+                                'tenantAdminCreateAddNestedGroupButton',
+                              ),
+                              onAddGroup:
+                                  _controller.addCreateNestedProfileGroup,
+                              onRenameGroup:
+                                  _controller.renameCreateNestedProfileGroup,
+                              onMoveGroup:
+                                  _controller.moveCreateNestedProfileGroup,
+                              onRemoveGroup:
+                                  _controller.removeCreateNestedProfileGroup,
+                              onSelectionChanged:
+                                  (groupId, profileId, selected) {
+                                _controller
+                                    .toggleCreateNestedProfileGroupMember(
+                                  groupId: groupId,
+                                  profileId: profileId,
+                                  selected: selected,
+                                );
+                              },
                             ),
                           ],
                           const SizedBox(height: 24),
@@ -839,151 +863,6 @@ class _TenantAdminAccountProfileCreateScreenState
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNestedGroupsSection(
-    BuildContext context,
-    List<TenantAdminNestedProfileGroup> groups,
-  ) {
-    return TenantAdminFormSectionCard(
-      title: 'Abas de contas vinculadas',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < groups.length; index++) ...[
-            _buildNestedGroupEditor(
-              context,
-              group: groups[index],
-              index: index,
-              total: groups.length,
-            ),
-            const SizedBox(height: 12),
-          ],
-          OutlinedButton.icon(
-            key: const Key('tenantAdminCreateAddNestedGroupButton'),
-            onPressed: groups.length >= 12
-                ? null
-                : _controller.addCreateNestedProfileGroup,
-            icon: const Icon(Icons.add),
-            label: const Text('Adicionar grupo'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNestedGroupEditor(
-    BuildContext context, {
-    required TenantAdminNestedProfileGroup group,
-    required int index,
-    required int total,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      key: Key('tenantAdminCreateNestedGroup_${group.id}'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  key: Key('tenantAdminCreateNestedGroupLabel_${group.id}'),
-                  initialValue: group.label,
-                  decoration: const InputDecoration(labelText: 'Nome da aba'),
-                  onChanged: (value) =>
-                      _controller.renameCreateNestedProfileGroup(
-                    group.id,
-                    value,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nome da aba e obrigatorio.';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              IconButton(
-                tooltip: 'Mover para cima',
-                onPressed: index == 0
-                    ? null
-                    : () => _controller.moveCreateNestedProfileGroup(
-                          group.id,
-                          -1,
-                        ),
-                icon: const Icon(Icons.arrow_upward),
-              ),
-              IconButton(
-                tooltip: 'Mover para baixo',
-                onPressed: index >= total - 1
-                    ? null
-                    : () => _controller.moveCreateNestedProfileGroup(
-                          group.id,
-                          1,
-                        ),
-                icon: const Icon(Icons.arrow_downward),
-              ),
-              IconButton(
-                tooltip: 'Remover grupo',
-                onPressed: () =>
-                    _controller.removeCreateNestedProfileGroup(group.id),
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Accounts',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 8),
-          _buildNestedGroupCandidates(
-            group,
-            onSelected: (profile, selected) =>
-                _controller.toggleCreateNestedProfileGroupMember(
-              groupId: group.id,
-              profileId: profile.id,
-              selected: selected,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNestedGroupCandidates(
-    TenantAdminNestedProfileGroup group, {
-    required void Function(TenantAdminAccountProfile profile, bool selected)
-        onSelected,
-  }) {
-    return StreamValueBuilder<List<TenantAdminAccountProfile>>(
-      streamValue: _controller.nestedProfileCandidatesStreamValue,
-      builder: (context, candidates) {
-        if (candidates.isEmpty) {
-          return const Text('Nenhuma Account disponivel.');
-        }
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: candidates
-              .map(
-                (profile) => FilterChip(
-                  label: Text(profile.displayName),
-                  selected: group.accountProfileIdValues
-                      .any((entry) => entry.value == profile.id),
-                  onSelected: (selected) => onSelected(profile, selected),
-                ),
-              )
-              .toList(growable: false),
-        );
-      },
     );
   }
 }

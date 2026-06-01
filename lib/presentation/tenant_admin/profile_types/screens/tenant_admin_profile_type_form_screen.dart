@@ -296,18 +296,14 @@ class _TenantAdminProfileTypeFormScreenState
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text('Favoritavel'),
-                                  subtitle: Text(
-                                    capabilities.isPubliclyDiscoverable
-                                        ? 'Permite que perfis deste tipo sejam adicionados aos favoritos.'
-                                        : 'Requer descoberta publica habilitada.',
+                                  subtitle: const Text(
+                                    'Permite que perfis deste tipo sejam adicionados aos favoritos.',
                                   ),
                                   value: capabilities.isFavoritable,
-                                  onChanged: capabilities.isPubliclyDiscoverable
-                                      ? (value) =>
-                                          _controller.updateCapabilities(
-                                            isFavoritable: value,
-                                          )
-                                      : null,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    isFavoritable: value,
+                                  ),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,

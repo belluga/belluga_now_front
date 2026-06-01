@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_profile_type_capability_values.dart';
 
 class TenantAdminProfileTypeDTO {
   const TenantAdminProfileTypeDTO({
@@ -49,37 +50,11 @@ class TenantAdminProfileTypeDTO {
       }
     }
     final capabilities = json['capabilities'];
-    bool isPubliclyDiscoverable = false;
-    bool isFavoritable = false;
-    bool isPoiEnabled = false;
-    bool isReferenceLocationEnabled = false;
-    bool hasBio = false;
-    bool hasContent = false;
-    bool hasTaxonomies = false;
-    bool hasAvatar = false;
-    bool hasCover = false;
-    bool hasEvents = false;
-    bool hasNestedProfileGroups = false;
-    if (capabilities is Map<String, dynamic>) {
-      final parsedFavoritable = _parseBool(capabilities['is_favoritable']);
-      isPubliclyDiscoverable =
-          capabilities.containsKey('is_publicly_discoverable')
-              ? _parseBool(capabilities['is_publicly_discoverable'])
-              : parsedFavoritable;
-      isFavoritable = isPubliclyDiscoverable && parsedFavoritable;
-      isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
-      isReferenceLocationEnabled = isPoiEnabled &&
-          _parseBool(capabilities['is_reference_location_enabled']);
-      hasBio = _parseBool(capabilities['has_bio']);
-      hasContent = _parseBool(capabilities['has_content']);
-      hasTaxonomies = _parseBool(capabilities['has_taxonomies']);
-      hasAvatar = _parseBool(capabilities['has_avatar']);
-      hasCover = _parseBool(capabilities['has_cover']);
-      hasEvents = _parseBool(capabilities['has_events']);
-      hasNestedProfileGroups = _parseBool(
-        capabilities['has_nested_profile_groups'],
-      );
-    }
+    final capabilityMap = capabilities is Map<String, dynamic>
+        ? TenantAdminProfileTypeCapabilityStateValue(capabilities)
+            .normalized()
+            .toJson()
+        : TenantAdminProfileTypeCapabilityStateValue().normalized().toJson();
     final visualRaw = _resolveVisualRaw(
       visualRaw: json['visual'] ?? json['poi_visual'],
       typeAssetUrl: json['type_asset_url'],
@@ -102,28 +77,21 @@ class TenantAdminProfileTypeDTO {
               : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
-      isPubliclyDiscoverable: isPubliclyDiscoverable,
-      isFavoritable: isFavoritable,
-      isPoiEnabled: isPoiEnabled,
-      isReferenceLocationEnabled: isReferenceLocationEnabled,
-      hasBio: hasBio,
-      hasContent: hasContent,
-      hasTaxonomies: hasTaxonomies,
-      hasAvatar: hasAvatar,
-      hasCover: hasCover,
-      hasEvents: hasEvents,
-      hasNestedProfileGroups: hasNestedProfileGroups,
+      isPubliclyDiscoverable:
+          capabilityMap['is_publicly_discoverable'] ?? false,
+      isFavoritable: capabilityMap['is_favoritable'] ?? false,
+      isPoiEnabled: capabilityMap['is_poi_enabled'] ?? false,
+      isReferenceLocationEnabled:
+          capabilityMap['is_reference_location_enabled'] ?? false,
+      hasBio: capabilityMap['has_bio'] ?? false,
+      hasContent: capabilityMap['has_content'] ?? false,
+      hasTaxonomies: capabilityMap['has_taxonomies'] ?? false,
+      hasAvatar: capabilityMap['has_avatar'] ?? false,
+      hasCover: capabilityMap['has_cover'] ?? false,
+      hasEvents: capabilityMap['has_events'] ?? false,
+      hasNestedProfileGroups:
+          capabilityMap['has_nested_profile_groups'] ?? false,
     );
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value == true) return true;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      return normalized == 'true' || normalized == '1' || normalized == 'yes';
-    }
-    return false;
   }
 
   static Object? _resolveVisualRaw({

@@ -172,18 +172,6 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> _encodeCapabilities(
     TenantAdminProfileTypeCapabilities capabilities,
   ) {
-    return {
-      'is_publicly_discoverable': capabilities.isPubliclyDiscoverable,
-      'is_favoritable': capabilities.isFavoritable,
-      'is_poi_enabled': capabilities.isPoiEnabled,
-      'is_reference_location_enabled': capabilities.isReferenceLocationEnabled,
-      'has_bio': capabilities.hasBio,
-      'has_content': capabilities.hasContent,
-      'has_taxonomies': capabilities.hasTaxonomies,
-      'has_avatar': capabilities.hasAvatar,
-      'has_cover': capabilities.hasCover,
-      'has_events': capabilities.hasEvents,
-      'has_nested_profile_groups': capabilities.hasNestedProfileGroups,
-    };
+    return Map<String, dynamic>.from(capabilities.toCapabilityMap().toJson());
   }
 }

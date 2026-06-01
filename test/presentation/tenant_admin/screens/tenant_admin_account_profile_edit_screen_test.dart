@@ -199,6 +199,46 @@ void main() {
     expect(profilesRepository.lastNestedProfileGroups, isNull);
   });
 
+  testWidgets('renders nested group selector when capability is enabled',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: true),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      nestedProfileGroups: [_nestedGroup()],
+    );
+    profilesRepository.profilesToReturn = [
+      _profile(
+        id: 'profile-partner',
+        displayName: 'Conta Parceira',
+        profileType: 'poi',
+      ),
+    ];
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Abas de contas vinculadas'),
+      200,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+    expect(find.text('Conta Parceira'), findsOneWidget);
+    expect(find.text('1 Account(s) selecionada(s)'), findsOneWidget);
+  });
+
   testWidgets('sends explicit remove avatar flag when clearing persisted media',
       (tester) async {
     final profilesRepository =
@@ -353,13 +393,14 @@ class _FakeAccountProfilesRepository
   List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
     _profileType(hasNestedProfileGroups: false),
   ];
+  List<TenantAdminAccountProfile> profilesToReturn = [];
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
   }) async {
-    return [];
+    return profilesToReturn;
   }
 
   @override
@@ -372,6 +413,9 @@ class _FakeAccountProfilesRepository
       id: accountProfileId.value,
       avatarUrl: profileToReturn.avatarUrl,
       coverUrl: profileToReturn.coverUrl,
+      displayName: profileToReturn.displayName,
+      profileType: profileToReturn.profileType,
+      nestedProfileGroups: profileToReturn.nestedProfileGroups,
     );
   }
 
@@ -580,6 +624,8 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
 
 TenantAdminAccountProfile _profile({
   required String id,
+  String? displayName,
+  String profileType = 'poi',
   String? avatarUrl,
   String? coverUrl,
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -588,8 +634,8 @@ TenantAdminAccountProfile _profile({
   return tenantAdminAccountProfileFromRaw(
     id: id,
     accountId: 'acc-1',
-    profileType: 'poi',
-    displayName: id,
+    profileType: profileType,
+    displayName: displayName ?? id,
     slug: 'slug-$id',
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,

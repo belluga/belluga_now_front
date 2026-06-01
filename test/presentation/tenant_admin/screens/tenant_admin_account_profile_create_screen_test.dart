@@ -112,16 +112,34 @@ void main() {
     );
   });
 
-  testWidgets('adds nested group editor and selects Account candidate',
+  testWidgets('adds nested group editor with searchable type-filtered selector',
       (tester) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(hasNestedProfileGroups: true),
+      _profileType(
+        type: 'venue',
+        label: 'Venue',
+        hasNestedProfileGroups: true,
+      ),
+      _profileType(
+        type: 'publisher',
+        label: 'Publisher',
+        hasNestedProfileGroups: false,
+      ),
     ];
     profilesRepository.profilesToReturn = [
-      _profile(id: 'profile-partner', displayName: 'Conta Parceira'),
+      _profile(
+        id: 'profile-partner',
+        displayName: 'Conta Parceira',
+        profileType: 'venue',
+      ),
+      _profile(
+        id: 'profile-sender',
+        displayName: 'Runtime Sender',
+        profileType: 'publisher',
+      ),
     ];
 
     await _pumpScreen(
@@ -144,7 +162,44 @@ void main() {
 
     expect(find.text('Novo grupo'), findsOneWidget);
     expect(find.text('Nome da aba'), findsOneWidget);
+    expect(find.text('Selecionar Accounts'), findsOneWidget);
+
+    await tester.tap(find.text('Selecionar Accounts'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Conta Parceira'), findsOneWidget);
+    expect(find.text('Runtime Sender'), findsOneWidget);
+
+    final searchField = find.byWidgetPredicate((widget) {
+      return widget is TextField &&
+          widget.decoration?.labelText == 'Buscar Account';
+    });
+    await tester.enterText(searchField, 'parceira');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conta Parceira'), findsOneWidget);
+    expect(find.text('Runtime Sender'), findsNothing);
+
+    await tester.enterText(searchField, '');
+    await tester.pumpAndSettle();
+
+    final typeFilter = find.byWidgetPredicate((widget) {
+      final key = widget.key?.toString() ?? '';
+      return widget is DropdownButtonFormField<String> &&
+          key.contains('tenantAdminCreateNestedAccountTypeFilter_');
+    });
+    await tester.tap(typeFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publisher').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Runtime Sender'), findsOneWidget);
+    expect(find.text('Conta Parceira'), findsNothing);
+
+    await tester.tap(typeFilter);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Venue').last);
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Conta Parceira'));
     await tester.pumpAndSettle();
@@ -481,11 +536,12 @@ TenantAdminAccount _account({required String slug}) {
 TenantAdminAccountProfile _profile({
   required String id,
   required String displayName,
+  String profileType = 'venue',
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
     accountId: 'acc-route-account',
-    profileType: 'venue',
+    profileType: profileType,
     displayName: displayName,
     slug: id,
   );
@@ -493,10 +549,12 @@ TenantAdminAccountProfile _profile({
 
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
+  String type = 'venue',
+  String label = 'Venue',
 }) {
   return tenantAdminProfileTypeDefinitionFromRaw(
-    type: 'venue',
-    label: 'Venue',
+    type: type,
+    label: label,
     allowedTaxonomies: const [],
     capabilities: TenantAdminProfileTypeCapabilities(
       isFavoritable: TenantAdminFlagValue(false),

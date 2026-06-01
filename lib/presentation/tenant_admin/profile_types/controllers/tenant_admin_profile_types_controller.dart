@@ -7,9 +7,11 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type_capability_key.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_profile_type_capability_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -420,29 +422,84 @@ class TenantAdminProfileTypesController implements Disposable {
     bool? hasNestedProfileGroups,
   }) {
     final current = currentCapabilities;
-    final nextPubliclyDiscoverable =
-        isPubliclyDiscoverable ?? current.isPubliclyDiscoverable;
-    final nextFavoritable =
-        nextPubliclyDiscoverable && (isFavoritable ?? current.isFavoritable);
-    final nextPoiEnabled = isPoiEnabled ?? current.isPoiEnabled;
-    final nextReferenceLocationEnabled = nextPoiEnabled &&
-        (isReferenceLocationEnabled ?? current.isReferenceLocationEnabled);
+    final next = Map<String, dynamic>.from(current.toCapabilityMap().toJson());
+    if (isPubliclyDiscoverable != null) {
+      next[TenantAdminProfileTypeCapabilityKey
+          .isPubliclyDiscoverable.apiValue] = isPubliclyDiscoverable;
+    }
+    if (isFavoritable != null) {
+      next[TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue] =
+          isFavoritable;
+    }
+    if (isPoiEnabled != null) {
+      next[TenantAdminProfileTypeCapabilityKey.isPoiEnabled.apiValue] =
+          isPoiEnabled;
+    }
+    if (isReferenceLocationEnabled != null) {
+      next[TenantAdminProfileTypeCapabilityKey
+          .isReferenceLocationEnabled.apiValue] = isReferenceLocationEnabled;
+    }
+    if (hasBio != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasBio.apiValue] = hasBio;
+    }
+    if (hasContent != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasContent.apiValue] =
+          hasContent;
+    }
+    if (hasTaxonomies != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasTaxonomies.apiValue] =
+          hasTaxonomies;
+    }
+    if (hasAvatar != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue] = hasAvatar;
+    }
+    if (hasCover != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasCover.apiValue] = hasCover;
+    }
+    if (hasEvents != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue] = hasEvents;
+    }
+    if (hasNestedProfileGroups != null) {
+      next[TenantAdminProfileTypeCapabilityKey
+          .hasNestedProfileGroups.apiValue] = hasNestedProfileGroups;
+    }
+
+    final normalized = TenantAdminProfileTypeCapabilityStateValue(
+      next,
+    ).normalized();
     capabilitiesStreamValue.addValue(
       TenantAdminProfileTypeCapabilities(
-        isPubliclyDiscoverable: TenantAdminFlagValue(nextPubliclyDiscoverable),
-        isFavoritable: TenantAdminFlagValue(nextFavoritable),
-        isPoiEnabled: TenantAdminFlagValue(nextPoiEnabled),
-        isReferenceLocationEnabled: TenantAdminFlagValue(
-          nextReferenceLocationEnabled,
+        isPubliclyDiscoverable: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
         ),
-        hasBio: TenantAdminFlagValue(hasBio ?? current.hasBio),
-        hasContent: TenantAdminFlagValue(hasContent ?? current.hasContent),
-        hasTaxonomies: TenantAdminFlagValue(true),
-        hasAvatar: TenantAdminFlagValue(hasAvatar ?? current.hasAvatar),
-        hasCover: TenantAdminFlagValue(hasCover ?? current.hasCover),
-        hasEvents: TenantAdminFlagValue(hasEvents ?? current.hasEvents),
-        hasNestedProfileGroups: TenantAdminFlagValue(
-          hasNestedProfileGroups ?? current.hasNestedProfileGroups,
+        isFavoritable: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isFavoritable,
+        ),
+        isPoiEnabled: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isPoiEnabled,
+        ),
+        isReferenceLocationEnabled: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled,
+        ),
+        hasBio:
+            normalized.flagValue(TenantAdminProfileTypeCapabilityKey.hasBio),
+        hasContent: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasContent,
+        ),
+        hasTaxonomies: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasTaxonomies,
+        ),
+        hasAvatar: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasAvatar,
+        ),
+        hasCover: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasCover,
+        ),
+        hasEvents: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasEvents,
+        ),
+        hasNestedProfileGroups: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,
         ),
       ),
     );

@@ -134,83 +134,67 @@ void main() {
     expect(find.text('Requer POI habilitado.'), findsOneWidget);
   });
 
-  testWidgets(
-    'disables favoritable behind public discovery and keeps it off when re-enabled',
-    (tester) async {
-      final controller = _TestProfileTypesController(impactCount: 0);
-      await _pumpFormScreen(
-        tester,
-        controller: controller,
-        definition: tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'artist',
-          label: 'Artist',
-          allowedTaxonomies: const [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isPubliclyDiscoverable: TenantAdminFlagValue(false),
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(true),
-            hasContent: TenantAdminFlagValue(true),
-            hasTaxonomies: TenantAdminFlagValue(true),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(true),
-          ),
+  testWidgets('keeps favoritable independent from public discovery changes', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isPubliclyDiscoverable: TenantAdminFlagValue(false),
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
         ),
-      );
+      ),
+    );
 
-      var favoritableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Favoritavel'),
-      );
+    final favoritableFinder = find.widgetWithText(
+      SwitchListTile,
+      'Favoritavel',
+    );
+    final publicFinder = find.widgetWithText(
+      SwitchListTile,
+      'Descoberta publica habilitada',
+    );
 
-      expect(favoritableToggle.value, isFalse);
-      expect(favoritableToggle.onChanged, isNull);
-      expect(
-        find.text('Requer descoberta publica habilitada.'),
-        findsOneWidget,
-      );
+    await tester.ensureVisible(favoritableFinder);
+    var favoritableToggle = tester.widget<SwitchListTile>(favoritableFinder);
+    expect(favoritableToggle.value, isTrue);
+    expect(favoritableToggle.onChanged, isNotNull);
+    expect(find.text('Requer descoberta publica habilitada.'), findsNothing);
 
-      final publicToggle = find.widgetWithText(
-        SwitchListTile,
-        'Descoberta publica habilitada',
-      );
-      await tester.ensureVisible(publicToggle);
-      await tester.tap(publicToggle);
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(publicFinder);
+    await tester.tap(publicFinder);
+    await tester.pumpAndSettle();
 
-      favoritableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Favoritavel'),
-      );
-      expect(favoritableToggle.value, isFalse);
-      expect(favoritableToggle.onChanged, isNotNull);
+    favoritableToggle = tester.widget<SwitchListTile>(favoritableFinder);
+    expect(favoritableToggle.value, isTrue);
+    expect(favoritableToggle.onChanged, isNotNull);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Favoritavel'));
-      await tester.pumpAndSettle();
+    await tester.tap(publicFinder);
+    await tester.pumpAndSettle();
 
-      favoritableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Favoritavel'),
-      );
-      expect(favoritableToggle.value, isTrue);
+    favoritableToggle = tester.widget<SwitchListTile>(favoritableFinder);
+    expect(favoritableToggle.value, isTrue);
+    expect(favoritableToggle.onChanged, isNotNull);
 
-      await tester.tap(publicToggle);
-      await tester.pumpAndSettle();
+    await tester.tap(favoritableFinder);
+    await tester.pumpAndSettle();
 
-      favoritableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Favoritavel'),
-      );
-      expect(favoritableToggle.value, isFalse);
-      expect(favoritableToggle.onChanged, isNull);
-
-      await tester.tap(publicToggle);
-      await tester.pumpAndSettle();
-
-      favoritableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Favoritavel'),
-      );
-      expect(favoritableToggle.value, isFalse);
-      expect(favoritableToggle.onChanged, isNotNull);
-    },
-  );
+    expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
+    expect(controller.currentCapabilities.isFavoritable, isFalse);
+  });
 
   testWidgets('renders shared marker icon picker in POI visual editor', (
     tester,
@@ -280,6 +264,42 @@ void main() {
 
     expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
     expect(controller.currentCapabilities.hasNestedProfileGroups, isTrue);
+  });
+
+  testWidgets('favoritable capability is editable without public discovery', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'private-partner',
+        label: 'Private Partner',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isPubliclyDiscoverable: TenantAdminFlagValue(false),
+          isFavoritable: TenantAdminFlagValue(false),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(SwitchListTile, 'Favoritavel');
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).onChanged, isNotNull);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
+    expect(controller.currentCapabilities.isFavoritable, isTrue);
   });
 
   testWidgets('renders and hydrates plural label field', (tester) async {

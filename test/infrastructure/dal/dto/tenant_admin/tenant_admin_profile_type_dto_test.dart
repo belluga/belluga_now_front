@@ -126,7 +126,8 @@ void main() {
       );
     });
 
-    test('normalizes favoritable capability behind public discoverability', () {
+    test('keeps favoritable capability independent from public discoverability',
+        () {
       final disabledDto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -150,12 +151,12 @@ void main() {
         disabledDto.toDomain().capabilities.isPubliclyDiscoverable,
         isFalse,
       );
-      expect(disabledDto.toDomain().capabilities.isFavoritable, isFalse);
+      expect(disabledDto.toDomain().capabilities.isFavoritable, isTrue);
       expect(enabledDto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
       expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
-    test('defaults public discoverability to favoritable when flag is absent',
+    test('defaults public discoverability independently when flag is absent',
         () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
@@ -166,7 +167,7 @@ void main() {
         },
       });
 
-      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isFalse);
       expect(dto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
