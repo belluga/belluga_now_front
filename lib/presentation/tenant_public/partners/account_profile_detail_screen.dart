@@ -8,6 +8,7 @@ import 'package:belluga_now/application/rich_text/account_profile_rich_text_bloc
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
@@ -35,7 +36,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
@@ -64,15 +64,27 @@ class AccountProfileDetailScreen extends StatefulWidget {
 
 class _AccountProfileDetailScreenState
     extends State<AccountProfileDetailScreen> {
-  final AccountProfileDetailController _controller =
-      GetIt.I.get<AccountProfileDetailController>();
+  late final AccountProfileDetailController _controller;
+  bool _pendingIntentChecked = false;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
 
   @override
   void initState() {
     super.initState();
-    _controller.loadResolvedAccountProfile(widget.accountProfile);
+    _controller =
+        RouteInstanceScope.read<AccountProfileDetailController>(context);
+    unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_pendingIntentChecked) {
+      return;
+    }
+    _pendingIntentChecked = true;
+    _checkPendingIntent();
   }
 
   @override
@@ -80,7 +92,9 @@ class _AccountProfileDetailScreenState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.accountProfile.id != widget.accountProfile.id ||
         oldWidget.accountProfile.slug != widget.accountProfile.slug) {
-      _controller.loadResolvedAccountProfile(widget.accountProfile);
+      unawaited(
+        _controller.loadResolvedAccountProfile(widget.accountProfile),
+      );
     }
   }
 
@@ -104,15 +118,18 @@ class _AccountProfileDetailScreenState
               if (errorMessage.trim().isNotEmpty) {
                 return _buildErrorState(errorMessage);
               }
-              return StreamValueBuilder<AccountProfileModel?>(
-                streamValue: _controller.accountProfileStreamValue,
-                onNullWidget: _buildEmptyState(),
-                builder: (context, accountProfile) {
+              return StreamValueBuilder(
+                streamValue: _controller.detailStateStreamValue,
+                builder: (context, detailState) {
+                  final accountProfile = detailState.accountProfile;
+                  if (accountProfile == null) {
+                    return _buildEmptyState();
+                  }
                   return StreamValueBuilder<PartnerProfileConfig?>(
                     streamValue: _controller.profileConfigStreamValue,
                     onNullWidget: _buildLoadingState(),
                     builder: (context, config) {
-                      final resolvedAccountProfile = accountProfile!;
+                      final resolvedAccountProfile = accountProfile;
                       final resolvedConfig = config!;
                       return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
                         streamValue: _controller.moduleDataStreamValue,
@@ -627,7 +644,7 @@ class _AccountProfileDetailScreenState
   Future<bool> _showReferencePointConfirmationDialog(
     AccountProfileModel accountProfile,
   ) async {
-    final result = await showDialog<bool>(
+    final result = await showRouteScopedDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (dialogContext) {
@@ -923,12 +940,6 @@ class _AccountProfileDetailScreenState
         isFavoritable: isFavoritable,
       ),
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _checkPendingIntent();
   }
 
   void _checkPendingIntent() {

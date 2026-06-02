@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
@@ -25,6 +26,7 @@ import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -1374,6 +1376,123 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets(
+      'nested linked profile routes keep isolated detail controller instances',
+      (tester) async {
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+      nameValue: TitleValue()..parse('Ananda Torres'),
+      slugValue: SlugValue()..parse('ananda-torres'),
+    );
+    final repository = _FakeAccountProfilesRepository(
+      profiles: [parentProfile, childProfile],
+    );
+    final createdControllers = <_TrackingAccountProfileDetailController>[];
+    GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
+    GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(),
+    );
+    GetIt.I.registerFactory<AccountProfileDetailController>(() {
+      final controller = _TrackingAccountProfileDetailController(
+        id: createdControllers.length + 1,
+        accountProfilesRepository: repository,
+      );
+      createdControllers.add(controller);
+      return controller;
+    });
+    GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
+
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: 'discovery-test-root',
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: Center(
+              child: TextButton(
+                key: const Key('openParentAccountDetail'),
+                onPressed: () => context.router.push(
+                  PartnerDetailRoute(slug: 'du-jorge'),
+                ),
+                child: const Text('Abrir Du Jorge'),
+              ),
+            ),
+          ),
+        ),
+        AutoRoute(
+          path: '/parceiro/:slug',
+          page: PartnerDetailRoute.page,
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.partnerDetail,
+          ),
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const <Locale>[Locale('pt', 'BR')],
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('openParentAccountDetail')));
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(1));
+    final parentController = createdControllers.single;
+    expect(parentController.id, 1);
+    expect(parentController.loadedSlugs, contains('du-jorge'));
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(2));
+    final childController = createdControllers.last;
+    expect(childController.id, 2);
+    expect(identical(parentController, childController), isFalse);
+    expect(childController.loadedSlugs, contains('ananda-torres'));
+    expect(parentController.disposed, isFalse);
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(2));
+    expect(parentController.disposed, isFalse);
+    expect(childController.disposed, isTrue);
+    expect(
+      parentController.detailStateStreamValue.value.accountProfile?.slug,
+      'du-jorge',
+    );
+    expect(find.text('Du Jorge'), findsWidgets);
+    expect(
+      find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('removes social metrics from the account profile MVP surface',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -2027,7 +2146,7 @@ Widget _buildAutoRouteTestApp({
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.partnerDetail,
         ),
-        builder: (_, __) => child,
+        builder: (_, __) => RouteInstanceScope(child: child),
       ),
     ],
   )..ignorePopCompleters = true;
@@ -2073,7 +2192,7 @@ Widget _buildRoutedTestApp({
       ],
       home: RouteDataScope(
         routeData: routeData,
-        child: child,
+        child: RouteInstanceScope(child: child),
       ),
     ),
   );
@@ -2283,7 +2402,7 @@ class _EmptyAccountProfileDetailController
   @override
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
-    accountProfileStreamValue.addValue(null);
+    detailStateStreamValue.addValue(AccountProfileDetailState.empty);
     profileConfigStreamValue.addValue(null);
   }
 }
@@ -2298,6 +2417,32 @@ class _ErrorAccountProfileDetailController
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
     errorMessageStreamValue.addValue('Falha ao preparar o perfil');
+  }
+}
+
+class _TrackingAccountProfileDetailController
+    extends AccountProfileDetailController {
+  _TrackingAccountProfileDetailController({
+    required this.id,
+    required super.accountProfilesRepository,
+  });
+
+  final int id;
+  final loadedSlugs = <String>[];
+  bool disposed = false;
+
+  @override
+  Future<void> loadResolvedAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    loadedSlugs.add(accountProfile.slug);
+    return super.loadResolvedAccountProfile(accountProfile);
+  }
+
+  @override
+  void onDispose() {
+    disposed = true;
+    super.onDispose();
   }
 }
 

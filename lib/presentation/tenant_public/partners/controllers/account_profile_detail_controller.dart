@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:get_it/get_it.dart';
@@ -95,10 +96,11 @@ class AccountProfileDetailController implements Disposable {
       _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
 
-  final _accountProfileStreamValue =
-      StreamValue<AccountProfileModel?>(defaultValue: null);
-  StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
-      _accountProfileStreamValue;
+  final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
+    defaultValue: AccountProfileDetailState.empty,
+  );
+  StreamValue<AccountProfileDetailState> get detailStateStreamValue =>
+      _detailStateStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
@@ -118,34 +120,12 @@ class AccountProfileDetailController implements Disposable {
 
   bool get isAuthorized => _authRepository?.isAuthorized ?? true;
 
-  Future<void> loadAccountProfile(String slug) async {
-    isLoadingStreamValue.addValue(true);
-    errorMessageStreamValue.addValue('');
-    try {
-      final accountProfile =
-          await _accountProfilesRepository.getAccountProfileBySlug(
-        AccountProfilesRepositoryContractPrimString.fromRaw(slug),
-      );
-      if (accountProfile == null) {
-        _accountProfileStreamValue.addValue(null);
-        profileConfigStreamValue.addValue(null);
-        moduleDataStreamValue.addValue(const {});
-        return;
-      }
-      await loadResolvedAccountProfile(accountProfile);
-    } catch (error) {
-      errorMessageStreamValue.addValue(
-        'Falha ao preparar o perfil',
-      );
-    } finally {
-      isLoadingStreamValue.addValue(false);
-    }
-  }
-
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
     errorMessageStreamValue.addValue('');
-    _accountProfileStreamValue.addValue(accountProfile);
+    _detailStateStreamValue.addValue(
+      AccountProfileDetailState(accountProfile: accountProfile),
+    );
     final capabilities = _resolveRegistry()
         ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
@@ -401,7 +381,7 @@ class AccountProfileDetailController implements Disposable {
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _accountProfileStreamValue.dispose();
+    _detailStateStreamValue.dispose();
     errorMessageStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
     agendaStatusRevisionStreamValue.dispose();

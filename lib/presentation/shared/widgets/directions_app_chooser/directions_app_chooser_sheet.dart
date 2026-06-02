@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_asset.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_catalog.dart';
@@ -28,7 +29,7 @@ class DirectionsAppChooserSheet extends StatefulWidget {
     required Future<List<DirectionsAppChoice>> Function() loadOptions,
     VoidCallback? onLaunchFailure,
   }) {
-    return showModalBottomSheet<void>(
+    return showRouteScopedModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

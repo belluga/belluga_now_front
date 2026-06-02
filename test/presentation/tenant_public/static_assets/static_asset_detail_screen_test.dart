@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -13,13 +14,19 @@ import 'package:belluga_now/presentation/tenant_public/static_assets/static_asse
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
-  setUp(() {
+  setUp(() async {
+    await GetIt.I.reset(dispose: false);
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset(dispose: false);
   });
 
   testWidgets(
@@ -43,6 +50,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
@@ -50,7 +58,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: asset,
-          controller: controller,
         ),
       ),
     );
@@ -83,6 +90,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = false;
 
     await tester.pumpWidget(
@@ -90,7 +98,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -114,6 +121,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = false;
 
     await tester.pumpWidget(
@@ -121,7 +129,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -148,6 +155,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = true;
 
     await tester.pumpWidget(
@@ -155,7 +163,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -176,13 +183,13 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
 
     await tester.pumpWidget(
       _buildRoutedTestApp(
         router: _RecordingStackRouter(),
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
           shareLauncher: (params) async {
             sharedParams.add(params);
           },
@@ -317,7 +324,7 @@ Widget _buildRoutedTestApp({
     child: MaterialApp(
       home: RouteDataScope(
         routeData: routeData,
-        child: child,
+        child: RouteInstanceScope(child: child),
       ),
     ),
   );

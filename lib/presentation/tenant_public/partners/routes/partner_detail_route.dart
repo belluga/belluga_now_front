@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
+import 'package:belluga_now/application/router/support/route_scoped_resolver_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
@@ -12,7 +13,7 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 
 @RoutePage()
 class PartnerDetailRoute
-    extends ResolverRoute<AccountProfileModel, DiscoveryModule> {
+    extends RouteScopedResolverRoute<AccountProfileModel, DiscoveryModule> {
   const PartnerDetailRoute({
     super.key,
     @PathParam('slug') required this.slug,

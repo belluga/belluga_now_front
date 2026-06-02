@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RoutePathParamRequiresResolverRouteRule extends DartLintRule {
   RoutePathParamRequiresResolverRouteRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'route_path_param_requires_resolver_route',
-            problemMessage:
-                'Route pages with @PathParam must use ResolverRoute model hydration.',
-            correctionMessage:
-                'Treatments: replace Stateless/Stateful route wrappers with ResolverRoute and define resolverParams/buildScreen with hydrated model.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.WARNING,
+          name: 'route_path_param_requires_resolver_route',
+          problemMessage:
+              'Route pages with @PathParam must use ResolverRoute model hydration.',
+          correctionMessage:
+              'Treatments: replace Stateless/Stateful route wrappers with ResolverRoute and define resolverParams/buildScreen with hydrated model.',
+        ),
+      );
 
   @override
   void run(
@@ -100,8 +100,10 @@ class RoutePathParamRequiresResolverRouteRule extends DartLintRule {
       return false;
     }
 
-    final superTypeName =
-        normalizeTypeName(extendsClause.superclass.toSource());
-    return superTypeName == 'ResolverRoute';
+    final superTypeName = normalizeTypeName(
+      extendsClause.superclass.toSource(),
+    );
+    return superTypeName == 'ResolverRoute' ||
+        superTypeName == 'RouteScopedResolverRoute';
   }
 }

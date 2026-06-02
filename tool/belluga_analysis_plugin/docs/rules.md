@@ -256,6 +256,23 @@ Screens or parent widgets must not resolve a descendant widget controller outsid
 2. If a parent/screen truly needs that state, promote the state instead of resolving the descendant widget controller upward.
 3. Keep same-feature screen-controller resolution separate; this rule only targets leaked widget-controller boundaries.
 
+## `route_scoped_detail_controller_getit_forbidden`
+
+### Rule intent
+Stackable tenant-public detail screens must not resolve their detail controller directly from global `GetIt`.
+
+The covered launch surface is intentionally narrow:
+- `AccountProfileDetailScreen` / `AccountProfileDetailController`
+- `ImmersiveEventDetailScreen` / `ImmersiveEventDetailController`
+- `StaticAssetDetailScreen` / `StaticAssetDetailController`
+
+### Remediation playbook
+1. Resolve covered detail controllers with `RouteInstanceScope.get<T>(context)`.
+2. Ensure the route page extends the project `RouteScopedResolverRoute`, which wraps the AutoRoute page with `ModuleScope` and `RouteInstanceScope`.
+3. For route-owned dialogs or bottom sheets, use `showRouteScopedDialog` or `showRouteScopedModalBottomSheet` so overlay widgets keep the originating route store.
+4. Do not pass detail controllers through route/screen constructors.
+5. Keep global `GetIt` as the registration/factory source only; it must not be the UI lookup surface for covered route-detail controllers.
+
 ## `widget_controller_singleton_registration_forbidden`
 
 ### Rule intent

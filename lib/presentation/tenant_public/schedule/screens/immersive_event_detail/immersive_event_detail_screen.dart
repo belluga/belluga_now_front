@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
@@ -39,7 +40,6 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -69,8 +69,7 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
 
 class _ImmersiveEventDetailScreenState
     extends State<ImmersiveEventDetailScreen> {
-  final ImmersiveEventDetailController _controller =
-      GetIt.I.get<ImmersiveEventDetailController>();
+  late final ImmersiveEventDetailController _controller;
   final GlobalKey _programmingSectionAnchorKey = GlobalKey();
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
@@ -78,6 +77,8 @@ class _ImmersiveEventDetailScreenState
   @override
   void initState() {
     super.initState();
+    _controller =
+        RouteInstanceScope.read<ImmersiveEventDetailController>(context);
     _controller.init(widget.event);
   }
 
@@ -869,7 +870,7 @@ class _ImmersiveEventDetailScreenState
   ) {
     final referenceLabel = _referencePointLabel(reference);
     final accountProfilePath = _referenceAccountProfilePath(reference);
-    return showDialog<_RouteStartPointDecision>(
+    return showRouteScopedDialog<_RouteStartPointDecision>(
       context: context,
       useRootNavigator: false,
       builder: (dialogContext) {

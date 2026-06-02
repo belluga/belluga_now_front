@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -19,7 +20,6 @@ import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -27,14 +27,12 @@ class StaticAssetDetailScreen extends StatefulWidget {
   const StaticAssetDetailScreen({
     super.key,
     required this.asset,
-    this.controller,
     this.directionsAppChooser,
     this.shareLauncher,
     this.externalUrlLauncher,
   });
 
   final PublicStaticAssetModel asset;
-  final StaticAssetDetailController? controller;
   final DirectionsAppChooserContract? directionsAppChooser;
   final SystemShareLauncher? shareLauncher;
   final ExternalUrlLauncher? externalUrlLauncher;
@@ -45,10 +43,15 @@ class StaticAssetDetailScreen extends StatefulWidget {
 }
 
 class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
-  late final StaticAssetDetailController _controller =
-      widget.controller ?? GetIt.I.get<StaticAssetDetailController>();
+  late final StaticAssetDetailController _controller;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = RouteInstanceScope.read<StaticAssetDetailController>(context);
+  }
 
   @override
   Widget build(BuildContext context) {
