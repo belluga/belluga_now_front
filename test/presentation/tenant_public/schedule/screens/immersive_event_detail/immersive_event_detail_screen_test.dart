@@ -3627,29 +3627,10 @@ void main() {
       ),
     );
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: ImmersiveEventDetailScreen(
-              event: _buildEvent(venue: _buildVenueResume()),
-              directionsAppChooser: directionsChooser,
-            ),
-          ),
-        ),
-      ),
+    await _pumpEventDetailWithAutoRouter(
+      tester,
+      event: _buildEvent(venue: _buildVenueResume()),
+      directionsChooser: directionsChooser,
     );
 
     await tester.pump();
@@ -3702,29 +3683,10 @@ void main() {
       ),
     );
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: ImmersiveEventDetailScreen(
-              event: _buildEvent(venue: _buildVenueResume()),
-              directionsAppChooser: directionsChooser,
-            ),
-          ),
-        ),
-      ),
+    await _pumpEventDetailWithAutoRouter(
+      tester,
+      event: _buildEvent(venue: _buildVenueResume()),
+      directionsChooser: directionsChooser,
     );
 
     await tester.pump();
@@ -3748,6 +3710,35 @@ void main() {
       isNull,
     );
   });
+}
+
+Future<void> _pumpEventDetailWithAutoRouter(
+  WidgetTester tester, {
+  required EventModel event,
+  required DirectionsAppChooserContract directionsChooser,
+}) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'event-detail-test',
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.immersiveEventDetail,
+        ),
+        builder: (_, __) => ImmersiveEventDetailScreen(
+          event: event,
+          directionsAppChooser: directionsChooser,
+        ),
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
+  );
 }
 
 class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {

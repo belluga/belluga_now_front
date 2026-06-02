@@ -76,6 +76,15 @@ class _AccountProfileDetailScreenState
   }
 
   @override
+  void didUpdateWidget(AccountProfileDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.accountProfile.id != widget.accountProfile.id ||
+        oldWidget.accountProfile.slug != widget.accountProfile.slug) {
+      _controller.loadResolvedAccountProfile(widget.accountProfile);
+    }
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }
@@ -620,6 +629,7 @@ class _AccountProfileDetailScreenState
   ) async {
     final result = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (dialogContext) {
         return AlertDialog(
           key: const Key('accountProfileReferencePointDialog'),
@@ -641,12 +651,12 @@ class _AccountProfileDetailScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => unawaited(dialogContext.router.maybePop(false)),
               child: const Text('Cancelar'),
             ),
             FilledButton.icon(
               key: const Key('accountProfileReferencePointConfirmButton'),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
+              onPressed: () => unawaited(dialogContext.router.maybePop(true)),
               icon: const Icon(Icons.location_on_outlined),
               label: const Text('Usar como Ponto de Referência'),
             ),

@@ -871,6 +871,7 @@ class _ImmersiveEventDetailScreenState
     final accountProfilePath = _referenceAccountProfilePath(reference);
     return showDialog<_RouteStartPointDecision>(
       context: context,
+      useRootNavigator: false,
       builder: (dialogContext) {
         return _RouteStartPointDialog(
           referenceLabel: referenceLabel,
@@ -878,8 +879,11 @@ class _ImmersiveEventDetailScreenState
           onOpenAccountProfile: accountProfilePath == null
               ? null
               : () {
-                  Navigator.of(dialogContext).pop();
-                  context.router.pushPath(accountProfilePath);
+                  dialogContext.router.pop();
+                  if (!mounted) {
+                    return;
+                  }
+                  unawaited(context.router.pushPath(accountProfilePath));
                 },
         );
       },
@@ -1075,16 +1079,18 @@ class _RouteStartPointDialogState extends State<_RouteStartPointDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => unawaited(context.router.maybePop()),
           child: const Text('Cancelar'),
         ),
         FilledButton(
           onPressed: () {
-            Navigator.of(context).pop(
-              _RouteStartPointDecision(
-                useReferencePoint:
-                    _choice == _RouteStartPointChoice.referencePoint,
-                persistChoice: _persistChoice,
+            unawaited(
+              context.router.maybePop(
+                _RouteStartPointDecision(
+                  useReferencePoint:
+                      _choice == _RouteStartPointChoice.referencePoint,
+                  persistChoice: _persistChoice,
+                ),
               ),
             );
           },

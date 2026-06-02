@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -18,8 +19,10 @@ import 'package:belluga_now/domain/proximity_preferences/proximity_preference.da
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -1192,6 +1195,185 @@ void main() {
     expect(router.lastPushedPath, '/parceiro/ananda-torres');
   });
 
+  testWidgets(
+      'keeps parent profile data when a stacked partner detail changes repository selection',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      nameValue: TitleValue()..parse('QA Discovery Tag Várias Tags'),
+      slugValue: SlugValue()..parse('qa-discovery-tag-varias-tags'),
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: parentProfile,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    repository.setSelectedAccountProfile(childProfile);
+    await tester.pumpAndSettle();
+
+    final heroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(of: heroSummary, matching: find.text('Du Jorge')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: heroSummary,
+        matching: find.text('QA Discovery Tag Várias Tags'),
+      ),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+      'Parceiros',
+    );
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+  });
+
+  testWidgets(
+      'back from a nested linked profile restores the parent account detail',
+      (tester) async {
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+      nameValue: TitleValue()..parse('Ananda Torres'),
+      slugValue: SlugValue()..parse('ananda-torres'),
+    );
+    final repository = _FakeAccountProfilesRepository(
+      profiles: [parentProfile, childProfile],
+    );
+    GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
+    GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(),
+    );
+    GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
+
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: 'discovery-test-root',
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: Center(
+              child: TextButton(
+                key: const Key('openParentAccountDetail'),
+                onPressed: () => context.router.push(
+                  PartnerDetailRoute(slug: 'du-jorge'),
+                ),
+                child: const Text('Abrir Du Jorge'),
+              ),
+            ),
+          ),
+        ),
+        AutoRoute(
+          path: '/parceiro/:slug',
+          page: PartnerDetailRoute.page,
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.partnerDetail,
+          ),
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const <Locale>[Locale('pt', 'BR')],
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('openParentAccountDetail')));
+    await tester.pumpAndSettle();
+
+    final parentHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(of: parentHeroSummary, matching: find.text('Du Jorge')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final childHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(
+        of: childHeroSummary,
+        matching: find.text('Ananda Torres'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    final restoredParentHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(
+        of: restoredParentHeroSummary,
+        matching: find.text('Du Jorge'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: restoredParentHeroSummary,
+        matching: find.text('Ananda Torres'),
+      ),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+  });
+
   testWidgets('removes social metrics from the account profile MVP surface',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1341,8 +1523,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
+      _buildAutoRouteTestApp(
         child: AccountProfileDetailScreen(
           accountProfile: _buildRestaurantProfile(),
         ),
@@ -1834,6 +2015,37 @@ Future<void> _expectCollapsedTaxonomyChipContrast(
       _contrastRatio(chipBackground, foreground!), greaterThanOrEqualTo(4.5));
 }
 
+Widget _buildAutoRouteTestApp({
+  required Widget child,
+  ThemeData? theme,
+}) {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'partner-detail-test',
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.partnerDetail,
+        ),
+        builder: (_, __) => child,
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  return MaterialApp.router(
+    theme: theme,
+    locale: const Locale('pt', 'BR'),
+    supportedLocales: const <Locale>[Locale('pt', 'BR')],
+    localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    routeInformationParser: router.defaultRouteParser(),
+    routerDelegate: router.delegate(),
+  );
+}
+
 Widget _buildRoutedTestApp({
   required _RecordingStackRouter router,
   required Widget child,
@@ -2161,7 +2373,9 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
-  }) : _favoriteIds = Set<String>.from(initialFavoriteIds) {
+    List<AccountProfileModel> profiles = const <AccountProfileModel>[],
+  })  : _favoriteIds = Set<String>.from(initialFavoriteIds),
+        _profiles = List<AccountProfileModel>.from(profiles) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map(
@@ -2172,7 +2386,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   final Set<String> _favoriteIds;
-  final List<AccountProfileModel> _profiles = <AccountProfileModel>[];
+  final List<AccountProfileModel> _profiles;
 
   @override
   Future<void> init() async {}
@@ -2242,6 +2456,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+}
+
+class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
+  @override
+  Future<PublicStaticAssetModel?> getStaticAssetByRef(
+    StaticAssetRepoText assetRef,
+  ) async =>
+      null;
 }
 
 AccountProfileModel _buildArtistProfile() {

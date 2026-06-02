@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -18,6 +19,8 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+
+import '../../../support/auto_route_test_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -425,15 +428,13 @@ Future<void> _pumpFormScreen(
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();
   });
-  addTearDown(() async {
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpAndSettle();
-  });
-
   GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
 
-  await tester.pumpWidget(
-    MaterialApp(home: TenantAdminProfileTypeFormScreen(definition: definition)),
+  await pumpAutoRouteTestApp(
+    tester,
+    routeName: 'tenant-admin-profile-type-form-test',
+    routeFamily: CanonicalRouteFamily.tenantAdminAccountsInternal,
+    child: TenantAdminProfileTypeFormScreen(definition: definition),
   );
   await tester.pumpAndSettle();
 }

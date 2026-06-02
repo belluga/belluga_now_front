@@ -544,10 +544,6 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<bool> _closeModalSheet<T>(BuildContext context, [T? result]) {
-    final navigator = ModalRoute.of(context)?.navigator;
-    if (navigator != null) {
-      return navigator.maybePop<T>(result);
-    }
     return context.router.maybePop<T>(result);
   }
 

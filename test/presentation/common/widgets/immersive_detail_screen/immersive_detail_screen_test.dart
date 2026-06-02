@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
@@ -429,7 +430,7 @@ void main() {
             ImmersiveHeroAction(
               key: const Key('testWhatsappHeroAction'),
               label: 'WhatsApp',
-              icon: Icons.chat_bubble_outline,
+              icon: BooraIcons.whatsapp,
               onPressed: () => whatsappCalls += 1,
             ),
           ],

@@ -665,7 +665,7 @@ void main() {
   );
 
   test(
-    'disables favoritable capability when public discovery is turned off and does not auto-restore it',
+    'keeps favoritable capability independent when public discovery is toggled',
     () async {
       final repository = _FakeAccountProfilesRepository([]);
       final controller = TenantAdminProfileTypesController(
@@ -682,12 +682,12 @@ void main() {
       controller.updateCapabilities(isPubliclyDiscoverable: false);
 
       expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
-      expect(controller.currentCapabilities.isFavoritable, isFalse);
+      expect(controller.currentCapabilities.isFavoritable, isTrue);
 
       controller.updateCapabilities(isPubliclyDiscoverable: true);
 
       expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
-      expect(controller.currentCapabilities.isFavoritable, isFalse);
+      expect(controller.currentCapabilities.isFavoritable, isTrue);
     },
   );
 

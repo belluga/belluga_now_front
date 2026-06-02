@@ -38,6 +38,7 @@ void main() {
       containsAll(<String>{
         'kiosk',
         'ice-cream',
+        'whatsapp',
         'appointment',
         'invitation',
         'invitation_outlined',

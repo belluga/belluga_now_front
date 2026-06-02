@@ -13,7 +13,10 @@ class BooraIcons {
 
   static const String _fontFamily = 'BooraIcons';
 
-  static const IconData invitationOutlined = IconData(0xf039, fontFamily: _fontFamily);
+  static const IconData clapperboard = IconData(0xf03c, fontFamily: _fontFamily);
+  static const IconData whatsapp = IconData(0xf03d, fontFamily: _fontFamily);
+  static const IconData running = IconData(0xf03e, fontFamily: _fontFamily);
+  static const IconData invitation_outlined = IconData(0xf039, fontFamily: _fontFamily);
   static const IconData invitation = IconData(0xf03a, fontFamily: _fontFamily);
   static const IconData appointment = IconData(0xf03b, fontFamily: _fontFamily);
   static const IconData kiosk = IconData(0xf037, fontFamily: _fontFamily);
@@ -71,6 +74,4 @@ class BooraIcons {
   static const IconData market = IconData(0xf00f, fontFamily: _fontFamily);
   static const IconData fireworks = IconData(0xf010, fontFamily: _fontFamily);
   static const IconData jubs = IconData(0xf002, fontFamily: _fontFamily);
-  static const IconData clapperboard = IconData(0xf000, fontFamily: _fontFamily);
-  static const IconData running = IconData(0xf001, fontFamily: _fontFamily);
 }

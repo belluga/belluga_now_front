@@ -5153,10 +5153,9 @@ void main() {
         await localPoiRepository.ensurePoiHydrated(poi);
         localController.selectPoi(poi);
 
-        await _pumpPoiDetailDeck(
+        await _pumpPoiDetailDeckWithAutoRouter(
           tester,
           controller: localController,
-          router: _RecordingStackRouter(),
         );
 
         await tester
@@ -5804,6 +5803,34 @@ Future<void> _pumpMapScreen(
           child: MapScreen(initialPoiQuery: initialPoiQuery),
         ),
       ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 120));
+}
+
+Future<void> _pumpPoiDetailDeckWithAutoRouter(
+  WidgetTester tester, {
+  required MapScreenController controller,
+}) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'poi-detail-deck-test',
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.cityMap,
+        ),
+        builder: (_, __) =>
+            Scaffold(body: PoiDetailDeck(controller: controller)),
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
     ),
   );
   await tester.pump();

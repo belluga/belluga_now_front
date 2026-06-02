@@ -42,6 +42,12 @@ bool _containsDirectNavigatorUsage(String content) {
     RegExp(
       r'\bNavigator\.(push|pop|maybePop|pushNamed|pushReplacement|popUntil)\(',
     ),
+    RegExp(r'\bModalRoute\.of\([^;]*\)\??\.navigator\b'),
+    RegExp(r'\bMaterialPageRoute\('),
+    RegExp(r'\bPageRouteBuilder\('),
+    RegExp(r'\bRouter\.neglect\('),
+    RegExp(r'\b(?:html\.)?window\.history\b'),
+    RegExp(r'\bBrowserHistory\b'),
   ];
   for (final pattern in patterns) {
     if (pattern.hasMatch(content)) {

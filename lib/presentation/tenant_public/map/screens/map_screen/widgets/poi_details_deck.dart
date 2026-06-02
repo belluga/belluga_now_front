@@ -206,6 +206,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
     final result = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (dialogContext) {
         return AlertDialog(
           key: const Key('poiReferencePointDialog'),
@@ -228,12 +229,12 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => unawaited(dialogContext.router.maybePop(false)),
               child: const Text('Cancelar'),
             ),
             FilledButton.icon(
               key: const Key('poiReferencePointConfirmButton'),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
+              onPressed: () => unawaited(dialogContext.router.maybePop(true)),
               icon: const Icon(Icons.location_on_outlined),
               label: const Text('Usar como Ponto de Referência'),
             ),

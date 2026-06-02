@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
@@ -979,6 +980,7 @@ void main() {
     expect(find.text('1 contato'), findsOneWidget);
     expect(find.text('Mae'), findsOneWidget);
     expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.byIcon(BooraIcons.whatsapp), findsNWidgets(2));
     expect(find.text('Convidar'), findsNothing);
   });
 

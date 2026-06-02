@@ -95,8 +95,10 @@ class AccountProfileDetailController implements Disposable {
       _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
 
+  final _accountProfileStreamValue =
+      StreamValue<AccountProfileModel?>(defaultValue: null);
   StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
-      _accountProfilesRepository.selectedAccountProfileStreamValue;
+      _accountProfileStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
@@ -120,13 +122,12 @@ class AccountProfileDetailController implements Disposable {
     isLoadingStreamValue.addValue(true);
     errorMessageStreamValue.addValue('');
     try {
-      await _accountProfilesRepository.loadAccountProfileBySlug(
+      final accountProfile =
+          await _accountProfilesRepository.getAccountProfileBySlug(
         AccountProfilesRepositoryContractPrimString.fromRaw(slug),
       );
-      final accountProfile =
-          _accountProfilesRepository.selectedAccountProfileStreamValue.value;
       if (accountProfile == null) {
-        _accountProfilesRepository.clearSelectedAccountProfile();
+        _accountProfileStreamValue.addValue(null);
         profileConfigStreamValue.addValue(null);
         moduleDataStreamValue.addValue(const {});
         return;
@@ -144,7 +145,7 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
     errorMessageStreamValue.addValue('');
-    _accountProfilesRepository.setSelectedAccountProfile(accountProfile);
+    _accountProfileStreamValue.addValue(accountProfile);
     final capabilities = _resolveRegistry()
         ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
@@ -400,7 +401,7 @@ class AccountProfileDetailController implements Disposable {
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _accountProfilesRepository.clearSelectedAccountProfile();
+    _accountProfileStreamValue.dispose();
     errorMessageStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
     agendaStatusRevisionStreamValue.dispose();

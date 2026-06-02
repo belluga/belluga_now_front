@@ -52,13 +52,11 @@ class TenantAdminSettingsResponseDecoder {
       payload,
       namespace: 'discovery_filters',
     );
-    final legacyMapUi = _extractNamedMap(payload, namespace: 'map_ui');
     return TenantAdminDiscoveryFiltersSettingsValue(
       TenantAdminDynamicMapValue(
         Map<String, dynamic>.unmodifiable(
           const TenantAdminDiscoveryFiltersSettingsCanonicalizer().canonicalize(
             discoveryFilters: discoveryFilters,
-            legacyMapUi: legacyMapUi,
           ),
         ),
       ),
